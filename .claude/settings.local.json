@@ -1,0 +1,49 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew compileJava:*)",
+      "Bash(curl:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.firecrawl.dev)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "Bash(./gradlew compileTestJava:*)",
+      "Bash(./gradlew test:*)",
+      "Bash(./gradlew dependencies:*)",
+      "Bash(./gradlew build:*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hongxichen/.local/share/uv/tools/aline-ai/bin/python3 /Users/hongxichen/.local/share/uv/tools/aline-ai/lib/python3.14/site-packages/realign/claude_hooks/stop_hook.py  # aline-stop-hook"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hongxichen/.local/share/uv/tools/aline-ai/bin/python3 /Users/hongxichen/.local/share/uv/tools/aline-ai/lib/python3.14/site-packages/realign/claude_hooks/user_prompt_submit_hook.py  # aline-user-prompt-submit-hook"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hongxichen/.local/share/uv/tools/aline-ai/bin/python3 /Users/hongxichen/.local/share/uv/tools/aline-ai/lib/python3.14/site-packages/realign/claude_hooks/permission_request_hook.py  # aline-permission-request-hook"
+          }
+        ]
+      }
+    ]
+  }
+}

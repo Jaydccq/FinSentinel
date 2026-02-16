@@ -1,0 +1,104 @@
+package com.example.finsentinel.service.scraper;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+@Service
+@Slf4j
+@RequiredArgsConstructor
+public class KnowledgeBaseScraperService {
+
+    private final InvestopediaScraper investopediaScraper;
+    private final SecEdgarScraper secEdgarScraper;
+    private final PolygonNewsScraper polygonNewsScraper;
+
+    private final AtomicBoolean running = new AtomicBoolean(false);
+    private volatile String currentStatus = "idle";
+
+    /**
+     * Run all scrapers with default settings.
+     */
+    public Map<String, Object> scrapeAll() {
+        if (!running.compareAndSet(false, true)) {
+            return Map.of("error", "Scraping is already in progress", "status", currentStatus);
+        }
+
+        try {
+            currentStatus = "running all scrapers";
+            Map<String, Object> results = new HashMap<>();
+
+            currentStatus = "scraping Investopedia terms";
+            results.put("investopedia", investopediaScraper.scrape(100));
+
+            currentStatus = "scraping SEC EDGAR filings";
+            results.put("secFilings", secEdgarScraper.scrape(
+                    List.of("AAPL", "MSFT", "GOOGL", "TSLA", "JPM")));
+
+            currentStatus = "scraping Polygon news";
+            results.put("news", polygonNewsScraper.scrape(
+                    List.of("AAPL", "MSFT", "GOOGL", "TSLA", "JPM"), 7));
+
+            currentStatus = "completed";
+            results.put("status", "completed");
+            return results;
+        } finally {
+            running.set(false);
+        }
+    }
+
+    public Map<String, Object> scrapeInvestopedia(int maxTerms) {
+        if (!running.compareAndSet(false, true)) {
+            return Map.of("error", "Scraping is already in progress");
+        }
+        try {
+            currentStatus = "scraping Investopedia terms";
+            int count = investopediaScraper.scrape(maxTerms);
+            currentStatus = "idle";
+            return Map.of("status", "completed", "termsScraped", count);
+        } finally {
+            running.set(false);
+        }
+    }
+
+    public Map<String, Object> scrapeSecFilings(List<String> tickers) {
+        if (!running.compareAndSet(false, true)) {
+            return Map.of("error", "Scraping is already in progress");
+        }
+        try {
+            currentStatus = "scraping SEC EDGAR filings";
+            int count = secEdgarScraper.scrape(tickers);
+            currentStatus = "idle";
+            return Map.of("status", "completed", "filingsScraped", count);
+        } finally {
+            running.set(false);
+        }
+    }
+
+    public Map<String, Object> scrapeNews(List<String> tickers, int days) {
+        if (!running.compareAndSet(false, true)) {
+            return Map.of("error", "Scraping is already in progress");
+        }
+        try {
+            currentStatus = "scraping Polygon news";
+            int count = polygonNewsScraper.scrape(tickers, days);
+            currentStatus = "idle";
+            return Map.of("status", "completed", "articlesSaved", count);
+        } finally {
+            running.set(false);
+        }
+    }
+
+    public Map<String, Object> getStatus() {
+        return Map.of(
+                "running", running.get(),
+                "currentStatus", currentStatus
+        );
+    }
+}

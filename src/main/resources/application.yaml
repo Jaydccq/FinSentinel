@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: finsentinel
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:finsentinel}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:123456}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: ${HIBERNATE_DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    open-in-view: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      database: ${REDIS_DB:0}
+
+  ai:
+    openai:
+      api-key: ${OPENROUTER_API_KEY}
+      base-url: https://openrouter.ai/api/v1
+      chat:
+        options:
+          model: ${AI_MODEL:google/gemini-3-flash-preview}
+          temperature: 0.3
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 1536
+
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+app:
+  storage:
+    endpoint: ${APP_STORAGE_ENDPOINT:http://localhost:9000}
+    access-key: ${APP_STORAGE_ACCESS_KEY:rustfsadmin}
+    secret-key: ${APP_STORAGE_SECRET_KEY:rustfsadmin}
+    bucket: ${APP_STORAGE_BUCKET:finsentinel}
+    region: ${APP_STORAGE_REGION:us-east-1}
+
+  firecrawl:
+    api-key: ${FIRECRAWL_API_KEY:}
+    base-url: https://api.firecrawl.dev/v2
+
+  polygon:
+    api-key: ${POLYGON_API_KEY}
+    base-url: https://api.polygon.io
+
+  jwt:
+    secret: ${JWT_SECRET:default-secret-key-change-in-production-32ch}
+    expiration: ${JWT_EXPIRATION:86400000}
+
+  rag:
+    chunk:
+      chunk-size: 500
+      chunk-overlap: 50
+      min-chunk-size-chars: 200
+      max-num-chunks: 10000
+
+  compliance:
+    region: US
+    disclaimer: "This is AI-generated analysis for informational purposes only. It does not constitute investment advice. Past performance does not guarantee future results. Consult a licensed financial advisor before making investment decisions."
