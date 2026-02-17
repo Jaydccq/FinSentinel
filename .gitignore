@@ -46,9 +46,15 @@ task_plan.md
 notes.md
 frontend/node_modules/
 frontend/dist/
+*.class
+!gradle/wrapper/gradle-wrapper.jar
 
 doc/
 /task_plan.md
 /notes.md
 /HELP.md
 /docs/plans/2026-02-16-phase2-rag-document-pipeline.md
+phase3_plan.md
+phase3_notes.md
+phase5_plan.md
+phase5_notes.md

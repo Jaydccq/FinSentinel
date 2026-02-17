@@ -1,0 +1,183 @@
+package com.example.finsentinel.service;
+
+import com.example.finsentinel.dto.portfolio.*;
+import com.example.finsentinel.model.Holding;
+import com.example.finsentinel.model.Portfolio;
+import com.example.finsentinel.model.User;
+import com.example.finsentinel.repository.HoldingRepository;
+import com.example.finsentinel.repository.PortfolioRepository;
+import com.example.finsentinel.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class PortfolioServiceTest {
+
+    @Mock private PortfolioRepository portfolioRepository;
+    @Mock private HoldingRepository holdingRepository;
+    @Mock private UserRepository userRepository;
+
+    private PortfolioService service;
+
+    private final UUID userId = UUID.randomUUID();
+    private final UUID otherUserId = UUID.randomUUID();
+    private final UUID portfolioId = UUID.randomUUID();
+    private User testUser;
+
+    @BeforeEach
+    void setUp() {
+        service = new PortfolioService(portfolioRepository, holdingRepository, userRepository);
+        testUser = User.builder().id(userId).username("testuser").build();
+    }
+
+    @Test
+    void create_shouldReturnPortfolioWithZeroValue() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(testUser));
+        when(portfolioRepository.save(any(Portfolio.class))).thenAnswer(inv -> {
+            Portfolio p = inv.getArgument(0);
+            p.setId(portfolioId);
+            p.setCreatedAt(LocalDateTime.now());
+            return p;
+        });
+
+        PortfolioResponse response = service.create(new PortfolioRequest("My Portfolio", "Test"), userId);
+
+        assertThat(response.name()).isEqualTo("My Portfolio");
+        assertThat(response.description()).isEqualTo("Test");
+        assertThat(response.totalValue()).isEqualByComparingTo(BigDecimal.ZERO);
+    }
+
+    @Test
+    void listByUser_shouldReturnOnlyOwnedPortfolios() {
+        Portfolio p1 = buildPortfolio("P1", userId);
+        Portfolio p2 = buildPortfolio("P2", userId);
+        when(portfolioRepository.findByUserId(userId)).thenReturn(List.of(p1, p2));
+
+        List<PortfolioResponse> result = service.listByUser(userId);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).name()).isEqualTo("P1");
+    }
+
+    @Test
+    void getById_shouldThrowForWrongOwner() {
+        Portfolio p = buildPortfolio("P", otherUserId);
+        when(portfolioRepository.findById(portfolioId)).thenReturn(Optional.of(p));
+
+        assertThatThrownBy(() -> service.getById(portfolioId, userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Portfolio not found");
+    }
+
+    @Test
+    void update_shouldModifyNameAndDescription() {
+        Portfolio p = buildPortfolio("Old Name", userId);
+        when(portfolioRepository.findById(portfolioId)).thenReturn(Optional.of(p));
+        when(portfolioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        PortfolioResponse result = service.update(portfolioId,
+                new PortfolioRequest("New Name", "New Desc"), userId);
+
+        assertThat(result.name()).isEqualTo("New Name");
+        assertThat(result.description()).isEqualTo("New Desc");
+    }
+
+    @Test
+    void delete_shouldCallRepositoryDelete() {
+        Portfolio p = buildPortfolio("P", userId);
+        when(portfolioRepository.findById(portfolioId)).thenReturn(Optional.of(p));
+
+        service.delete(portfolioId, userId);
+
+        verify(portfolioRepository).delete(p);
+    }
+
+    @Test
+    void addHolding_shouldRecalculateTotalValue() {
+        Portfolio p = buildPortfolio("P", userId);
+        when(portfolioRepository.findById(portfolioId)).thenReturn(Optional.of(p));
+        when(holdingRepository.save(any(Holding.class))).thenAnswer(inv -> {
+            Holding h = inv.getArgument(0);
+            h.setId(UUID.randomUUID());
+            return h;
+        });
+        when(holdingRepository.findByPortfolioId(portfolioId)).thenReturn(List.of(
+                Holding.builder().quantity(new BigDecimal("10")).averageCost(new BigDecimal("150")).build()
+        ));
+        when(portfolioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        HoldingResponse result = service.addHolding(portfolioId,
+                new HoldingRequest("AAPL", "Apple Inc.", new BigDecimal("10"), new BigDecimal("150"), "Technology"),
+                userId);
+
+        assertThat(result.symbol()).isEqualTo("AAPL");
+        assertThat(result.quantity()).isEqualByComparingTo(new BigDecimal("10"));
+
+        ArgumentCaptor<Portfolio> captor = ArgumentCaptor.forClass(Portfolio.class);
+        verify(portfolioRepository, atLeast(1)).save(captor.capture());
+        Portfolio saved = captor.getAllValues().stream()
+                .filter(pp -> pp.getTotalValue() != null && pp.getTotalValue().compareTo(BigDecimal.ZERO) > 0)
+                .findFirst().orElse(null);
+        assertThat(saved).isNotNull();
+        assertThat(saved.getTotalValue()).isEqualByComparingTo(new BigDecimal("1500"));
+    }
+
+    @Test
+    void updateHolding_shouldUpdateFields() {
+        Portfolio p = buildPortfolio("P", userId);
+        UUID holdingId = UUID.randomUUID();
+        Holding existing = Holding.builder().id(holdingId).portfolio(p).symbol("AAPL")
+                .quantity(new BigDecimal("10")).averageCost(new BigDecimal("150")).build();
+
+        when(portfolioRepository.findById(portfolioId)).thenReturn(Optional.of(p));
+        when(holdingRepository.findById(holdingId)).thenReturn(Optional.of(existing));
+        when(holdingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(holdingRepository.findByPortfolioId(portfolioId)).thenReturn(List.of(existing));
+        when(portfolioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        HoldingResponse result = service.updateHolding(portfolioId, holdingId,
+                new HoldingRequest("MSFT", "Microsoft", new BigDecimal("20"), new BigDecimal("300"), "Technology"),
+                userId);
+
+        assertThat(result.symbol()).isEqualTo("MSFT");
+        assertThat(result.quantity()).isEqualByComparingTo(new BigDecimal("20"));
+    }
+
+    @Test
+    void deleteHolding_shouldCallDeleteAndRecalculate() {
+        Portfolio p = buildPortfolio("P", userId);
+        UUID holdingId = UUID.randomUUID();
+
+        when(portfolioRepository.findById(portfolioId)).thenReturn(Optional.of(p));
+        when(holdingRepository.findByPortfolioId(portfolioId)).thenReturn(List.of());
+        when(portfolioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.deleteHolding(portfolioId, holdingId, userId);
+
+        verify(holdingRepository).deleteById(holdingId);
+    }
+
+    private Portfolio buildPortfolio(String name, UUID ownerId) {
+        User owner = User.builder().id(ownerId).username("user").build();
+        return Portfolio.builder()
+                .id(portfolioId).name(name).user(owner)
+                .totalValue(BigDecimal.ZERO).holdings(new ArrayList<>())
+                .createdAt(LocalDateTime.now()).build();
+    }
+}
