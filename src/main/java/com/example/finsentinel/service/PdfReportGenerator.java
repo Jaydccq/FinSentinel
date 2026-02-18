@@ -33,26 +33,26 @@ public class PdfReportGenerator {
     private static final DeviceRgb RISK_MEDIUM = new DeviceRgb(180, 83, 9);
     private static final DeviceRgb RISK_LOW = new DeviceRgb(21, 128, 61);
     private static final DeviceRgb ROW_ALT = new DeviceRgb(243, 244, 246);
+    private static final DateTimeFormatter TIMESTAMP_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     public byte[] generate(RiskReport report, String portfolioName, LocalDateTime generatedAt) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            PdfWriter writer = new PdfWriter(baos);
-            PdfDocument pdfDoc = new PdfDocument(writer);
-            Document doc = new Document(pdfDoc);
-
             PdfFont bold = PdfFontFactory.createFont(StandardFonts.HELVETICA_BOLD);
             PdfFont regular = PdfFontFactory.createFont(StandardFonts.HELVETICA);
             PdfFont oblique = PdfFontFactory.createFont(StandardFonts.HELVETICA_OBLIQUE);
 
-            addHeader(doc, bold, regular, portfolioName, generatedAt);
-            addRiskScore(doc, bold, report);
-            addSummary(doc, bold, regular, report.summary());
-            addRiskFactorsTable(doc, bold, regular, report.factors());
-            addActionableAdvice(doc, bold, regular, report.actionableAdvice());
-            addComplianceDisclaimer(doc, oblique, report);
+            try (PdfWriter writer = new PdfWriter(baos);
+                 PdfDocument pdfDoc = new PdfDocument(writer);
+                 Document doc = new Document(pdfDoc)) {
 
-            doc.close();
+                addHeader(doc, bold, regular, portfolioName, generatedAt);
+                addRiskScore(doc, bold, report);
+                addSummary(doc, bold, regular, report.summary());
+                addRiskFactorsTable(doc, bold, regular, report.factors());
+                addActionableAdvice(doc, bold, regular, report.actionableAdvice());
+                addComplianceDisclaimer(doc, oblique, report);
+            }
             return baos.toByteArray();
         } catch (IOException e) {
             log.error("Failed to generate PDF report", e);
@@ -74,7 +74,7 @@ public class PdfReportGenerator {
                 .setTextAlignment(TextAlignment.CENTER)
                 .setMarginBottom(2));
 
-        String ts = generatedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        String ts = generatedAt.format(TIMESTAMP_FMT);
         doc.add(new Paragraph("Generated: " + ts)
                 .setFont(regular).setFontSize(9)
                 .setFontColor(ColorConstants.GRAY)
@@ -179,7 +179,8 @@ public class PdfReportGenerator {
     }
 
     private Cell styledCell(String text, PdfFont font, DeviceRgb bg) {
-        Cell cell = new Cell().add(new Paragraph(text).setFont(font).setFontSize(10));
+        Cell cell = new Cell().add(
+            new Paragraph(text != null ? text : "").setFont(font).setFontSize(10));
         if (bg != null) cell.setBackgroundColor(bg);
         return cell;
     }
@@ -189,7 +190,11 @@ public class PdfReportGenerator {
         return switch (riskLevel.toUpperCase()) {
             case "HIGH", "CRITICAL" -> RISK_HIGH;
             case "MEDIUM" -> RISK_MEDIUM;
-            default -> RISK_LOW;
+            case "LOW" -> RISK_LOW;
+            default -> {
+                log.warn("Unknown riskLevel '{}', defaulting to LOW color", riskLevel);
+                yield RISK_LOW;
+            }
         };
     }
 }

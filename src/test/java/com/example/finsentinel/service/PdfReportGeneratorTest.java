@@ -49,4 +49,13 @@ class PdfReportGeneratorTest {
         assertThat(pdf).isNotNull();
         assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
     }
+
+    @Test
+    void generate_withNullComplianceNote_doesNotThrow() {
+        RiskReport report = new RiskReport(50, "LOW", "Summary", List.of(), List.of(), null);
+
+        byte[] pdf = generator.generate(report, "Test Portfolio", LocalDateTime.now());
+        assertThat(pdf).isNotNull();
+        assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
+    }
 }
