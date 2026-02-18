@@ -1,5 +1,16 @@
 import { apiFetch } from './client'
 
+export interface RiskReportSummary {
+  id: string
+  riskScore: number
+  riskLevel: string
+  summary: string
+  factors: Array<{ category: string; score: number; description: string }>
+  actionableAdvice: string[]
+  complianceNote: { disclaimer: string; regulatoryFramework: string; isCompliant: boolean } | null
+  createdAt: string
+}
+
 export interface HoldingResponse {
   id: string
   symbol: string
@@ -53,5 +64,5 @@ export const portfolioApi = {
     apiFetch<void>(`/portfolios/${portfolioId}/holdings/${holdingId}`, { method: 'DELETE' }),
 
   listReports: (portfolioId: string) =>
-    apiFetch<any[]>(`/portfolios/${portfolioId}/reports`),
+    apiFetch<RiskReportSummary[]>(`/portfolios/${portfolioId}/reports`),
 }

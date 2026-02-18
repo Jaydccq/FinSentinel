@@ -1,6 +1,10 @@
 package com.example.finsentinel.controller;
 
 import com.example.finsentinel.dto.portfolio.*;
+import com.example.finsentinel.dto.risk.RiskReport;
+import com.example.finsentinel.dto.risk.RiskReportSummary;
+import com.example.finsentinel.mapper.RiskReportMapper;
+import com.example.finsentinel.repository.RiskReportRepository;
 import com.example.finsentinel.repository.UserRepository;
 import com.example.finsentinel.service.PortfolioService;
 import jakarta.validation.Valid;
@@ -21,6 +25,8 @@ public class PortfolioController {
 
     private final PortfolioService portfolioService;
     private final UserRepository userRepository;
+    private final RiskReportRepository riskReportRepository;
+    private final RiskReportMapper riskReportMapper;
 
     @PostMapping
     public ResponseEntity<PortfolioResponse> create(
@@ -94,6 +100,33 @@ public class PortfolioController {
             @AuthenticationPrincipal UserDetails userDetails) {
         portfolioService.deleteHolding(portfolioId, holdingId, resolveUserId(userDetails));
         return ResponseEntity.noContent().build();
+    }
+
+    // --- Reports sub-resource ---
+
+    @GetMapping("/{id}/reports")
+    public ResponseEntity<List<RiskReportSummary>> listReports(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        portfolioService.getById(id, resolveUserId(userDetails));
+        List<RiskReportSummary> summaries = riskReportRepository
+                .findByPortfolioIdOrderByCreatedAtDesc(id)
+                .stream()
+                .map(entity -> {
+                    RiskReport dto = riskReportMapper.toDto(entity);
+                    return new RiskReportSummary(
+                            entity.getId(),
+                            dto.riskScore(),
+                            dto.riskLevel(),
+                            dto.summary(),
+                            dto.factors(),
+                            dto.actionableAdvice(),
+                            dto.complianceNote(),
+                            entity.getCreatedAt()
+                    );
+                })
+                .toList();
+        return ResponseEntity.ok(summaries);
     }
 
     private UUID resolveUserId(UserDetails userDetails) {
