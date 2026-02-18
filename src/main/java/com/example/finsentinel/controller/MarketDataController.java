@@ -1,5 +1,6 @@
 package com.example.finsentinel.controller;
 
+import com.example.finsentinel.ratelimit.RateLimit;
 import com.example.finsentinel.service.MarketDataService;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ public class MarketDataController {
 
     private final MarketDataService marketDataService;
 
+    @RateLimit(limit = 30, windowSecs = 60, key = "market:quote")
     @GetMapping("/quote/{ticker}")
     public ResponseEntity<Map<String, Object>> getQuote(@PathVariable String ticker) {
         return ResponseEntity.ok(marketDataService.getQuote(ticker));
@@ -28,6 +30,7 @@ public class MarketDataController {
         return ResponseEntity.ok(marketDataService.getHistory(ticker, days));
     }
 
+    @RateLimit(limit = 10, windowSecs = 60, key = "market:batch")
     @PostMapping("/batch-quotes")
     public ResponseEntity<Map<String, Object>> getBatchQuotes(
             @RequestBody List<String> tickers) {

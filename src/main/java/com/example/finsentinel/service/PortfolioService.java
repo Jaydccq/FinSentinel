@@ -1,6 +1,8 @@
 package com.example.finsentinel.service;
 
 import com.example.finsentinel.dto.portfolio.*;
+import com.example.finsentinel.mapper.HoldingMapper;
+import com.example.finsentinel.mapper.PortfolioMapper;
 import com.example.finsentinel.model.Holding;
 import com.example.finsentinel.model.Portfolio;
 import com.example.finsentinel.model.User;
@@ -25,6 +27,8 @@ public class PortfolioService {
     private final PortfolioRepository portfolioRepository;
     private final HoldingRepository holdingRepository;
     private final UserRepository userRepository;
+    private final PortfolioMapper portfolioMapper;
+    private final HoldingMapper holdingMapper;
 
     public PortfolioResponse create(PortfolioRequest request, UUID userId) {
         User user = userRepository.findById(userId)
@@ -35,26 +39,26 @@ public class PortfolioService {
                 .user(user)
                 .totalValue(BigDecimal.ZERO)
                 .build();
-        return toResponse(portfolioRepository.save(portfolio));
+        return portfolioMapper.toResponse(portfolioRepository.save(portfolio));
     }
 
     @Transactional(readOnly = true)
     public List<PortfolioResponse> listByUser(UUID userId) {
         return portfolioRepository.findByUserId(userId).stream()
-                .map(this::toResponse).toList();
+                .map(portfolioMapper::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
     public PortfolioResponse getById(UUID portfolioId, UUID userId) {
         Portfolio p = findOwnedPortfolio(portfolioId, userId);
-        return toResponse(p);
+        return portfolioMapper.toResponse(p);
     }
 
     public PortfolioResponse update(UUID portfolioId, PortfolioRequest request, UUID userId) {
         Portfolio p = findOwnedPortfolio(portfolioId, userId);
         p.setName(request.name());
         p.setDescription(request.description());
-        return toResponse(portfolioRepository.save(p));
+        return portfolioMapper.toResponse(portfolioRepository.save(p));
     }
 
     public void delete(UUID portfolioId, UUID userId) {
@@ -76,14 +80,14 @@ public class PortfolioService {
                 .build();
         holding = holdingRepository.save(holding);
         recalculateTotalValue(p);
-        return toHoldingResponse(holding);
+        return holdingMapper.toResponse(holding);
     }
 
     @Transactional(readOnly = true)
     public List<HoldingResponse> listHoldings(UUID portfolioId, UUID userId) {
         findOwnedPortfolio(portfolioId, userId);
         return holdingRepository.findByPortfolioId(portfolioId).stream()
-                .map(this::toHoldingResponse).toList();
+                .map(holdingMapper::toResponse).toList();
     }
 
     public HoldingResponse updateHolding(UUID portfolioId, UUID holdingId,
@@ -98,7 +102,7 @@ public class PortfolioService {
         h.setSector(request.sector());
         h = holdingRepository.save(h);
         recalculateTotalValue(h.getPortfolio());
-        return toHoldingResponse(h);
+        return holdingMapper.toResponse(h);
     }
 
     public void deleteHolding(UUID portfolioId, UUID holdingId, UUID userId) {
@@ -127,18 +131,5 @@ public class PortfolioService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         portfolio.setTotalValue(total);
         portfolioRepository.save(portfolio);
-    }
-
-    private PortfolioResponse toResponse(Portfolio p) {
-        List<HoldingResponse> holdings = p.getHoldings() != null
-                ? p.getHoldings().stream().map(this::toHoldingResponse).toList()
-                : List.of();
-        return new PortfolioResponse(p.getId(), p.getName(), p.getDescription(),
-                p.getTotalValue(), holdings, p.getCreatedAt());
-    }
-
-    private HoldingResponse toHoldingResponse(Holding h) {
-        return new HoldingResponse(h.getId(), h.getSymbol(), h.getCompanyName(),
-                h.getQuantity(), h.getAverageCost(), h.getCurrentPrice(), h.getSector());
     }
 }

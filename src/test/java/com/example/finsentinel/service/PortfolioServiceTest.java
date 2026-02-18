@@ -1,6 +1,8 @@
 package com.example.finsentinel.service;
 
 import com.example.finsentinel.dto.portfolio.*;
+import com.example.finsentinel.mapper.HoldingMapper;
+import com.example.finsentinel.mapper.PortfolioMapper;
 import com.example.finsentinel.model.Holding;
 import com.example.finsentinel.model.Portfolio;
 import com.example.finsentinel.model.User;
@@ -32,6 +34,8 @@ class PortfolioServiceTest {
     @Mock private PortfolioRepository portfolioRepository;
     @Mock private HoldingRepository holdingRepository;
     @Mock private UserRepository userRepository;
+    @Mock private PortfolioMapper portfolioMapper;
+    @Mock private HoldingMapper holdingMapper;
 
     private PortfolioService service;
 
@@ -42,7 +46,8 @@ class PortfolioServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PortfolioService(portfolioRepository, holdingRepository, userRepository);
+        service = new PortfolioService(portfolioRepository, holdingRepository, userRepository,
+                portfolioMapper, holdingMapper);
         testUser = User.builder().id(userId).username("testuser").build();
     }
 
@@ -55,6 +60,9 @@ class PortfolioServiceTest {
             p.setCreatedAt(LocalDateTime.now());
             return p;
         });
+        PortfolioResponse expected = new PortfolioResponse(portfolioId, "My Portfolio", "Test",
+                BigDecimal.ZERO, List.of(), LocalDateTime.now());
+        when(portfolioMapper.toResponse(any(Portfolio.class))).thenReturn(expected);
 
         PortfolioResponse response = service.create(new PortfolioRequest("My Portfolio", "Test"), userId);
 
@@ -68,6 +76,10 @@ class PortfolioServiceTest {
         Portfolio p1 = buildPortfolio("P1", userId);
         Portfolio p2 = buildPortfolio("P2", userId);
         when(portfolioRepository.findByUserId(userId)).thenReturn(List.of(p1, p2));
+        when(portfolioMapper.toResponse(p1)).thenReturn(
+                new PortfolioResponse(portfolioId, "P1", null, BigDecimal.ZERO, List.of(), LocalDateTime.now()));
+        when(portfolioMapper.toResponse(p2)).thenReturn(
+                new PortfolioResponse(UUID.randomUUID(), "P2", null, BigDecimal.ZERO, List.of(), LocalDateTime.now()));
 
         List<PortfolioResponse> result = service.listByUser(userId);
 
@@ -90,6 +102,11 @@ class PortfolioServiceTest {
         Portfolio p = buildPortfolio("Old Name", userId);
         when(portfolioRepository.findById(portfolioId)).thenReturn(Optional.of(p));
         when(portfolioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(portfolioMapper.toResponse(any(Portfolio.class))).thenAnswer(inv -> {
+            Portfolio saved = inv.getArgument(0);
+            return new PortfolioResponse(saved.getId(), saved.getName(), saved.getDescription(),
+                    BigDecimal.ZERO, List.of(), LocalDateTime.now());
+        });
 
         PortfolioResponse result = service.update(portfolioId,
                 new PortfolioRequest("New Name", "New Desc"), userId);
@@ -121,6 +138,11 @@ class PortfolioServiceTest {
                 Holding.builder().quantity(new BigDecimal("10")).averageCost(new BigDecimal("150")).build()
         ));
         when(portfolioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(holdingMapper.toResponse(any(Holding.class))).thenAnswer(inv -> {
+            Holding h = inv.getArgument(0);
+            return new HoldingResponse(h.getId(), h.getSymbol(), h.getCompanyName(),
+                    h.getQuantity(), h.getAverageCost(), h.getCurrentPrice(), h.getSector());
+        });
 
         HoldingResponse result = service.addHolding(portfolioId,
                 new HoldingRequest("AAPL", "Apple Inc.", new BigDecimal("10"), new BigDecimal("150"), "Technology"),
@@ -150,6 +172,11 @@ class PortfolioServiceTest {
         when(holdingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(holdingRepository.findByPortfolioId(portfolioId)).thenReturn(List.of(existing));
         when(portfolioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(holdingMapper.toResponse(any(Holding.class))).thenAnswer(inv -> {
+            Holding h = inv.getArgument(0);
+            return new HoldingResponse(h.getId(), h.getSymbol(), h.getCompanyName(),
+                    h.getQuantity(), h.getAverageCost(), h.getCurrentPrice(), h.getSector());
+        });
 
         HoldingResponse result = service.updateHolding(portfolioId, holdingId,
                 new HoldingRequest("MSFT", "Microsoft", new BigDecimal("20"), new BigDecimal("300"), "Technology"),

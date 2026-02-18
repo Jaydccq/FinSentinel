@@ -5,6 +5,7 @@ import com.example.finsentinel.dto.chat.ChatRequest;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.ChatMessage;
 import com.example.finsentinel.model.User;
+import com.example.finsentinel.ratelimit.RateLimit;
 import com.example.finsentinel.repository.UserRepository;
 import com.example.finsentinel.service.ChatService;
 import jakarta.validation.Valid;
@@ -27,6 +28,7 @@ public class ChatController {
     private final ChatService chatService;
     private final UserRepository userRepository;
 
+    @RateLimit(limit = 10, windowSecs = 60, key = "chat:stream")
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamChat(
             @Valid @RequestBody ChatRequest request,
@@ -39,6 +41,7 @@ public class ChatController {
         return emitter;
     }
 
+    @RateLimit(limit = 10, windowSecs = 60, key = "chat:assess")
     @PostMapping("/assess")
     public ResponseEntity<RiskReport> assess(
             @Valid @RequestBody ChatRequest request,
