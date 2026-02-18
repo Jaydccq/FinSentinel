@@ -1,0 +1,11 @@
+.git
+.env
+.gradle
+build
+frontend
+node_modules
+*.md
+docs
+work-logs
+task_plan.md
+notes.md
