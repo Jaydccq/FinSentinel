@@ -17,7 +17,14 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(() => {
     const stored = localStorage.getItem('auth_user')
-    return stored ? JSON.parse(stored) : null
+    if (!stored) return null
+    try {
+      return JSON.parse(stored) as AuthUser
+    } catch {
+      localStorage.removeItem('auth_user')
+      localStorage.removeItem('jwt_token')
+      return null
+    }
   })
 
   useEffect(() => {
