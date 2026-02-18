@@ -125,7 +125,7 @@ public class InvestopediaScraper {
         Document doc = Document.builder()
                 .fileName(safeTitle + ".pdf")
                 .originalFileName(result.title())
-                .docType(DocumentType.REGULATION)
+                .docType(DocumentType.RESEARCH_REPORT)
                 .sector(null)
                 .regionId("US")
                 .fileSize((long) pdfBytes.length)
