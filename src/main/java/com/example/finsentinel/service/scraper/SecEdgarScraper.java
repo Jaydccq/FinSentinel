@@ -13,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -71,10 +73,12 @@ public class SecEdgarScraper {
     private List<String> searchFilings(String ticker) {
         List<String> urls = new ArrayList<>();
         try {
-            // Use SEC EDGAR full-text search API
+            // Use SEC EDGAR full-text search API with dynamic 6-month date range
+            String startDate = LocalDate.now().minusMonths(6).format(DateTimeFormatter.ISO_LOCAL_DATE);
+            String endDate = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
             JsonNode response = restClient.get()
-                    .uri("https://efts.sec.gov/LATEST/search-index?q={q}&dateRange=custom&startdt=2024-01-01&forms=10-K,10-Q&hits.hits.total.value=5",
-                            ticker)
+                    .uri("https://efts.sec.gov/LATEST/search-index?q={q}&dateRange=custom&startdt={start}&enddt={end}&forms=10-K,10-Q&hits.hits.total.value=5",
+                            ticker, startDate, endDate)
                     .header("User-Agent", "FinSentinel research@example.com")
                     .retrieve()
                     .body(JsonNode.class);
@@ -91,8 +95,8 @@ public class SecEdgarScraper {
             // Fallback: use EDGAR company search if full-text search returns empty
             if (urls.isEmpty()) {
                 JsonNode companySearch = restClient.get()
-                        .uri("https://efts.sec.gov/LATEST/search-index?q=%22{q}%22+10-K&hits.hits._source=file_url&hits.hits.total.value=3",
-                                ticker)
+                        .uri("https://efts.sec.gov/LATEST/search-index?q=%22{q}%22+10-K&dateRange=custom&startdt={start}&enddt={end}&hits.hits._source=file_url&hits.hits.total.value=3",
+                                ticker, startDate, endDate)
                         .header("User-Agent", "FinSentinel research@example.com")
                         .retrieve()
                         .body(JsonNode.class);
