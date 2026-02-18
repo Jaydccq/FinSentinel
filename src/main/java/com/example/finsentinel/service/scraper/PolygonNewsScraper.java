@@ -79,6 +79,12 @@ public class PolygonNewsScraper {
         String publishedUtc = article.has("published_utc") ? article.get("published_utc").asText() : "";
         String articleUrl = article.has("article_url") ? article.get("article_url").asText() : "";
 
+        // Dedup: skip if already scraped
+        if (documentRepository.existsByOriginalFileName(title)) {
+            log.debug("Skipping duplicate news article: {}", title);
+            return false;
+        }
+
         // Build markdown content from structured data
         StringBuilder markdown = new StringBuilder();
         markdown.append("# ").append(title).append("\n\n");

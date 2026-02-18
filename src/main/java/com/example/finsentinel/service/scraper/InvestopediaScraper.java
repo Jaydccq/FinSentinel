@@ -103,6 +103,12 @@ public class InvestopediaScraper {
             return false;
         }
 
+        // Dedup: skip if already scraped
+        if (documentRepository.existsByOriginalFileName(result.title())) {
+            log.debug("Skipping duplicate Investopedia term: {}", result.title());
+            return false;
+        }
+
         String safeTitle = result.title().replaceAll("[^a-zA-Z0-9\\s-]", "").trim();
         if (safeTitle.isEmpty()) safeTitle = "investopedia-term";
 

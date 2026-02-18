@@ -14,4 +14,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
     List<Document> findByDocType(com.example.finsentinel.model.enums.DocumentType docType);
 
     List<Document> findByStatusAndDocType(DocumentStatus status, com.example.finsentinel.model.enums.DocumentType docType);
+
+    boolean existsByOriginalFileName(String originalFileName);
 }

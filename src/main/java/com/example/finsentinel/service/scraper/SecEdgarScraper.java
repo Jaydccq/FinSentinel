@@ -118,6 +118,12 @@ public class SecEdgarScraper {
             return false;
         }
 
+        // Dedup: skip if already scraped
+        if (documentRepository.existsByOriginalFileName(result.title())) {
+            log.debug("Skipping duplicate SEC filing: {}", result.title());
+            return false;
+        }
+
         String safeTitle = (ticker + "-" + result.title())
                 .replaceAll("[^a-zA-Z0-9\\s-]", "").trim();
         if (safeTitle.length() > 100) safeTitle = safeTitle.substring(0, 100);
