@@ -22,6 +22,12 @@ export async function apiFetch<T>(
     },
   })
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('auth_user')
+      localStorage.removeItem('jwt_token')
+      window.location.href = '/login'
+      throw new Error('Session expired')
+    }
     const text = await res.text()
     throw new Error(`${res.status}: ${text}`)
   }
