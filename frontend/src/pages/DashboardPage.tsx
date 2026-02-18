@@ -7,20 +7,35 @@ import { Link } from 'react-router-dom'
 
 const WATCH_TICKERS = ['AAPL', 'MSFT', 'NVDA', 'TSLA']
 
+// Map icon color tokens to Tailwind background tint + border classes
+const COLOR_META: Record<string, { border: string; tint: string }> = {
+  'text-green-400':  { border: 'border-l-green-400',  tint: 'from-green-500/5'  },
+  'text-blue-400':   { border: 'border-l-blue-400',   tint: 'from-blue-500/5'   },
+  'text-purple-400': { border: 'border-l-purple-400', tint: 'from-purple-500/5' },
+}
+
 function StatCard({ label, value, sub, icon: Icon, color }: {
   label: string; value: string; sub?: string; icon: React.ElementType; color: string
 }) {
+  const meta = COLOR_META[color] ?? { border: 'border-l-gray-600', tint: 'from-gray-600/5' }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gray-900 rounded-xl p-5 border border-gray-800"
+      className={`
+        bg-gradient-to-br ${meta.tint} to-gray-900
+        rounded-xl p-5 border border-gray-800
+        border-l-[3px] ${meta.border}
+        hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/30
+        transition-all duration-200 cursor-default
+      `}
     >
       <div className="flex items-center justify-between mb-3">
         <span className="text-gray-400 text-sm">{label}</span>
         <Icon size={18} className={color} />
       </div>
-      <p className="text-2xl font-bold text-gray-100">{value}</p>
+      <p className="text-2xl font-bold text-gray-100 tabular-nums">{value}</p>
       {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
     </motion.div>
   )
@@ -43,9 +58,13 @@ export default function DashboardPage() {
 
   return (
     <div className="p-8 space-y-8">
+      {/* Page title with accent underline */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-100">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">Portfolio overview & market watchlist</p>
+        <h1 className="text-2xl font-bold text-gray-100 inline-block relative">
+          Dashboard
+          <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 to-blue-500/0 -mb-1" />
+        </h1>
+        <p className="text-gray-500 text-sm mt-2">Portfolio overview &amp; market watchlist</p>
       </div>
 
       {/* Stat cards */}
@@ -62,7 +81,12 @@ export default function DashboardPage() {
 
       {/* Portfolio cards */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-200 mb-4">Your Portfolios</h2>
+        {/* Section header with left bar accent */}
+        <div className="flex items-center gap-3 mb-4">
+          <span className="w-[3px] h-5 bg-blue-500 rounded-full inline-block" />
+          <h2 className="text-lg font-semibold text-gray-200">Your Portfolios</h2>
+        </div>
+
         {loading ? (
           <p className="text-gray-500">Loading...</p>
         ) : portfolios.length === 0 ? (
@@ -80,11 +104,16 @@ export default function DashboardPage() {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="bg-gray-900 rounded-xl p-5 border border-gray-800 hover:border-blue-700 transition-colors"
+                className="
+                  bg-gray-900 rounded-xl p-5 border border-gray-800
+                  hover:border-blue-700/60 hover:-translate-y-0.5
+                  hover:shadow-lg hover:shadow-blue-900/20
+                  transition-all duration-200 cursor-default
+                "
               >
                 <p className="font-semibold text-gray-100 truncate">{p.name}</p>
                 <p className="text-gray-500 text-xs truncate mt-0.5">{p.description || 'No description'}</p>
-                <p className="text-xl font-bold text-green-400 mt-3">
+                <p className="text-2xl font-bold text-green-400 mt-3 tabular-nums">
                   ${Number(p.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </p>
                 <p className="text-gray-500 text-xs mt-1">{p.holdings.length} holdings</p>
@@ -96,21 +125,50 @@ export default function DashboardPage() {
 
       {/* Market watchlist */}
       <section>
-        <h2 className="text-lg font-semibold text-gray-200 mb-4">Market Watchlist</h2>
+        {/* Section header with left bar accent */}
+        <div className="flex items-center gap-3 mb-4">
+          <span className="w-[3px] h-5 bg-blue-500 rounded-full inline-block" />
+          <h2 className="text-lg font-semibold text-gray-200">Market Watchlist</h2>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {WATCH_TICKERS.map(ticker => {
             const q = quotes[ticker]
             const change = q && q.open !== 0 ? ((q.close - q.open) / q.open) * 100 : null
+            const isUp = change !== null && change >= 0
+
             return (
-              <div key={ticker} className="bg-gray-900 rounded-xl p-4 border border-gray-800">
-                <p className="font-mono font-bold text-gray-100">{ticker}</p>
+              <div
+                key={ticker}
+                className="bg-gray-900 rounded-xl p-4 border border-gray-800 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200"
+              >
+                {/* Ticker row with status dot */}
+                <div className="flex items-center gap-1.5">
+                  {q && change !== null ? (
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isUp ? 'bg-green-400' : 'bg-red-400'}`} />
+                  ) : (
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-gray-600" />
+                  )}
+                  <p className="font-mono font-bold text-gray-100 tracking-wider text-sm">{ticker}</p>
+                </div>
+
                 {q && change !== null ? (
                   <>
-                    <p className="text-lg font-bold mt-1">${q.close.toFixed(2)}</p>
-                    <p className={`text-xs flex items-center gap-1 mt-0.5 ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {change >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                      {change.toFixed(2)}%
-                    </p>
+                    <p className="text-lg font-bold mt-2 text-gray-100 tabular-nums">${q.close.toFixed(2)}</p>
+                    {/* Pill badge for change percentage */}
+                    <span
+                      className={`
+                        inline-flex items-center gap-1 mt-1.5 px-2 py-0.5
+                        rounded-full text-xs font-medium
+                        ${isUp
+                          ? 'bg-green-500/15 text-green-400'
+                          : 'bg-red-500/15 text-red-400'
+                        }
+                      `}
+                    >
+                      {isUp ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                      {isUp ? '+' : ''}{change.toFixed(2)}%
+                    </span>
                   </>
                 ) : (
                   <p className="text-gray-600 text-sm mt-1">Loading…</p>
