@@ -29,10 +29,11 @@ public class PolygonNewsScraper {
     private final DocumentRepository documentRepository;
     private final RestClient restClient;
     private final VectorizeStreamProducer vectorizeStreamProducer;
+    private final FirecrawlClient firecrawlClient;
 
     /**
      * Fetch financial news from Polygon.io API for the given tickers.
-     * No Firecrawl needed — Polygon returns structured JSON directly.
+     * Uses Firecrawl to scrape full article content when available.
      *
      * @param tickers list of stock tickers
      * @param days    how many days back to fetch
@@ -87,7 +88,21 @@ public class PolygonNewsScraper {
             return false;
         }
 
-        // Build markdown content from structured data
+        // Try to scrape full article content via Firecrawl, fall back to description
+        String fullContent = description;
+        if (!articleUrl.isEmpty()) {
+            try {
+                FirecrawlClient.ScrapeResult scraped = firecrawlClient.scrape(articleUrl);
+                if (scraped != null && !scraped.markdown().isBlank()) {
+                    fullContent = scraped.markdown();
+                    log.debug("Scraped full article for: {}", title);
+                }
+            } catch (Exception e) {
+                log.warn("Firecrawl failed for {}, using description fallback", articleUrl);
+            }
+        }
+
+        // Build markdown content
         StringBuilder markdown = new StringBuilder();
         markdown.append("# ").append(title).append("\n\n");
         markdown.append("**Author:** ").append(author).append("\n");
@@ -97,7 +112,7 @@ public class PolygonNewsScraper {
             markdown.append("**Source:** ").append(articleUrl).append("\n");
         }
         markdown.append("\n---\n\n");
-        markdown.append(description);
+        markdown.append(fullContent);
 
         // Include keywords/tickers if available
         if (article.has("tickers")) {
