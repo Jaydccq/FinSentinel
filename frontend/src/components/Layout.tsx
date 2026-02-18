@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import {
   LayoutDashboard, MessageSquare, Briefcase, BarChart2,
-  FileText, FileDown, LogOut, Menu, X
+  FileText, FileDown, LogOut, Menu, X, Shield
 } from 'lucide-react'
 
 const NAV = [
@@ -29,34 +29,51 @@ export default function Layout() {
 
   const sidebarContent = (
     <>
-      <div className="px-4 py-5 border-b border-gray-800">
-        <p className="text-lg font-bold text-blue-400">FinSentinel</p>
-        <p className="text-xs text-gray-500 truncate">{user?.username}</p>
+      {/* Logo area */}
+      <div className="px-4 py-5 border-b border-gray-800/60">
+        <div className="flex items-center gap-2">
+          <Shield size={18} className="text-blue-400 flex-shrink-0" aria-hidden="true" />
+          <p
+            className="text-lg font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent"
+          >
+            FinSentinel
+          </p>
+        </div>
+        <p className="text-xs text-gray-500 truncate mt-0.5 pl-[26px]">{user?.username}</p>
       </div>
-      <nav className="flex-1 px-2 py-4 space-y-1">
+
+      {/* Nav links */}
+      <nav className="flex-1 px-2 py-4 space-y-0.5" aria-label="Main navigation">
         {NAV.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              `relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                 isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
+                  ? 'border-l-[3px] border-blue-500 bg-blue-500/10 text-blue-400 pl-[9px]'
+                  : 'border-l-[3px] border-transparent text-gray-400 hover:bg-gray-800/50 hover:text-gray-100 pl-[9px]'
               }`
             }
           >
-            <Icon size={16} />
-            {label}
+            {({ isActive }) => (
+              <>
+                <Icon size={isActive ? 18 : 16} aria-hidden="true" />
+                {label}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
+
+      {/* Logout button */}
       <button
         onClick={handleLogout}
-        className="flex items-center gap-3 px-5 py-4 text-sm text-gray-500 hover:text-red-400 border-t border-gray-800 transition-colors"
+        className="flex items-center gap-3 px-5 py-4 w-full text-sm text-gray-500 border-t border-gray-800/60 transition-all duration-200 hover:bg-red-500/10 hover:text-red-400"
+        aria-label="Log out"
       >
-        <LogOut size={16} /> Logout
+        <LogOut size={16} aria-hidden="true" /> Logout
       </button>
     </>
   )
@@ -64,11 +81,27 @@ export default function Layout() {
   return (
     <div className="flex h-screen bg-gray-950 text-gray-100">
       {/* Mobile header */}
-      <div className="fixed top-0 left-0 right-0 z-30 flex items-center h-14 px-4 bg-gray-900 border-b border-gray-800 md:hidden">
-        <button onClick={() => setSidebarOpen(true)} aria-label="Open menu">
-          <Menu size={20} />
+      <div
+        className="fixed top-0 left-0 right-0 z-30 flex items-center h-14 px-4 border-b border-gray-800/60 md:hidden"
+        style={{
+          background: 'linear-gradient(to bottom, rgb(17 24 39), rgb(3 7 18))',
+        }}
+      >
+        <button
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open menu"
+          className="text-gray-400 hover:text-gray-100 transition-colors"
+        >
+          <Menu size={20} aria-hidden="true" />
         </button>
-        <p className="ml-3 text-lg font-bold text-blue-400">FinSentinel</p>
+        <div className="flex items-center gap-2 ml-3">
+          <Shield size={16} className="text-blue-400 flex-shrink-0" aria-hidden="true" />
+          <p
+            className="text-lg font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent"
+          >
+            FinSentinel
+          </p>
+        </div>
       </div>
 
       {/* Mobile overlay */}
@@ -76,25 +109,30 @@ export default function Layout() {
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Sidebar — mobile: slide-over; desktop: fixed */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50 w-56 flex flex-col bg-gray-900 border-r border-gray-800
+          fixed inset-y-0 left-0 z-50 w-56 flex flex-col border-r border-gray-800/60
           transform transition-transform duration-200 ease-in-out
           md:relative md:translate-x-0
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
+        style={{
+          background: 'linear-gradient(to bottom, rgb(17 24 39), rgb(3 7 18))',
+        }}
+        aria-label="Sidebar"
       >
         {/* Mobile close button */}
         <button
           onClick={() => setSidebarOpen(false)}
-          className="absolute top-4 right-3 text-gray-500 hover:text-gray-100 md:hidden"
+          className="absolute top-4 right-3 text-gray-500 hover:text-gray-100 transition-colors md:hidden"
           aria-label="Close menu"
         >
-          <X size={18} />
+          <X size={18} aria-hidden="true" />
         </button>
         {sidebarContent}
       </aside>
