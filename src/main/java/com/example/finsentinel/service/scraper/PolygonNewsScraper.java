@@ -6,6 +6,7 @@ import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.repository.DocumentRepository;
 import com.example.finsentinel.service.storage.MinioStorageService;
 import com.example.finsentinel.util.MarkdownToPdfConverter;
+import com.example.finsentinel.util.SectorMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -110,7 +111,7 @@ public class PolygonNewsScraper {
                 .fileName(safeTitle + ".pdf")
                 .originalFileName(title)
                 .docType(DocumentType.NEWS)
-                .sector(sectorFromTicker(ticker))
+                .sector(SectorMapper.fromTicker(ticker))
                 .regionId("US")
                 .fileSize((long) pdfBytes.length)
                 .storageKey(storageKey)
@@ -121,15 +122,4 @@ public class PolygonNewsScraper {
         return true;
     }
 
-    private String sectorFromTicker(String ticker) {
-        return switch (ticker.toUpperCase()) {
-            case "AAPL", "MSFT", "GOOGL", "GOOG", "META", "NVDA", "AMD", "INTC" -> "Technology";
-            case "JPM", "BAC", "GS", "MS", "WFC", "C" -> "Financial";
-            case "JNJ", "PFE", "UNH", "ABBV", "MRK" -> "Healthcare";
-            case "TSLA", "F", "GM" -> "Automotive";
-            case "AMZN", "WMT", "TGT", "COST" -> "Retail";
-            case "XOM", "CVX", "COP" -> "Energy";
-            default -> null;
-        };
-    }
 }
