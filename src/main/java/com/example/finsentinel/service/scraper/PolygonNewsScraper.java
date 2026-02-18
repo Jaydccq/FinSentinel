@@ -6,6 +6,7 @@ import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.repository.DocumentRepository;
 import com.example.finsentinel.service.storage.MinioStorageService;
 import com.example.finsentinel.util.MarkdownToPdfConverter;
+import com.example.finsentinel.stream.VectorizeStreamProducer;
 import com.example.finsentinel.util.SectorMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class PolygonNewsScraper {
     private final MinioStorageService storageService;
     private final DocumentRepository documentRepository;
     private final RestClient restClient;
+    private final VectorizeStreamProducer vectorizeStreamProducer;
 
     /**
      * Fetch financial news from Polygon.io API for the given tickers.
@@ -123,6 +125,7 @@ public class PolygonNewsScraper {
                 .storageKey(storageKey)
                 .build();
         documentRepository.save(doc);
+        vectorizeStreamProducer.send(doc.getId());
 
         log.debug("Saved news article: {} for {}", title, ticker);
         return true;

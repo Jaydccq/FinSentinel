@@ -4,6 +4,7 @@ import com.example.finsentinel.model.Document;
 import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.repository.DocumentRepository;
 import com.example.finsentinel.service.storage.MinioStorageService;
+import com.example.finsentinel.stream.VectorizeStreamProducer;
 import com.example.finsentinel.util.MarkdownToPdfConverter;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class InvestopediaScraper {
     private final FirecrawlClient firecrawlClient;
     private final MinioStorageService storageService;
     private final DocumentRepository documentRepository;
+    private final VectorizeStreamProducer vectorizeStreamProducer;
 
     /**
      * Scrape Investopedia financial terms dictionary.
@@ -130,6 +132,7 @@ public class InvestopediaScraper {
                 .storageKey(storageKey)
                 .build();
         documentRepository.save(doc);
+        vectorizeStreamProducer.send(doc.getId());
 
         log.debug("Scraped Investopedia term: {}", result.title());
         return true;
