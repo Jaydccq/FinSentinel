@@ -85,13 +85,17 @@ public class NewsAnalysisTool {
             "Use this to find in-depth analysis, regulatory context, or historical research on a topic.")
     public String searchKnowledgeBase(
             @ToolParam(description = "Search query, e.g. 'Apple revenue trends' or 'SEC insider trading regulations'") String query,
-            @ToolParam(description = "Document type filter: SEC_FILING, RESEARCH_REPORT, NEWS, REGULATION, or null for all") String docType) {
+            @ToolParam(description = "Document type filter: SEC_FILING, RESEARCH_REPORT, NEWS, REGULATION, or null for all") String docType,
+            @ToolParam(description = "Only return documents from after this date (YYYY-MM-DD format), or null for all dates") String afterDate) {
 
         if (docType != null && docType.equalsIgnoreCase("null")) {
             docType = null;
         }
+        if (afterDate != null && afterDate.equalsIgnoreCase("null")) {
+            afterDate = null;
+        }
 
-        List<Document> results = ragRetrievalService.search(query, 5, docType, null, null);
+        List<Document> results = ragRetrievalService.search(query, 8, docType, null, null, afterDate);
 
         if (results.isEmpty()) {
             return "No relevant documents found in knowledge base for: " + query;
@@ -108,10 +112,13 @@ public class NewsAnalysisTool {
             if (doc.getMetadata().containsKey("doc_type")) {
                 sb.append("[Type: ").append(doc.getMetadata().get("doc_type")).append("] ");
             }
+            if (doc.getMetadata().containsKey("date")) {
+                sb.append("[Date: ").append(doc.getMetadata().get("date")).append("] ");
+            }
             sb.append("\n");
             String content = doc.getText();
-            if (content.length() > 500) {
-                content = content.substring(0, 500) + "...";
+            if (content.length() > 800) {
+                content = content.substring(0, 800) + "...";
             }
             sb.append("   ").append(content).append("\n\n");
         }

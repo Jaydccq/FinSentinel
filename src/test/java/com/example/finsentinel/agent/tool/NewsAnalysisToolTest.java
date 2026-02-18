@@ -73,12 +73,12 @@ class NewsAnalysisToolTest {
 
     @Test
     void searchRagKnowledgeBase_shouldDelegateToRagService() {
-        when(ragRetrievalService.search(anyString(), anyInt(), anyString(), isNull(), isNull()))
+        when(ragRetrievalService.search(anyString(), anyInt(), anyString(), isNull(), isNull(), isNull()))
                 .thenReturn(List.of());
 
-        String result = newsAnalysisTool.searchKnowledgeBase("AAPL earnings analysis", "NEWS");
+        String result = newsAnalysisTool.searchKnowledgeBase("AAPL earnings analysis", "NEWS", null);
 
-        verify(ragRetrievalService).search("AAPL earnings analysis", 5, "NEWS", null, null);
+        verify(ragRetrievalService).search("AAPL earnings analysis", 8, "NEWS", null, null, null);
         assertThat(result).contains("No relevant documents found");
     }
 }
