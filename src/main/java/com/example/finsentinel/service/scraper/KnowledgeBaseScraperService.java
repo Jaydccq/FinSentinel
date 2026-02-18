@@ -31,19 +31,41 @@ public class KnowledgeBaseScraperService {
         }
 
         try {
-            currentStatus = "running all scrapers";
+            currentStatus = "running all scrapers in parallel";
             Map<String, Object> results = new HashMap<>();
 
-            currentStatus = "scraping Investopedia terms";
-            results.put("investopedia", investopediaScraper.scrape(100));
+            CompletableFuture<Integer> investopediaFuture = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return investopediaScraper.scrape(100);
+                } catch (Exception e) {
+                    log.error("Investopedia scraper failed", e);
+                    return 0;
+                }
+            });
 
-            currentStatus = "scraping SEC EDGAR filings";
-            results.put("secFilings", secEdgarScraper.scrape(
-                    List.of("AAPL", "MSFT", "GOOGL", "TSLA", "JPM")));
+            CompletableFuture<Integer> secFuture = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return secEdgarScraper.scrape(List.of("AAPL", "MSFT", "GOOGL", "TSLA", "JPM"));
+                } catch (Exception e) {
+                    log.error("SEC EDGAR scraper failed", e);
+                    return 0;
+                }
+            });
 
-            currentStatus = "scraping Polygon news";
-            results.put("news", polygonNewsScraper.scrape(
-                    List.of("AAPL", "MSFT", "GOOGL", "TSLA", "JPM"), 7));
+            CompletableFuture<Integer> newsFuture = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return polygonNewsScraper.scrape(List.of("AAPL", "MSFT", "GOOGL", "TSLA", "JPM"), 7);
+                } catch (Exception e) {
+                    log.error("Polygon news scraper failed", e);
+                    return 0;
+                }
+            });
+
+            CompletableFuture.allOf(investopediaFuture, secFuture, newsFuture).join();
+
+            results.put("investopedia", investopediaFuture.join());
+            results.put("secFilings", secFuture.join());
+            results.put("news", newsFuture.join());
 
             currentStatus = "completed";
             results.put("status", "completed");
