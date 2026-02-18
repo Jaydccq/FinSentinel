@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Service for RAG (Retrieval-Augmented Generation) document retrieval with metadata filtering.
  * Provides semantic search against the pgvector-backed knowledge base with optional filters
- * for document type, sector, and regulatory region.
+ * for document type, sector, regulatory region, and date.
  */
 @Slf4j
 @Service
@@ -34,19 +34,33 @@ public class RagRetrievalService {
      * @return matching document chunks sorted by relevance (cosine similarity)
      */
     public List<Document> search(String query, int topK, String docType, String sector, String regionId) {
-        // Build filter expression string from non-null parameters
-        String filterExpression = buildFilterExpression(docType, sector, regionId);
+        return search(query, topK, docType, sector, regionId, null);
+    }
+
+    /**
+     * Search with temporal filtering support.
+     *
+     * @param query      the user's search query
+     * @param topK       number of results to return
+     * @param docType    optional filter by doc_type
+     * @param sector     optional filter by sector
+     * @param regionId   optional filter by region_id
+     * @param afterDate  optional date filter in ISO format (YYYY-MM-DD), only return docs indexed on or after this date
+     * @return matching document chunks sorted by relevance
+     */
+    public List<Document> search(String query, int topK, String docType, String sector, String regionId, String afterDate) {
+        String filterExpression = buildFilterExpression(docType, sector, regionId, afterDate);
 
         SearchRequest searchRequest = SearchRequest.builder()
                 .query(query)
                 .topK(topK)
-                .similarityThreshold(0.7)
+                .similarityThreshold(0.65)
                 .filterExpression(filterExpression)
                 .build();
 
         List<Document> results = vectorStore.similaritySearch(searchRequest);
-        log.info("RAG search: query='{}', topK={}, filters=[docType={}, sector={}, region={}], found={}",
-                truncate(query, 50), topK, docType, sector, regionId, results.size());
+        log.info("RAG search: query='{}', topK={}, filters=[docType={}, sector={}, region={}, afterDate={}], found={}",
+                truncate(query, 50), topK, docType, sector, regionId, afterDate, results.size());
         return results;
     }
 
@@ -60,17 +74,7 @@ public class RagRetrievalService {
         return search(query, 5, null, null, null);
     }
 
-    /**
-     * Build a combined filter expression string from optional parameters.
-     * Uses AND (&&) to combine multiple filters.
-     * Returns null if no filters are provided.
-     *
-     * @param docType  optional doc_type metadata filter
-     * @param sector   optional sector metadata filter
-     * @param regionId optional region_id metadata filter
-     * @return combined filter expression string or null if no filters provided
-     */
-    private String buildFilterExpression(String docType, String sector, String regionId) {
+    private String buildFilterExpression(String docType, String sector, String regionId, String afterDate) {
         List<String> conditions = new ArrayList<>();
 
         if (docType != null && !docType.isBlank()) {
@@ -82,6 +86,9 @@ public class RagRetrievalService {
         if (regionId != null && !regionId.isBlank()) {
             conditions.add("region_id == '" + escapeFilterValue(regionId) + "'");
         }
+        if (afterDate != null && !afterDate.isBlank()) {
+            conditions.add("date >= '" + escapeFilterValue(afterDate) + "'");
+        }
 
         if (conditions.isEmpty()) {
             return null;
@@ -90,23 +97,10 @@ public class RagRetrievalService {
         return String.join(" && ", conditions);
     }
 
-    /**
-     * Escape single quotes in filter values to prevent injection.
-     *
-     * @param value the filter value to escape
-     * @return escaped value safe for filter expression
-     */
     private String escapeFilterValue(String value) {
         return value.replace("'", "\\'");
     }
 
-    /**
-     * Truncate text for logging.
-     *
-     * @param text   the text to truncate
-     * @param maxLen maximum length before truncation
-     * @return truncated text with ellipsis if needed
-     */
     private String truncate(String text, int maxLen) {
         return text.length() <= maxLen ? text : text.substring(0, maxLen) + "...";
     }
