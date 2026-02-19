@@ -35,7 +35,7 @@ service/       → Business logic (AuthService, etc.)
 service/scraper/ → Web scrapers: SecEdgarScraper, PolygonNewsScraper, InvestopediaScraper, FirecrawlClient, KnowledgeBaseScraperService
 service/rag/   → RAG pipeline: RagRetrievalService (semantic search with metadata + temporal filtering), DocumentChunkingService
 service/document/ → DocumentParseService (Tika), DocumentUploadService
-service/storage/  → MinioStorageService (S3-compatible object storage)
+service/storage/  → RustfsStorageService (S3-compatible object storage via RustFS)
 stream/        → Redis Streams: VectorizeStreamProducer/Consumer for async document vectorization
 util/          → SectorMapper (ticker→sector mapping), MarkdownToPdfConverter
 agent/tool/    → Spring AI Function Calling tools (StockMarketTool, TechnicalIndicatorTool, NewsAnalysisTool, etc.)
@@ -56,7 +56,7 @@ User query → Intent Recognition → Tool Selection → parallel execution of:
 
 ### RAG Ingestion Pipeline
 
-Scraper → Document entity (DB) + PDF (MinIO) → `VectorizeStreamProducer.send(docId)` → Redis Stream `stream:vectorize` → `VectorizeStreamConsumer` → Tika parse → chunk (TokenTextSplitter) → OpenAI embed (1536d) → pgvector store
+Scraper → Document entity (DB) + PDF (RustFS) → `VectorizeStreamProducer.send(docId)` → Redis Stream `stream:vectorize` → `VectorizeStreamConsumer` → Tika parse → chunk (TokenTextSplitter) → OpenAI embed (1536d) → pgvector store
 
 **Scrapers** (all use deduplication via `DocumentRepository.existsByOriginalFileName()`):
 - `SecEdgarScraper`: SEC EDGAR full-text search API → Firecrawl for content → PDF. Dynamic 6-month date range.
@@ -81,7 +81,7 @@ The `RiskReport` record (`dto/risk/RiskReport.java`) is the primary AI output fo
 All config via environment variables (`.env` file, not committed):
 - **PostgreSQL + pgvector**: JPA entities + vector store (HNSW index, cosine distance, 1536 dims)
 - **Redis**: Market data caching (TTL-based to respect API rate limits)
-- **S3/MinIO**: Document storage for RAG pipeline
+- **S3/RustFS**: Document storage for RAG pipeline
 - **OpenRouter**: `base-url: https://openrouter.ai/api/v1`, model configured via `AI_MODEL` env var
 
 ### Security
@@ -94,7 +94,7 @@ React 18 + TypeScript + Vite + Tailwind CSS 4.1. SSE client for streaming AI res
 
 ### Docker
 
-`docker-compose.yml` orchestrates: backend (Java 21), frontend (Nginx + SSE proxy), PostgreSQL + pgvector, Redis, MinIO.
+`docker-compose.yml` orchestrates: backend (Java 21), frontend (Nginx + SSE proxy), PostgreSQL + pgvector, Redis, RustFS.
 
 ## Conventions
 
@@ -107,7 +107,7 @@ React 18 + TypeScript + Vite + Tailwind CSS 4.1. SSE client for streaming AI res
 - Shared utilities go in `util/` package (e.g., `SectorMapper.fromTicker()` for ticker→sector mapping)
 - Scrapers must: (1) dedup via `existsByOriginalFileName()`, (2) call `VectorizeStreamProducer.send(docId)` after save
 - Spring Boot 4.0 uses relocated packages: `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc` (not `...test.autoconfigure.web.servlet`)
-- Integration tests require running infrastructure (PostgreSQL, Redis, MinIO); unit tests use Mockito and run standalone
+- Integration tests require running infrastructure (PostgreSQL, Redis, RustFS); unit tests use Mockito and run standalone
 
 
 <claude-mem-context>

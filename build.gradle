@@ -57,7 +57,7 @@ dependencies {
     // PDF Export
     implementation 'com.itextpdf:itext-core:8.0.5'
 
-    // AWS S3 SDK for MinIO
+    // AWS S3 SDK for RustFS (S3-compatible object storage)
     implementation 'software.amazon.awssdk:s3:2.31.1'
 
     // Google Drive API
