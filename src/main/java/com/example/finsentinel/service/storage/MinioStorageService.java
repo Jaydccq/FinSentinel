@@ -2,7 +2,6 @@ package com.example.finsentinel.service.storage;
 
 import com.example.finsentinel.config.StorageProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -19,7 +18,6 @@ import java.net.URI;
  * <p>This class is part of the service layer in FinSentinel.
  */
 
-@Service
 @Slf4j
 public class MinioStorageService implements StorageService {
 
