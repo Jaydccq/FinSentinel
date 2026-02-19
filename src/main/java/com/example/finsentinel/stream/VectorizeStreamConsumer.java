@@ -5,7 +5,7 @@ import com.example.finsentinel.model.enums.DocumentStatus;
 import com.example.finsentinel.repository.DocumentRepository;
 import com.example.finsentinel.service.document.DocumentParseService;
 import com.example.finsentinel.service.document.DocumentVectorService;
-import com.example.finsentinel.service.storage.MinioStorageService;
+import com.example.finsentinel.service.storage.StorageService;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +33,7 @@ public class VectorizeStreamConsumer {
     private final DocumentRepository documentRepository;
     private final DocumentParseService documentParseService;
     private final DocumentVectorService documentVectorService;
-    private final MinioStorageService minioStorageService;
+    private final StorageService storageService;
     private final VectorizeStreamProducer vectorizeStreamProducer;
 
     private final String consumerName = "consumer-" + UUID.randomUUID().toString().substring(0, 8);
@@ -118,7 +118,7 @@ public class VectorizeStreamConsumer {
             documentRepository.save(document);
 
             // Download from MinIO and parse
-            byte[] fileBytes = minioStorageService.download(document.getStorageKey());
+            byte[] fileBytes = storageService.download(document.getStorageKey());
             String cleanText = documentParseService.parseToCleanText(fileBytes, document.getOriginalFileName());
 
             // Vectorize
@@ -158,6 +158,7 @@ public class VectorizeStreamConsumer {
 
     /**
      * Acknowledges a message in the Redis Stream consumer group.
+
      * This removes the message from the pending entries list (PEL).
      *
      * @param message the message to acknowledge

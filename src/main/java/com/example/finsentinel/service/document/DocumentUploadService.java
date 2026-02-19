@@ -5,7 +5,7 @@ import com.example.finsentinel.model.Document;
 import com.example.finsentinel.model.enums.DocumentStatus;
 import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.repository.DocumentRepository;
-import com.example.finsentinel.service.storage.MinioStorageService;
+import com.example.finsentinel.service.storage.StorageService;
 import com.example.finsentinel.stream.VectorizeStreamProducer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +18,7 @@ import java.util.UUID;
 
 /**
  * Orchestrates document upload with async RAG vectorization via Redis Stream.
- * Handles file validation, storage, and task queueing for background processing.
+ * Coordinates file validation, object storage upload, and async queue dispatch.
  * Vectorization happens asynchronously in VectorizeStreamConsumer.
  */
 @Slf4j
@@ -30,7 +30,7 @@ public class DocumentUploadService {
 
     private final DocumentParseService documentParseService;
     private final VectorizeStreamProducer vectorizeStreamProducer;
-    private final MinioStorageService minioStorageService;
+    private final StorageService storageService;
     private final DocumentRepository documentRepository;
 
     /**
@@ -74,7 +74,7 @@ public class DocumentUploadService {
 
             // 2. Upload raw file to MinIO
             byte[] fileBytes = file.getBytes();
-            minioStorageService.upload(storageKey, fileBytes, file.getContentType());
+            storageService.upload(storageKey, fileBytes, file.getContentType());
             log.debug("Uploaded file to MinIO: {}", storageKey);
 
             // 3. Validate file can be parsed (early validation before queuing)
@@ -85,6 +85,7 @@ public class DocumentUploadService {
                 log.error("Document parsing validation failed: {}", file.getOriginalFilename(), e);
                 document.setStatus(DocumentStatus.FAILED);
                 documentRepository.save(document);
+
                 throw new IllegalArgumentException("File cannot be parsed: " + e.getMessage(), e);
             }
 
@@ -93,6 +94,7 @@ public class DocumentUploadService {
 
             // 5. Return immediately — consumer will handle vectorization async
             log.info("Queued document {} for async vectorization", document.getId());
+
             return toResponse(document);
 
         } catch (IOException e) {
@@ -100,6 +102,7 @@ public class DocumentUploadService {
             if (document != null) {
                 updateStatus(document, DocumentStatus.FAILED);
             }
+
             throw new RuntimeException("Failed to read file: " + e.getMessage(), e);
 
         } catch (Exception e) {
@@ -107,6 +110,7 @@ public class DocumentUploadService {
             if (document != null) {
                 updateStatus(document, DocumentStatus.FAILED);
             }
+
             throw new RuntimeException("Document processing failed: " + e.getMessage(), e);
         }
     }
@@ -116,10 +120,12 @@ public class DocumentUploadService {
      */
     private void validateFile(MultipartFile file) {
         if (file == null || file.isEmpty()) {
+
             throw new IllegalArgumentException("File cannot be empty");
         }
 
         if (file.getSize() > MAX_FILE_SIZE) {
+
             throw new IllegalArgumentException(
                     String.format("File size exceeds maximum allowed size of %d MB", MAX_FILE_SIZE / 1024 / 1024)
             );
@@ -127,6 +133,7 @@ public class DocumentUploadService {
 
         String filename = file.getOriginalFilename();
         if (filename == null || filename.isBlank()) {
+
             throw new IllegalArgumentException("Filename cannot be blank");
         }
     }
@@ -145,6 +152,7 @@ public class DocumentUploadService {
      */
     private Document updateStatus(Document document, DocumentStatus status) {
         document.setStatus(status);
+
         return documentRepository.save(document);
     }
 
@@ -152,6 +160,7 @@ public class DocumentUploadService {
      * Converts JPA entity to response DTO.
      */
     private DocumentUploadResponse toResponse(Document document) {
+
         return new DocumentUploadResponse(
                 document.getId(),
                 document.getOriginalFileName(),
