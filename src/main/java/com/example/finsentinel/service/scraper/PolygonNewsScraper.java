@@ -4,7 +4,7 @@ import com.example.finsentinel.config.PolygonProperties;
 import com.example.finsentinel.model.Document;
 import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.repository.DocumentRepository;
-import com.example.finsentinel.service.storage.MinioStorageService;
+import com.example.finsentinel.service.storage.StorageService;
 import com.example.finsentinel.util.MarkdownToPdfConverter;
 import com.example.finsentinel.stream.VectorizeStreamProducer;
 import com.example.finsentinel.util.SectorMapper;
@@ -19,13 +19,19 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Implements polygon news scraper business operations and integrations.
+ *
+ * <p>This class is part of the service layer in FinSentinel.
+ */
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class PolygonNewsScraper {
 
     private final PolygonProperties polygonProperties;
-    private final MinioStorageService storageService;
+    private final StorageService storageService;
     private final DocumentRepository documentRepository;
     private final RestClient restClient;
     private final VectorizeStreamProducer vectorizeStreamProducer;
@@ -74,6 +80,16 @@ public class PolygonNewsScraper {
         log.info("Polygon news scrape complete: {} articles saved", successCount);
         return successCount;
     }
+
+    /**
+     * Executes save article.
+     *
+     * <p>This method belongs to {@link PolygonNewsScraper} and encapsulates the
+     * save article workflow.
+     * @param article article (JsonNode)
+     * @param ticker ticker (String)
+     * @return true when save article succeeds; otherwise false
+     */
 
     private boolean saveArticle(JsonNode article, String ticker) {
         String title = article.has("title") ? article.get("title").asText() : "Untitled";

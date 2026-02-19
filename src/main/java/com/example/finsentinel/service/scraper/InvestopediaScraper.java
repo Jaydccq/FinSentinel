@@ -3,7 +3,7 @@ package com.example.finsentinel.service.scraper;
 import com.example.finsentinel.model.Document;
 import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.repository.DocumentRepository;
-import com.example.finsentinel.service.storage.MinioStorageService;
+import com.example.finsentinel.service.storage.StorageService;
 import com.example.finsentinel.stream.VectorizeStreamProducer;
 import com.example.finsentinel.util.MarkdownToPdfConverter;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,6 +16,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Implements investopedia scraper business operations and integrations.
+ *
+ * <p>This class is part of the service layer in FinSentinel.
+ */
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -25,7 +31,7 @@ public class InvestopediaScraper {
     private static final String INVESTOPEDIA_BASE = "https://www.investopedia.com";
 
     private final FirecrawlClient firecrawlClient;
-    private final MinioStorageService storageService;
+    private final StorageService storageService;
     private final DocumentRepository documentRepository;
     private final VectorizeStreamProducer vectorizeStreamProducer;
 
@@ -34,6 +40,7 @@ public class InvestopediaScraper {
      * First scrapes the dictionary index page to extract term URLs,
      * then scrapes each term page for content.
      *
+
      * @param maxTerms maximum number of terms to scrape (0 = all)
      * @return number of successfully scraped terms
      */
@@ -73,9 +80,18 @@ public class InvestopediaScraper {
         return successCount;
     }
 
+    /**
+     * Executes discover term urls.
+     *
+     * <p>This method belongs to {@link InvestopediaScraper} and encapsulates the
+     * discover term urls workflow.
+     * @return the discover term urls result (List<String>)
+     */
+
     private List<String> discoverTermUrls() {
         FirecrawlClient.ScrapeResult indexResult = firecrawlClient.scrape(DICTIONARY_URL);
         if (indexResult == null || indexResult.markdown().isBlank()) {
+
             return List.of();
         }
 
@@ -98,6 +114,15 @@ public class InvestopediaScraper {
         }
         return urls;
     }
+
+    /**
+     * Executes scrape term.
+     *
+     * <p>This method belongs to {@link InvestopediaScraper} and encapsulates the
+     * scrape term workflow.
+     * @param url url (String)
+     * @return true when scrape term succeeds; otherwise false
+     */
 
     private boolean scrapeTerm(String url) {
         FirecrawlClient.ScrapeResult result = firecrawlClient.scrape(url);

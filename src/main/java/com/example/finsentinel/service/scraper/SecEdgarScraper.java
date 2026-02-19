@@ -3,7 +3,7 @@ package com.example.finsentinel.service.scraper;
 import com.example.finsentinel.model.Document;
 import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.repository.DocumentRepository;
-import com.example.finsentinel.service.storage.MinioStorageService;
+import com.example.finsentinel.service.storage.StorageService;
 import com.example.finsentinel.util.MarkdownToPdfConverter;
 import com.example.finsentinel.stream.VectorizeStreamProducer;
 import com.example.finsentinel.util.SectorMapper;
@@ -19,6 +19,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Implements sec edgar scraper business operations and integrations.
+ *
+ * <p>This class is part of the service layer in FinSentinel.
+ */
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -28,7 +34,7 @@ public class SecEdgarScraper {
     private static final String EDGAR_FILING_BASE = "https://www.sec.gov/Archives/edgar/data/";
 
     private final FirecrawlClient firecrawlClient;
-    private final MinioStorageService storageService;
+    private final StorageService storageService;
     private final DocumentRepository documentRepository;
     private final RestClient restClient;
     private final VectorizeStreamProducer vectorizeStreamProducer;
@@ -36,6 +42,7 @@ public class SecEdgarScraper {
     /**
      * Scrape SEC EDGAR filings for the given tickers.
      *
+
      * @param tickers list of stock tickers (e.g., ["AAPL", "TSLA"])
      * @return number of successfully scraped filings
      */
@@ -69,6 +76,15 @@ public class SecEdgarScraper {
         log.info("SEC EDGAR scrape complete: {} filings scraped", successCount);
         return successCount;
     }
+
+    /**
+     * Executes search filings.
+     *
+     * <p>This method belongs to {@link SecEdgarScraper} and encapsulates the
+     * search filings workflow.
+     * @param ticker ticker (String)
+     * @return the search filings result (List<String>)
+     */
 
     private List<String> searchFilings(String ticker) {
         List<String> urls = new ArrayList<>();
@@ -117,6 +133,16 @@ public class SecEdgarScraper {
         }
         return urls;
     }
+
+    /**
+     * Executes scrape filing.
+     *
+     * <p>This method belongs to {@link SecEdgarScraper} and encapsulates the
+     * scrape filing workflow.
+     * @param url url (String)
+     * @param ticker ticker (String)
+     * @return true when scrape filing succeeds; otherwise false
+     */
 
     private boolean scrapeFiling(String url, String ticker) {
         FirecrawlClient.ScrapeResult result = firecrawlClient.scrape(url);
