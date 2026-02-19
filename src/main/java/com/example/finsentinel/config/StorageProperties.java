@@ -16,7 +16,7 @@ import org.springframework.context.annotation.Configuration;
 @Getter
 @Setter
 public class StorageProperties {
-    private String provider = "minio";
+    private String provider = "rustfs";
     private String endpoint;
     private String accessKey;
     private String secretKey;
