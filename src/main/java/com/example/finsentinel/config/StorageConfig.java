@@ -1,7 +1,7 @@
 package com.example.finsentinel.config;
 
 import com.example.finsentinel.service.storage.GoogleDriveStorageService;
-import com.example.finsentinel.service.storage.MinioStorageService;
+import com.example.finsentinel.service.storage.RustfsStorageService;
 import com.example.finsentinel.service.storage.StorageService;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
@@ -29,10 +29,10 @@ public class StorageConfig {
         log.info("Initializing storage provider: {}", provider);
 
         return switch (provider) {
-            case "minio" -> new MinioStorageService(storageProperties);
+            case "rustfs" -> new RustfsStorageService(storageProperties);
             case "google-drive" -> createGoogleDriveService(googleDriveProperties);
             default -> throw new IllegalArgumentException(
-                    "Unknown storage provider: " + provider + ". Supported: minio, google-drive");
+                    "Unknown storage provider: " + provider + ". Supported: rustfs, google-drive");
         };
     }
 
