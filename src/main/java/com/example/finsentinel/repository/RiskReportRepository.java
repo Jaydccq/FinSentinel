@@ -18,6 +18,8 @@ public interface RiskReportRepository extends JpaRepository<RiskReportEntity, UU
 
     List<RiskReportEntity> findByPortfolioIdOrderByCreatedAtDesc(UUID portfolioId);
 
+    Optional<RiskReportEntity> findByIdAndPortfolioUserId(UUID id, UUID userId);
+
 
     Optional<RiskReportEntity> findFirstByPortfolioIdOrderByCreatedAtDesc(UUID portfolioId);
 }

@@ -128,14 +128,6 @@ public class MarketDataService {
             } catch (Exception e) {
                 result.put(ticker.toUpperCase().trim(), Map.of("error", e.getMessage()));
             }
-            // Delay between Polygon API calls to avoid rate limiting (skip if cached)
-            if (i < tickers.size() - 1) {
-                String cacheKey = "market:quote:" + tickers.get(i + 1).toUpperCase().trim();
-                if (redisTemplate.opsForValue().get(cacheKey) == null) {
-
-                    try { Thread.sleep(250); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
-                }
-            }
         }
         return result;
     }
@@ -241,14 +233,12 @@ public class MarketDataService {
      * @return parsed JSON response node
      */
     private JsonNode callPolygonAggs(String ticker, String from, String to, String sort, int limit) {
-        String json = restClient.get()
+        return restClient.get()
                 .uri(polygonProperties.getBaseUrl()
                                 + "/v2/aggs/ticker/{ticker}/range/1/day/{from}/{to}?adjusted=true&sort={sort}&limit={limit}&apiKey={apiKey}",
                         ticker, from, to, sort, limit, polygonProperties.getApiKey())
                 .retrieve()
-                .body(String.class);
-
-        return parseJsonNode(json);
+                .body(JsonNode.class);
     }
 
     /**

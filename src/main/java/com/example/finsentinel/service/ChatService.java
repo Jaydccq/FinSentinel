@@ -4,6 +4,7 @@ import com.example.finsentinel.agent.RiskAgentService;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.ChatMessage;
 import com.example.finsentinel.repository.ChatMessageRepository;
+import com.example.finsentinel.repository.PortfolioRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class ChatService {
 
     private final RiskAgentService riskAgentService;
     private final ChatMessageRepository chatMessageRepository;
+    private final PortfolioRepository portfolioRepository;
 
     /**
 
@@ -35,6 +37,7 @@ public class ChatService {
      */
     public void streamChat(String message, UUID sessionId, UUID portfolioId,
                            UUID userId, SseEmitter emitter) {
+        ensurePortfolioOwnership(portfolioId, userId);
         UUID session = sessionId != null ? sessionId : UUID.randomUUID();
 
         persistMessage(userId, session, "user", message);
@@ -75,6 +78,7 @@ public class ChatService {
      * Non-streaming structured risk assessment.
      */
     public RiskReport assess(String message, UUID portfolioId, UUID userId, UUID sessionId) {
+        ensurePortfolioOwnership(portfolioId, userId);
         UUID session = sessionId != null ? sessionId : UUID.randomUUID();
         persistMessage(userId, session, "user", message);
         RiskReport report = riskAgentService.assess(message, portfolioId);
@@ -91,9 +95,9 @@ public class ChatService {
      * @return the get session history result (List<ChatMessage>)
      */
 
-    public List<ChatMessage> getSessionHistory(UUID sessionId) {
+    public List<ChatMessage> getSessionHistory(UUID sessionId, UUID userId) {
 
-        return chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(sessionId);
+        return chatMessageRepository.findBySessionIdAndUserIdOrderByCreatedAtAsc(sessionId, userId);
     }
 
     /**
@@ -128,5 +132,14 @@ public class ChatService {
                 .role(role)
                 .content(content)
                 .build());
+    }
+
+    private void ensurePortfolioOwnership(UUID portfolioId, UUID userId) {
+        if (portfolioId == null) {
+            return;
+        }
+        if (!portfolioRepository.existsByIdAndUserId(portfolioId, userId)) {
+            throw new IllegalArgumentException("Portfolio not found");
+        }
     }
 }

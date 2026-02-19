@@ -31,7 +31,11 @@
       "Bash(pip3 install:*)",
       "Bash(python3 -c \"import json; d=json.load\\(open\\(''/Users/hongxichen/Downloads/finsentinel-487904-0b41d5ee5ebf.json''\\)\\); print\\(''Service Account Email:'', d[''client_email'']\\)\")",
       "Bash(python3:*)",
-      "Bash(bash /Users/hongxichen/.claude/skills/git-pushing/scripts/smart_commit.sh:*)"
+      "Bash(bash /Users/hongxichen/.claude/skills/git-pushing/scripts/smart_commit.sh:*)",
+      "WebFetch(domain:docs.rustfs.com)",
+      "Bash(docker compose:*)",
+      "Bash(git -C /Users/hongxichen/Desktop/FinSentinel status)",
+      "Bash(git rm:*)"
     ]
   },
   "hooks": {

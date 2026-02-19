@@ -31,9 +31,6 @@ import static org.mockito.Mockito.*;
 class DocumentUploadServiceTest {
 
     @Mock
-    private DocumentParseService documentParseService;
-
-    @Mock
     private VectorizeStreamProducer vectorizeStreamProducer;
 
     @Mock
@@ -62,9 +59,6 @@ class DocumentUploadServiceTest {
             return doc;
         });
 
-        when(documentParseService.parseToCleanText(any(byte[].class), eq("test-report.pdf")))
-                .thenReturn(content);
-
         DocumentUploadResponse response = documentUploadService.upload(
                 file, DocumentType.RESEARCH_REPORT, "technology", "US");
 
@@ -76,7 +70,6 @@ class DocumentUploadServiceTest {
         assertEquals("US", response.regionId());
 
         verify(storageService).upload(anyString(), any(byte[].class), eq("application/pdf"));
-        verify(documentParseService).parseToCleanText(any(byte[].class), eq("test-report.pdf"));
         verify(vectorizeStreamProducer).send(any(UUID.class));
     }
 
@@ -89,12 +82,12 @@ class DocumentUploadServiceTest {
         assertThrows(IllegalArgumentException.class, () ->
                 documentUploadService.upload(file, DocumentType.OTHER, null, "US"));
 
-        verifyNoInteractions(documentParseService, vectorizeStreamProducer, storageService);
+        verifyNoInteractions(vectorizeStreamProducer, storageService);
     }
 
 
     @Test
-    void upload_parseFailure_shouldSetStatusFailed() {
+    void upload_storageFailure_shouldSetStatusFailed() {
         String content = "Some content";
         MockMultipartFile file = new MockMultipartFile(
                 "file", "bad-file.pdf", "application/pdf", content.getBytes());
@@ -107,8 +100,8 @@ class DocumentUploadServiceTest {
             return doc;
         });
 
-        when(documentParseService.parseToCleanText(any(byte[].class), eq("bad-file.pdf")))
-                .thenThrow(new IllegalArgumentException("Parse error"));
+        doThrow(new RuntimeException("Storage error"))
+                .when(storageService).upload(anyString(), any(byte[].class), anyString());
 
         assertThrows(RuntimeException.class, () ->
                 documentUploadService.upload(file, DocumentType.SEC_FILING, null, "US"));

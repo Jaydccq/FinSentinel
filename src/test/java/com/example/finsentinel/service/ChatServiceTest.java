@@ -4,6 +4,7 @@ import com.example.finsentinel.agent.RiskAgentService;
 import com.example.finsentinel.dto.risk.ComplianceNote;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.ChatMessage;
+import com.example.finsentinel.repository.PortfolioRepository;
 import com.example.finsentinel.repository.ChatMessageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -32,6 +34,7 @@ class ChatServiceTest {
 
     @Mock private RiskAgentService riskAgentService;
     @Mock private ChatMessageRepository chatMessageRepository;
+    @Mock private PortfolioRepository portfolioRepository;
 
     private ChatService service;
 
@@ -42,12 +45,13 @@ class ChatServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ChatService(riskAgentService, chatMessageRepository);
+        service = new ChatService(riskAgentService, chatMessageRepository, portfolioRepository);
     }
 
 
     @Test
     void streamChat_shouldPersistUserMessageAndSubscribeToFlux() {
+        when(portfolioRepository.existsByIdAndUserId(portfolioId, userId)).thenReturn(true);
         when(chatMessageRepository.save(any(ChatMessage.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
         when(riskAgentService.assessStream("Test question", portfolioId))
@@ -74,6 +78,7 @@ class ChatServiceTest {
 
     @Test
     void streamChat_shouldGenerateSessionIdIfNull() {
+        when(portfolioRepository.existsByIdAndUserId(portfolioId, userId)).thenReturn(true);
         when(chatMessageRepository.save(any(ChatMessage.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
         when(riskAgentService.assessStream("Test", portfolioId))
@@ -93,6 +98,7 @@ class ChatServiceTest {
 
     @Test
     void assess_shouldReturnRiskReportAndPersistMessages() {
+        when(portfolioRepository.existsByIdAndUserId(portfolioId, userId)).thenReturn(true);
         RiskReport report = new RiskReport(
                 65, "HIGH", "Test risk", List.of(), List.of(),
                 new ComplianceNote("Disclaimer", "SEC", true));
@@ -111,17 +117,44 @@ class ChatServiceTest {
         assertThat(captor.getAllValues().get(1).getRole()).isEqualTo("assistant");
     }
 
+    @Test
+    void assess_shouldThrowWhenPortfolioNotOwnedByUser() {
+        when(portfolioRepository.existsByIdAndUserId(portfolioId, userId)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.assess("Analyze AAPL", portfolioId, userId, sessionId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Portfolio not found");
+
+        verify(riskAgentService, never()).assess(any(), any());
+    }
 
     @Test
-    void getSessionHistory_shouldReturnOrderedMessages() {
+    void streamChat_shouldThrowWhenPortfolioNotOwnedByUser() {
+        when(portfolioRepository.existsByIdAndUserId(portfolioId, userId)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.streamChat(
+                "Test question",
+                sessionId,
+                portfolioId,
+                userId,
+                new SseEmitter(120_000L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Portfolio not found");
+
+        verify(riskAgentService, never()).assessStream(any(), any());
+    }
+
+
+    @Test
+    void getSessionHistory_shouldReturnOrderedMessagesForUser() {
         ChatMessage msg1 = ChatMessage.builder()
-                .sessionId(sessionId).role("user").content("Q").build();
+                .sessionId(sessionId).userId(userId).role("user").content("Q").build();
         ChatMessage msg2 = ChatMessage.builder()
-                .sessionId(sessionId).role("assistant").content("A").build();
-        when(chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(sessionId))
+                .sessionId(sessionId).userId(userId).role("assistant").content("A").build();
+        when(chatMessageRepository.findBySessionIdAndUserIdOrderByCreatedAtAsc(sessionId, userId))
                 .thenReturn(List.of(msg1, msg2));
 
-        List<ChatMessage> history = service.getSessionHistory(sessionId);
+        List<ChatMessage> history = service.getSessionHistory(sessionId, userId);
 
         assertThat(history).hasSize(2);
         assertThat(history.get(0).getRole()).isEqualTo("user");

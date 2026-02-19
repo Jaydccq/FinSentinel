@@ -19,7 +19,7 @@ spring:
 
   sql:
     init:
-      mode: always
+      mode: ${SPRING_SQL_INIT_MODE:never}
 
   data:
     redis:
@@ -72,7 +72,7 @@ app:
     base-url: https://api.polygon.io
 
   jwt:
-    secret: ${JWT_SECRET:default-secret-key-change-in-production-32ch}
+    secret: ${JWT_SECRET:${random.uuid}}
     expiration: ${JWT_EXPIRATION:86400000}
 
   rag:

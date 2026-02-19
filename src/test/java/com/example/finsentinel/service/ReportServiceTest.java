@@ -38,6 +38,7 @@ class ReportServiceTest {
     @Test
     void generatePdf_returnsBytes_whenReportExists() {
         UUID reportId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
 
         Portfolio portfolio = new Portfolio();
         portfolio.setName("Tech Growth");
@@ -50,11 +51,11 @@ class ReportServiceTest {
                 List.of(new RiskFactor("Market", 70, "desc")),
                 List.of("Rebalance"), new ComplianceNote("Disclaimer", "SEC", true));
 
-        when(reportRepository.findById(reportId)).thenReturn(Optional.of(entity));
+        when(reportRepository.findByIdAndPortfolioUserId(reportId, userId)).thenReturn(Optional.of(entity));
         when(reportMapper.toDto(entity)).thenReturn(dto);
         when(pdfGenerator.generate(any(), any(), any())).thenReturn(new byte[]{37, 80, 68, 70}); // %PDF
 
-        byte[] result = reportService.generatePdf(reportId);
+        byte[] result = reportService.generatePdf(reportId, userId);
 
         assertThat(result).isNotNull();
         assertThat(result.length).isGreaterThan(0);
@@ -65,9 +66,10 @@ class ReportServiceTest {
     @Test
     void generatePdf_throwsIllegalArgument_whenNotFound() {
         UUID reportId = UUID.randomUUID();
-        when(reportRepository.findById(reportId)).thenReturn(Optional.empty());
+        UUID userId = UUID.randomUUID();
+        when(reportRepository.findByIdAndPortfolioUserId(reportId, userId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> reportService.generatePdf(reportId))
+        assertThatThrownBy(() -> reportService.generatePdf(reportId, userId))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Risk report not found");
     }

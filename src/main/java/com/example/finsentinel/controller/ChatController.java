@@ -91,9 +91,10 @@ public class ChatController {
 
     @GetMapping("/sessions/{sessionId}")
     public ResponseEntity<List<ChatMessageResponse>> getSessionHistory(
-
-            @PathVariable UUID sessionId) {
-        return ResponseEntity.ok(chatService.getSessionHistory(sessionId).stream()
+            @PathVariable UUID sessionId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = resolveUser(userDetails);
+        return ResponseEntity.ok(chatService.getSessionHistory(sessionId, user.getId()).stream()
                 .map(this::toResponse).toList());
     }
 

@@ -17,6 +17,8 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
 
     List<ChatMessage> findBySessionIdOrderByCreatedAtAsc(UUID sessionId);
 
+    List<ChatMessage> findBySessionIdAndUserIdOrderByCreatedAtAsc(UUID sessionId, UUID userId);
+
 
     List<ChatMessage> findByUserIdOrderByCreatedAtDesc(UUID userId);
 }

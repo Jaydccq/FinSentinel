@@ -28,7 +28,6 @@ public class DocumentUploadService {
 
     private static final long MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
-    private final DocumentParseService documentParseService;
     private final VectorizeStreamProducer vectorizeStreamProducer;
     private final StorageService storageService;
     private final DocumentRepository documentRepository;
@@ -77,22 +76,10 @@ public class DocumentUploadService {
             storageService.upload(storageKey, fileBytes, file.getContentType());
             log.debug("Uploaded file to RustFS: {}", storageKey);
 
-            // 3. Validate file can be parsed (early validation before queuing)
-            try {
-                String cleanText = documentParseService.parseToCleanText(fileBytes, file.getOriginalFilename());
-                log.debug("Validated document parsing: {} characters extracted", cleanText.length());
-            } catch (Exception e) {
-                log.error("Document parsing validation failed: {}", file.getOriginalFilename(), e);
-                document.setStatus(DocumentStatus.FAILED);
-                documentRepository.save(document);
-
-                throw new IllegalArgumentException("File cannot be parsed: " + e.getMessage(), e);
-            }
-
-            // 4. Send vectorize task to Redis Stream
+            // 3. Send vectorize task to Redis Stream
             vectorizeStreamProducer.send(document.getId());
 
-            // 5. Return immediately — consumer will handle vectorization async
+            // 4. Return immediately — consumer will handle parsing and vectorization async
             log.info("Queued document {} for async vectorization", document.getId());
 
             return toResponse(document);

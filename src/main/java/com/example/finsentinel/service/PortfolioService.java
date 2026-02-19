@@ -184,7 +184,7 @@ public class PortfolioService {
     public HoldingResponse updateHolding(UUID portfolioId, UUID holdingId,
                                           HoldingRequest request, UUID userId) {
         findOwnedPortfolio(portfolioId, userId);
-        Holding h = holdingRepository.findById(holdingId)
+        Holding h = holdingRepository.findByIdAndPortfolioId(holdingId, portfolioId)
                 .orElseThrow(() -> new IllegalArgumentException("Holding not found"));
         h.setSymbol(request.symbol().toUpperCase());
         h.setCompanyName(request.companyName());
@@ -209,6 +209,8 @@ public class PortfolioService {
 
     public void deleteHolding(UUID portfolioId, UUID holdingId, UUID userId) {
         Portfolio p = findOwnedPortfolio(portfolioId, userId);
+        holdingRepository.findByIdAndPortfolioId(holdingId, portfolioId)
+                .orElseThrow(() -> new IllegalArgumentException("Holding not found"));
         holdingRepository.deleteById(holdingId);
         recalculateTotalValue(p);
     }

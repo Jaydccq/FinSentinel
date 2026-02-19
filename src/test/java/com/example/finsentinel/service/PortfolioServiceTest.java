@@ -182,7 +182,7 @@ class PortfolioServiceTest {
                 .quantity(new BigDecimal("10")).averageCost(new BigDecimal("150")).build();
 
         when(portfolioRepository.findById(portfolioId)).thenReturn(Optional.of(p));
-        when(holdingRepository.findById(holdingId)).thenReturn(Optional.of(existing));
+        when(holdingRepository.findByIdAndPortfolioId(holdingId, portfolioId)).thenReturn(Optional.of(existing));
         when(holdingRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(holdingRepository.findByPortfolioId(portfolioId)).thenReturn(List.of(existing));
         when(portfolioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -200,6 +200,25 @@ class PortfolioServiceTest {
         assertThat(result.quantity()).isEqualByComparingTo(new BigDecimal("20"));
     }
 
+    @Test
+    void updateHolding_shouldThrowWhenHoldingNotInPortfolio() {
+        Portfolio ownedPortfolio = buildPortfolio("Owned", userId);
+        UUID holdingId = UUID.randomUUID();
+        when(portfolioRepository.findById(portfolioId)).thenReturn(Optional.of(ownedPortfolio));
+        when(holdingRepository.findByIdAndPortfolioId(holdingId, portfolioId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.updateHolding(
+                portfolioId,
+                holdingId,
+                new HoldingRequest("MSFT", "Microsoft", new BigDecimal("20"),
+                        new BigDecimal("300"), "Technology"),
+                userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Holding not found");
+
+        verify(holdingRepository, never()).save(any(Holding.class));
+    }
+
 
     @Test
     void deleteHolding_shouldCallDeleteAndRecalculate() {
@@ -207,12 +226,29 @@ class PortfolioServiceTest {
         UUID holdingId = UUID.randomUUID();
 
         when(portfolioRepository.findById(portfolioId)).thenReturn(Optional.of(p));
+        when(holdingRepository.findByIdAndPortfolioId(holdingId, portfolioId))
+                .thenReturn(Optional.of(Holding.builder().id(holdingId).portfolio(p).build()));
         when(holdingRepository.findByPortfolioId(portfolioId)).thenReturn(List.of());
         when(portfolioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.deleteHolding(portfolioId, holdingId, userId);
 
         verify(holdingRepository).deleteById(holdingId);
+    }
+
+    @Test
+    void deleteHolding_shouldThrowWhenHoldingNotInPortfolio() {
+        Portfolio ownedPortfolio = buildPortfolio("Owned", userId);
+        UUID holdingId = UUID.randomUUID();
+
+        when(portfolioRepository.findById(portfolioId)).thenReturn(Optional.of(ownedPortfolio));
+        when(holdingRepository.findByIdAndPortfolioId(holdingId, portfolioId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.deleteHolding(portfolioId, holdingId, userId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Holding not found");
+
+        verify(holdingRepository, never()).deleteById(any(UUID.class));
     }
 
     /**

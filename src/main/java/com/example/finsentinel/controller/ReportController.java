@@ -1,11 +1,15 @@
 package com.example.finsentinel.controller;
 
+import com.example.finsentinel.model.User;
+import com.example.finsentinel.repository.UserRepository;
 import com.example.finsentinel.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -22,6 +26,7 @@ import java.util.UUID;
 public class ReportController {
 
     private final ReportService reportService;
+    private final UserRepository userRepository;
 
     /**
      * Downloads pdf.
@@ -33,8 +38,10 @@ public class ReportController {
      */
 
     @GetMapping(value = "/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
-    public ResponseEntity<byte[]> downloadPdf(@PathVariable UUID id) {
-        byte[] pdf = reportService.generatePdf(id);
+    public ResponseEntity<byte[]> downloadPdf(@PathVariable UUID id,
+                                              @AuthenticationPrincipal UserDetails userDetails) {
+        User user = resolveUser(userDetails);
+        byte[] pdf = reportService.generatePdf(id, user.getId());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentDisposition(ContentDisposition.attachment()
@@ -46,5 +53,10 @@ public class ReportController {
                 .headers(headers)
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
+    }
+
+    private User resolveUser(UserDetails userDetails) {
+        return userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new IllegalStateException("User not found"));
     }
 }

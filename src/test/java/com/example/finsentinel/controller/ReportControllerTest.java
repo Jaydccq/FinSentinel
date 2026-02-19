@@ -1,6 +1,8 @@
 package com.example.finsentinel.controller;
 
 import com.example.finsentinel.config.SecurityConfig;
+import com.example.finsentinel.model.User;
+import com.example.finsentinel.repository.UserRepository;
 import com.example.finsentinel.security.JwtTokenProvider;
 import com.example.finsentinel.service.ReportService;
 import org.junit.jupiter.api.Test;
@@ -14,6 +16,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.UUID;
+import java.util.Optional;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -33,13 +36,17 @@ class ReportControllerTest {
     @MockitoBean ReportService reportService;
     @MockitoBean JwtTokenProvider jwtTokenProvider;
     @MockitoBean UserDetailsService userDetailsService;
+    @MockitoBean UserRepository userRepository;
 
 
     @Test
     void downloadPdf_returns200WithPdfContentType() throws Exception {
         UUID reportId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         byte[] pdfBytes = {37, 80, 68, 70, 45}; // %PDF-
-        when(reportService.generatePdf(reportId)).thenReturn(pdfBytes);
+        when(userRepository.findByUsername("user"))
+                .thenReturn(Optional.of(User.builder().id(userId).username("user").build()));
+        when(reportService.generatePdf(reportId, userId)).thenReturn(pdfBytes);
 
         mockMvc.perform(get("/api/reports/{id}/pdf", reportId)
                         .with(SecurityMockMvcRequestPostProcessors.user("user")))
@@ -54,12 +61,25 @@ class ReportControllerTest {
     @Test
     void downloadPdf_returns400_whenNotFound() throws Exception {
         UUID reportId = UUID.randomUUID();
-        when(reportService.generatePdf(reportId))
+        UUID userId = UUID.randomUUID();
+        when(userRepository.findByUsername("user"))
+                .thenReturn(Optional.of(User.builder().id(userId).username("user").build()));
+        when(reportService.generatePdf(reportId, userId))
                 .thenThrow(new IllegalArgumentException("Risk report not found: " + reportId));
 
         mockMvc.perform(get("/api/reports/{id}/pdf", reportId)
                         .with(SecurityMockMvcRequestPostProcessors.user("user")))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void downloadPdf_returns500_whenUserNotFound() throws Exception {
+        UUID reportId = UUID.randomUUID();
+        when(userRepository.findByUsername("user")).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/api/reports/{id}/pdf", reportId)
+                        .with(SecurityMockMvcRequestPostProcessors.user("user")))
+                .andExpect(status().isInternalServerError());
     }
 
 

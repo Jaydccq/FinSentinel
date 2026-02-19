@@ -35,8 +35,8 @@ public class ReportService {
      */
 
     @Transactional(readOnly = true)
-    public byte[] generatePdf(UUID reportId) {
-        RiskReportEntity entity = reportRepository.findById(reportId)
+    public byte[] generatePdf(UUID reportId, UUID userId) {
+        RiskReportEntity entity = reportRepository.findByIdAndPortfolioUserId(reportId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Risk report not found: " + reportId));
 
         RiskReport report = reportMapper.toDto(entity);

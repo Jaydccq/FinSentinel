@@ -10,6 +10,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -31,6 +33,9 @@ public class RiskAgentService {
     private final PortfolioRepository portfolioRepository;
     private final ObjectMapper objectMapper;
 
+    @Value("classpath:prompts/risk-assessment.st")
+    private Resource riskAssessmentPrompt;
+
     /**
      * Run a full risk assessment for a user query.
 
@@ -41,10 +46,19 @@ public class RiskAgentService {
         log.info("Starting risk assessment: query='{}', portfolio={}",
                 truncate(userMessage, 80), portfolioId);
 
-        String prompt = buildPrompt(userMessage, portfolioId);
+        String portfolioContext = portfolioId != null
+                ? "- Use analyzePortfolio with portfolio ID: " + portfolioId
+                : "";
 
         RiskReport report = riskAgentChatClient.prompt()
-                .user(prompt)
+                .system(sp -> sp
+                        .param("complianceRegion", complianceProperties.getRegion())
+                        .param("disclaimer", complianceProperties.getDisclaimer()))
+                .user(u -> u
+                        .text(riskAssessmentPrompt)
+                        .param("userQuery", userMessage)
+                        .param("portfolioContext", portfolioContext)
+                        .param("complianceRegion", complianceProperties.getRegion()))
                 .call()
                 .entity(RiskReport.class);
 
@@ -64,34 +78,21 @@ public class RiskAgentService {
      * Returns the raw text stream (not structured output).
      */
     public reactor.core.publisher.Flux<String> assessStream(String userMessage, UUID portfolioId) {
-        String prompt = buildPrompt(userMessage, portfolioId);
-
+        String portfolioContext = portfolioId != null
+                ? "- Use analyzePortfolio with portfolio ID: " + portfolioId
+                : "";
 
         return riskAgentChatClient.prompt()
-                .user(prompt)
+                .system(sp -> sp
+                        .param("complianceRegion", complianceProperties.getRegion())
+                        .param("disclaimer", complianceProperties.getDisclaimer()))
+                .user(u -> u
+                        .text(riskAssessmentPrompt)
+                        .param("userQuery", userMessage)
+                        .param("portfolioContext", portfolioContext)
+                        .param("complianceRegion", complianceProperties.getRegion()))
                 .stream()
                 .content();
-    }
-
-    /**
-     * Builds prompt.
-     *
-     * <p>This method belongs to {@link RiskAgentService} and encapsulates the
-     * build prompt workflow.
-     * @param userMessage user message (String)
-     * @param portfolioId portfolio id (UUID)
-     * @return the build prompt result (String)
-     */
-
-    private String buildPrompt(String userMessage, UUID portfolioId) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append(userMessage);
-        if (portfolioId != null) {
-            prompt.append("\n\nPortfolio ID for analysis: ").append(portfolioId);
-        }
-        prompt.append("\n\nCompliance Region: ").append(complianceProperties.getRegion());
-
-        return prompt.toString();
     }
 
     /**
