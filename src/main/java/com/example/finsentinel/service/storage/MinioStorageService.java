@@ -13,12 +13,25 @@ import software.amazon.awssdk.services.s3.model.*;
 import java.io.IOException;
 import java.net.URI;
 
+/**
+ * Implements minio storage service business operations and integrations.
+ *
+ * <p>This class is part of the service layer in FinSentinel.
+ */
+
 @Service
 @Slf4j
-public class MinioStorageService {
+public class MinioStorageService implements StorageService {
 
     private final S3Client s3Client;
     private final StorageProperties storageProperties;
+
+    /**
+     * Creates a new MinioStorageService instance.
+     *
+     * <p>This method is defined in {@link MinioStorageService}.
+     * @param storageProperties storage properties (StorageProperties)
+     */
 
     public MinioStorageService(StorageProperties storageProperties) {
         this.storageProperties = storageProperties;
@@ -34,6 +47,17 @@ public class MinioStorageService {
         ensureBucketExists();
     }
 
+    /**
+     * Executes upload.
+     *
+     * <p>This method belongs to {@link MinioStorageService} and encapsulates the
+     * upload workflow.
+     * @param key key (String)
+     * @param content content (byte[])
+     * @param contentType content type (String)
+     */
+
+    @Override
     public void upload(String key, byte[] content, String contentType) {
         PutObjectRequest request = PutObjectRequest.builder()
                 .bucket(storageProperties.getBucket())
@@ -44,17 +68,36 @@ public class MinioStorageService {
         log.info("Uploaded {} ({} bytes) to MinIO", key, content.length);
     }
 
+    /**
+     * Executes download.
+     *
+     * <p>This method belongs to {@link MinioStorageService} and encapsulates the
+     * download workflow.
+     * @param key key (String)
+     * @return the download result (byte[])
+     */
+
+    @Override
     public byte[] download(String key) {
         GetObjectRequest request = GetObjectRequest.builder()
                 .bucket(storageProperties.getBucket())
                 .key(key)
                 .build();
         try (var response = s3Client.getObject(request)) {
+
             return response.readAllBytes();
         } catch (IOException e) {
+
             throw new RuntimeException("Failed to download " + key, e);
         }
     }
+
+    /**
+     * Executes ensure bucket exists.
+     *
+     * <p>This method belongs to {@link MinioStorageService} and encapsulates the
+     * ensure bucket exists workflow.
+     */
 
     private void ensureBucketExists() {
         try {
