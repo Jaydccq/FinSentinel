@@ -5,7 +5,7 @@ import com.example.finsentinel.model.Document;
 import com.example.finsentinel.model.enums.DocumentStatus;
 import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.repository.DocumentRepository;
-import com.example.finsentinel.service.storage.MinioStorageService;
+import com.example.finsentinel.service.storage.StorageService;
 import com.example.finsentinel.stream.VectorizeStreamProducer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +37,7 @@ class DocumentUploadServiceTest {
     private VectorizeStreamProducer vectorizeStreamProducer;
 
     @Mock
-    private MinioStorageService minioStorageService;
+    private StorageService storageService;
 
     @Mock
     private DocumentRepository documentRepository;
@@ -75,7 +75,7 @@ class DocumentUploadServiceTest {
         assertEquals("technology", response.sector());
         assertEquals("US", response.regionId());
 
-        verify(minioStorageService).upload(anyString(), any(byte[].class), eq("application/pdf"));
+        verify(storageService).upload(anyString(), any(byte[].class), eq("application/pdf"));
         verify(documentParseService).parseToCleanText(any(byte[].class), eq("test-report.pdf"));
         verify(vectorizeStreamProducer).send(any(UUID.class));
     }
@@ -89,7 +89,7 @@ class DocumentUploadServiceTest {
         assertThrows(IllegalArgumentException.class, () ->
                 documentUploadService.upload(file, DocumentType.OTHER, null, "US"));
 
-        verifyNoInteractions(documentParseService, vectorizeStreamProducer, minioStorageService);
+        verifyNoInteractions(documentParseService, vectorizeStreamProducer, storageService);
     }
 
 

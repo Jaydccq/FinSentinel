@@ -2,7 +2,7 @@ package com.example.finsentinel.service.scraper;
 
 import com.example.finsentinel.model.Document;
 import com.example.finsentinel.repository.DocumentRepository;
-import com.example.finsentinel.service.storage.MinioStorageService;
+import com.example.finsentinel.service.storage.StorageService;
 import com.example.finsentinel.stream.VectorizeStreamProducer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -30,7 +30,7 @@ import static org.mockito.Mockito.*;
 class SecEdgarScraperTest {
 
     @Mock private FirecrawlClient firecrawlClient;
-    @Mock private MinioStorageService storageService;
+    @Mock private StorageService storageService;
     @Mock private DocumentRepository documentRepository;
     @Mock private RestClient restClient;
     @Mock private VectorizeStreamProducer vectorizeStreamProducer;

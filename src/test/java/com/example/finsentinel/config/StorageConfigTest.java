@@ -8,9 +8,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class StorageConfigTest {
 
     @Test
-    void minioProviderIsDefault() {
+    void rustfsProviderIsDefault() {
         StorageProperties props = new StorageProperties();
-        assertThat(props.getProvider()).isEqualTo("minio");
+        assertThat(props.getProvider()).isEqualTo("rustfs");
     }
 
     @Test
