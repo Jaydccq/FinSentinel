@@ -157,6 +157,8 @@ public class DocumentUploadService {
                 document.getRegionId(),
                 document.getFileSize(),
                 document.getChunkCount(),
+                document.getStorageTier(),
+                document.getArchivedAt(),
                 document.getCreatedAt()
         );
     }

@@ -35,7 +35,8 @@
       "WebFetch(domain:docs.rustfs.com)",
       "Bash(docker compose:*)",
       "Bash(git -C /Users/hongxichen/Desktop/FinSentinel status)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(bash skills/git-pushing/scripts/smart_commit.sh \"feat: implement hybrid storage with RustFS hot tier and Google Drive cold archival\")"
     ]
   },
   "hooks": {

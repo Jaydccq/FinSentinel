@@ -2,6 +2,7 @@ package com.example.finsentinel.model;
 
 import com.example.finsentinel.model.enums.DocumentStatus;
 import com.example.finsentinel.model.enums.DocumentType;
+import com.example.finsentinel.model.enums.StorageTier;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -54,6 +55,13 @@ public class Document {
     private Integer chunkCount;
 
     private String storageKey;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private StorageTier storageTier = StorageTier.HOT;
+
+    private LocalDateTime archivedAt;
 
     @CreationTimestamp
     @Column(updatable = false)

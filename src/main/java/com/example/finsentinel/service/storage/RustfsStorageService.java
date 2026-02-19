@@ -56,6 +56,16 @@ public class RustfsStorageService implements StorageService {
         }
     }
 
+    @Override
+    public void delete(String key) {
+        DeleteObjectRequest request = DeleteObjectRequest.builder()
+                .bucket(storageProperties.getBucket())
+                .key(key)
+                .build();
+        s3Client.deleteObject(request);
+        log.info("Deleted {} from RustFS", key);
+    }
+
     private void ensureBucketExists() {
         try {
             s3Client.headBucket(HeadBucketRequest.builder()

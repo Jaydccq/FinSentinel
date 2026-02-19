@@ -90,6 +90,35 @@ public class GoogleDriveStorageService implements StorageService {
         }
     }
 
+    @Override
+    public void delete(String key) {
+        try {
+            String[] parts = key.split("/");
+            String fileName = parts[parts.length - 1];
+
+            String parentFolderId = properties.getRootFolderId();
+            for (int i = 0; i < parts.length - 1; i++) {
+                String folderId = findFolderId(parts[i], parentFolderId);
+                if (folderId == null) {
+                    log.warn("Folder not found during delete: {} in path {}", parts[i], key);
+                    return;
+                }
+                parentFolderId = folderId;
+            }
+
+            String fileId = findFileId(fileName, parentFolderId);
+            if (fileId == null) {
+                log.warn("File not found in Google Drive for deletion: {}", key);
+                return;
+            }
+
+            drive.files().delete(fileId).setSupportsAllDrives(true).execute();
+            log.info("Deleted {} from Google Drive, fileId={}", key, fileId);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to delete " + key + " from Google Drive", e);
+        }
+    }
+
     private String getOrCreateFolder(String folderName, String parentId) throws IOException {
         String existing = findFolderId(folderName, parentId);
         if (existing != null) {

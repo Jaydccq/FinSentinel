@@ -82,6 +82,13 @@ app:
       min-chunk-size-chars: 200
       max-num-chunks: 10000
 
+  archival:
+    enabled: ${APP_ARCHIVAL_ENABLED:false}
+    retention-days: ${APP_ARCHIVAL_RETENTION_DAYS:7}
+    failed-retention-days: ${APP_ARCHIVAL_FAILED_RETENTION_DAYS:3}
+    cron: ${APP_ARCHIVAL_CRON:0 0 2 * * *}
+    batch-size: ${APP_ARCHIVAL_BATCH_SIZE:50}
+
   compliance:
     region: US
     disclaimer: "This is AI-generated analysis for informational purposes only. It does not constitute investment advice. Past performance does not guarantee future results. Consult a licensed financial advisor before making investment decisions."

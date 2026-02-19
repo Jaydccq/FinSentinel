@@ -21,4 +21,11 @@ public interface StorageService {
      * @return the file bytes
      */
     byte[] download(String key);
+
+    /**
+     * Deletes a file from storage.
+     *
+     * @param key the storage key / object path
+     */
+    void delete(String key);
 }

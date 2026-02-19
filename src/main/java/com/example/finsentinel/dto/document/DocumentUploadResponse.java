@@ -2,6 +2,7 @@ package com.example.finsentinel.dto.document;
 
 import com.example.finsentinel.model.enums.DocumentStatus;
 import com.example.finsentinel.model.enums.DocumentType;
+import com.example.finsentinel.model.enums.StorageTier;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -18,5 +19,7 @@ public record DocumentUploadResponse(
         String regionId,
         Long fileSize,
         Integer chunkCount,
+        StorageTier storageTier,
+        LocalDateTime archivedAt,
         LocalDateTime createdAt
 ) {}

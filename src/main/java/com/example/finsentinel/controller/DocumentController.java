@@ -121,6 +121,8 @@ public class DocumentController {
                 document.getRegionId(),
                 document.getFileSize(),
                 document.getChunkCount(),
+                document.getStorageTier(),
+                document.getArchivedAt(),
                 document.getCreatedAt()
         );
     }
