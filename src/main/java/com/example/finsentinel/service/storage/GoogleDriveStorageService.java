@@ -52,6 +52,7 @@ public class GoogleDriveStorageService implements StorageService {
 
             File uploaded = drive.files()
                     .create(fileMetadata, mediaContent)
+                    .setSupportsAllDrives(true)
                     .setFields("id, name")
                     .execute();
 
@@ -82,7 +83,7 @@ public class GoogleDriveStorageService implements StorageService {
             }
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            drive.files().get(fileId).executeMediaAndDownloadTo(baos);
+            drive.files().get(fileId).setSupportsAllDrives(true).executeMediaAndDownloadTo(baos);
             return baos.toByteArray();
         } catch (IOException e) {
             throw new RuntimeException("Failed to download " + key + " from Google Drive", e);
@@ -102,6 +103,7 @@ public class GoogleDriveStorageService implements StorageService {
 
         File created = drive.files()
                 .create(folderMetadata)
+                .setSupportsAllDrives(true)
                 .setFields("id")
                 .execute();
 
@@ -114,6 +116,8 @@ public class GoogleDriveStorageService implements StorageService {
                 .setQ(String.format(
                         "name='%s' and mimeType='%s' and '%s' in parents and trashed=false",
                         escapeSingleQuotes(folderName), FOLDER_MIME, parentId))
+                .setSupportsAllDrives(true)
+                .setIncludeItemsFromAllDrives(true)
                 .setSpaces("drive")
                 .setFields("files(id)")
                 .setPageSize(1)
@@ -128,6 +132,8 @@ public class GoogleDriveStorageService implements StorageService {
                 .setQ(String.format(
                         "name='%s' and '%s' in parents and trashed=false",
                         escapeSingleQuotes(fileName), parentId))
+                .setSupportsAllDrives(true)
+                .setIncludeItemsFromAllDrives(true)
                 .setSpaces("drive")
                 .setFields("files(id)")
                 .setPageSize(1)

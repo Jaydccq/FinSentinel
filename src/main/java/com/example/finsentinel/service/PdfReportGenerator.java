@@ -24,6 +24,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * Implements pdf report generator business operations and integrations.
+ *
+ * <p>This class is part of the service layer in FinSentinel.
+ */
+
 @Component
 @Slf4j
 public class PdfReportGenerator {
@@ -34,6 +40,17 @@ public class PdfReportGenerator {
     private static final DeviceRgb RISK_LOW = new DeviceRgb(21, 128, 61);
     private static final DeviceRgb ROW_ALT = new DeviceRgb(243, 244, 246);
     private static final DateTimeFormatter TIMESTAMP_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    /**
+     * Executes generate.
+     *
+     * <p>This method belongs to {@link PdfReportGenerator} and encapsulates the
+     * generate workflow.
+     * @param report report (RiskReport)
+     * @param portfolioName portfolio name (String)
+     * @param generatedAt generated at (LocalDateTime)
+     * @return the generate result (byte[])
+     */
 
     public byte[] generate(RiskReport report, String portfolioName, LocalDateTime generatedAt) {
         try {
@@ -53,12 +70,26 @@ public class PdfReportGenerator {
                 addActionableAdvice(doc, bold, regular, report.actionableAdvice());
                 addComplianceDisclaimer(doc, oblique, report);
             }
+
             return baos.toByteArray();
         } catch (IOException e) {
             log.error("Failed to generate PDF report", e);
+
             throw new RuntimeException("PDF generation failed", e);
         }
     }
+
+    /**
+     * Executes add header.
+     *
+     * <p>This method belongs to {@link PdfReportGenerator} and encapsulates the
+     * add header workflow.
+     * @param doc doc (Document)
+     * @param bold bold (PdfFont)
+     * @param regular regular (PdfFont)
+     * @param portfolioName portfolio name (String)
+     * @param generatedAt generated at (LocalDateTime)
+     */
 
     private void addHeader(Document doc, PdfFont bold, PdfFont regular,
                            String portfolioName, LocalDateTime generatedAt) {
@@ -82,6 +113,16 @@ public class PdfReportGenerator {
                 .setMarginBottom(16));
     }
 
+    /**
+     * Executes add risk score.
+     *
+     * <p>This method belongs to {@link PdfReportGenerator} and encapsulates the
+     * add risk score workflow.
+     * @param doc doc (Document)
+     * @param bold bold (PdfFont)
+     * @param report report (RiskReport)
+     */
+
     private void addRiskScore(Document doc, PdfFont bold, RiskReport report) {
         DeviceRgb scoreColor = scoreColor(report.riskLevel());
 
@@ -99,6 +140,17 @@ public class PdfReportGenerator {
                 .setMarginBottom(14));
     }
 
+    /**
+     * Executes add summary.
+     *
+     * <p>This method belongs to {@link PdfReportGenerator} and encapsulates the
+     * add summary workflow.
+     * @param doc doc (Document)
+     * @param bold bold (PdfFont)
+     * @param regular regular (PdfFont)
+     * @param summary summary (String)
+     */
+
     private void addSummary(Document doc, PdfFont bold, PdfFont regular, String summary) {
         if (summary == null || summary.isBlank()) return;
         doc.add(new Paragraph("Executive Summary")
@@ -106,6 +158,17 @@ public class PdfReportGenerator {
         doc.add(new Paragraph(summary)
                 .setFont(regular).setFontSize(10).setMarginBottom(14));
     }
+
+    /**
+     * Executes add risk factors table.
+     *
+     * <p>This method belongs to {@link PdfReportGenerator} and encapsulates the
+     * add risk factors table workflow.
+     * @param doc doc (Document)
+     * @param bold bold (PdfFont)
+     * @param regular regular (PdfFont)
+     * @param factors factors (List<RiskFactor>)
+     */
 
     private void addRiskFactorsTable(Document doc, PdfFont bold, PdfFont regular,
                                      List<RiskFactor> factors) {
@@ -141,6 +204,17 @@ public class PdfReportGenerator {
         doc.add(table);
     }
 
+    /**
+     * Executes add actionable advice.
+     *
+     * <p>This method belongs to {@link PdfReportGenerator} and encapsulates the
+     * add actionable advice workflow.
+     * @param doc doc (Document)
+     * @param bold bold (PdfFont)
+     * @param regular regular (PdfFont)
+     * @param advice advice (List<String>)
+     */
+
     private void addActionableAdvice(Document doc, PdfFont bold, PdfFont regular,
                                      List<String> advice) {
         doc.add(new Paragraph("Actionable Recommendations")
@@ -158,6 +232,16 @@ public class PdfReportGenerator {
         }
         doc.add(new Paragraph("").setMarginBottom(14));
     }
+
+    /**
+     * Executes add compliance disclaimer.
+     *
+     * <p>This method belongs to {@link PdfReportGenerator} and encapsulates the
+     * add compliance disclaimer workflow.
+     * @param doc doc (Document)
+     * @param oblique oblique (PdfFont)
+     * @param report report (RiskReport)
+     */
 
     private void addComplianceDisclaimer(Document doc, PdfFont oblique, RiskReport report) {
         String disclaimer = (report.complianceNote() != null && report.complianceNote().disclaimer() != null)
@@ -178,12 +262,32 @@ public class PdfReportGenerator {
                 .setFontColor(ColorConstants.GRAY));
     }
 
+    /**
+     * Executes styled cell.
+     *
+     * <p>This method belongs to {@link PdfReportGenerator} and encapsulates the
+     * styled cell workflow.
+     * @param text text (String)
+     * @param font font (PdfFont)
+     * @param bg bg (DeviceRgb)
+     * @return the styled cell result (Cell)
+     */
+
     private Cell styledCell(String text, PdfFont font, DeviceRgb bg) {
         Cell cell = new Cell().add(
             new Paragraph(text != null ? text : "").setFont(font).setFontSize(10));
         if (bg != null) cell.setBackgroundColor(bg);
         return cell;
     }
+
+    /**
+     * Executes score color.
+     *
+     * <p>This method belongs to {@link PdfReportGenerator} and encapsulates the
+     * score color workflow.
+     * @param riskLevel risk level (String)
+     * @return the score color result (DeviceRgb)
+     */
 
     private DeviceRgb scoreColor(String riskLevel) {
         if (riskLevel == null) return RISK_LOW;

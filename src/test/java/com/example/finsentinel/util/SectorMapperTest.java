@@ -6,6 +6,12 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Provides utility functions for sector mapper test operations.
+ *
+ * <p>This class is part of the util layer in FinSentinel.
+ */
+
 class SectorMapperTest {
 
     @ParameterizedTest
@@ -17,14 +23,17 @@ class SectorMapperTest {
         "AMZN, Retail", "WMT, Retail",
         "XOM, Energy", "CVX, Energy"
     })
+
     void fromTicker_shouldReturnCorrectSector(String ticker, String expected) {
         assertThat(SectorMapper.fromTicker(ticker)).isEqualTo(expected);
     }
+
 
     @Test
     void fromTicker_shouldReturnNullForUnknownTicker() {
         assertThat(SectorMapper.fromTicker("UNKNOWN")).isNull();
     }
+
 
     @Test
     void fromTicker_shouldBeCaseInsensitive() {

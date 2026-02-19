@@ -19,6 +19,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Implements AI agent behavior for news analysis tool test workflows.
+ *
+ * <p>This class belongs to the agent layer in FinSentinel.
+ */
+
 @ExtendWith(MockitoExtension.class)
 class NewsAnalysisToolTest {
 
@@ -34,6 +40,7 @@ class NewsAnalysisToolTest {
     private ObjectMapper objectMapper;
     private NewsAnalysisTool newsAnalysisTool;
 
+
     @BeforeEach
     void setUp() {
         polygonProperties = new PolygonProperties();
@@ -42,6 +49,7 @@ class NewsAnalysisToolTest {
         objectMapper = new ObjectMapper();
         newsAnalysisTool = new NewsAnalysisTool(restClient, polygonProperties, ragRetrievalService, redisTemplate, objectMapper);
     }
+
 
     @Test
     void getRecentNews_shouldReturnFormattedNews() throws Exception {
@@ -70,6 +78,7 @@ class NewsAnalysisToolTest {
         assertThat(result).contains("Apple Reports Record Q4 Earnings");
         assertThat(result).contains("Reuters");
     }
+
 
     @Test
     void searchRagKnowledgeBase_shouldDelegateToRagService() {

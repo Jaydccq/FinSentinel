@@ -6,6 +6,12 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Implements AI agent logic for technical indicator tool test workflows.
+ *
+ * <p>This class is part of the agent layer in FinSentinel.
+ */
+
 class TechnicalIndicatorToolTest {
 
     private TechnicalIndicatorTool tool;
@@ -46,11 +52,13 @@ class TechnicalIndicatorToolTest {
         ]
         """;
 
+
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
         tool = new TechnicalIndicatorTool(objectMapper);
     }
+
 
     @Test
     void calculateRSI_shouldReturnValidValue() {
@@ -58,6 +66,7 @@ class TechnicalIndicatorToolTest {
         assertThat(result).contains("RSI");
         assertThat(result).doesNotContain("Error");
     }
+
 
     @Test
     void calculateMACD_shouldReturnSignalAndHistogram() {
@@ -70,6 +79,7 @@ class TechnicalIndicatorToolTest {
         assertThat(result).doesNotContain("Insufficient");
     }
 
+
     @Test
     void calculateBollingerBands_shouldReturnThreeBands() {
         String result = tool.calculateBollingerBands(SAMPLE_BARS, 20, 2.0);
@@ -78,6 +88,7 @@ class TechnicalIndicatorToolTest {
         assertThat(result).contains("Middle");
         assertThat(result).contains("Lower");
     }
+
 
     @Test
     void calculateRSI_withInsufficientData_shouldReturnError() {

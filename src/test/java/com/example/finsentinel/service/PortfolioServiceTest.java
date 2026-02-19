@@ -28,6 +28,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+/**
+ * Implements portfolio service test business operations and integrations.
+ *
+ * <p>This class belongs to the service layer in FinSentinel.
+ */
+
 @ExtendWith(MockitoExtension.class)
 class PortfolioServiceTest {
 
@@ -44,12 +50,14 @@ class PortfolioServiceTest {
     private final UUID portfolioId = UUID.randomUUID();
     private User testUser;
 
+
     @BeforeEach
     void setUp() {
         service = new PortfolioService(portfolioRepository, holdingRepository, userRepository,
                 portfolioMapper, holdingMapper);
         testUser = User.builder().id(userId).username("testuser").build();
     }
+
 
     @Test
     void create_shouldReturnPortfolioWithZeroValue() {
@@ -71,6 +79,7 @@ class PortfolioServiceTest {
         assertThat(response.totalValue()).isEqualByComparingTo(BigDecimal.ZERO);
     }
 
+
     @Test
     void listByUser_shouldReturnOnlyOwnedPortfolios() {
         Portfolio p1 = buildPortfolio("P1", userId);
@@ -87,6 +96,7 @@ class PortfolioServiceTest {
         assertThat(result.get(0).name()).isEqualTo("P1");
     }
 
+
     @Test
     void getById_shouldThrowForWrongOwner() {
         Portfolio p = buildPortfolio("P", otherUserId);
@@ -96,6 +106,7 @@ class PortfolioServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Portfolio not found");
     }
+
 
     @Test
     void update_shouldModifyNameAndDescription() {
@@ -115,6 +126,7 @@ class PortfolioServiceTest {
         assertThat(result.description()).isEqualTo("New Desc");
     }
 
+
     @Test
     void delete_shouldCallRepositoryDelete() {
         Portfolio p = buildPortfolio("P", userId);
@@ -124,6 +136,7 @@ class PortfolioServiceTest {
 
         verify(portfolioRepository).delete(p);
     }
+
 
     @Test
     void addHolding_shouldRecalculateTotalValue() {
@@ -160,6 +173,7 @@ class PortfolioServiceTest {
         assertThat(saved.getTotalValue()).isEqualByComparingTo(new BigDecimal("1500"));
     }
 
+
     @Test
     void updateHolding_shouldUpdateFields() {
         Portfolio p = buildPortfolio("P", userId);
@@ -186,6 +200,7 @@ class PortfolioServiceTest {
         assertThat(result.quantity()).isEqualByComparingTo(new BigDecimal("20"));
     }
 
+
     @Test
     void deleteHolding_shouldCallDeleteAndRecalculate() {
         Portfolio p = buildPortfolio("P", userId);
@@ -200,8 +215,19 @@ class PortfolioServiceTest {
         verify(holdingRepository).deleteById(holdingId);
     }
 
+    /**
+     * Builds portfolio.
+     *
+     * <p>This method belongs to {@link PortfolioServiceTest} and encapsulates the
+     * build portfolio workflow.
+     * @param name name (String)
+     * @param ownerId owner id (UUID)
+     * @return the build portfolio result (Portfolio)
+     */
+
     private Portfolio buildPortfolio(String name, UUID ownerId) {
         User owner = User.builder().id(ownerId).username("user").build();
+
         return Portfolio.builder()
                 .id(portfolioId).name(name).user(owner)
                 .totalValue(BigDecimal.ZERO).holdings(new ArrayList<>())

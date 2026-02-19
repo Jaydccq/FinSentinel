@@ -1,15 +1,16 @@
 package com.example.finsentinel.config;
 
-/**
- *
- * @author HongxiChen
- * @version 1.0 2/16/26
- */
 
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+
+/**
+ * Defines configuration beans for rag chunking properties related components.
+ *
+ * <p>This class belongs to the config layer in FinSentinel.
+ */
 
 @Configuration
 @ConfigurationProperties(prefix = "app.rag.chunk")

@@ -5,6 +5,12 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Defines configuration beans for firecrawl properties related components.
+ *
+ * <p>This class belongs to the config layer in FinSentinel.
+ */
+
 @Configuration
 @ConfigurationProperties(prefix = "app.firecrawl")
 @Getter

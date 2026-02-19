@@ -14,11 +14,18 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+/**
+ * Implements AI agent logic for compliance guardrail advisor test workflows.
+ *
+ * <p>This class is part of the agent layer in FinSentinel.
+ */
+
 class ComplianceGuardrailAdvisorTest {
 
     private ComplianceGuardrailAdvisor advisor;
     private ComplianceProperties complianceProperties;
     private AdvisorChain advisorChain;
+
 
     @BeforeEach
     void setUp() {
@@ -35,6 +42,7 @@ class ComplianceGuardrailAdvisorTest {
         advisorChain = mock(AdvisorChain.class);
     }
 
+
     @Test
     void after_shouldAppendDisclaimerWhenMissing() {
         String content = """
@@ -49,6 +57,7 @@ class ComplianceGuardrailAdvisorTest {
         assertThat(text).contains("does not constitute investment advice");
     }
 
+
     @Test
     void after_shouldFlagViolationForForbiddenPhrases() {
         String content = """
@@ -62,6 +71,7 @@ class ComplianceGuardrailAdvisorTest {
         String text = extractText(result);
         assertThat(text).contains("\"isCompliant\":false").as("Should mark non-compliant when forbidden phrases found");
     }
+
 
     @Test
     void after_shouldPassCleanReportUnchanged() {
@@ -79,6 +89,7 @@ class ComplianceGuardrailAdvisorTest {
         assertThat(text).contains("\"regulatoryFramework\":\"SEC\"");
     }
 
+
     @Test
     void after_shouldEnforceCorrectRegulatoryFramework() {
         String content = """
@@ -94,6 +105,7 @@ class ComplianceGuardrailAdvisorTest {
                 .as("Should override regulatory framework to match configured region");
     }
 
+
     @Test
     void after_shouldHandleNonJsonResponseGracefully() {
         String content = "This is a plain text response that is not JSON.";
@@ -104,6 +116,7 @@ class ComplianceGuardrailAdvisorTest {
         String text = extractText(result);
         assertThat(text).contains("does not constitute investment advice");
     }
+
 
     @Test
     void processContent_shouldDetectMultipleForbiddenPhrases() {
@@ -117,22 +130,43 @@ class ComplianceGuardrailAdvisorTest {
         assertThat(result).contains("\"isCompliant\":false");
     }
 
+
     @Test
     void getOrder_shouldReturnLowPriorityForPostProcessing() {
         assertThat(advisor.getOrder()).isGreaterThan(0)
                 .as("Compliance advisor should run after other advisors (higher order = later)");
     }
 
+    /**
+     * Builds response.
+     *
+     * <p>This method belongs to {@link ComplianceGuardrailAdvisorTest} and encapsulates the
+     * build response workflow.
+     * @param content content (String)
+     * @return the build response result (ChatClientResponse)
+     */
+
     private ChatClientResponse buildResponse(String content) {
         AssistantMessage assistantMessage = new AssistantMessage(content);
         Generation generation = new Generation(assistantMessage);
         ChatResponse chatResponse = new ChatResponse(List.of(generation));
+
         return ChatClientResponse.builder()
                 .chatResponse(chatResponse)
                 .build();
     }
 
+    /**
+     * Executes extract text.
+     *
+     * <p>This method belongs to {@link ComplianceGuardrailAdvisorTest} and encapsulates the
+     * extract text workflow.
+     * @param response response (ChatClientResponse)
+     * @return the extract text result (String)
+     */
+
     private String extractText(ChatClientResponse response) {
+
         return response.chatResponse().getResult().getOutput().getText();
     }
 }

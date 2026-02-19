@@ -19,12 +19,33 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * Configures Spring Security for the application.
+ *
+ * <p>This configuration enables stateless JWT authentication, defines CORS policy
+ * for local frontend hosts, and registers core authentication beans used by the
+ * auth and protected API flows.
+ */
+
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    /**
+     * Builds the HTTP security filter chain for API endpoints.
+     *
+     * <p>The chain disables CSRF for stateless APIs, enables CORS with the
+     * configured source, permits authentication and actuator routes, requires
+     * authentication for all other routes, and installs the JWT filter before
+     * the username/password authentication filter.
+     *
+     * @param http shared {@link HttpSecurity} builder
+     * @return the configured {@link SecurityFilterChain}
+     * @throws Exception if Spring Security fails to build the filter chain
+     */
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -44,9 +65,17 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
+
         return http.build();
     }
 
+
+    /**
+     * Defines the CORS policy applied to all request paths.
+     *
+     * @return a CORS configuration source allowing local frontend origins and
+     *         standard HTTP methods
+     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
@@ -61,13 +90,28 @@ public class SecurityConfig {
         return source;
     }
 
+
+    /**
+     * Exposes the framework-managed {@link AuthenticationManager} bean.
+     *
+     * @param config authentication configuration provided by Spring Boot
+     * @return the resolved {@link AuthenticationManager}
+     * @throws Exception if the authentication manager cannot be created
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+
         return config.getAuthenticationManager();
     }
 
+    /**
+     * Provides the password encoder used for user credential hashing.
+     *
+     * @return a {@link BCryptPasswordEncoder} instance
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
+
         return new BCryptPasswordEncoder();
     }
 }

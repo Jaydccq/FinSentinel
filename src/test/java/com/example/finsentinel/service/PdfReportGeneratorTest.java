@@ -8,11 +8,26 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Implements pdf report generator test business operations and integrations.
+ *
+ * <p>This class is part of the service layer in FinSentinel.
+ */
+
 class PdfReportGeneratorTest {
 
     private final PdfReportGenerator generator = new PdfReportGenerator();
 
+    /**
+     * Executes sample report.
+     *
+     * <p>This method belongs to {@link PdfReportGeneratorTest} and encapsulates the
+     * sample report workflow.
+     * @return the sample report result (RiskReport)
+     */
+
     private RiskReport sampleReport() {
+
         return new RiskReport(
                 72,
                 "HIGH",
@@ -30,6 +45,7 @@ class PdfReportGeneratorTest {
         );
     }
 
+
     @Test
     void generate_returnsPdfBytes() {
         byte[] pdf = generator.generate(sampleReport(), "My Growth Portfolio", LocalDateTime.now());
@@ -40,6 +56,7 @@ class PdfReportGeneratorTest {
         assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
     }
 
+
     @Test
     void generate_withNullFactors_doesNotThrow() {
         RiskReport report = new RiskReport(50, "MEDIUM", "Summary", null, null,
@@ -49,6 +66,7 @@ class PdfReportGeneratorTest {
         assertThat(pdf).isNotNull();
         assertThat(new String(pdf, 0, 4)).isEqualTo("%PDF");
     }
+
 
     @Test
     void generate_withNullComplianceNote_doesNotThrow() {

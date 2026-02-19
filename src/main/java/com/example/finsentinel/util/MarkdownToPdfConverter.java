@@ -9,10 +9,32 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayOutputStream;
 
+/**
+ * Provides utility functions for markdown to pdf converter operations.
+ *
+ * <p>This class is part of the util layer in FinSentinel.
+ */
+
 @Slf4j
 public final class MarkdownToPdfConverter {
 
+    /**
+     * Creates a new MarkdownToPdfConverter instance.
+     *
+     * <p>This method is defined in {@link MarkdownToPdfConverter}.
+     */
+
     private MarkdownToPdfConverter() {}
+
+    /**
+     * Executes convert.
+     *
+     * <p>This method belongs to {@link MarkdownToPdfConverter} and encapsulates the
+     * convert workflow.
+     * @param title title (String)
+     * @param markdownContent markdown content (String)
+     * @return the convert result (byte[])
+     */
 
     public static byte[] convert(String title, String markdownContent) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -53,6 +75,7 @@ public final class MarkdownToPdfConverter {
                 }
             }
         }
+
         return baos.toByteArray();
     }
 }

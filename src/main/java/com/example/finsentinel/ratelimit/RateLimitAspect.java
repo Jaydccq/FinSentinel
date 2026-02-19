@@ -21,6 +21,7 @@ import java.lang.reflect.Method;
  * <p>
  * Key resolution priority:
  * <ol>
+
  *   <li>Authenticated username (preferred — user-level limiting)</li>
  *   <li>Client IP address (fallback for unauthenticated paths)</li>
  * </ol>
@@ -33,6 +34,16 @@ public class RateLimitAspect {
 
     private final RateLimiterService rateLimiterService;
 
+    /**
+     * Executes enforce.
+     *
+     * <p>This method is defined in {@link RateLimitAspect}.
+     * @param pjp pjp (ProceedingJoinPoint)
+     * @param rateLimit rate limit (RateLimit)
+     * @return the enforce result (Object)
+     * @throws Throwable if the operation cannot be completed
+     */
+
     @Around("@annotation(rateLimit)")
     public Object enforce(ProceedingJoinPoint pjp, RateLimit rateLimit) throws Throwable {
         String identifier = resolveIdentifier();
@@ -44,19 +55,39 @@ public class RateLimitAspect {
 
         if (!result.allowed()) {
             log.warn("Rate limit exceeded for {}:{} on {}", dimension, identifier, endpoint);
+
             throw new RateLimitExceededException(result.retryAfterMs());
         }
+
 
         return pjp.proceed();
     }
 
+    /**
+     * Executes resolve identifier.
+     *
+     * <p>This method belongs to {@link RateLimitAspect} and encapsulates the
+     * resolve identifier workflow.
+     * @return the resolve identifier result (String)
+     */
+
     private String resolveIdentifier() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal())) {
+
             return auth.getName();
         }
+
         return resolveClientIp();
     }
+
+    /**
+     * Executes resolve client ip.
+     *
+     * <p>This method belongs to {@link RateLimitAspect} and encapsulates the
+     * resolve client ip workflow.
+     * @return the resolve client ip result (String)
+     */
 
     private String resolveClientIp() {
         ServletRequestAttributes attrs =
@@ -67,18 +98,32 @@ public class RateLimitAspect {
         HttpServletRequest request = attrs.getRequest();
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
+
             return forwarded.split(",")[0].trim();
         }
+
         return request.getRemoteAddr();
     }
 
+    /**
+     * Executes resolve endpoint key.
+     *
+     * <p>This method belongs to {@link RateLimitAspect} and encapsulates the
+     * resolve endpoint key workflow.
+     * @param pjp pjp (ProceedingJoinPoint)
+     * @param rateLimit rate limit (RateLimit)
+     * @return the resolve endpoint key result (String)
+     */
+
     private String resolveEndpointKey(ProceedingJoinPoint pjp, RateLimit rateLimit) {
         if (!rateLimit.key().isBlank()) {
+
             return rateLimit.key();
         }
         Method method = ((MethodSignature) pjp.getSignature()).getMethod();
         String className = pjp.getTarget().getClass().getSimpleName()
                 .replace("Controller", "").toLowerCase();
+
         return className + ":" + method.getName();
     }
 }

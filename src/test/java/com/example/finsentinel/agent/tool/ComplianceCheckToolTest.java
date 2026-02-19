@@ -8,9 +8,16 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Implements AI agent logic for compliance check tool test workflows.
+ *
+ * <p>This class is part of the agent layer in FinSentinel.
+ */
+
 class ComplianceCheckToolTest {
 
     private ComplianceCheckTool tool;
+
 
     @BeforeEach
     void setUp() {
@@ -23,6 +30,7 @@ class ComplianceCheckToolTest {
         ));
         tool = new ComplianceCheckTool(props);
     }
+
 
     @Test
     void checkCompliance_shouldPassCleanReport() {
@@ -37,6 +45,7 @@ class ComplianceCheckToolTest {
         assertThat(result).contains("COMPLIANT");
         assertThat(result).doesNotContain("VIOLATION");
     }
+
 
     @Test
     void checkCompliance_shouldDetectForbiddenPhrases() {
@@ -53,6 +62,7 @@ class ComplianceCheckToolTest {
         assertThat(result).containsIgnoringCase("guaranteed returns");
     }
 
+
     @Test
     void checkCompliance_shouldDetectMissingDisclaimer() {
         String reportJson = """
@@ -66,6 +76,7 @@ class ComplianceCheckToolTest {
         assertThat(result).containsIgnoringCase("disclaimer");
     }
 
+
     @Test
     void checkCompliance_shouldDetectRiskScoreLevelMismatch() {
         String reportJson = """
@@ -78,6 +89,7 @@ class ComplianceCheckToolTest {
         assertThat(result).contains("VIOLATION");
         assertThat(result).containsIgnoringCase("mismatch");
     }
+
 
     @Test
     void checkCompliance_shouldHandleInvalidJson() {

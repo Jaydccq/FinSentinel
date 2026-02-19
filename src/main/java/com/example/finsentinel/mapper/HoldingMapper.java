@@ -12,13 +12,9 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface HoldingMapper {
 
+
     HoldingResponse toResponse(Holding holding);
 
-    /**
-     * Maps a {@link HoldingRequest} to a new {@link Holding} entity.
-     * Fields not present in the request (id, portfolio, currentPrice, timestamps)
-     * are ignored — the service layer sets them explicitly.
-     */
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "portfolio", ignore = true)
     @Mapping(target = "currentPrice", ignore = true)

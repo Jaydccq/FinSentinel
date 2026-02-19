@@ -7,6 +7,12 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.List;
 
+/**
+ * Defines configuration beans for compliance properties related components.
+ *
+ * <p>This class belongs to the config layer in FinSentinel.
+ */
+
 @Configuration
 @ConfigurationProperties(prefix = "app.compliance")
 @Getter

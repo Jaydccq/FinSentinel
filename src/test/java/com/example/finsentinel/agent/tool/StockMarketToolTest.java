@@ -10,6 +10,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
+/**
+ * Implements AI agent behavior for stock market tool test workflows.
+ *
+ * <p>This class belongs to the agent layer in FinSentinel.
+ */
+
 @ExtendWith(MockitoExtension.class)
 class StockMarketToolTest {
 
@@ -17,10 +23,12 @@ class StockMarketToolTest {
 
     private StockMarketTool stockMarketTool;
 
+
     @BeforeEach
     void setUp() {
         stockMarketTool = new StockMarketTool(marketDataService);
     }
+
 
     @Test
     void getStockQuote_shouldDelegateToMarketDataService() {
@@ -40,6 +48,7 @@ class StockMarketToolTest {
         verify(marketDataService).getQuoteText("AAPL");
     }
 
+
     @Test
     void getStockQuote_shouldReturnErrorMessageOnFailure() {
         when(marketDataService.getQuoteText("BAD"))
@@ -51,6 +60,7 @@ class StockMarketToolTest {
         assertThat(result).contains("Invalid ticker");
     }
 
+
     @Test
     void getHistoricalPrices_shouldDelegateToMarketDataService() {
         String expected = "[{\"o\":150.0,\"h\":155.0,\"l\":149.0,\"c\":153.5}]";
@@ -61,6 +71,7 @@ class StockMarketToolTest {
         assertThat(result).isEqualTo(expected);
         verify(marketDataService).getHistoryJson("AAPL", 30);
     }
+
 
     @Test
     void getHistoricalPrices_shouldReturnErrorMessageOnFailure() {

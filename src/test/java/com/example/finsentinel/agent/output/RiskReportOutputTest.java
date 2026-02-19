@@ -6,7 +6,14 @@ import org.springframework.ai.converter.BeanOutputConverter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Implements AI agent logic for risk report output test workflows.
+ *
+ * <p>This class is part of the agent layer in FinSentinel.
+ */
+
 class RiskReportOutputTest {
+
 
     @Test
     void beanOutputConverter_shouldGenerateValidSchema() {
@@ -18,6 +25,7 @@ class RiskReportOutputTest {
         assertThat(format).contains("factors");
         assertThat(format).contains("complianceNote");
     }
+
 
     @Test
     void beanOutputConverter_shouldParseValidJson() {

@@ -15,11 +15,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+/**
+ * Implements rag retrieval service test business operations and integrations.
+ *
+ * <p>This class belongs to the service layer in FinSentinel.
+ */
+
 @ExtendWith(MockitoExtension.class)
 class RagRetrievalServiceTest {
 
     @Mock private VectorStore vectorStore;
     @InjectMocks private RagRetrievalService ragRetrievalService;
+
 
     @Test
     void search_withAfterDate_shouldIncludeDateFilter() {
@@ -34,6 +41,7 @@ class RagRetrievalServiceTest {
         assertThat(filterExpr).contains("date");
     }
 
+
     @Test
     void search_withoutAfterDate_shouldNotIncludeDateFilter() {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
@@ -45,6 +53,7 @@ class RagRetrievalServiceTest {
         // No filters at all when everything is null
         assertThat(captor.getValue().getFilterExpression()).isNull();
     }
+
 
     @Test
     void search_fiveParamOverload_shouldDelegateToSixParam() {

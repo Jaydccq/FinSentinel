@@ -29,6 +29,7 @@ class AuthFlowIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+
     @Test
     void fullAuthFlow_registerThenLogin() throws Exception {
         String uniqueSuffix = String.valueOf(System.currentTimeMillis());
@@ -81,6 +82,7 @@ class AuthFlowIntegrationTest {
         assertThat(loginResponse.get("token").toString()).isNotBlank();
     }
 
+
     @Test
     void login_withWrongPassword_returns401() throws Exception {
         String uniqueSuffix = String.valueOf(System.currentTimeMillis());
@@ -112,6 +114,7 @@ class AuthFlowIntegrationTest {
                         .content(objectMapper.writeValueAsString(badLoginPayload)))
                 .andExpect(status().isUnauthorized());
     }
+
 
     @Test
     void register_duplicateUsername_returns400() throws Exception {

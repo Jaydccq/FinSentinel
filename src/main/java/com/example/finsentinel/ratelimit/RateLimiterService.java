@@ -24,6 +24,13 @@ public class RateLimiterService {
     @SuppressWarnings("rawtypes")
     private final DefaultRedisScript<List> rateLimitScript;
 
+    /**
+     * Creates a new RateLimiterService instance.
+     *
+     * <p>This method is defined in {@link RateLimiterService}.
+     * @param redisTemplate redis template (StringRedisTemplate)
+     */
+
     @SuppressWarnings("rawtypes")
     public RateLimiterService(StringRedisTemplate redisTemplate) {
         this.redisTemplate = redisTemplate;
@@ -55,6 +62,7 @@ public class RateLimiterService {
 
         if (result == null || result.size() < 3) {
             log.warn("Unexpected Lua script result for key {}, allowing request", key);
+
             return new RateLimitResult(true, limit, 0);
         }
 
@@ -64,8 +72,20 @@ public class RateLimiterService {
 
         log.debug("Rate limit check [{}]: allowed={}, remaining={}, retryAfterMs={}",
                 key, allowed, remaining, retryAfterMs);
+
         return new RateLimitResult(allowed, remaining, retryAfterMs);
     }
+
+    /**
+     * Builds key.
+     *
+     * <p>This method belongs to {@link RateLimiterService} and encapsulates the
+     * build key workflow.
+     * @param dimension dimension (String)
+     * @param identifier identifier (String)
+     * @param endpoint endpoint (String)
+     * @return the build key result (String)
+     */
 
     private String buildKey(String dimension, String identifier, String endpoint) {
         return "rl:" + dimension + ":" + identifier + ":" + endpoint;

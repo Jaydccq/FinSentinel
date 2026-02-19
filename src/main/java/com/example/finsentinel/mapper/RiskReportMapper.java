@@ -21,6 +21,7 @@ import java.util.List;
  * {@link RiskReportEntity} JPA entity.
  * <p>
  * Because {@link RiskReportEntity} stores {@code factors} and {@code advice}
+
  * as JSON strings (JSONB column), the mapper uses Jackson for serialisation
  * and deserialisation via {@code @Named} converter methods.
  * <p>
@@ -59,63 +60,127 @@ public abstract class RiskReportMapper {
     @Mapping(target = "complianceNote", source = ".", qualifiedByName = "entityToComplianceNote")
     public abstract RiskReport toDto(RiskReportEntity entity);
 
+    /**
+     * Executes string to risk level.
+     *
+     * <p>This method is defined in {@link RiskReportMapper}.
+     * @param riskLevel risk level (String)
+     * @return the string to risk level result (RiskLevel)
+     */
+
     @Named("stringToRiskLevel")
     protected RiskLevel stringToRiskLevel(String riskLevel) {
         if (riskLevel == null) return RiskLevel.LOW;
         try {
+
             return RiskLevel.valueOf(riskLevel.toUpperCase());
         } catch (IllegalArgumentException e) {
             return RiskLevel.LOW;
         }
     }
 
+    /**
+     * Executes risk level to string.
+     *
+     * <p>This method is defined in {@link RiskReportMapper}.
+     * @param riskLevel risk level (RiskLevel)
+     * @return the risk level to string result (String)
+     */
+
     @Named("riskLevelToString")
     protected String riskLevelToString(RiskLevel riskLevel) {
         return riskLevel != null ? riskLevel.name() : RiskLevel.LOW.name();
     }
 
+    /**
+     * Executes factors to json.
+     *
+     * <p>This method is defined in {@link RiskReportMapper}.
+     * @param factors factors (List<RiskFactor>)
+     * @return the factors to json result (String)
+     */
+
     @Named("factorsToJson")
     protected String factorsToJson(List<RiskFactor> factors) {
         if (factors == null) return "[]";
         try {
+
             return objectMapper.writeValueAsString(factors);
         } catch (JsonProcessingException e) {
             return "[]";
         }
     }
 
+    /**
+     * Executes json to factors.
+     *
+     * <p>This method is defined in {@link RiskReportMapper}.
+     * @param json json (String)
+     * @return the json to factors result (List<RiskFactor>)
+     */
+
     @Named("jsonToFactors")
     protected List<RiskFactor> jsonToFactors(String json) {
         if (json == null || json.isBlank()) return Collections.emptyList();
         try {
+
             return objectMapper.readValue(json, new TypeReference<List<RiskFactor>>() {});
         } catch (JsonProcessingException e) {
+
             return Collections.emptyList();
         }
     }
+
+    /**
+     * Executes advice to json.
+     *
+     * <p>This method is defined in {@link RiskReportMapper}.
+     * @param advice advice (List<String>)
+     * @return the advice to json result (String)
+     */
 
     @Named("adviceToJson")
     protected String adviceToJson(List<String> advice) {
         if (advice == null) return "[]";
         try {
+
             return objectMapper.writeValueAsString(advice);
         } catch (JsonProcessingException e) {
             return "[]";
         }
     }
 
+    /**
+     * Executes json to advice.
+     *
+     * <p>This method is defined in {@link RiskReportMapper}.
+     * @param json json (String)
+     * @return the json to advice result (List<String>)
+     */
+
     @Named("jsonToAdvice")
     protected List<String> jsonToAdvice(String json) {
         if (json == null || json.isBlank()) return Collections.emptyList();
         try {
+
             return objectMapper.readValue(json, new TypeReference<List<String>>() {});
         } catch (JsonProcessingException e) {
+
             return Collections.emptyList();
         }
     }
 
+    /**
+     * Executes entity to compliance note.
+     *
+     * <p>This method is defined in {@link RiskReportMapper}.
+     * @param entity entity (RiskReportEntity)
+     * @return the entity to compliance note result (ComplianceNote)
+     */
+
     @Named("entityToComplianceNote")
     protected ComplianceNote entityToComplianceNote(RiskReportEntity entity) {
+
         return new ComplianceNote(
                 entity.getDisclaimer(),
                 entity.getRegulatoryFramework(),

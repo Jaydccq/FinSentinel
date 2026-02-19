@@ -10,9 +10,5 @@ import org.mapstruct.Mapper;
 @Mapper(componentModel = "spring")
 public interface DocumentMapper {
 
-    /**
-     * Maps a {@link Document} entity to {@link DocumentUploadResponse}.
-     * Field names align directly — MapStruct generates the implementation.
-     */
     DocumentUploadResponse toUploadResponse(Document document);
 }

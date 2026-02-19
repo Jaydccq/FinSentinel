@@ -35,11 +35,31 @@ public class ComplianceGuardrailAdvisor implements BaseAdvisor {
 
     private final ComplianceProperties complianceProperties;
 
+    /**
+     * Executes before.
+     *
+     * <p>This method belongs to {@link ComplianceGuardrailAdvisor} and encapsulates the
+     * before workflow.
+     * @param chatClientRequest chat client request (ChatClientRequest)
+     * @param advisorChain advisor chain (AdvisorChain)
+     * @return the before result (ChatClientRequest)
+     */
+
     @Override
     public ChatClientRequest before(ChatClientRequest chatClientRequest, AdvisorChain advisorChain) {
         // No pre-processing needed — compliance is post-processing only
         return chatClientRequest;
     }
+
+    /**
+     * Executes after.
+     *
+     * <p>This method belongs to {@link ComplianceGuardrailAdvisor} and encapsulates the
+     * after workflow.
+     * @param chatClientResponse chat client response (ChatClientResponse)
+     * @param advisorChain advisor chain (AdvisorChain)
+     * @return the after result (ChatClientResponse)
+     */
 
     @Override
     public ChatClientResponse after(ChatClientResponse chatClientResponse, AdvisorChain advisorChain) {
@@ -63,28 +83,50 @@ public class ComplianceGuardrailAdvisor implements BaseAdvisor {
         Generation newGeneration = new Generation(newMessage);
         ChatResponse newChatResponse = new ChatResponse(List.of(newGeneration));
 
+
         return chatClientResponse.mutate()
                 .chatResponse(newChatResponse)
                 .build();
     }
+
+    /**
+     * Returns order.
+     *
+     * <p>This method belongs to {@link ComplianceGuardrailAdvisor} and encapsulates the
+     * get order workflow.
+     * @return the get order result (int)
+     */
 
     @Override
     public int getOrder() {
         return ORDER;
     }
 
+
     String processContent(String content) {
         try {
             JsonNode root = objectMapper.readTree(content);
             if (!root.isObject()) {
+
                 return appendDisclaimerToPlainText(content);
             }
+
             return processJsonReport((ObjectNode) root);
         } catch (Exception e) {
             // Not valid JSON — append disclaimer to plain text
+
             return appendDisclaimerToPlainText(content);
         }
     }
+
+    /**
+     * Processes json report.
+     *
+     * <p>This method belongs to {@link ComplianceGuardrailAdvisor} and encapsulates the
+     * process json report workflow.
+     * @param root root (ObjectNode)
+     * @return the process json report result (String)
+     */
 
     private String processJsonReport(ObjectNode root) {
         List<String> violations = new ArrayList<>();
@@ -108,12 +150,23 @@ public class ComplianceGuardrailAdvisor implements BaseAdvisor {
         }
 
         try {
+
             return objectMapper.writeValueAsString(root);
         } catch (Exception e) {
             log.error("Failed to serialize processed report", e);
+
             return root.toString();
         }
     }
+
+    /**
+     * Executes scan for forbidden phrases.
+     *
+     * <p>This method belongs to {@link ComplianceGuardrailAdvisor} and encapsulates the
+     * scan for forbidden phrases workflow.
+     * @param root root (ObjectNode)
+     * @param violations violations (List<String>)
+     */
 
     private void scanForForbiddenPhrases(ObjectNode root, List<String> violations) {
         List<String> forbiddenPhrases = complianceProperties.getForbiddenPhrases();
@@ -126,6 +179,15 @@ public class ComplianceGuardrailAdvisor implements BaseAdvisor {
             }
         }
     }
+
+    /**
+     * Executes ensure compliance note.
+     *
+     * <p>This method belongs to {@link ComplianceGuardrailAdvisor} and encapsulates the
+     * ensure compliance note workflow.
+     * @param root root (ObjectNode)
+     * @param violations violations (List<String>)
+     */
 
     private void ensureComplianceNote(ObjectNode root, List<String> violations) {
         JsonNode noteNode = root.get("complianceNote");
@@ -151,6 +213,14 @@ public class ComplianceGuardrailAdvisor implements BaseAdvisor {
         }
     }
 
+    /**
+     * Executes enforce regulatory framework.
+     *
+     * <p>This method belongs to {@link ComplianceGuardrailAdvisor} and encapsulates the
+     * enforce regulatory framework workflow.
+     * @param root root (ObjectNode)
+     */
+
     private void enforceRegulatoryFramework(ObjectNode root) {
         JsonNode noteNode = root.get("complianceNote");
         if (noteNode != null && noteNode.isObject()) {
@@ -165,6 +235,14 @@ public class ComplianceGuardrailAdvisor implements BaseAdvisor {
         }
     }
 
+    /**
+     * Returns expected framework.
+     *
+     * <p>This method belongs to {@link ComplianceGuardrailAdvisor} and encapsulates the
+     * get expected framework workflow.
+     * @return the get expected framework result (String)
+     */
+
     private String getExpectedFramework() {
         return switch (complianceProperties.getRegion()) {
             case "US" -> "SEC";
@@ -173,6 +251,15 @@ public class ComplianceGuardrailAdvisor implements BaseAdvisor {
             default -> "SEC";
         };
     }
+
+    /**
+     * Executes append disclaimer to plain text.
+     *
+     * <p>This method belongs to {@link ComplianceGuardrailAdvisor} and encapsulates the
+     * append disclaimer to plain text workflow.
+     * @param content content (String)
+     * @return the append disclaimer to plain text result (String)
+     */
 
     private String appendDisclaimerToPlainText(String content) {
         String disclaimer = complianceProperties.getDisclaimer();

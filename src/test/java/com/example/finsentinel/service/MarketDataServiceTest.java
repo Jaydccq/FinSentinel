@@ -21,6 +21,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Implements market data service test business operations and integrations.
+ *
+ * <p>This class belongs to the service layer in FinSentinel.
+ */
+
 @ExtendWith(MockitoExtension.class)
 class MarketDataServiceTest {
 
@@ -34,6 +40,7 @@ class MarketDataServiceTest {
     private MarketDataService service;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+
     @BeforeEach
     void setUp() {
         PolygonProperties props = new PolygonProperties();
@@ -41,6 +48,7 @@ class MarketDataServiceTest {
         props.setBaseUrl("https://api.polygon.io");
         service = new MarketDataService(restClient, props, redisTemplate, objectMapper);
     }
+
 
     @Test
     void getQuote_shouldReturnStructuredDataFromApi() throws Exception {
@@ -67,6 +75,7 @@ class MarketDataServiceTest {
         verify(valueOps).set(eq("market:quote:AAPL"), anyString(), eq(Duration.ofMinutes(5)));
     }
 
+
     @Test
     void getQuote_shouldUseCacheOnSecondCall() {
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
@@ -79,6 +88,7 @@ class MarketDataServiceTest {
         assertThat(result).containsEntry("ticker", "AAPL");
         verify(restClient, never()).get();
     }
+
 
     @Test
     void getHistory_shouldRespectDaysBounds() throws Exception {
@@ -99,6 +109,7 @@ class MarketDataServiceTest {
         assertThat(result).isNotNull();
         verify(valueOps).set(startsWith("market:history:AAPL:365"), anyString(), eq(Duration.ofMinutes(30)));
     }
+
 
     @Test
     void getBatchQuotes_shouldHandleMixedResults() {
@@ -125,6 +136,7 @@ class MarketDataServiceTest {
         Map<String, Object> xyzResult = (Map<String, Object>) result.get("XYZ");
         assertThat(xyzResult).containsKey("error");
     }
+
 
     @Test
     void validateTicker_shouldRejectInvalidSymbols() {

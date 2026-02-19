@@ -18,6 +18,12 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+/**
+ * Implements AI agent logic for news analysis tool workflows.
+ *
+ * <p>This class is part of the agent layer in FinSentinel.
+ */
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -32,6 +38,15 @@ public class NewsAnalysisTool {
     @Tool(description = "Fetch recent financial news articles for a stock ticker from Polygon.io. " +
             "Returns article titles, descriptions, authors, and publish dates. " +
             "Use this to understand current market sentiment and recent events for a stock.")
+    /**
+     * Returns recent news.
+     *
+     * <p>This method is defined in {@link NewsAnalysisTool}.
+     * @param ticker ticker (String)
+     * @param days days (") int)
+     * @return the get recent news result (String)
+     */
+
     public String getRecentNews(
             @ToolParam(description = "Stock ticker symbol, e.g. AAPL") String ticker,
             @ToolParam(description = "Number of days back to search (1-30)") int days) {
@@ -76,6 +91,7 @@ public class NewsAnalysisTool {
 
         } catch (Exception e) {
             log.error("Failed to fetch news for {}", ticker, e);
+
             return "Error fetching news for " + ticker + ": " + e.getMessage();
         }
     }
@@ -83,6 +99,16 @@ public class NewsAnalysisTool {
     @Tool(description = "Search the RAG knowledge base for relevant financial documents. " +
             "Searches through SEC filings, research reports, regulations, and news stored in the vector database. " +
             "Use this to find in-depth analysis, regulatory context, or historical research on a topic.")
+    /**
+     * Executes search knowledge base.
+     *
+     * <p>This method is defined in {@link NewsAnalysisTool}.
+     * @param query query (String)
+     * @param docType doc type (String)
+     * @param afterDate after date (, or null for all dates") String)
+     * @return the search knowledge base result (String)
+     */
+
     public String searchKnowledgeBase(
             @ToolParam(description = "Search query, e.g. 'Apple revenue trends' or 'SEC insider trading regulations'") String query,
             @ToolParam(description = "Document type filter: SEC_FILING, RESEARCH_REPORT, NEWS, REGULATION, or null for all") String docType,
@@ -122,6 +148,7 @@ public class NewsAnalysisTool {
             }
             sb.append("   ").append(content).append("\n\n");
         }
+
 
         return sb.toString();
     }

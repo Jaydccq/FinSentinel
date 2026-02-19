@@ -20,6 +20,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Implements sec edgar scraper test business operations and integrations.
+ *
+ * <p>This class belongs to the service layer in FinSentinel.
+ */
+
 @ExtendWith(MockitoExtension.class)
 class SecEdgarScraperTest {
 
@@ -35,10 +41,12 @@ class SecEdgarScraperTest {
     private SecEdgarScraper scraper;
     private ObjectMapper objectMapper = new ObjectMapper();
 
+
     @BeforeEach
     void setUp() {
         scraper = new SecEdgarScraper(firecrawlClient, storageService, documentRepository, restClient, vectorizeStreamProducer);
     }
+
 
     @Test
     void scrape_shouldCallVectorizeStreamProducerAfterSave() throws Exception {
@@ -72,6 +80,7 @@ class SecEdgarScraperTest {
         assertThat(result).isEqualTo(1);
         verify(vectorizeStreamProducer).send(docId);
     }
+
 
     @Test
     void scrape_shouldSkipDuplicateDocuments() throws Exception {

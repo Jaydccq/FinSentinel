@@ -6,6 +6,15 @@ import jakarta.validation.constraints.Positive;
 
 import java.math.BigDecimal;
 
+/**
+ * Request payload for creating or updating a holding within a portfolio.
+ *
+ * @param symbol asset ticker symbol
+ * @param companyName optional company name
+ * @param quantity holding quantity
+ * @param averageCost average acquisition cost per unit
+ * @param sector optional sector label
+ */
 public record HoldingRequest(
         @NotBlank String symbol,
         String companyName,

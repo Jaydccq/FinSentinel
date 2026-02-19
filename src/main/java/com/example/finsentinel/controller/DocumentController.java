@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 /**
  * REST controller for document upload and management.
- * Handles RAG pipeline document ingestion and retrieval.
+ * Provides endpoints for RAG document ingestion, listing, and lookup.
  */
 @Slf4j
 @RestController
@@ -51,7 +51,6 @@ public class DocumentController {
                 file.getOriginalFilename(), docType, sector, regionId);
 
         DocumentUploadResponse response = documentUploadService.upload(file, docType, sector, regionId);
-
         return ResponseEntity.ok(response);
     }
 
@@ -89,7 +88,6 @@ public class DocumentController {
                 .collect(Collectors.toList());
 
         log.debug("Found {} documents", responses.size());
-
         return ResponseEntity.ok(responses);
     }
 
@@ -106,7 +104,6 @@ public class DocumentController {
 
         Document document = documentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Document not found: " + id));
-
         return ResponseEntity.ok(toResponse(document));
     }
 
@@ -114,6 +111,7 @@ public class DocumentController {
      * Converts JPA entity to response DTO.
      */
     private DocumentUploadResponse toResponse(Document document) {
+
         return new DocumentUploadResponse(
                 document.getId(),
                 document.getOriginalFileName(),

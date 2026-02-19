@@ -32,6 +32,7 @@ class PortfolioFlowIntegrationTest {
 
     private String jwtToken;
 
+
     @BeforeEach
     void setUp() throws Exception {
         // Register a fresh user for each test and extract the JWT token
@@ -56,6 +57,7 @@ class PortfolioFlowIntegrationTest {
                 result.getResponse().getContentAsString(), Map.class);
         jwtToken = authResponse.get("token").toString();
     }
+
 
     @Test
     void fullPortfolioFlow_createAddHoldingAndGet() throws Exception {
@@ -117,6 +119,7 @@ class PortfolioFlowIntegrationTest {
                 .andExpect(jsonPath("$.holdings[0].companyName").value("Apple Inc."));
     }
 
+
     @Test
     void createPortfolio_withoutAuth_returns401() throws Exception {
         Map<String, String> portfolioPayload = Map.of(
@@ -130,11 +133,13 @@ class PortfolioFlowIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+
     @Test
     void getPortfolios_withoutAuth_returns401() throws Exception {
         mockMvc.perform(get("/api/portfolios"))
                 .andExpect(status().isUnauthorized());
     }
+
 
     @Test
     void listPortfolios_returnsOwnedPortfoliosOnly() throws Exception {
@@ -168,6 +173,7 @@ class PortfolioFlowIntegrationTest {
                 .andExpect(jsonPath("$[0].name").value("Portfolio Alpha"))
                 .andExpect(jsonPath("$[1].name").value("Portfolio Beta"));
     }
+
 
     @Test
     void addHolding_withoutAuth_returns401() throws Exception {

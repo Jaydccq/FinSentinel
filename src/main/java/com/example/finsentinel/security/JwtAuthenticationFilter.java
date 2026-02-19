@@ -16,12 +16,30 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+/**
+ * Provides security infrastructure for jwt authentication filter concerns.
+ *
+ * <p>This class is part of the security layer in FinSentinel.
+ */
+
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final UserDetailsService userDetailsService;
+
+    /**
+     * Executes do filter internal.
+     *
+     * <p>This method belongs to {@link JwtAuthenticationFilter} and encapsulates the
+     * do filter internal workflow.
+     * @param request request (HttpServletRequest)
+     * @param response response (HttpServletResponse)
+     * @param filterChain filter chain (FilterChain)
+     * @throws ServletException if the operation cannot be completed
+     * @throws IOException if the operation cannot be completed
+     */
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -34,6 +52,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
             UsernamePasswordAuthenticationToken authentication =
+
                     new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
@@ -43,9 +62,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * Executes extract token.
+     *
+     * <p>This method belongs to {@link JwtAuthenticationFilter} and encapsulates the
+     * extract token workflow.
+     * @param request request (HttpServletRequest)
+     * @return the extract token result (String)
+     */
+
     private String extractToken(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+
             return bearerToken.substring(7);
         }
         return null;

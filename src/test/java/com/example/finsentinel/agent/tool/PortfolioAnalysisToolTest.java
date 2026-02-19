@@ -18,6 +18,12 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+/**
+ * Implements AI agent behavior for portfolio analysis tool test workflows.
+ *
+ * <p>This class belongs to the agent layer in FinSentinel.
+ */
+
 @ExtendWith(MockitoExtension.class)
 class PortfolioAnalysisToolTest {
 
@@ -26,10 +32,12 @@ class PortfolioAnalysisToolTest {
 
     private PortfolioAnalysisTool tool;
 
+
     @BeforeEach
     void setUp() {
         tool = new PortfolioAnalysisTool(portfolioRepository, holdingRepository);
     }
+
 
     @Test
     void analyzePortfolio_shouldReturnConcentrationMetrics() {
@@ -67,11 +75,13 @@ class PortfolioAnalysisToolTest {
         assertThat(result).contains("Concentration");
     }
 
+
     @Test
     void analyzePortfolio_withInvalidId_shouldReturnError() {
         String result = tool.analyzePortfolio("not-a-uuid");
         assertThat(result).contains("Invalid portfolio ID");
     }
+
 
     @Test
     void analyzePortfolio_notFound_shouldReturnError() {

@@ -21,6 +21,12 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+/**
+ * Implements document upload service test business operations and integrations.
+ *
+ * <p>This class belongs to the service layer in FinSentinel.
+ */
+
 @ExtendWith(MockitoExtension.class)
 class DocumentUploadServiceTest {
 
@@ -38,6 +44,7 @@ class DocumentUploadServiceTest {
 
     @InjectMocks
     private DocumentUploadService documentUploadService;
+
 
     @Test
     void upload_validFile_shouldReturnPendingAndQueueTask() {
@@ -73,6 +80,7 @@ class DocumentUploadServiceTest {
         verify(vectorizeStreamProducer).send(any(UUID.class));
     }
 
+
     @Test
     void upload_emptyFile_shouldThrowIllegalArgument() {
         MockMultipartFile file = new MockMultipartFile(
@@ -83,6 +91,7 @@ class DocumentUploadServiceTest {
 
         verifyNoInteractions(documentParseService, vectorizeStreamProducer, minioStorageService);
     }
+
 
     @Test
     void upload_parseFailure_shouldSetStatusFailed() {

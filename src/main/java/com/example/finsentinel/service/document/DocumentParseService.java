@@ -17,6 +17,12 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * Implements document parse service business operations and integrations.
+ *
+ * <p>This class is part of the service layer in FinSentinel.
+ */
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -26,18 +32,41 @@ public class DocumentParseService {
 
     private final TextCleaningService textCleaningService;
 
+    /**
+     * Parses to clean text.
+     *
+     * <p>This method belongs to {@link DocumentParseService} and encapsulates the
+     * parse to clean text workflow.
+     * @param file file (MultipartFile)
+     * @return the parse to clean text result (String)
+     */
+
     public String parseToCleanText(MultipartFile file) {
         try (var inputStream = file.getInputStream()) {
+
             return parseInputStream(inputStream, file.getOriginalFilename());
         } catch (IOException e) {
+
             throw new IllegalArgumentException("Document parsing failed\n: " + file.getOriginalFilename(), e);
         }
     }
 
+    /**
+     * Parses to clean text.
+     *
+     * <p>This method belongs to {@link DocumentParseService} and encapsulates the
+     * parse to clean text workflow.
+     * @param bytes bytes (byte[])
+     * @param fileName file name (String)
+     * @return the parse to clean text result (String)
+     */
+
     public String parseToCleanText(byte[] bytes, String fileName) {
         try (var inputStream = new ByteArrayInputStream(bytes)) {
+
             return parseInputStream(inputStream, fileName);
         } catch (IOException e) {
+
             throw new IllegalArgumentException("Document parsing failed\n: " + fileName, e);
         }
     }
@@ -67,6 +96,7 @@ public class DocumentParseService {
 
             return cleaned;
         } catch (IOException | TikaException | SAXException e) {
+
             throw new IllegalArgumentException("Document parsing failed\n: " + fileName, e);
         }
     }

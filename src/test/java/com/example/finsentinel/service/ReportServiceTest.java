@@ -20,6 +20,12 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+/**
+ * Implements report service test business operations and integrations.
+ *
+ * <p>This class belongs to the service layer in FinSentinel.
+ */
+
 @ExtendWith(MockitoExtension.class)
 class ReportServiceTest {
 
@@ -27,6 +33,7 @@ class ReportServiceTest {
     @Mock RiskReportMapper reportMapper;
     @Mock PdfReportGenerator pdfGenerator;
     @InjectMocks ReportService reportService;
+
 
     @Test
     void generatePdf_returnsBytes_whenReportExists() {
@@ -53,6 +60,7 @@ class ReportServiceTest {
         assertThat(result.length).isGreaterThan(0);
         verify(pdfGenerator).generate(eq(dto), eq("Tech Growth"), any());
     }
+
 
     @Test
     void generatePdf_throwsIllegalArgument_whenNotFound() {

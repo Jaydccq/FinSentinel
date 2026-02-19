@@ -58,6 +58,8 @@ class GoogleDriveStorageServiceTest {
 
         when(files.list()).thenReturn(listRequest);
         when(listRequest.setQ(anyString())).thenReturn(listRequest);
+        when(listRequest.setSupportsAllDrives(anyBoolean())).thenReturn(listRequest);
+        when(listRequest.setIncludeItemsFromAllDrives(anyBoolean())).thenReturn(listRequest);
         when(listRequest.setSpaces(anyString())).thenReturn(listRequest);
         when(listRequest.setFields(anyString())).thenReturn(listRequest);
         when(listRequest.setPageSize(anyInt())).thenReturn(listRequest);
@@ -68,12 +70,14 @@ class GoogleDriveStorageServiceTest {
 
         Drive.Files.Create folderCreate = mock(Drive.Files.Create.class);
         when(files.create(any(File.class))).thenReturn(folderCreate);
+        when(folderCreate.setSupportsAllDrives(anyBoolean())).thenReturn(folderCreate);
         when(folderCreate.setFields(anyString())).thenReturn(folderCreate);
         File createdFolder = new File();
         createdFolder.setId("created-folder-id");
         when(folderCreate.execute()).thenReturn(createdFolder);
 
         when(files.create(any(File.class), any(InputStreamContent.class))).thenReturn(createRequest);
+        when(createRequest.setSupportsAllDrives(anyBoolean())).thenReturn(createRequest);
         when(createRequest.setFields(anyString())).thenReturn(createRequest);
         when(createRequest.execute()).thenReturn(createdFile);
 
@@ -89,6 +93,8 @@ class GoogleDriveStorageServiceTest {
 
         when(files.list()).thenReturn(listRequest);
         when(listRequest.setQ(anyString())).thenReturn(listRequest);
+        when(listRequest.setSupportsAllDrives(anyBoolean())).thenReturn(listRequest);
+        when(listRequest.setIncludeItemsFromAllDrives(anyBoolean())).thenReturn(listRequest);
         when(listRequest.setSpaces(anyString())).thenReturn(listRequest);
         when(listRequest.setFields(anyString())).thenReturn(listRequest);
         when(listRequest.setPageSize(anyInt())).thenReturn(listRequest);
@@ -100,6 +106,7 @@ class GoogleDriveStorageServiceTest {
         when(listRequest.execute()).thenReturn(fileList);
 
         when(files.get("drive-file-id-123")).thenReturn(getRequest);
+        when(getRequest.setSupportsAllDrives(anyBoolean())).thenReturn(getRequest);
         doAnswer(invocation -> {
             ByteArrayOutputStream out = invocation.getArgument(0);
             out.write(expectedBytes);

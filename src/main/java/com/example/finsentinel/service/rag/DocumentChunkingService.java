@@ -12,14 +12,31 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Implements document chunking service business operations and integrations.
+ *
+ * <p>This class is part of the service layer in FinSentinel.
+ */
+
 @Service
 @RequiredArgsConstructor
 public class DocumentChunkingService {
 
     private final RagChunkingProperties properties;
 
+    /**
+     * Executes split.
+     *
+     * <p>This method belongs to {@link DocumentChunkingService} and encapsulates the
+     * split workflow.
+     * @param cleanText clean text (String)
+     * @param baseMetadata base metadata (Map<String, Object>)
+     * @return the split result (List<Document>)
+     */
+
     public List<Document> split(String cleanText, Map<String, Object> baseMetadata) {
         if (!StringUtils.hasText(cleanText)) {
+
             return List.of();
         }
 
@@ -32,8 +49,20 @@ public class DocumentChunkingService {
 
         List<Document> initial = splitter.apply(List.of(new Document(cleanText, baseMetadata)));
 
+
         return applySlidingOverlap(initial, properties.getChunkOverlap(), baseMetadata);
     }
+
+    /**
+     * Executes apply sliding overlap.
+     *
+     * <p>This method belongs to {@link DocumentChunkingService} and encapsulates the
+     * apply sliding overlap workflow.
+     * @param chunks chunks (List<Document>)
+     * @param overlapTokens overlap tokens (int)
+     * @param baseMetadata base metadata (Map<String, Object>)
+     * @return the apply sliding overlap result (List<Document>)
+     */
 
     private List<Document> applySlidingOverlap(List<Document> chunks,
                                                int overlapTokens,
@@ -56,12 +85,23 @@ public class DocumentChunkingService {
         return result;
     }
 
+    /**
+     * Executes tail by word count.
+     *
+     * <p>This method belongs to {@link DocumentChunkingService} and encapsulates the
+     * tail by word count workflow.
+     * @param text text (String)
+     * @param words words (int)
+     * @return the tail by word count result (String)
+     */
+
     private String tailByWordCount(String text, int words) {
         if (words <= 0 || text == null || text.isBlank()) {
             return "";
         }
         String[] arr = text.trim().split("\\s+");
         int start = Math.max(0, arr.length - words);
+
         return String.join(" ", java.util.Arrays.copyOfRange(arr, start, arr.length));
     }
 }

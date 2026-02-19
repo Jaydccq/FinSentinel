@@ -12,17 +12,8 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring", uses = HoldingMapper.class)
 public interface PortfolioMapper {
 
-    /**
-     * Maps a {@link Portfolio} entity to {@link PortfolioResponse}.
-     * The nested {@code holdings} list is mapped via {@link HoldingMapper}.
-     */
     PortfolioResponse toResponse(Portfolio portfolio);
 
-    /**
-     * Maps a {@link PortfolioRequest} to a new {@link Portfolio} entity.
-     * Relational fields (id, user, holdings, riskReports, timestamps)
-     * are ignored — the service layer sets them explicitly.
-     */
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "holdings", ignore = true)

@@ -21,6 +21,12 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 
+/**
+ * Implements AI agent logic for technical indicator tool workflows.
+ *
+ * <p>This class is part of the agent layer in FinSentinel.
+ */
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -31,12 +37,22 @@ public class TechnicalIndicatorTool {
     @Tool(description = "Calculate RSI (Relative Strength Index) from historical price data. " +
             "RSI > 70 = overbought (bearish signal), RSI < 30 = oversold (bullish signal). " +
             "Input is JSON array of OHLCV bars from getHistoricalPrices.")
+    /**
+     * Calculates rsi.
+     *
+     * <p>This method is defined in {@link TechnicalIndicatorTool}.
+     * @param barsJson bars json (String)
+     * @param period period (int)
+     * @return the calculate rsi result (String)
+     */
+
     public String calculateRSI(
             @ToolParam(description = "JSON array of price bars [{o,h,l,c,v,t}, ...]") String barsJson,
             @ToolParam(description = "RSI period, typically 14") int period) {
         try {
             BarSeries series = parseBars(barsJson);
             if (series.getBarCount() < period + 1) {
+
                 return "Insufficient data: need at least " + (period + 1) + " bars, got " + series.getBarCount();
             }
 
@@ -53,6 +69,7 @@ public class TechnicalIndicatorTool {
             else if (rsiValue > 30) signal = "MODERATELY BEARISH";
             else signal = "OVERSOLD (bullish — potential reversal up)";
 
+
             return String.format("""
                     RSI(%d) Analysis:
                     - Current RSI: %.2f
@@ -67,6 +84,7 @@ public class TechnicalIndicatorTool {
 
         } catch (Exception e) {
             log.error("RSI calculation failed", e);
+
             return "Error calculating RSI: " + e.getMessage();
         }
     }
@@ -74,6 +92,17 @@ public class TechnicalIndicatorTool {
     @Tool(description = "Calculate MACD (Moving Average Convergence Divergence) from historical price data. " +
             "MACD above signal line = bullish, below = bearish. Histogram shows momentum strength. " +
             "Input is JSON array of OHLCV bars from getHistoricalPrices.")
+    /**
+     * Calculates macd.
+     *
+     * <p>This method is defined in {@link TechnicalIndicatorTool}.
+     * @param barsJson bars json (String)
+     * @param shortPeriod short period (int)
+     * @param longPeriod long period (int)
+     * @param signalPeriod signal period (int)
+     * @return the calculate macd result (String)
+     */
+
     public String calculateMACD(
             @ToolParam(description = "JSON array of price bars") String barsJson,
             @ToolParam(description = "Short EMA period, typically 12") int shortPeriod,
@@ -82,6 +111,7 @@ public class TechnicalIndicatorTool {
         try {
             BarSeries series = parseBars(barsJson);
             if (series.getBarCount() < longPeriod + signalPeriod) {
+
                 return "Insufficient data: need at least " + (longPeriod + signalPeriod) + " bars";
             }
 
@@ -100,6 +130,7 @@ public class TechnicalIndicatorTool {
             else if (macdValue < signalValue && histogram < 0) signal = "BEARISH (MACD below signal, negative momentum)";
             else signal = "WEAKLY BEARISH (MACD below signal but momentum recovering)";
 
+
             return String.format("""
                     MACD(%d,%d,%d) Analysis:
                     - MACD Line: %.4f
@@ -111,6 +142,7 @@ public class TechnicalIndicatorTool {
 
         } catch (Exception e) {
             log.error("MACD calculation failed", e);
+
             return "Error calculating MACD: " + e.getMessage();
         }
     }
@@ -118,6 +150,16 @@ public class TechnicalIndicatorTool {
     @Tool(description = "Calculate Bollinger Bands from historical price data. " +
             "Price near upper band = potential resistance, near lower band = potential support. " +
             "Band width indicates volatility. Input is JSON array of OHLCV bars.")
+    /**
+     * Calculates bollinger bands.
+     *
+     * <p>This method is defined in {@link TechnicalIndicatorTool}.
+     * @param barsJson bars json (String)
+     * @param period period (int)
+     * @param stdDevMultiplier std dev multiplier (double)
+     * @return the calculate bollinger bands result (String)
+     */
+
     public String calculateBollingerBands(
             @ToolParam(description = "JSON array of price bars") String barsJson,
             @ToolParam(description = "SMA period, typically 20") int period,
@@ -147,7 +189,9 @@ public class TechnicalIndicatorTool {
             else if (pctB > 0.2) position = "BELOW MIDDLE (bearish territory)";
             else position = "NEAR LOWER BAND (potential support / oversold)";
 
+
             return String.format("""
+
                     Bollinger Bands(%d, %.1f) Analysis:
                     - Upper Band: $%.2f
                     - Middle Band (SMA): $%.2f
@@ -165,9 +209,20 @@ public class TechnicalIndicatorTool {
 
         } catch (Exception e) {
             log.error("Bollinger Bands calculation failed", e);
+
             return "Error calculating Bollinger Bands: " + e.getMessage();
         }
     }
+
+    /**
+     * Parses bars.
+     *
+     * <p>This method belongs to {@link TechnicalIndicatorTool} and encapsulates the
+     * parse bars workflow.
+     * @param barsJson bars json (String)
+     * @return the parse bars result (BarSeries)
+     * @throws Exception if the operation cannot be completed
+     */
 
     private BarSeries parseBars(String barsJson) throws Exception {
         JsonNode bars = objectMapper.readTree(barsJson);
@@ -185,6 +240,16 @@ public class TechnicalIndicatorTool {
         }
         return series;
     }
+
+    /**
+     * Executes safe rsi.
+     *
+     * <p>This method belongs to {@link TechnicalIndicatorTool} and encapsulates the
+     * safe rsi workflow.
+     * @param rsi rsi (RSIIndicator)
+     * @param index index (int)
+     * @return the safe rsi result (double)
+     */
 
     private double safeRsi(RSIIndicator rsi, int index) {
         return index >= 0 ? rsi.getValue(index).doubleValue() : 0.0;

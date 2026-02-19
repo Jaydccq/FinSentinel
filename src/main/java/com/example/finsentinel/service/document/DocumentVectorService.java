@@ -28,6 +28,20 @@ public class DocumentVectorService {
     private final VectorStore vectorStore;
     private final DocumentChunkingService documentChunkingService;
 
+    /**
+     * Executes vectorize.
+     *
+     * <p>This method belongs to {@link DocumentVectorService} and encapsulates the
+     * vectorize workflow.
+     * @param documentId document id (UUID)
+     * @param text text (String)
+     * @param docType doc type (DocumentType)
+     * @param sector sector (String)
+     * @param regionId region id (String)
+     * @param source source (String)
+     * @return the vectorize result (int)
+     */
+
     public int vectorize(UUID documentId, String text, DocumentType docType,
                          String sector, String regionId, String source) {
         log.info("Vectorizing document: {} (type={}, sector={}, region={})", documentId, docType, sector, regionId);
@@ -52,6 +66,7 @@ public class DocumentVectorService {
         vectorStore.add(chunks);
 
         log.info("Successfully vectorized {} chunks for document {}", chunks.size(), documentId);
+
 
         return chunks.size();
     }
@@ -94,6 +109,7 @@ public class DocumentVectorService {
 
         } catch (Exception e) {
             log.error("Failed to delete vector chunks for document {}", documentId, e);
+
             throw new RuntimeException("Failed to delete document vectors: " + e.getMessage(), e);
         }
     }

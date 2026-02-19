@@ -21,6 +21,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+/**
+ * Implements chat service test business operations and integrations.
+ *
+ * <p>This class belongs to the service layer in FinSentinel.
+ */
+
 @ExtendWith(MockitoExtension.class)
 class ChatServiceTest {
 
@@ -33,10 +39,12 @@ class ChatServiceTest {
     private final UUID portfolioId = UUID.randomUUID();
     private final UUID sessionId = UUID.randomUUID();
 
+
     @BeforeEach
     void setUp() {
         service = new ChatService(riskAgentService, chatMessageRepository);
     }
+
 
     @Test
     void streamChat_shouldPersistUserMessageAndSubscribeToFlux() {
@@ -49,6 +57,7 @@ class ChatServiceTest {
         service.streamChat("Test question", sessionId, portfolioId, userId, emitter);
 
         // Allow async operations to complete
+
         try { Thread.sleep(500); } catch (InterruptedException ignored) {}
 
         // Should persist user message immediately + assistant message after stream completes
@@ -62,6 +71,7 @@ class ChatServiceTest {
         assertThat(saved.get(1).getContent()).isEqualTo("Hello World");
     }
 
+
     @Test
     void streamChat_shouldGenerateSessionIdIfNull() {
         when(chatMessageRepository.save(any(ChatMessage.class)))
@@ -72,12 +82,14 @@ class ChatServiceTest {
         SseEmitter emitter = new SseEmitter(120_000L);
         service.streamChat("Test", null, portfolioId, userId, emitter);
 
+
         try { Thread.sleep(500); } catch (InterruptedException ignored) {}
 
         ArgumentCaptor<ChatMessage> captor = ArgumentCaptor.forClass(ChatMessage.class);
         verify(chatMessageRepository, atLeast(1)).save(captor.capture());
         assertThat(captor.getValue().getSessionId()).isNotNull();
     }
+
 
     @Test
     void assess_shouldReturnRiskReportAndPersistMessages() {
@@ -98,6 +110,7 @@ class ChatServiceTest {
         assertThat(captor.getAllValues().get(0).getRole()).isEqualTo("user");
         assertThat(captor.getAllValues().get(1).getRole()).isEqualTo("assistant");
     }
+
 
     @Test
     void getSessionHistory_shouldReturnOrderedMessages() {

@@ -10,10 +10,14 @@ import org.springframework.context.annotation.Configuration;
 @Getter
 @Setter
 public class GoogleDriveProperties {
-    /** Path to the service account JSON key file. */
-    private String credentialsPath;
+    /** OAuth 2.0 Client ID. */
+    private String clientId;
+    /** OAuth 2.0 Client Secret. */
+    private String clientSecret;
+    /** OAuth 2.0 Refresh Token (obtained via one-time authorization flow). */
+    private String refreshToken;
     /** Application name sent in API requests. */
     private String applicationName = "FinSentinel";
-    /** The root folder ID in the Shared Drive where all documents are stored. */
+    /** The root folder ID where all documents are stored. */
     private String rootFolderId;
 }

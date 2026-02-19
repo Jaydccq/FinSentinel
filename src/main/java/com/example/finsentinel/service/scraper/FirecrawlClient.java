@@ -9,12 +9,26 @@ import org.springframework.web.client.RestClient;
 
 import java.util.Map;
 
+/**
+ * Implements firecrawl client business operations and integrations.
+ *
+ * <p>This class is part of the service layer in FinSentinel.
+ */
+
 @Service
 @Slf4j
 public class FirecrawlClient {
 
     private final RestClient restClient;
     private final FirecrawlProperties properties;
+
+    /**
+     * Creates a new FirecrawlClient instance.
+     *
+     * <p>This method is defined in {@link FirecrawlClient}.
+     * @param restClientBuilder rest client builder (RestClient.Builder)
+     * @param properties properties (FirecrawlProperties)
+     */
 
     public FirecrawlClient(RestClient.Builder restClientBuilder, FirecrawlProperties properties) {
         this.properties = properties;
@@ -46,6 +60,7 @@ public class FirecrawlClient {
                 String title = data.has("metadata") && data.get("metadata").has("title")
                         ? data.get("metadata").get("title").asText()
                         : url;
+
                 return new ScrapeResult(title, markdown, url);
             }
             log.warn("Firecrawl returned no data for URL: {}", url);
@@ -55,6 +70,12 @@ public class FirecrawlClient {
             return null;
         }
     }
+
+    /**
+     * Implements scrape result business operations and integrations.
+     *
+     * <p>This record belongs to the service layer in FinSentinel.
+     */
 
     public record ScrapeResult(String title, String markdown, String sourceUrl) {}
 }

@@ -5,6 +5,12 @@ package com.example.finsentinel.stream;
  * Defines stream key, consumer group name, message field keys, and retry policy.
  */
 public final class VectorizeStreamConstants {
+    /**
+     * Creates a new VectorizeStreamConstants instance.
+     *
+     * <p>This method is defined in {@link VectorizeStreamConstants}.
+     */
+
     private VectorizeStreamConstants() {}
 
     public static final String STREAM_KEY = "stream:vectorize";

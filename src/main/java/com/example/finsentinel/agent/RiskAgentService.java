@@ -14,6 +14,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+/**
+ * Implements AI agent logic for risk agent service workflows.
+ *
+ * <p>This class is part of the agent layer in FinSentinel.
+ */
+
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -27,6 +33,7 @@ public class RiskAgentService {
 
     /**
      * Run a full risk assessment for a user query.
+
      * The LLM will autonomously call tools (StockMarketTool, TechnicalIndicatorTool, etc.)
      * and return a structured RiskReport.
      */
@@ -53,16 +60,28 @@ public class RiskAgentService {
 
     /**
      * Stream-based risk assessment for SSE endpoints.
+
      * Returns the raw text stream (not structured output).
      */
     public reactor.core.publisher.Flux<String> assessStream(String userMessage, UUID portfolioId) {
         String prompt = buildPrompt(userMessage, portfolioId);
+
 
         return riskAgentChatClient.prompt()
                 .user(prompt)
                 .stream()
                 .content();
     }
+
+    /**
+     * Builds prompt.
+     *
+     * <p>This method belongs to {@link RiskAgentService} and encapsulates the
+     * build prompt workflow.
+     * @param userMessage user message (String)
+     * @param portfolioId portfolio id (UUID)
+     * @return the build prompt result (String)
+     */
 
     private String buildPrompt(String userMessage, UUID portfolioId) {
         StringBuilder prompt = new StringBuilder();
@@ -71,8 +90,18 @@ public class RiskAgentService {
             prompt.append("\n\nPortfolio ID for analysis: ").append(portfolioId);
         }
         prompt.append("\n\nCompliance Region: ").append(complianceProperties.getRegion());
+
         return prompt.toString();
     }
+
+    /**
+     * Executes persist report.
+     *
+     * <p>This method belongs to {@link RiskAgentService} and encapsulates the
+     * persist report workflow.
+     * @param report report (RiskReport)
+     * @param portfolioId portfolio id (UUID)
+     */
 
     private void persistReport(RiskReport report, UUID portfolioId) {
         try {
@@ -96,7 +125,18 @@ public class RiskAgentService {
         }
     }
 
+    /**
+     * Executes truncate.
+     *
+     * <p>This method belongs to {@link RiskAgentService} and encapsulates the
+     * truncate workflow.
+     * @param text text (String)
+     * @param maxLen max len (int)
+     * @return the truncate result (String)
+     */
+
     private String truncate(String text, int maxLen) {
+
         return text.length() <= maxLen ? text : text.substring(0, maxLen) + "...";
     }
 }

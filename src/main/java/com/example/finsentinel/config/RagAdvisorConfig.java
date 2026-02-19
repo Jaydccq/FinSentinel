@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
+
  * Configuration for RAG (Retrieval-Augmented Generation) advisor.
  * Sets up QuestionAnswerAdvisor with pgvector for semantic search
  * in financial regulatory documents, market analysis, and SEC filings.
@@ -16,6 +17,7 @@ public class RagAdvisorConfig {
 
     /**
      * Creates a QuestionAnswerAdvisor bean for RAG retrieval.
+
      * Uses pgvector with HNSW index (configured in application.yaml).
      *
      * @param vectorStore the pgvector-backed VectorStore (auto-configured by Spring AI)
@@ -23,6 +25,7 @@ public class RagAdvisorConfig {
      */
     @Bean
     public QuestionAnswerAdvisor questionAnswerAdvisor(VectorStore vectorStore) {
+
         return QuestionAnswerAdvisor.builder(vectorStore)
                 .searchRequest(SearchRequest.builder()
                         .topK(5)

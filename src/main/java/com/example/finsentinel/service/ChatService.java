@@ -14,6 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Implements chat service business operations and integrations.
+ *
+ * <p>This class is part of the service layer in FinSentinel.
+ */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -23,6 +29,7 @@ public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
 
     /**
+
      * Stream AI response via SSE (typewriter effect).
      * Persists both user and assistant messages.
      */
@@ -75,13 +82,44 @@ public class ChatService {
         return report;
     }
 
+    /**
+     * Returns session history.
+     *
+     * <p>This method belongs to {@link ChatService} and encapsulates the
+     * get session history workflow.
+     * @param sessionId session id (UUID)
+     * @return the get session history result (List<ChatMessage>)
+     */
+
     public List<ChatMessage> getSessionHistory(UUID sessionId) {
+
         return chatMessageRepository.findBySessionIdOrderByCreatedAtAsc(sessionId);
     }
 
+    /**
+     * Returns user history.
+     *
+     * <p>This method belongs to {@link ChatService} and encapsulates the
+     * get user history workflow.
+     * @param userId user id (UUID)
+     * @return the get user history result (List<ChatMessage>)
+     */
+
     public List<ChatMessage> getUserHistory(UUID userId) {
+
         return chatMessageRepository.findByUserIdOrderByCreatedAtDesc(userId);
     }
+
+    /**
+     * Executes persist message.
+     *
+     * <p>This method belongs to {@link ChatService} and encapsulates the
+     * persist message workflow.
+     * @param userId user id (UUID)
+     * @param sessionId session id (UUID)
+     * @param role role (String)
+     * @param content content (String)
+     */
 
     private void persistMessage(UUID userId, UUID sessionId, String role, String content) {
         chatMessageRepository.save(ChatMessage.builder()

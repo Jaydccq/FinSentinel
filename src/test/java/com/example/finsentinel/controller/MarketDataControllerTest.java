@@ -17,6 +17,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+/**
+ * Exposes REST endpoints for market data controller test operations.
+ *
+ * <p>This class belongs to the controller layer in FinSentinel.
+ */
+
 @ExtendWith(MockitoExtension.class)
 class MarketDataControllerTest {
 
@@ -25,10 +31,12 @@ class MarketDataControllerTest {
     private MarketDataController controller;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+
     @BeforeEach
     void setUp() {
         controller = new MarketDataController(marketDataService);
     }
+
 
     @Test
     void getQuote_shouldReturnMarketData() {
@@ -45,6 +53,7 @@ class MarketDataControllerTest {
         assertThat(response.getBody()).containsEntry("close", 175.50);
     }
 
+
     @Test
     void getHistory_shouldReturn30DaysBars() throws Exception {
         String barsJson = "[{\"o\":150.0,\"h\":155.0,\"l\":149.0,\"c\":153.5}]";
@@ -57,6 +66,7 @@ class MarketDataControllerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().isArray()).isTrue();
     }
+
 
     @Test
     void batchQuotes_shouldReturnMultipleTickers() {
@@ -71,6 +81,7 @@ class MarketDataControllerTest {
         assertThat(response.getBody()).containsKey("AAPL");
         assertThat(response.getBody()).containsKey("MSFT");
     }
+
 
     @Test
     void invalidTicker_shouldPropagateException() {

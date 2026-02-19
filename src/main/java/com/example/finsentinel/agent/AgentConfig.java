@@ -10,11 +10,33 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
+/**
+ * Implements AI agent logic for agent config workflows.
+ *
+ * <p>This class is part of the agent layer in FinSentinel.
+ */
+
 @Configuration
 public class AgentConfig {
 
     @Value("classpath:prompts/system-prompt.st")
     private Resource systemPrompt;
+
+    /**
+     * Executes risk agent chat client.
+     *
+     * <p>This method belongs to {@link AgentConfig} and encapsulates the
+     * risk agent chat client workflow.
+     * @param chatModel chat model (ChatModel)
+     * @param stockMarketTool stock market tool (StockMarketTool)
+     * @param newsAnalysisTool news analysis tool (NewsAnalysisTool)
+     * @param technicalIndicatorTool technical indicator tool (TechnicalIndicatorTool)
+     * @param portfolioAnalysisTool portfolio analysis tool (PortfolioAnalysisTool)
+     * @param complianceCheckTool compliance check tool (ComplianceCheckTool)
+     * @param questionAnswerAdvisor question answer advisor (QuestionAnswerAdvisor)
+     * @param complianceGuardrailAdvisor compliance guardrail advisor (ComplianceGuardrailAdvisor)
+     * @return the risk agent chat client result (ChatClient)
+     */
 
     @Bean
     public ChatClient riskAgentChatClient(
@@ -26,6 +48,7 @@ public class AgentConfig {
             ComplianceCheckTool complianceCheckTool,
             QuestionAnswerAdvisor questionAnswerAdvisor,
             ComplianceGuardrailAdvisor complianceGuardrailAdvisor) {
+
 
         return ChatClient.builder(chatModel)
                 .defaultSystem(systemPrompt)

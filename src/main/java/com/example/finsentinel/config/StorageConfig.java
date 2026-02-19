@@ -6,17 +6,15 @@ import com.example.finsentinel.service.storage.StorageService;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.drive.Drive;
-import com.google.api.services.drive.DriveScopes;
 import com.google.auth.http.HttpCredentialsAdapter;
-import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.AccessToken;
+import com.google.auth.oauth2.UserCredentials;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.Collections;
 
 @Slf4j
 @Configuration
@@ -40,9 +38,14 @@ public class StorageConfig {
 
     private GoogleDriveStorageService createGoogleDriveService(GoogleDriveProperties props) {
         try {
-            GoogleCredentials credentials = GoogleCredentials.fromStream(
-                    new FileInputStream(props.getCredentialsPath())
-            ).createScoped(Collections.singleton(DriveScopes.DRIVE));
+            UserCredentials credentials = UserCredentials.newBuilder()
+                    .setClientId(props.getClientId())
+                    .setClientSecret(props.getClientSecret())
+                    .setRefreshToken(props.getRefreshToken())
+                    .build();
+
+            // Force token refresh to validate credentials at startup
+            credentials.refreshIfExpired();
 
             Drive drive = new Drive.Builder(
                     GoogleNetHttpTransport.newTrustedTransport(),
@@ -51,6 +54,7 @@ public class StorageConfig {
                     .setApplicationName(props.getApplicationName())
                     .build();
 
+            log.info("Google Drive client initialized with OAuth2 user credentials");
             return new GoogleDriveStorageService(drive, props);
         } catch (IOException | GeneralSecurityException e) {
             throw new RuntimeException("Failed to initialize Google Drive client", e);

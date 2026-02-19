@@ -15,10 +15,32 @@ import java.io.InputStream;
  */
 public class NoOpEmbeddedDocumentExtractor implements EmbeddedDocumentExtractor {
 
+    /**
+     * Executes should parse embedded.
+     *
+     * <p>This method belongs to {@link NoOpEmbeddedDocumentExtractor} and encapsulates the
+     * should parse embedded workflow.
+     * @param metadata metadata (Metadata)
+     * @return true when should parse embedded succeeds; otherwise false
+     */
+
     @Override
     public boolean shouldParseEmbedded(Metadata metadata) {
         return false;
     }
+
+    /**
+     * Parses embedded.
+     *
+     * <p>This method belongs to {@link NoOpEmbeddedDocumentExtractor} and encapsulates the
+     * parse embedded workflow.
+     * @param inputStream input stream (InputStream)
+     * @param contentHandler content handler (ContentHandler)
+     * @param metadata metadata (Metadata)
+     * @param b b (boolean)
+     * @throws SAXException if the operation cannot be completed
+     * @throws IOException if the operation cannot be completed
+     */
 
     @Override
     public void parseEmbedded(InputStream inputStream, ContentHandler contentHandler, Metadata metadata, boolean b) throws SAXException, IOException {

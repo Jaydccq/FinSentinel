@@ -10,6 +10,12 @@ import org.hibernate.type.SqlTypes;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Represents the risk report entity domain model.
+ *
+ * <p>This class belongs to the model layer in FinSentinel.
+ */
+
 @Entity
 @Table(name = "risk_reports")
 @Getter

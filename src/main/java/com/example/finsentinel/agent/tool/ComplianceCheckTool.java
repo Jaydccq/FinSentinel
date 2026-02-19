@@ -27,6 +27,14 @@ public class ComplianceCheckTool {
     @Tool(description = "Check a draft risk report JSON for compliance violations. "
             + "Returns COMPLIANT if the report passes all checks, or a list of VIOLATION entries with details. "
             + "Use this tool to validate your analysis before producing the final report.")
+    /**
+     * Checks compliance.
+     *
+     * <p>This method is defined in {@link ComplianceCheckTool}.
+     * @param reportJson report json (String)
+     * @return the check compliance result (String)
+     */
+
     public String checkCompliance(
             @ToolParam(description = "The draft risk report as a JSON string") String reportJson) {
         log.info("Running compliance check on draft report");
@@ -50,13 +58,24 @@ public class ComplianceCheckTool {
                 sb.append("  VIOLATION ").append(i + 1).append(": ").append(violations.get(i)).append("\n");
             }
             sb.append("\nPlease fix these violations before finalizing the report.");
+
             return sb.toString();
 
         } catch (Exception e) {
             log.error("Failed to parse report JSON for compliance check", e);
+
             return "Error: Could not parse report JSON — " + e.getMessage();
         }
     }
+
+    /**
+     * Checks forbidden phrases.
+     *
+     * <p>This method belongs to {@link ComplianceCheckTool} and encapsulates the
+     * check forbidden phrases workflow.
+     * @param root root (JsonNode)
+     * @param violations violations (List<String>)
+     */
 
     private void checkForbiddenPhrases(JsonNode root, List<String> violations) {
         List<String> forbiddenPhrases = complianceProperties.getForbiddenPhrases();
@@ -70,6 +89,15 @@ public class ComplianceCheckTool {
         }
     }
 
+    /**
+     * Checks disclaimer.
+     *
+     * <p>This method belongs to {@link ComplianceCheckTool} and encapsulates the
+     * check disclaimer workflow.
+     * @param root root (JsonNode)
+     * @param violations violations (List<String>)
+     */
+
     private void checkDisclaimer(JsonNode root, List<String> violations) {
         JsonNode noteNode = root.path("complianceNote");
         if (noteNode.isMissingNode() || noteNode.isNull()) {
@@ -82,6 +110,15 @@ public class ComplianceCheckTool {
             violations.add("Missing or empty disclaimer in complianceNote");
         }
     }
+
+    /**
+     * Checks risk score level consistency.
+     *
+     * <p>This method belongs to {@link ComplianceCheckTool} and encapsulates the
+     * check risk score level consistency workflow.
+     * @param root root (JsonNode)
+     * @param violations violations (List<String>)
+     */
 
     private void checkRiskScoreLevelConsistency(JsonNode root, List<String> violations) {
         JsonNode scoreNode = root.path("riskScore");
@@ -111,6 +148,15 @@ public class ComplianceCheckTool {
         }
     }
 
+    /**
+     * Checks regulatory framework.
+     *
+     * <p>This method belongs to {@link ComplianceCheckTool} and encapsulates the
+     * check regulatory framework workflow.
+     * @param root root (JsonNode)
+     * @param violations violations (List<String>)
+     */
+
     private void checkRegulatoryFramework(JsonNode root, List<String> violations) {
         JsonNode noteNode = root.path("complianceNote");
         if (noteNode.isMissingNode() || noteNode.isNull()) return;
@@ -124,6 +170,14 @@ public class ComplianceCheckTool {
                     + " but found '" + frameworkNode.asText() + "'");
         }
     }
+
+    /**
+     * Returns expected framework.
+     *
+     * <p>This method belongs to {@link ComplianceCheckTool} and encapsulates the
+     * get expected framework workflow.
+     * @return the get expected framework result (String)
+     */
 
     private String getExpectedFramework() {
         return switch (complianceProperties.getRegion()) {

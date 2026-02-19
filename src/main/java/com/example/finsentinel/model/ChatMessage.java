@@ -7,6 +7,12 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Represents the chat message domain model.
+ *
+ * <p>This class belongs to the model layer in FinSentinel.
+ */
+
 @Entity
 @Table(name = "chat_messages")
 @Getter

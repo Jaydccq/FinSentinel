@@ -10,6 +10,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Represents the user domain model.
+ *
+ * <p>This class belongs to the model layer in FinSentinel.
+ */
+
 @Entity
 @Table(name = "users")
 @Getter

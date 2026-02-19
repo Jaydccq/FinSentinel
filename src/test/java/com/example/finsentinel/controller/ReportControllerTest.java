@@ -19,6 +19,12 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+/**
+ * Exposes REST endpoints for report controller test operations.
+ *
+ * <p>This class belongs to the controller layer in FinSentinel.
+ */
+
 @WebMvcTest(ReportController.class)
 @Import(SecurityConfig.class)
 class ReportControllerTest {
@@ -27,6 +33,7 @@ class ReportControllerTest {
     @MockitoBean ReportService reportService;
     @MockitoBean JwtTokenProvider jwtTokenProvider;
     @MockitoBean UserDetailsService userDetailsService;
+
 
     @Test
     void downloadPdf_returns200WithPdfContentType() throws Exception {
@@ -43,6 +50,7 @@ class ReportControllerTest {
                 .andExpect(content().bytes(pdfBytes));
     }
 
+
     @Test
     void downloadPdf_returns400_whenNotFound() throws Exception {
         UUID reportId = UUID.randomUUID();
@@ -53,6 +61,7 @@ class ReportControllerTest {
                         .with(SecurityMockMvcRequestPostProcessors.user("user")))
                 .andExpect(status().isBadRequest());
     }
+
 
     @Test
     void downloadPdf_returns401_whenUnauthenticated() throws Exception {

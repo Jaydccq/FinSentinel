@@ -43,14 +43,25 @@ function StatCard({ label, value, sub, icon: Icon, color }: {
 
 export default function DashboardPage() {
   const [portfolios, setPortfolios] = useState<PortfolioResponse[]>([])
-  const [quotes, setQuotes] = useState<Record<string, QuoteData>>({})
+  const [quotes, setQuotes] = useState<Record<string, QuoteData | null>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     portfolioApi.list().then(setPortfolios).finally(() => setLoading(false))
-    WATCH_TICKERS.forEach(t =>
-      marketApi.quote(t).then(q => setQuotes(prev => ({ ...prev, [t]: q }))).catch(() => {})
-    )
+    marketApi.batchQuotes(WATCH_TICKERS)
+      .then(data => {
+        const parsed: Record<string, QuoteData | null> = {}
+        for (const t of WATCH_TICKERS) {
+          const q = data[t]
+          parsed[t] = q && !('error' in q) ? q as QuoteData : null
+        }
+        setQuotes(parsed)
+      })
+      .catch(() => {
+        const failed: Record<string, null> = {}
+        WATCH_TICKERS.forEach(t => { failed[t] = null })
+        setQuotes(failed)
+      })
   }, [])
 
   const totalValue = portfolios.reduce((s, p) => s + Number(p.totalValue), 0)
@@ -134,6 +145,8 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {WATCH_TICKERS.map(ticker => {
             const q = quotes[ticker]
+            const isLoading = !(ticker in quotes)
+            const isFailed = ticker in quotes && q === null
             const change = q && q.open !== 0 ? ((q.close - q.open) / q.open) * 100 : null
             const isUp = change !== null && change >= 0
 
@@ -146,6 +159,8 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-1.5">
                   {q && change !== null ? (
                     <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isUp ? 'bg-green-400' : 'bg-red-400'}`} />
+                  ) : isFailed ? (
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-yellow-500" />
                   ) : (
                     <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-gray-600" />
                   )}
@@ -170,9 +185,11 @@ export default function DashboardPage() {
                       {isUp ? '+' : ''}{change.toFixed(2)}%
                     </span>
                   </>
-                ) : (
+                ) : isFailed ? (
+                  <p className="text-yellow-600 text-sm mt-1">Market data unavailable</p>
+                ) : isLoading ? (
                   <p className="text-gray-600 text-sm mt-1">Loading…</p>
-                )}
+                ) : null}
               </div>
             )
           })}

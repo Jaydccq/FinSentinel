@@ -9,6 +9,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+/**
+ * Represents the holding domain model.
+ *
+ * <p>This class belongs to the model layer in FinSentinel.
+ */
+
 @Entity
 @Table(name = "holdings")
 @Getter

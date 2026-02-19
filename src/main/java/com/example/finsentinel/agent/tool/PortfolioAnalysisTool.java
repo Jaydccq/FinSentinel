@@ -15,6 +15,12 @@ import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Implements AI agent logic for portfolio analysis tool workflows.
+ *
+ * <p>This class is part of the agent layer in FinSentinel.
+ */
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -26,6 +32,14 @@ public class PortfolioAnalysisTool {
     @Tool(description = "Analyze a user's portfolio holdings including sector concentration, " +
             "top positions by market value, unrealized P&L, and diversification risk metrics. " +
             "Use this to assess concentration risk and portfolio composition.")
+    /**
+     * Analyzes portfolio.
+     *
+     * <p>This method is defined in {@link PortfolioAnalysisTool}.
+     * @param portfolioId portfolio id (String)
+     * @return the analyze portfolio result (String)
+     */
+
     public String analyzePortfolio(
             @ToolParam(description = "Portfolio UUID") String portfolioId) {
         UUID id;
@@ -44,6 +58,7 @@ public class PortfolioAnalysisTool {
         List<Holding> holdings = holdingRepository.findByPortfolioId(id);
 
         if (holdings.isEmpty()) {
+
             return "Portfolio '" + portfolio.getName() + "' has no holdings.";
         }
 
@@ -128,10 +143,18 @@ public class PortfolioAnalysisTool {
         sb.append(String.format("\nHerfindahl-Hirschman Index (HHI): %.0f", hhi));
         if (hhi > 2500) sb.append(" (Highly concentrated)");
         else if (hhi > 1500) sb.append(" (Moderately concentrated)");
+
         else sb.append(" (Well diversified)");
+
 
         return sb.toString();
     }
+
+    /**
+     * Implements AI agent behavior for holding analysis workflows.
+     *
+     * <p>This record belongs to the agent layer in FinSentinel.
+     */
 
     private record HoldingAnalysis(String symbol, String companyName, String sector,
                                    BigDecimal marketValue, BigDecimal costBasis,
