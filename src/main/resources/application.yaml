@@ -30,7 +30,7 @@ spring:
   ai:
     openai:
       api-key: ${OPENROUTER_API_KEY}
-      base-url: https://openrouter.ai/api/v1
+      base-url: https://openrouter.ai/api
       chat:
         options:
           model: ${AI_MODEL:google/gemini-3-flash-preview}
@@ -49,11 +49,17 @@ spring:
 
 app:
   storage:
+    provider: ${APP_STORAGE_PROVIDER:minio}
     endpoint: ${APP_STORAGE_ENDPOINT:http://localhost:9000}
     access-key: ${APP_STORAGE_ACCESS_KEY:rustfsadmin}
     secret-key: ${APP_STORAGE_SECRET_KEY:rustfsadmin}
     bucket: ${APP_STORAGE_BUCKET:finsentinel}
     region: ${APP_STORAGE_REGION:us-east-1}
+
+  google-drive:
+    credentials-path: ${GOOGLE_DRIVE_CREDENTIALS_PATH:}
+    application-name: FinSentinel
+    root-folder-id: ${GOOGLE_DRIVE_ROOT_FOLDER_ID:}
 
   firecrawl:
     api-key: ${FIRECRAWL_API_KEY:}

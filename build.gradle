@@ -60,6 +60,10 @@ dependencies {
     // AWS S3 SDK for MinIO
     implementation 'software.amazon.awssdk:s3:2.31.1'
 
+    // Google Drive API
+    implementation 'com.google.apis:google-api-services-drive:v3-rev20251210-2.0.0'
+    implementation 'com.google.auth:google-auth-library-oauth2-http:1.42.1'
+
     // Technical Analysis
     implementation 'org.ta4j:ta4j-core:0.16'
 
