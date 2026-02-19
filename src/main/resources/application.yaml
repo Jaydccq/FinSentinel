@@ -112,6 +112,67 @@ app:
       enabled: ${APP_NEWS_ENRICH_ENABLED:true}
       batch-size: 5
 
+  x:
+    enabled: ${APP_X_ENABLED:false}
+    bearer-token: ${X_BEARER_TOKEN:}
+    base-url: https://api.x.com/2
+    poll-interval: ${APP_X_POLL_INTERVAL:300000}
+    max-results-per-user: ${APP_X_MAX_RESULTS:10}
+    influencers:
+      # Stock & Fundamental Analysis
+      - BrianFeroldi
+      - andrewlokenauth
+      - iancassel
+      - Stephanie_Link
+      - AswathDamodaran
+      - OnlyCFO
+      # Behavioral Finance & Long-Term Investing
+      - morganhousel
+      - awealthofcs
+      - michaelbatnick
+      - robinpowell
+      - ritholtz
+      - DaveRamsey
+      # Macro Economics & Market Strategy
+      - LizAnnSonders
+      - paulkrugman
+      - Nouriel
+      - JustinWolfers
+      - bespokeinvest
+      # Financial News Aggregators
+      - CNBC
+      - Benzinga
+      - Stocktwits
+      - WSJMarkets
+      - nytimesbusiness
+      - TheEconomist
+      # Tech & Innovation Investing
+      - CathieDWood
+      - pmarca
+      - mcuban
+      - Citrini7
+      # Breakout & Technical Analysis
+      - BreakoutStocks
+      - DavidFaberCNBC
+      # FinTech & Digital Finance
+      - deepakshenoy
+      - salliekrawcheck
+      - TheodoraLau
+      - Sopnendu
+      - paolosironi
+      - ledaglyptis
+      - ErikFossing
+      # Crypto & Digital Assets
+      - PlanB_100trillion
+      - BitBoy_Crypto
+      - pomp
+      - BarrySilbert
+      - PeterMcCormack
+      - ThatMartiniGuy
+      - AltcoinGordon
+      - punk6529
+      - frxresearch
+
   compliance:
     region: US
     disclaimer: "This is AI-generated analysis for informational purposes only. It does not constitute investment advice. Past performance does not guarantee future results. Consult a licensed financial advisor before making investment decisions."
