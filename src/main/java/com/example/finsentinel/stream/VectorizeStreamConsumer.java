@@ -21,7 +21,7 @@ import java.util.UUID;
 
 /**
  * Consumer for Redis Stream-based async document vectorization.
- * Reads tasks from stream, downloads files from MinIO, parses, vectorizes,
+ * Reads tasks from stream, downloads files from RustFS, parses, vectorizes,
  * and updates document status. Implements retry logic with exponential backoff.
  */
 @Slf4j
@@ -83,7 +83,7 @@ public class VectorizeStreamConsumer {
 
     /**
      * Processes a single vectorization task message.
-     * Downloads file from MinIO, parses to clean text, vectorizes, and updates status.
+     * Downloads file from RustFS, parses to clean text, vectorizes, and updates status.
      * Implements retry logic: re-sends task with incremented retry count on failure,
      * or marks as FAILED if max retries exceeded.
      *
@@ -117,7 +117,7 @@ public class VectorizeStreamConsumer {
             document.setStatus(DocumentStatus.PROCESSING);
             documentRepository.save(document);
 
-            // Download from MinIO and parse
+            // Download from RustFS and parse
             byte[] fileBytes = storageService.download(document.getStorageKey());
             String cleanText = documentParseService.parseToCleanText(fileBytes, document.getOriginalFileName());
 

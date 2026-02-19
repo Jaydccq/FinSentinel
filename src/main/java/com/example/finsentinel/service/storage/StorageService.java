@@ -1,7 +1,7 @@
 package com.example.finsentinel.service.storage;
 
 /**
- * Abstraction for document storage backends (MinIO, Google Drive, etc.).
+ * Abstraction for document storage backends (RustFS, Google Drive, etc.).
  */
 public interface StorageService {
 

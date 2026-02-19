@@ -142,7 +142,7 @@ public class InvestopediaScraper {
         // Convert to PDF
         byte[] pdfBytes = MarkdownToPdfConverter.convert(result.title(), result.markdown());
 
-        // Upload to MinIO
+        // Upload to RustFS
         String storageKey = "investopedia/" + UUID.randomUUID() + "/" + safeTitle + ".pdf";
         storageService.upload(storageKey, pdfBytes, "application/pdf");
 

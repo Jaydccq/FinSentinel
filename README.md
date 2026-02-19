@@ -36,7 +36,7 @@ FinSentinel is a full-stack intelligent investment risk assessment tool built wi
                     +--+------+------+------+----------+
                        |      |      |      |
                +-------++ +--+---+ +-+----+ +-+--------+
-               |Postgres| |Redis | |MinIO | |Polygon.io|
+               |Postgres| |Redis | |RustFS| |Polygon.io|
                |pgvector| |Cache | |S3    | |Market API|
                +--------+ +------+ +------+ +----------+
 ```
@@ -50,7 +50,7 @@ FinSentinel is a full-stack intelligent investment risk assessment tool built wi
 | AI Model | Google Gemini 3 Flash (via OpenRouter) |
 | Database | PostgreSQL 17 + pgvector (HNSW, cosine, 1536d) |
 | Cache | Redis 7 (market data TTL + rate limiting) |
-| Storage | MinIO (S3-compatible, document uploads) |
+| Storage | RustFS (S3-compatible, document uploads) |
 | PDF Export | iText 8 |
 | Security | JWT + Spring Security + @RateLimit AOP |
 
@@ -76,13 +76,13 @@ cp .env.example .env
 docker compose up -d
 ```
 
-This starts: PostgreSQL + pgvector, Redis, MinIO, Backend (port 8080), Frontend (port 3000).
+This starts: PostgreSQL + pgvector, Redis, RustFS, Backend (port 8080), Frontend (port 3000).
 
 ### 3. Access the App
 
 - **Frontend:** http://localhost:3000
 - **API:** http://localhost:8080/api
-- **MinIO Console:** http://localhost:9001 (rustfsadmin / rustfsadmin)
+- **RustFS Console:** http://localhost:9001 (rustfsadmin / rustfsadmin)
 
 ### Demo Account
 

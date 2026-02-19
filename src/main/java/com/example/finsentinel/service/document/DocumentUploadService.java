@@ -72,10 +72,10 @@ public class DocumentUploadService {
             document = documentRepository.save(document);
             log.debug("Created document entity: {}", document.getId());
 
-            // 2. Upload raw file to MinIO
+            // 2. Upload raw file to RustFS
             byte[] fileBytes = file.getBytes();
             storageService.upload(storageKey, fileBytes, file.getContentType());
-            log.debug("Uploaded file to MinIO: {}", storageKey);
+            log.debug("Uploaded file to RustFS: {}", storageKey);
 
             // 3. Validate file can be parsed (early validation before queuing)
             try {
