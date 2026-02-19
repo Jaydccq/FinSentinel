@@ -7,15 +7,20 @@ const DOC_TYPES = ['REGULATION', 'RESEARCH', 'NEWS', 'EARNINGS', 'OTHER']
 
 // Status styling: border color + badge color
 const STATUS_STYLE: Record<string, { border: string; badge: string; label: string }> = {
-  PROCESSED: {
+  COMPLETED: {
     border: 'border-l-green-500',
     badge: 'bg-green-500/15 text-green-400',
-    label: 'Processed',
+    label: 'Completed',
+  },
+  PROCESSING: {
+    border: 'border-l-blue-500',
+    badge: 'bg-blue-500/15 text-blue-400',
+    label: 'Processing',
   },
   PENDING: {
     border: 'border-l-yellow-500',
     badge: 'bg-yellow-500/15 text-yellow-400',
-    label: 'Processing',
+    label: 'Pending',
   },
   FAILED: {
     border: 'border-l-red-500',
@@ -34,9 +39,10 @@ const DOC_TYPE_ICON: Record<string, { icon: React.ReactNode; color: string }> = 
 }
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === 'PROCESSED') return <CheckCircle size={13} className="text-green-400" />
-  if (status === 'PENDING')   return <Clock       size={13} className="text-yellow-400" />
-  return                             <AlertCircle  size={13} className="text-red-400" />
+  if (status === 'COMPLETED')  return <CheckCircle size={13} className="text-green-400" />
+  if (status === 'PROCESSING') return <Clock       size={13} className="text-blue-400" />
+  if (status === 'PENDING')    return <Clock       size={13} className="text-yellow-400" />
+  return                              <AlertCircle  size={13} className="text-red-400" />
 }
 
 function formatSize(bytes: number): string {

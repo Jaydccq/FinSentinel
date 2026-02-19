@@ -47,7 +47,8 @@ public class RateLimitAspect {
     @Around("@annotation(rateLimit)")
     public Object enforce(ProceedingJoinPoint pjp, RateLimit rateLimit) throws Throwable {
         String identifier = resolveIdentifier();
-        String dimension = identifier.contains(".") ? "ip" : "user";
+        boolean isAuthenticated = isAuthenticated();
+        String dimension = isAuthenticated ? "user" : "ip";
         String endpoint = resolveEndpointKey(pjp, rateLimit);
 
         RateLimitResult result = rateLimiterService.check(
@@ -89,6 +90,11 @@ public class RateLimitAspect {
      * @return the resolve client ip result (String)
      */
 
+    private boolean isAuthenticated() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth != null && auth.isAuthenticated() && !"anonymousUser".equals(auth.getPrincipal());
+    }
+
     private String resolveClientIp() {
         ServletRequestAttributes attrs =
                 (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
@@ -98,8 +104,8 @@ public class RateLimitAspect {
         HttpServletRequest request = attrs.getRequest();
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
-
-            return forwarded.split(",")[0].trim();
+            String[] ips = forwarded.split(",");
+            return ips[ips.length - 1].trim();
         }
 
         return request.getRemoteAddr();

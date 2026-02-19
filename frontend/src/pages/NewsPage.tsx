@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { newsApi, type NewsItemResponse, type NewsFeedStats } from '../api/news'
 import { Newspaper, Radio, ExternalLink, ChevronDown } from 'lucide-react'
@@ -114,7 +114,6 @@ export default function NewsPage() {
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
   const [liveCount, setLiveCount] = useState(0)
-  const eventSourceRef = useRef<EventSource | null>(null)
 
   // Load initial data
   useEffect(() => {
@@ -128,18 +127,15 @@ export default function NewsPage() {
     }).finally(() => setLoading(false))
   }, [])
 
-  // SSE subscription
+  // SSE subscription (fetch-based to carry JWT)
   useEffect(() => {
-    const es = newsApi.stream((item) => {
+    const cancel = newsApi.stream((item) => {
       setItems((prev) => [item, ...prev])
       setLiveCount((c) => c + 1)
       setStats((prev) => prev ? { ...prev, todayCount: prev.todayCount + 1, totalCount: prev.totalCount + 1 } : prev)
     })
-    eventSourceRef.current = es
 
-    return () => {
-      es.close()
-    }
+    return cancel
   }, [])
 
   const loadMore = useCallback(() => {

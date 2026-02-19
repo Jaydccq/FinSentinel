@@ -31,11 +31,15 @@ export interface ChatMessage {
 }
 
 export const chatApi = {
-  assess: (message: string, portfolioId?: string, sessionId?: string): Promise<RiskReport> =>
-    apiFetch('/chat/assess', {
+  assess: (message: string, portfolioId?: string, sessionId?: string): Promise<RiskReport> => {
+    const params = new URLSearchParams()
+    if (portfolioId) params.set('portfolioId', portfolioId)
+    const qs = params.toString() ? `?${params}` : ''
+    return apiFetch(`/chat/assess${qs}`, {
       method: 'POST',
-      body: JSON.stringify({ message, sessionId, portfolioId }),
-    }),
+      body: JSON.stringify({ message, sessionId }),
+    })
+  },
 
   history: (sessionId: string): Promise<ChatMessage[]> =>
     apiFetch(`/chat/sessions/${sessionId}`),

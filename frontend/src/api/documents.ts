@@ -12,11 +12,21 @@ export interface DocumentResponse {
   createdAt: string
 }
 
+function handle401(res: Response) {
+  if (res.status === 401) {
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('jwt_token')
+    window.location.href = '/login'
+    throw new Error('Session expired')
+  }
+}
+
 export const documentsApi = {
   list: async (): Promise<DocumentResponse[]> => {
     const res = await fetch(`${BASE}/documents`, {
       headers: { ...authHeaders() },
     })
+    handle401(res)
     if (!res.ok) throw new Error(`${res.status}`)
     return res.json()
   },
@@ -37,6 +47,7 @@ export const documentsApi = {
       headers: { ...authHeaders() },
       body: form,
     })
+    handle401(res)
     if (!res.ok) throw new Error(`${res.status}`)
     return res.json()
   },

@@ -37,25 +37,67 @@ export const newsApi = {
 
   stats: () => apiFetch<NewsFeedStats>('/news/stats'),
 
-  stream: (onNews: (item: NewsItemResponse) => void, onError?: (err: Event) => void) => {
-    const token = localStorage.getItem('jwt_token')
-    const url = `${BASE}/news/stream`
+  stream: (
+    onNews: (item: NewsItemResponse) => void,
+    onError?: (err: string) => void
+  ): (() => void) => {
+    let cancelled = false
 
-    const eventSource = new EventSource(url)
-
-    eventSource.addEventListener('news', (event) => {
+    async function connect() {
       try {
-        const item: NewsItemResponse = JSON.parse(event.data)
-        onNews(item)
-      } catch {
-        // ignore parse errors
-      }
-    })
+        const res = await fetch(`${BASE}/news/stream`, {
+          headers: {
+            Accept: 'text/event-stream',
+            ...authHeaders(),
+          },
+        })
 
-    eventSource.onerror = (err) => {
-      onError?.(err)
+        if (!res.ok) {
+          onError?.(`HTTP ${res.status}`)
+          return
+        }
+
+        const reader = res.body!.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (!cancelled) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() ?? ''
+
+          let eventName = ''
+          for (const line of lines) {
+            if (line.startsWith('event:')) {
+              eventName = line.slice(6).trim()
+            } else if (line.startsWith('data:')) {
+              const data = line.slice(5).trim()
+              if (eventName === 'news') {
+                try {
+                  const item: NewsItemResponse = JSON.parse(data)
+                  onNews(item)
+                } catch {
+                  // ignore parse errors
+                }
+              }
+            } else if (line === '') {
+              eventName = ''
+            }
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          onError?.(err instanceof Error ? err.message : 'Connection failed')
+        }
+      }
     }
 
-    return eventSource
+    connect()
+
+    return () => {
+      cancelled = true
+    }
   },
 }

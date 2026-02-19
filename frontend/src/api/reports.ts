@@ -4,6 +4,12 @@ export async function downloadPdf(reportId: string): Promise<void> {
   const res = await fetch(`${BASE}/reports/${reportId}/pdf`, {
     headers: { ...authHeaders() },
   })
+  if (res.status === 401) {
+    localStorage.removeItem('auth_user')
+    localStorage.removeItem('jwt_token')
+    window.location.href = '/login'
+    throw new Error('Session expired')
+  }
   if (!res.ok) throw new Error(`${res.status}`)
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)
