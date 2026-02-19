@@ -36,7 +36,8 @@
       "Bash(docker compose:*)",
       "Bash(git -C /Users/hongxichen/Desktop/FinSentinel status)",
       "Bash(git rm:*)",
-      "Bash(bash skills/git-pushing/scripts/smart_commit.sh \"feat: implement hybrid storage with RustFS hot tier and Google Drive cold archival\")"
+      "Bash(bash skills/git-pushing/scripts/smart_commit.sh \"feat: implement hybrid storage with RustFS hot tier and Google Drive cold archival\")",
+      "Bash(npx tsc:*)"
     ]
   },
   "hooks": {

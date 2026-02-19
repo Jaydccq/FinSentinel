@@ -13,6 +13,7 @@ const PortfolioPage = lazy(() => import('./pages/PortfolioPage'))
 const AnalysisPage = lazy(() => import('./pages/AnalysisPage'))
 const DocumentsPage = lazy(() => import('./pages/DocumentsPage'))
 const ReportsPage = lazy(() => import('./pages/ReportsPage'))
+const NewsPage = lazy(() => import('./pages/NewsPage'))
 
 function LoadingFallback() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
               <Route path="/analysis" element={<Suspense fallback={<LoadingFallback />}><AnalysisPage /></Suspense>} />
               <Route path="/documents" element={<Suspense fallback={<LoadingFallback />}><DocumentsPage /></Suspense>} />
               <Route path="/reports" element={<Suspense fallback={<LoadingFallback />}><ReportsPage /></Suspense>} />
+              <Route path="/news" element={<Suspense fallback={<LoadingFallback />}><NewsPage /></Suspense>} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Route>
           </Route>

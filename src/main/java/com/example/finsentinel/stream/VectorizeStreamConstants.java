@@ -21,4 +21,9 @@ public final class VectorizeStreamConstants {
     // Message field keys
     public static final String FIELD_DOCUMENT_ID = "documentId";
     public static final String FIELD_RETRY_COUNT = "retryCount";
+
+    // News enrichment stream
+    public static final String NEWS_ENRICH_STREAM_KEY = "stream:news-enrich";
+    public static final String NEWS_ENRICH_GROUP_NAME = "news-enrich-group";
+    public static final String FIELD_NEWS_ITEM_ID = "newsItemId";
 }

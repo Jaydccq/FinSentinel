@@ -89,6 +89,29 @@ app:
     cron: ${APP_ARCHIVAL_CRON:0 0 2 * * *}
     batch-size: ${APP_ARCHIVAL_BATCH_SIZE:50}
 
+  news:
+    enabled: ${APP_NEWS_ENABLED:true}
+    poll-interval: ${APP_NEWS_POLL_INTERVAL:60000}
+    rss-poll-interval: ${APP_NEWS_RSS_POLL_INTERVAL:120000}
+    watch-tickers:
+      - AAPL
+      - MSFT
+      - GOOGL
+      - TSLA
+      - JPM
+      - NVDA
+    rss-feeds:
+      - name: CNBC Top News
+        url: https://www.cnbc.com/id/100003114/device/rss/rss.html
+        source: RSS_CNBC
+      - name: Yahoo Finance
+        url: https://finance.yahoo.com/news/rssindex
+        source: RSS_YAHOO
+    retention-days: 30
+    enrich:
+      enabled: ${APP_NEWS_ENRICH_ENABLED:true}
+      batch-size: 5
+
   compliance:
     region: US
     disclaimer: "This is AI-generated analysis for informational purposes only. It does not constitute investment advice. Past performance does not guarantee future results. Consult a licensed financial advisor before making investment decisions."

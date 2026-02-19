@@ -67,6 +67,9 @@ dependencies {
     // Technical Analysis
     implementation 'org.ta4j:ta4j-core:0.16'
 
+    // RSS Feed Parsing
+    implementation 'com.rometools:rome:2.1.0'
+
     // MapStruct
     implementation "org.mapstruct:mapstruct:${mapstructVersion}"
     annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"

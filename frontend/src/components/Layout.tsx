@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import {
   LayoutDashboard, MessageSquare, Briefcase, BarChart2,
-  FileText, FileDown, LogOut, Menu, X, Shield
+  FileText, FileDown, Newspaper, LogOut, Menu, X, Shield
 } from 'lucide-react'
 
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
   { to: '/analysis', label: 'Analysis', icon: BarChart2 },
   { to: '/documents', label: 'Documents', icon: FileText },
   { to: '/reports', label: 'Reports', icon: FileDown },
+  { to: '/news', label: 'News', icon: Newspaper },
 ]
 
 export default function Layout() {
