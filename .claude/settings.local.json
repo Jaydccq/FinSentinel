@@ -37,7 +37,21 @@
       "Bash(git -C /Users/hongxichen/Desktop/FinSentinel status)",
       "Bash(git rm:*)",
       "Bash(bash skills/git-pushing/scripts/smart_commit.sh \"feat: implement hybrid storage with RustFS hot tier and Google Drive cold archival\")",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(bash skills/git-pushing/scripts/smart_commit.sh \"fix: resolve code review issues — SSE auth, status enum, rate limit IP spoofing, JWT secret, 401 handling\")",
+      "Bash(bash /Users/hongxichen/Desktop/FinSentinel/skills/git-pushing/scripts/smart_commit.sh \"feat: implement X \\(Twitter\\) financial influencer scraper for RAG knowledge base enrichment\")",
+      "Bash(ps aux:*)",
+      "Bash(xargs kill:*)",
+      "Bash(kill:*)",
+      "Bash(wc:*)",
+      "Bash(lsof:*)",
+      "Bash(ss:*)",
+      "Bash(docker ps:*)",
+      "Bash(docker stop:*)",
+      "Bash(docker exec:*)",
+      "Bash(jar -tf:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJ0ZXN0dXNlcjMiLCJpYXQiOjE3NzE1NTcxNDAsImV4cCI6MTc3MTY0MzU0MH0.1Rj8JIMJijz3DBmwa_0WCBCyojiPD1BgODbeXkUZwqdSCstRq3uYmyAmFEz5vTRB\")",
+      "Bash(npm run build:*)"
     ]
   },
   "hooks": {

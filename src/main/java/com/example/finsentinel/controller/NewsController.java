@@ -44,6 +44,20 @@ public class NewsController {
         return items.map(this::toResponse);
     }
 
+    @GetMapping("/by-ticker/{ticker}")
+    public Page<NewsItemResponse> byTicker(
+            @PathVariable String ticker,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        String normalized = ticker.toUpperCase().trim();
+        if (!normalized.matches("^[A-Z]{1,5}(\\.[A-Z]{1,2})?$")) {
+            return Page.empty(PageRequest.of(page, size));
+        }
+        return newsItemRepository.findByTickerContaining(normalized, PageRequest.of(page, size))
+                .map(this::toResponse);
+    }
+
     @GetMapping("/stats")
     public NewsFeedStatsResponse stats() {
         Instant todayStart = Instant.now().truncatedTo(ChronoUnit.DAYS);

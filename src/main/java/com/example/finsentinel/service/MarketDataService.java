@@ -1,10 +1,10 @@
 package com.example.finsentinel.service;
 
 import com.example.finsentinel.config.PolygonProperties;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -251,7 +251,7 @@ public class MarketDataService {
     private void cacheJson(String key, Map<String, Object> value, Duration ttl) {
         try {
             redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(value), ttl);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Failed to cache JSON for key {}", key, e);
         }
     }
@@ -267,7 +267,7 @@ public class MarketDataService {
         try {
 
             return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Failed to parse cached JSON", e);
 
             return Map.of();
@@ -284,7 +284,7 @@ public class MarketDataService {
         try {
 
             return objectMapper.readTree(json);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Failed to parse cached JSON node", e);
 
             return objectMapper.createObjectNode();

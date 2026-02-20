@@ -4,8 +4,9 @@ import com.example.finsentinel.model.Document;
 import com.example.finsentinel.repository.DocumentRepository;
 import com.example.finsentinel.service.storage.StorageService;
 import com.example.finsentinel.stream.VectorizeStreamProducer;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +40,7 @@ class SecEdgarScraperTest {
     @Mock private RestClient.ResponseSpec responseSpec;
 
     private SecEdgarScraper scraper;
-    private ObjectMapper objectMapper = new ObjectMapper();
+    private ObjectMapper objectMapper = JsonMapper.builder().build();
 
 
     @BeforeEach

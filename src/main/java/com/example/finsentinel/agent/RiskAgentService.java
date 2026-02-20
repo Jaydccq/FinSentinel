@@ -6,7 +6,7 @@ import com.example.finsentinel.model.RiskReportEntity;
 import com.example.finsentinel.model.enums.RiskLevel;
 import com.example.finsentinel.repository.RiskReportRepository;
 import com.example.finsentinel.repository.PortfolioRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;

@@ -36,4 +36,9 @@ public interface NewsItemRepository extends JpaRepository<NewsItem, UUID> {
     List<Object[]> countBySourceAfter(@Param("after") Instant after);
 
     List<NewsItem> findByEnrichedFalseOrderByCreatedAtAsc(Pageable pageable);
+
+    @Query(value = "SELECT * FROM news_items WHERE tickers @> jsonb_build_array(:ticker) ORDER BY published_at DESC",
+           countQuery = "SELECT COUNT(*) FROM news_items WHERE tickers @> jsonb_build_array(:ticker)",
+           nativeQuery = true)
+    Page<NewsItem> findByTickerContaining(@Param("ticker") String ticker, Pageable pageable);
 }

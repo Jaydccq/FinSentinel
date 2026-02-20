@@ -26,7 +26,7 @@ import java.util.UUID;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.news.enrich.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "app.news.enrich.enabled", havingValue = "true")
 public class NewsEnrichConsumer {
 
     private final StringRedisTemplate redisTemplate;

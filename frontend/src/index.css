@@ -2,27 +2,52 @@
 
 /* ─── Design System CSS Custom Properties ─────────────────────────────────── */
 :root {
-  /* Brand colors */
+  /* Brand accent */
+  --color-accent:       #c4a35a;
+  --color-accent-hover: #d4b36a;
+  --color-accent-muted: rgba(196, 163, 90, 0.15);
+
+  /* Data / interactive blue (retained) */
   --color-blue-400: #60a5fa;
   --color-blue-500: #3b82f6;
-  --color-blue-600: #2563eb;
+
+  /* Semantic */
   --color-emerald-400: #34d399;
   --color-emerald-500: #10b981;
 
-  /* Surface colors */
-  --color-bg-base:      #030712;   /* gray-950 */
-  --color-bg-surface:   #111827;   /* gray-900 */
-  --color-bg-elevated:  #1f2937;   /* gray-800 */
-  --color-border:       rgba(55, 65, 81, 0.6); /* gray-700/60 */
+  /* Surface colors — warm zinc palette */
+  --color-bg-base:      #09090b;   /* zinc-950 */
+  --color-bg-surface:   #18181b;   /* zinc-900 */
+  --color-bg-elevated:  #27272a;   /* zinc-800 */
+  --color-border:       rgba(63, 63, 70, 0.5); /* zinc-700/50 — whisper borders */
 
-  /* Text colors */
-  --color-text-primary:   #f9fafb;  /* gray-50  */
-  --color-text-secondary: #9ca3af;  /* gray-400 */
-  --color-text-muted:     #6b7280;  /* gray-500 */
+  /* Text colors — warm whites */
+  --color-text-primary:   #fafaf9;  /* stone-50  */
+  --color-text-secondary: #a1a1aa;  /* zinc-400 */
+  --color-text-muted:     #71717a;  /* zinc-500 */
 
   /* Glow effects */
-  --glow-blue:    0 0 20px rgba(59, 130, 246, 0.25);
-  --glow-emerald: 0 0 20px rgba(16, 185, 129, 0.25);
+  --glow-gold:    0 0 20px rgba(196, 163, 90, 0.20);
+  --glow-blue:    0 0 20px rgba(59, 130, 246, 0.20);
+  --glow-emerald: 0 0 20px rgba(16, 185, 129, 0.20);
+}
+
+/* ─── Base Typography ──────────────────────────────────────────────────────── */
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Display/heading utility — Instrument Serif */
+.font-display {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-weight: 400;
+}
+
+/* Data/monospace utility — JetBrains Mono */
+.font-data {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 /* ─── Smooth Scrolling ────────────────────────────────────────────────────── */
@@ -30,35 +55,28 @@ html {
   scroll-behavior: smooth;
 }
 
-/* ─── Custom Text Selection ───────────────────────────────────────────────── */
+/* ─── Custom Text Selection — Gold ─────────────────────────────────────────── */
 ::selection {
-  background-color: rgba(59, 130, 246, 0.35);
-  color: #f9fafb;
+  background-color: rgba(196, 163, 90, 0.30);
+  color: #fafaf9;
 }
 ::-moz-selection {
-  background-color: rgba(59, 130, 246, 0.35);
-  color: #f9fafb;
+  background-color: rgba(196, 163, 90, 0.30);
+  color: #fafaf9;
 }
 
-/* ─── Focus-Visible Accessibility Styles ─────────────────────────────────── */
+/* ─── Focus-Visible — Gold Outline ─────────────────────────────────────────── */
 :focus-visible {
-  outline: 2px solid var(--color-blue-500);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-/* Remove default focus ring for mouse users while keeping keyboard focus ring */
 :focus:not(:focus-visible) {
   outline: none;
 }
 
 /* ─── Animated Gradient Keyframes ────────────────────────────────────────── */
-/*
-  Usage example (apply to any element via inline style or a utility class):
-    animation: gradient-shift 6s ease infinite;
-    background-size: 200% 200%;
-    background-image: linear-gradient(135deg, var(--color-blue-500), var(--color-emerald-400), var(--color-blue-400));
-*/
 @keyframes gradient-shift {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
@@ -67,13 +85,13 @@ html {
 
 @keyframes pulse-glow {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.6; }
+  50%       { opacity: 0.5; }
 }
 
 @keyframes fade-in-up {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -81,12 +99,12 @@ html {
   }
 }
 
-/* ─── Scrollbar Styles ────────────────────────────────────────────────────── */
+/* ─── Scrollbar Styles — Zinc Palette ────────────────────────────────────── */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #374151 transparent;
+  scrollbar-color: #3f3f46 transparent;
 }
-*::-webkit-scrollbar        { width: 6px; }
+*::-webkit-scrollbar        { width: 5px; }
 *::-webkit-scrollbar-track  { background: transparent; }
-*::-webkit-scrollbar-thumb  { background: #374151; border-radius: 3px; }
-*::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+*::-webkit-scrollbar-thumb  { background: #3f3f46; border-radius: 3px; }
+*::-webkit-scrollbar-thumb:hover { background: #52525b; }

@@ -2,7 +2,7 @@ package com.example.finsentinel.controller;
 
 import com.example.finsentinel.ratelimit.RateLimit;
 import com.example.finsentinel.service.MarketDataService;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

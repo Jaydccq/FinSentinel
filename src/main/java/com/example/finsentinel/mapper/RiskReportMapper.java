@@ -5,9 +5,9 @@ import com.example.finsentinel.dto.risk.RiskFactor;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.RiskReportEntity;
 import com.example.finsentinel.model.enums.RiskLevel;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -106,7 +106,7 @@ public abstract class RiskReportMapper {
         try {
 
             return objectMapper.writeValueAsString(factors);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return "[]";
         }
     }
@@ -125,7 +125,7 @@ public abstract class RiskReportMapper {
         try {
 
             return objectMapper.readValue(json, new TypeReference<List<RiskFactor>>() {});
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
 
             return Collections.emptyList();
         }
@@ -145,7 +145,7 @@ public abstract class RiskReportMapper {
         try {
 
             return objectMapper.writeValueAsString(advice);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             return "[]";
         }
     }
@@ -164,7 +164,7 @@ public abstract class RiskReportMapper {
         try {
 
             return objectMapper.readValue(json, new TypeReference<List<String>>() {});
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
 
             return Collections.emptyList();
         }

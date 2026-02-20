@@ -2,7 +2,7 @@ package com.example.finsentinel.service.news;
 
 import com.example.finsentinel.config.PolygonProperties;
 import com.example.finsentinel.model.enums.NewsSource;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

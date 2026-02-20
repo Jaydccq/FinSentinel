@@ -37,6 +37,9 @@ export const newsApi = {
 
   stats: () => apiFetch<NewsFeedStats>('/news/stats'),
 
+  byTicker: (ticker: string, page = 0, size = 20) =>
+    apiFetch<NewsPage>(`/news/by-ticker/${encodeURIComponent(ticker)}?page=${page}&size=${size}`),
+
   stream: (
     onNews: (item: NewsItemResponse) => void,
     onError?: (err: string) => void

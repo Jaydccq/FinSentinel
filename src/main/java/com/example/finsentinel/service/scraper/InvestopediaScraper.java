@@ -6,7 +6,7 @@ import com.example.finsentinel.repository.DocumentRepository;
 import com.example.finsentinel.service.storage.StorageService;
 import com.example.finsentinel.stream.VectorizeStreamProducer;
 import com.example.finsentinel.util.MarkdownToPdfConverter;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

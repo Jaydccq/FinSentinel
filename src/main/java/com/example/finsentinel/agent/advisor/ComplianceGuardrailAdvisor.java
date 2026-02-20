@@ -1,9 +1,9 @@
 package com.example.finsentinel.agent.advisor;
 
 import com.example.finsentinel.config.ComplianceProperties;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClientResponse;
@@ -31,7 +31,7 @@ import java.util.List;
 public class ComplianceGuardrailAdvisor implements BaseAdvisor {
 
     private static final int ORDER = 1000; // Run after RAG advisor (lower order = higher priority)
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = tools.jackson.databind.json.JsonMapper.builder().build();
 
     private final ComplianceProperties complianceProperties;
 

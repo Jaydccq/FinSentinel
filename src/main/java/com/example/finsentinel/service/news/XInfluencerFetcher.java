@@ -2,7 +2,7 @@ package com.example.finsentinel.service.news;
 
 import com.example.finsentinel.config.XProperties;
 import com.example.finsentinel.model.enums.NewsSource;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;

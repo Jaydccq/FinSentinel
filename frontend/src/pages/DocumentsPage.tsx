@@ -5,11 +5,10 @@ import { documentsApi, type DocumentResponse } from '../api/documents'
 
 const DOC_TYPES = ['REGULATION', 'RESEARCH', 'NEWS', 'EARNINGS', 'OTHER']
 
-// Status styling: border color + badge color
 const STATUS_STYLE: Record<string, { border: string; badge: string; label: string }> = {
   COMPLETED: {
-    border: 'border-l-green-500',
-    badge: 'bg-green-500/15 text-green-400',
+    border: 'border-l-emerald-500',
+    badge: 'bg-emerald-500/15 text-emerald-400',
     label: 'Completed',
   },
   PROCESSING: {
@@ -29,17 +28,16 @@ const STATUS_STYLE: Record<string, { border: string; badge: string; label: strin
   },
 }
 
-// Doc type icon + color
 const DOC_TYPE_ICON: Record<string, { icon: React.ReactNode; color: string }> = {
   REGULATION: { icon: <BookOpen size={16} />, color: 'text-emerald-400' },
   RESEARCH:   { icon: <BarChart2 size={16} />, color: 'text-blue-400' },
   NEWS:       { icon: <Newspaper size={16} />, color: 'text-purple-400' },
   EARNINGS:   { icon: <FileText size={16} />, color: 'text-orange-400' },
-  OTHER:      { icon: <FolderOpen size={16} />, color: 'text-gray-400' },
+  OTHER:      { icon: <FolderOpen size={16} />, color: 'text-zinc-400' },
 }
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === 'COMPLETED')  return <CheckCircle size={13} className="text-green-400" />
+  if (status === 'COMPLETED')  return <CheckCircle size={13} className="text-emerald-400" />
   if (status === 'PROCESSING') return <Clock       size={13} className="text-blue-400" />
   if (status === 'PENDING')    return <Clock       size={13} className="text-yellow-400" />
   return                              <AlertCircle  size={13} className="text-red-400" />
@@ -90,40 +88,33 @@ export default function DocumentsPage() {
   }
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-10 space-y-10">
 
-      {/* Page title with gradient underline */}
+      {/* Page title */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-100 inline-block">
+        <h1 className="text-3xl font-display text-stone-50">
           Documents
-          <span
-            className="block mt-1 h-0.5 w-full rounded-full"
-            style={{ background: 'linear-gradient(90deg, #3b82f6 0%, #10b981 100%)' }}
-            aria-hidden="true"
-          />
         </h1>
-        <p className="text-gray-500 text-sm mt-2">
+        <p className="text-zinc-500 text-sm mt-2">
           Upload regulatory filings, research reports, and news for RAG analysis
         </p>
       </div>
 
       {/* Upload area */}
-      <div className="bg-gray-900/70 rounded-2xl border border-gray-800/60 p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
+      <div className="bg-zinc-900 rounded-2xl border border-zinc-800/50 p-6 space-y-5">
+        <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">
           Upload Document
         </h2>
 
-        {/* Controls row */}
         <div className="flex gap-4 flex-wrap">
-          {/* Document type selector */}
           <div>
-            <label htmlFor="doc-type" className="block text-xs text-gray-500 mb-1.5 font-medium">
+            <label htmlFor="doc-type" className="block text-xs text-zinc-500 mb-1.5 font-medium">
               Document Type
             </label>
             <select
               id="doc-type"
-              className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-gray-100 text-sm
-                         focus:outline-none focus:ring-1 focus:ring-blue-500/30 focus:border-blue-500/50
+              className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-stone-50 text-sm
+                         focus:outline-none focus:ring-1 focus:ring-amber-500/20 focus:border-amber-500/40
                          transition-all cursor-pointer"
               value={docType}
               onChange={e => setDocType(e.target.value)}
@@ -132,16 +123,15 @@ export default function DocumentsPage() {
             </select>
           </div>
 
-          {/* Sector input */}
           <div>
-            <label htmlFor="doc-sector" className="block text-xs text-gray-500 mb-1.5 font-medium">
-              Sector <span className="text-gray-600">(optional)</span>
+            <label htmlFor="doc-sector" className="block text-xs text-zinc-500 mb-1.5 font-medium">
+              Sector <span className="text-zinc-600">(optional)</span>
             </label>
             <input
               id="doc-sector"
-              className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-gray-100 text-sm w-44
-                         placeholder:text-gray-600 focus:outline-none focus:ring-1 focus:ring-blue-500/30
-                         focus:border-blue-500/50 transition-all"
+              className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-stone-50 text-sm w-44
+                         placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-amber-500/20
+                         focus:border-amber-500/40 transition-all"
               placeholder="e.g. Technology"
               value={sector}
               onChange={e => setSector(e.target.value)}
@@ -163,8 +153,8 @@ export default function DocumentsPage() {
             relative border-2 border-dashed rounded-xl p-12 text-center cursor-pointer
             transition-all duration-200
             ${dragOver
-              ? 'border-blue-500 bg-blue-500/5 shadow-[0_0_24px_rgba(59,130,246,0.10)]'
-              : 'border-gray-700/70 hover:border-gray-600 hover:bg-gray-800/30'
+              ? 'border-amber-500 bg-amber-500/5 shadow-[0_0_24px_rgba(196,163,90,0.08)]'
+              : 'border-zinc-700/50 hover:border-zinc-600 hover:bg-zinc-800/20'
             }
           `}
         >
@@ -176,13 +166,13 @@ export default function DocumentsPage() {
             <Upload
               size={36}
               className={`mx-auto mb-3 transition-colors duration-200 ${
-                dragOver ? 'text-blue-400' : 'text-gray-600'
+                dragOver ? 'text-amber-400' : 'text-zinc-600'
               }`}
             />
           </motion.div>
 
           <p className={`text-sm font-medium transition-colors duration-200 ${
-            dragOver ? 'text-blue-300' : uploading ? 'text-blue-400' : 'text-gray-400'
+            dragOver ? 'text-amber-300' : uploading ? 'text-amber-400' : 'text-zinc-400'
           }`}>
             {uploading
               ? 'Uploading…'
@@ -190,14 +180,10 @@ export default function DocumentsPage() {
               ? 'Drop to upload'
               : 'Drop a file here or click to browse'}
           </p>
-          <p className="text-gray-600 text-xs mt-1.5">PDF, DOCX, TXT, MD supported</p>
+          <p className="text-zinc-600 text-xs mt-1.5">PDF, DOCX, TXT, MD supported</p>
 
-          {/* Gradient upload button */}
           <div className="mt-5 inline-flex">
-            <span
-              className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white pointer-events-none"
-              style={{ background: 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)' }}
-            >
+            <span className="px-4 py-1.5 rounded-lg text-xs font-semibold text-zinc-950 bg-amber-600">
               Browse Files
             </span>
           </div>
@@ -215,17 +201,17 @@ export default function DocumentsPage() {
 
       {/* Document list */}
       <div>
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
           Uploaded Documents
-          <span className="ml-2 text-gray-600 normal-case font-normal">({docs.length})</span>
+          <span className="ml-2 text-zinc-600 normal-case font-normal">({docs.length})</span>
         </h2>
 
         {loading ? (
-          <p className="text-gray-500 text-sm">Loading…</p>
+          <p className="text-zinc-500 text-sm">Loading…</p>
         ) : docs.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-800 p-10 text-center">
-            <File size={28} className="mx-auto text-gray-700 mb-2" />
-            <p className="text-gray-600 text-sm">No documents uploaded yet.</p>
+          <div className="rounded-xl border border-dashed border-zinc-800/50 p-10 text-center">
+            <File size={28} className="mx-auto text-zinc-700 mb-2" />
+            <p className="text-zinc-600 text-sm">No documents uploaded yet.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -240,29 +226,26 @@ export default function DocumentsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
                   className={`
-                    bg-gray-900/70 rounded-xl border border-gray-800/60
+                    bg-zinc-900 rounded-xl border border-zinc-800/50
                     border-l-[3px] ${statusStyle.border}
                     px-5 py-3.5 flex items-center gap-4
                     hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20
-                    hover:border-gray-700/80 transition-all duration-200
+                    hover:border-zinc-700/60 transition-all duration-200
                   `}
                 >
-                  {/* Doc type icon */}
                   <span className={`flex-shrink-0 ${typeIcon.color}`} aria-hidden="true">
                     {typeIcon.icon}
                   </span>
 
-                  {/* File info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-gray-200 text-sm font-medium truncate">{d.fileName}</p>
-                    <p className="text-gray-500 text-xs mt-0.5 truncate">
+                    <p className="text-zinc-200 text-sm font-medium truncate">{d.fileName}</p>
+                    <p className="text-zinc-500 text-xs mt-0.5 truncate">
                       {d.docType} · {formatSize(d.fileSize)} · {d.regionId}
                       {d.sector     ? ` · ${d.sector}` : ''}
                       {d.chunkCount != null ? ` · ${d.chunkCount} chunks` : ''}
                     </p>
                   </div>
 
-                  {/* Status badge */}
                   <div
                     className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${statusStyle.badge}`}
                     aria-label={`Status: ${statusStyle.label}`}

@@ -1,8 +1,8 @@
 package com.example.finsentinel.agent.tool;
 
 import com.example.finsentinel.config.ComplianceProperties;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
@@ -21,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ComplianceCheckTool {
 
-    private static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final ObjectMapper objectMapper = tools.jackson.databind.json.JsonMapper.builder().build();
     private final ComplianceProperties complianceProperties;
 
     @Tool(description = "Check a draft risk report JSON for compliance violations. "

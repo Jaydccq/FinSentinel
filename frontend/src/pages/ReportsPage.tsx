@@ -4,24 +4,23 @@ import { FileDown, ShieldAlert, ShieldCheck, Clock, FileText } from 'lucide-reac
 import { portfolioApi, type PortfolioResponse, type RiskReportSummary } from '../api/portfolio'
 import { downloadPdf } from '../api/reports'
 
-// Risk level visual tokens
 const LEVEL: Record<string, {
-  border:       string   // left accent bar
-  scoreBg:      string   // circular score badge gradient (inline style)
-  scoreText:    string   // score number color
-  badgeBg:      string   // pill badge bg
-  badgeText:    string   // pill badge text
-  badgeShadow:  string   // pill glow
+  border:       string
+  scoreBg:      string
+  scoreText:    string
+  badgeBg:      string
+  badgeText:    string
+  badgeShadow:  string
   iconColor:    string
 }> = {
   LOW: {
-    border:      'border-l-green-500',
+    border:      'border-l-emerald-500',
     scoreBg:     'linear-gradient(135deg, #064e3b 0%, #065f46 100%)',
-    scoreText:   'text-green-300',
-    badgeBg:     'bg-green-500/15',
-    badgeText:   'text-green-400',
-    badgeShadow: 'shadow-green-500/20',
-    iconColor:   'text-green-400',
+    scoreText:   'text-emerald-300',
+    badgeBg:     'bg-emerald-500/15',
+    badgeText:   'text-emerald-400',
+    badgeShadow: 'shadow-emerald-500/20',
+    iconColor:   'text-emerald-400',
   },
   MEDIUM: {
     border:      'border-l-yellow-500',
@@ -98,32 +97,27 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-10 space-y-10">
 
-      {/* Page title with gradient underline */}
+      {/* Page title */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-100 inline-block">
+        <h1 className="text-3xl font-display text-stone-50">
           Reports
-          <span
-            className="block mt-1 h-0.5 w-full rounded-full"
-            style={{ background: 'linear-gradient(90deg, #3b82f6 0%, #10b981 100%)' }}
-            aria-hidden="true"
-          />
         </h1>
-        <p className="text-gray-500 text-sm mt-2">
+        <p className="text-zinc-500 text-sm mt-2">
           Download PDF risk assessment reports for your portfolios
         </p>
       </div>
 
       {/* Portfolio selector */}
       <div className="flex items-center gap-3">
-        <label htmlFor="reports-portfolio" className="text-gray-400 text-sm font-medium">
+        <label htmlFor="reports-portfolio" className="text-zinc-400 text-sm font-medium">
           Portfolio
         </label>
         <select
           id="reports-portfolio"
-          className="bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-gray-100 text-sm
-                     focus:outline-none focus:ring-1 focus:ring-blue-500/30 focus:border-blue-500/50
+          className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-stone-50 text-sm
+                     focus:outline-none focus:ring-1 focus:ring-amber-500/20 focus:border-amber-500/40
                      transition-all cursor-pointer"
           value={selectedId}
           onChange={e => setSelectedId(e.target.value)}
@@ -134,17 +128,16 @@ export default function ReportsPage() {
 
       {/* Reports list */}
       {loading ? (
-        <p className="text-gray-500 text-sm">Loading reports…</p>
+        <p className="text-zinc-500 text-sm">Loading reports…</p>
       ) : reports.length === 0 ? (
-        /* Empty state */
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gray-900/60 border border-dashed border-gray-800 rounded-2xl p-16 text-center"
+          className="bg-zinc-900/60 border border-dashed border-zinc-800/50 rounded-2xl p-16 text-center"
         >
-          <FileText size={36} className="mx-auto text-gray-700 mb-4" />
-          <p className="text-gray-400 font-medium">No risk reports yet</p>
-          <p className="text-gray-600 text-sm mt-1.5">
+          <FileText size={36} className="mx-auto text-zinc-700 mb-4" />
+          <p className="text-zinc-400 font-medium">No risk reports yet</p>
+          <p className="text-zinc-600 text-sm mt-1.5">
             Run an assessment on the Analysis page to generate a report.
           </p>
         </motion.div>
@@ -161,11 +154,11 @@ export default function ReportsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
                 className={`
-                  bg-gray-900/70 rounded-2xl border border-gray-800/60
+                  bg-zinc-900 rounded-2xl border border-zinc-800/50
                   border-l-[3px] ${lv.border}
                   p-5 flex items-center gap-5
-                  hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/25
-                  hover:border-gray-700/80 transition-all duration-200
+                  hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20
+                  hover:border-zinc-700/60 transition-all duration-200
                 `}
               >
                 {/* Circular risk score badge */}
@@ -174,23 +167,16 @@ export default function ReportsPage() {
                   style={{ background: lv.scoreBg }}
                   aria-label={`Risk score: ${r.riskScore} out of 100`}
                 >
-                  <span className={`text-xl font-bold leading-none ${lv.scoreText}`}>
+                  <span className={`text-xl font-bold font-data leading-none ${lv.scoreText}`}>
                     {r.riskScore}
                   </span>
-                  <span className="text-gray-500 text-[9px] font-medium tracking-wide mt-0.5">/100</span>
+                  <span className="text-zinc-500 text-[9px] font-medium tracking-wide mt-0.5">/100</span>
                 </div>
 
-                {/* Body */}
                 <div className="flex-1 min-w-0">
-                  {/* Risk level pill + shield icon */}
                   <div className="flex items-center gap-2 mb-1.5">
-                    <span
-                      aria-hidden="true"
-                      className={lv.iconColor}
-                    >
-                      {isLow
-                        ? <ShieldCheck size={15} />
-                        : <ShieldAlert  size={15} />}
+                    <span aria-hidden="true" className={lv.iconColor}>
+                      {isLow ? <ShieldCheck size={15} /> : <ShieldAlert size={15} />}
                     </span>
                     <span
                       className={`
@@ -203,12 +189,10 @@ export default function ReportsPage() {
                     </span>
                   </div>
 
-                  {/* Summary */}
-                  <p className="text-gray-400 text-sm line-clamp-2">{r.summary}</p>
+                  <p className="text-zinc-400 text-sm line-clamp-2">{r.summary}</p>
 
-                  {/* Timestamp */}
                   {r.createdAt && (
-                    <p className="text-gray-500 text-xs flex items-center gap-1 mt-1.5">
+                    <p className="text-zinc-500 text-xs flex items-center gap-1 mt-1.5">
                       <Clock size={11} aria-hidden="true" />
                       <time dateTime={r.createdAt}>{formatDate(r.createdAt)}</time>
                     </p>
@@ -222,14 +206,9 @@ export default function ReportsPage() {
                   onClick={() => handleDownload(r.id)}
                   disabled={downloading === r.id}
                   aria-label={`Download PDF report — risk score ${r.riskScore}`}
-                  className="flex items-center gap-2 text-white px-4 py-2 rounded-lg text-sm font-semibold
+                  className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-zinc-950 px-4 py-2 rounded-lg text-sm font-semibold
                              disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0
-                             transition-opacity"
-                  style={{
-                    background: downloading === r.id
-                      ? 'linear-gradient(135deg, #1d4ed8 0%, #0e7490 100%)'
-                      : 'linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)',
-                  }}
+                             transition-all duration-200"
                 >
                   <FileDown size={15} aria-hidden="true" />
                   {downloading === r.id ? 'Downloading…' : 'PDF'}
