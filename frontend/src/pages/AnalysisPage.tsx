@@ -1,81 +1,81 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
-  RadarChart, PolarGrid, PolarAngleAxis, Radar,
-  ResponsiveContainer, Tooltip
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  Radar,
+  ResponsiveContainer,
+  Tooltip,
 } from 'recharts'
+import { ShieldAlert, ShieldCheck, Sparkles } from 'lucide-react'
 import { chatApi, type RiskReport } from '../api/chat'
 import { portfolioApi, type PortfolioResponse } from '../api/portfolio'
-import { ShieldAlert, ShieldCheck } from 'lucide-react'
 
-const LEVEL_TEXT_COLOR: Record<string, string> = {
-  LOW:      'text-emerald-400',
-  MEDIUM:   'text-yellow-400',
-  HIGH:     'text-orange-400',
-  CRITICAL: 'text-red-400',
-}
-
-const LEVEL_BANNER_GRADIENT: Record<string, string> = {
-  LOW:      'from-emerald-900/40 via-zinc-900 to-zinc-900 border-emerald-700/30',
-  MEDIUM:   'from-yellow-900/40 via-zinc-900 to-zinc-900 border-yellow-700/30',
-  HIGH:     'from-orange-900/40 via-zinc-900 to-zinc-900 border-orange-700/30',
-  CRITICAL: 'from-red-900/50 via-zinc-900 to-zinc-900 border-red-700/30',
-}
-
-const LEVEL_PILL: Record<string, string> = {
-  LOW:      'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
-  MEDIUM:   'bg-yellow-500/15 text-yellow-300 border border-yellow-500/30',
-  HIGH:     'bg-orange-500/15 text-orange-300 border border-orange-500/30',
-  CRITICAL: 'bg-red-500/15 text-red-300 border border-red-500/30',
-}
-
-const LEVEL_SHIELD_COLOR: Record<string, string> = {
-  LOW:      'text-emerald-400',
-  MEDIUM:   'text-yellow-400',
-  HIGH:     'text-orange-400',
-  CRITICAL: 'text-red-400',
+const LEVEL_STYLES: Record<string, { text: string; chip: string; banner: string; icon: string }> = {
+  LOW: {
+    text: 'text-emerald-200',
+    chip: 'bg-emerald-500/20 text-emerald-100 border-emerald-300/30',
+    banner: 'from-emerald-500/16 via-slate-900/45 to-slate-900/35',
+    icon: 'text-emerald-200',
+  },
+  MEDIUM: {
+    text: 'text-yellow-200',
+    chip: 'bg-yellow-500/20 text-yellow-100 border-yellow-300/30',
+    banner: 'from-yellow-500/16 via-slate-900/45 to-slate-900/35',
+    icon: 'text-yellow-200',
+  },
+  HIGH: {
+    text: 'text-orange-200',
+    chip: 'bg-orange-500/20 text-orange-100 border-orange-300/30',
+    banner: 'from-orange-500/16 via-slate-900/45 to-slate-900/35',
+    icon: 'text-orange-200',
+  },
+  CRITICAL: {
+    text: 'text-red-200',
+    chip: 'bg-red-500/20 text-red-100 border-red-300/30',
+    banner: 'from-red-500/20 via-slate-900/45 to-slate-900/35',
+    icon: 'text-red-200',
+  },
 }
 
 function Spinner() {
   return (
     <svg
-      className="animate-spin h-4 w-4 text-zinc-950"
+      className="animate-spin h-4 w-4 text-[#1d1302]"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
       aria-hidden="true"
     >
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-      />
+      <circle className="opacity-30" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
   )
 }
 
 export default function AnalysisPage() {
   const [portfolios, setPortfolios] = useState<PortfolioResponse[]>([])
-  const [selectedId, setSelectedId] = useState<string>('')
+  const [selectedId, setSelectedId] = useState('')
   const [query, setQuery] = useState('Analyze my portfolio risk and provide a full assessment')
   const [report, setReport] = useState<RiskReport | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    portfolioApi.list().then(ps => {
-      setPortfolios(ps)
-      if (ps.length > 0) setSelectedId(ps[0].id)
+    portfolioApi.list().then(items => {
+      setPortfolios(items)
+      if (items.length > 0) setSelectedId(items[0].id)
     })
   }, [])
 
   const runAssessment = async () => {
     setLoading(true)
     setError('')
+
     try {
-      const r = await chatApi.assess(query, selectedId || undefined)
-      setReport(r)
+      const result = await chatApi.assess(query, selectedId || undefined)
+      setReport(result)
     } catch {
       setError('Assessment failed. Ensure the backend is running.')
     } finally {
@@ -83,31 +83,29 @@ export default function AnalysisPage() {
     }
   }
 
-  const radarData = report?.factors?.map(f => ({ subject: f.category, score: f.score })) ?? []
+  const radarData = useMemo(
+    () => report?.factors?.map(f => ({ subject: f.category, score: f.score })) ?? [],
+    [report],
+  )
 
-  const bannerGradient = report ? (LEVEL_BANNER_GRADIENT[report.riskLevel] ?? 'from-zinc-900 to-zinc-900 border-zinc-700') : ''
-  const shieldColor    = report ? (LEVEL_SHIELD_COLOR[report.riskLevel]    ?? 'text-zinc-400')                              : ''
-  const levelTextColor = report ? (LEVEL_TEXT_COLOR[report.riskLevel]      ?? 'text-stone-50')                              : ''
-  const pillClass      = report ? (LEVEL_PILL[report.riskLevel]            ?? 'bg-zinc-700/50 text-zinc-300')               : ''
-  const isHighRisk     = report && (report.riskLevel === 'HIGH' || report.riskLevel === 'CRITICAL')
+  const styles = report ? (LEVEL_STYLES[report.riskLevel] ?? LEVEL_STYLES.MEDIUM) : null
+  const isHighRisk = report && (report.riskLevel === 'HIGH' || report.riskLevel === 'CRITICAL')
 
   return (
-    <div className="p-10 space-y-8">
+    <div className="px-4 py-6 md:px-8 md:py-8 space-y-6">
+      <section className="glass-panel rounded-3xl p-6 md:p-8">
+        <p className="text-xs uppercase tracking-[0.13em] text-amber-200/80">AI Assessment</p>
+        <h1 className="page-title mt-3">Risk Analysis</h1>
+        <p className="page-subtitle max-w-2xl">Generate a structured risk report with score decomposition, recommendations, and compliance context.</p>
+      </section>
 
-      {/* Page header */}
-      <div>
-        <h1 className="text-3xl font-display text-stone-50">Risk Analysis</h1>
-        <p className="text-zinc-500 text-sm mt-2">AI-powered structured risk assessment with radar visualization</p>
-      </div>
-
-      {/* Controls panel */}
-      <div className="bg-zinc-900 rounded-xl border border-zinc-800/50 p-6 space-y-5">
-        <div className="flex gap-4 flex-wrap">
-          <div className="flex-1 min-w-[180px]">
-            <label htmlFor="analysis-portfolio" className="block text-sm text-zinc-400 mb-1">Portfolio</label>
+      <section className="surface-panel rounded-3xl p-5 md:p-6 space-y-5">
+        <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4">
+          <div>
+            <label htmlFor="analysis-portfolio" className="field-label">Portfolio Scope</label>
             <select
               id="analysis-portfolio"
-              className="w-full bg-zinc-800 border border-zinc-700/50 rounded-lg px-3 py-2 text-stone-50 focus:outline-none focus:ring-1 focus:ring-amber-500/20 focus:border-amber-500/40 transition-colors"
+              className="field-input"
               value={selectedId}
               onChange={e => setSelectedId(e.target.value)}
             >
@@ -117,117 +115,141 @@ export default function AnalysisPage() {
               ))}
             </select>
           </div>
-          <div className="flex-1 min-w-[300px]">
-            <label htmlFor="analysis-query" className="block text-sm text-zinc-400 mb-1">Assessment Query</label>
+
+          <div>
+            <label htmlFor="analysis-query" className="field-label">Prompt</label>
             <input
               id="analysis-query"
-              className="w-full bg-zinc-800 border border-zinc-700/50 rounded-lg px-3 py-2 text-stone-50 focus:outline-none focus:ring-1 focus:ring-amber-500/20 focus:border-amber-500/40 transition-colors"
+              className="field-input"
               value={query}
               onChange={e => setQuery(e.target.value)}
             />
           </div>
         </div>
 
-        <button
-          onClick={runAssessment}
-          disabled={loading}
-          className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-zinc-950 px-6 py-2 rounded-lg font-medium transition-all duration-200 hover:scale-105 active:scale-95"
-        >
-          {loading && <Spinner />}
-          {loading ? 'Analyzing...' : 'Run Assessment'}
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={runAssessment} disabled={loading} className="btn-primary px-5 py-2.5 text-sm">
+            {loading && <Spinner />}
+            {loading ? 'Analyzing...' : 'Run Assessment'}
+          </button>
+          <span className="status-chip bg-cyan-500/10 border-cyan-400/25 text-cyan-100">
+            <Sparkles size={12} />
+            LLM + tools
+          </span>
+        </div>
 
-        {error && <p className="text-red-400 text-sm">{error}</p>}
-      </div>
+        {error && <p className="text-sm text-red-200">{error}</p>}
+      </section>
 
-      {report && (
-        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      {report && styles && (
+        <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+          <div className={`surface-panel rounded-3xl p-5 md:p-6 bg-gradient-to-r ${styles.banner}`}>
+            <div className="flex flex-col lg:flex-row lg:items-center gap-5">
+              <div className="flex items-center gap-3 min-w-[250px]">
+                <div className="h-12 w-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                  {isHighRisk ? (
+                    <ShieldAlert size={28} className={styles.icon} aria-hidden="true" />
+                  ) : (
+                    <ShieldCheck size={28} className={styles.icon} aria-hidden="true" />
+                  )}
+                </div>
 
-          {/* Risk score banner */}
-          <div className={`bg-gradient-to-r ${bannerGradient} rounded-xl border p-6 flex items-center gap-6`}>
-            <div className="flex-shrink-0">
-              {isHighRisk
-                ? <ShieldAlert size={48} className={shieldColor} />
-                : <ShieldCheck size={48} className={shieldColor} />
-              }
-            </div>
-            <div className="flex-shrink-0">
-              <p className="text-zinc-400 text-xs uppercase tracking-wider mb-1">Risk Score</p>
-              <div className="flex items-baseline gap-3">
-                <p className={`text-5xl font-bold font-data tabular-nums ${levelTextColor}`}>
-                  {report.riskScore}
-                  <span className="text-2xl text-zinc-500">/100</span>
-                </p>
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${pillClass}`}>
-                  {report.riskLevel}
-                </span>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.11em] text-[var(--text-muted)]">Risk Score</p>
+                  <div className="flex items-end gap-3 mt-1">
+                    <p className={`kpi-value text-3xl md:text-4xl ${styles.text}`}>
+                      {report.riskScore}
+                      <span className="text-xl text-[var(--text-muted)]">/100</span>
+                    </p>
+                    <span className={`status-chip border ${styles.chip}`}>{report.riskLevel}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="flex-1 border-l border-zinc-700/50 pl-6">
-              <p className="text-zinc-300 text-sm leading-relaxed">{report.summary}</p>
+
+              <div className="section-divider lg:hidden" />
+
+              <p className="text-sm leading-relaxed text-[var(--text-secondary)]">{report.summary}</p>
             </div>
           </div>
 
-          {/* Radar chart */}
-          {radarData.length > 0 && (
-            <div className="bg-zinc-900/50 rounded-xl border border-amber-500/15 p-6 shadow-lg shadow-black/10">
-              <h2 className="text-lg font-display text-zinc-200 mb-4">Risk Factor Radar</h2>
-              <ResponsiveContainer width="100%" height={320}>
-                <RadarChart data={radarData}>
-                  <PolarGrid stroke="#3f3f46" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: '#a1a1aa', fontSize: 12 }} />
-                  <Radar
-                    name="Risk Score"
-                    dataKey="score"
-                    stroke="#c4a35a"
-                    fill="#c4a35a"
-                    fillOpacity={0.25}
-                  />
-                  <Tooltip
-                    contentStyle={{ background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8 }}
-                    labelStyle={{ color: '#d4d4d8' }}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
+          <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-5">
+            <div className="surface-panel rounded-3xl p-5 md:p-6">
+              <h2 className="text-xl font-display text-[var(--text-primary)]">Risk Factor Radar</h2>
+              <p className="text-sm text-[var(--text-secondary)] mt-1">Relative score by risk dimension</p>
+
+              {radarData.length > 0 ? (
+                <div className="mt-5 h-[320px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart data={radarData}>
+                      <PolarGrid stroke="#42546d" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#a7bad5', fontSize: 12 }} />
+                      <Radar name="Risk" dataKey="score" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.26} />
+                      <Tooltip
+                        contentStyle={{
+                          background: '#0f1726',
+                          border: '1px solid #334255',
+                          borderRadius: 10,
+                          color: '#ecf3ff',
+                        }}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-[var(--text-muted)]">No factor data available.</p>
+              )}
+            </div>
+
+            <div className="surface-panel rounded-3xl p-5 md:p-6">
+              <h2 className="text-xl font-display text-[var(--text-primary)]">Actionable Recommendations</h2>
+              <p className="text-sm text-[var(--text-secondary)] mt-1">Priority-ordered next steps</p>
+
+              <ol className="mt-4 space-y-3">
+                {report.actionableAdvice?.length ? report.actionableAdvice.map((advice, i) => (
+                  <li key={i} className="rounded-xl border border-[color:var(--border-subtle)] bg-slate-900/30 px-3.5 py-3 flex gap-3">
+                    <span className="h-6 w-6 rounded-full bg-amber-400/25 text-amber-100 inline-flex items-center justify-center text-xs font-bold flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="text-sm text-[var(--text-secondary)] leading-relaxed">{advice}</span>
+                  </li>
+                )) : (
+                  <li className="text-sm text-[var(--text-muted)]">No recommendations available.</li>
+                )}
+              </ol>
+            </div>
+          </div>
+
+          {report.factors?.length > 0 && (
+            <div className="surface-panel rounded-3xl p-5 md:p-6">
+              <h2 className="text-xl font-display text-[var(--text-primary)]">Factor Detail</h2>
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                {report.factors.map((factor, i) => (
+                  <div key={`${factor.category}-${i}`} className="rounded-xl border border-[color:var(--border-subtle)] bg-slate-900/30 p-3.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">{factor.category}</p>
+                      <span className="status-chip bg-slate-800/60 text-[var(--text-secondary)] border-[color:var(--border-subtle)]">
+                        {factor.score}/100
+                      </span>
+                    </div>
+                    <p className="text-sm text-[var(--text-secondary)] mt-2 leading-relaxed">{factor.description}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Actionable Recommendations */}
-          <div className="bg-zinc-900 rounded-xl border border-zinc-800/50 p-6">
-            <h2 className="text-lg font-display text-zinc-200 mb-4">Actionable Recommendations</h2>
-            <ol className="space-y-3">
-              {report.actionableAdvice?.map((a, i) => (
-                <li key={i} className="flex gap-4 items-start border-l-2 border-amber-500/20 pl-4 py-1">
-                  <span
-                    className="flex-shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center text-xs font-bold text-zinc-950 shadow-md shadow-black/20"
-                    aria-hidden="true"
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="text-zinc-300 text-sm leading-relaxed">{a}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
-
-          {/* Compliance note */}
           {report.complianceNote && (
-            <div
-              className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-5 flex gap-3"
-              role="note"
-              aria-label="Compliance notice"
-            >
-              <ShieldAlert size={18} className="text-amber-400 flex-shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="rounded-2xl border border-amber-300/25 bg-amber-400/10 px-4 py-4 flex gap-3" role="note" aria-label="Compliance notice">
+              <ShieldAlert size={18} className="text-amber-200 flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div>
-                <p className="text-amber-400/80 text-xs font-semibold uppercase tracking-wider mb-1.5">
+                <p className="text-xs uppercase tracking-[0.11em] text-amber-100/90 font-semibold">
                   {report.complianceNote.regulatoryFramework} Compliance Notice
                 </p>
-                <p className="text-amber-300/60 text-xs leading-relaxed">{report.complianceNote.disclaimer}</p>
+                <p className="text-xs text-amber-50/70 leading-relaxed mt-1.5">{report.complianceNote.disclaimer}</p>
               </div>
             </div>
           )}
-
-        </motion.div>
+        </motion.section>
       )}
     </div>
   )

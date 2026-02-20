@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Bot, User } from 'lucide-react'
+import { Send, Bot, User, Sparkles } from 'lucide-react'
 import { chatApi } from '../api/chat'
 
 interface Message {
@@ -17,18 +17,23 @@ function ensureCursorStyle() {
     style.id = CURSOR_STYLE_ID
     style.textContent = `
       @keyframes finsentinel-glow-pulse {
-        0%, 100% { opacity: 1; box-shadow: 0 0 4px 2px rgba(196,163,90,0.6); }
-        50%       { opacity: 0.3; box-shadow: 0 0 2px 1px rgba(196,163,90,0.15); }
+        0%, 100% { opacity: 1; box-shadow: 0 0 4px 2px rgba(245,158,11,0.42); }
+        50%      { opacity: 0.3; box-shadow: 0 0 2px 1px rgba(245,158,11,0.2); }
       }
       .fs-cursor {
         display: inline-block;
         width: 7px;
         height: 7px;
         border-radius: 50%;
-        background: #c4a35a;
+        background: #f59e0b;
         margin-left: 4px;
         vertical-align: middle;
         animation: finsentinel-glow-pulse 1.2s ease-in-out infinite;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .fs-cursor {
+          animation: none;
+        }
       }
     `
     document.head.appendChild(style)
@@ -54,19 +59,20 @@ export default function ChatPage() {
 
   const send = async () => {
     if (!input.trim() || streaming) return
-    const msg = input.trim()
+    const userMessage = input.trim()
+
     setInput('')
-    setMessages(prev => [...prev, { role: 'user', content: msg, timestamp: nowTime() }])
+    setMessages(prev => [...prev, { role: 'user', content: userMessage, timestamp: nowTime() }])
     setStreaming(true)
 
     setMessages(prev => [...prev, { role: 'assistant', content: '', streaming: true, timestamp: nowTime() }])
 
     await chatApi.stream(
-      msg,
+      userMessage,
       undefined,
       sessionId,
       (chunk, sid) => {
-        if (!sessionId) setSessionId(sid)
+        setSessionId(prev => prev ?? sid)
         setMessages(prev => {
           const copy = [...prev]
           const last = copy[copy.length - 1]
@@ -97,115 +103,101 @@ export default function ChatPage() {
           }
           return copy
         })
-      }
+      },
     )
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="px-8 py-5 border-b border-zinc-800/50 bg-zinc-900/60">
-        <h1 className="text-xl font-display text-stone-50">AI Risk Advisor</h1>
-        <p className="text-xs text-zinc-500 mt-0.5">Powered by FinSentinel Agent — SEC Compliant</p>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5">
-        {messages.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="flex flex-col items-center justify-center pt-24 text-center select-none"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-amber-500/8 border border-amber-500/15 flex items-center justify-center mb-5">
-              <Bot size={32} className="text-amber-400" />
+    <div className="h-[calc(100vh-7.4rem)] min-h-[36rem] px-4 py-6 md:px-8 md:py-8">
+      <div className="h-full grid grid-rows-[auto_1fr_auto] glass-panel rounded-3xl overflow-hidden">
+        <header className="px-5 py-4 md:px-6 border-b border-[color:var(--border-subtle)] bg-slate-900/25">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-display text-[var(--text-primary)]">AI Risk Advisor</h1>
+              <p className="text-sm text-[var(--text-secondary)] mt-0.5">Streaming analysis for portfolio risk and SEC-aware constraints</p>
             </div>
-            <p className="text-zinc-300 font-medium text-base">Ask FinSentinel about your portfolio risk...</p>
-            <p className="text-zinc-600 text-sm mt-1.5 max-w-xs">
-              Market conditions, SEC compliance, risk scores — all in one place.
-            </p>
-          </motion.div>
-        )}
+            <span className="status-chip bg-cyan-500/10 border-cyan-400/25 text-cyan-100">
+              <Sparkles size={12} />
+              Agent online
+            </span>
+          </div>
+        </header>
 
-        <AnimatePresence>
-          {messages.map((m, i) => (
+        <section className="overflow-y-auto px-4 py-5 md:px-6 md:py-6" aria-live="polite">
+          {messages.length === 0 && (
             <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              className="h-full flex flex-col items-center justify-center text-center px-4"
             >
-              {/* Bot avatar */}
-              {m.role === 'assistant' && (
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center flex-shrink-0 mt-1 ring-1 ring-amber-500/20">
-                  <Bot size={14} className="text-zinc-950" />
-                </div>
-              )}
-
-              <div className="flex flex-col gap-1 max-w-[75%]">
-                <div
-                  className={`
-                    rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap
-                    ${m.role === 'user'
-                      ? 'bg-gradient-to-br from-amber-600 to-amber-500 text-zinc-950 rounded-br-sm shadow-md shadow-black/20'
-                      : 'bg-zinc-800/50 text-stone-50 rounded-bl-sm border-l-2 border-amber-500/25'
-                    }
-                  `}
-                >
-                  {m.content}
-                  {m.streaming && <span className="fs-cursor" aria-hidden="true" />}
-                </div>
-
-                <p className={`text-[11px] text-zinc-600 ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
-                  {m.timestamp}
-                </p>
+              <div className="h-16 w-16 rounded-2xl bg-amber-400/12 border border-amber-400/25 flex items-center justify-center mb-4">
+                <Bot size={30} className="text-amber-200" aria-hidden="true" />
               </div>
-
-              {/* User avatar */}
-              {m.role === 'user' && (
-                <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0 mt-1 ring-1 ring-zinc-700/50">
-                  <User size={14} className="text-zinc-300" />
-                </div>
-              )}
+              <p className="text-base font-semibold text-[var(--text-primary)]">Ask FinSentinel anything about your portfolio risk.</p>
+              <p className="mt-1.5 text-sm text-[var(--text-secondary)] max-w-md">Try: concentration risk, macro event exposure, or compliance-sensitive rebalancing options.</p>
             </motion.div>
-          ))}
-        </AnimatePresence>
-        <div ref={bottomRef} />
-      </div>
+          )}
 
-      {/* Input area */}
-      <div className="px-8 py-5 border-t border-zinc-800/50 bg-zinc-900/40">
-        <div className="flex gap-3">
-          <input
-            className="
-              flex-1 bg-zinc-800/50
-              border border-zinc-700/50 rounded-xl px-4 py-2.5
-              text-stone-50 text-sm placeholder:text-zinc-600
-              focus:outline-none focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/15
-              disabled:opacity-50 transition-all duration-200
-            "
-            placeholder="Ask about risk, portfolio, SEC regulations..."
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-            disabled={streaming}
-          />
-          <button
-            onClick={send}
-            disabled={streaming || !input.trim()}
-            className="
-              bg-amber-600 hover:bg-amber-500
-              disabled:opacity-40 disabled:cursor-not-allowed
-              text-zinc-950 px-4 py-2.5 rounded-xl
-              hover:scale-105 active:scale-95
-              shadow-md shadow-black/20
-              transition-all duration-200
-            "
-          >
-            <Send size={16} />
-          </button>
-        </div>
+          <AnimatePresence>
+            {messages.map((message, i) => (
+              <motion.div
+                key={`${message.timestamp}-${i}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`flex gap-3 mb-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+              >
+                {message.role === 'assistant' && (
+                  <div className="h-8 w-8 rounded-xl bg-amber-400/20 border border-amber-300/25 text-amber-100 flex items-center justify-center flex-shrink-0 mt-1">
+                    <Bot size={14} aria-hidden="true" />
+                  </div>
+                )}
+
+                <div className={`max-w-[85%] md:max-w-[70%] ${message.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+                  <div
+                    className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                      message.role === 'user'
+                        ? 'bg-gradient-to-br from-amber-300 to-amber-500 text-[#1d1302] rounded-br-md shadow-lg shadow-amber-900/20'
+                        : 'surface-panel text-[var(--text-primary)] rounded-bl-md'
+                    }`}
+                  >
+                    {message.content}
+                    {message.streaming && <span className="fs-cursor" aria-hidden="true" />}
+                  </div>
+                  <p className="text-[11px] text-[var(--text-muted)]">{message.timestamp}</p>
+                </div>
+
+                {message.role === 'user' && (
+                  <div className="h-8 w-8 rounded-xl bg-slate-700/40 border border-[color:var(--border-subtle)] text-slate-100 flex items-center justify-center flex-shrink-0 mt-1">
+                    <User size={14} aria-hidden="true" />
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          <div ref={bottomRef} />
+        </section>
+
+        <footer className="px-4 py-4 md:px-6 border-t border-[color:var(--border-subtle)] bg-slate-900/25">
+          <div className="flex gap-3">
+            <input
+              className="field-input"
+              placeholder="Ask about factor risk, scenario impact, sector concentration..."
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+              disabled={streaming}
+            />
+            <button
+              onClick={send}
+              disabled={streaming || !input.trim()}
+              className="btn-primary px-4"
+              aria-label="Send message"
+            >
+              <Send size={16} />
+            </button>
+          </div>
+        </footer>
       </div>
     </div>
   )

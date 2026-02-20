@@ -1,40 +1,71 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
+import {
+  TrendingUp,
+  TrendingDown,
+  Briefcase,
+  DollarSign,
+  Layers3,
+  ArrowUpRight,
+} from 'lucide-react'
 import { portfolioApi, type PortfolioResponse } from '../api/portfolio'
 import { marketApi, type QuoteData } from '../api/market'
-import { TrendingUp, TrendingDown, Briefcase, DollarSign } from 'lucide-react'
-import { Link } from 'react-router-dom'
 
 const WATCH_TICKERS = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'TSLA', 'AMD', 'AMZN', 'AVGO', 'CRM', 'PLTR', 'SNOW']
 
-const COLOR_META: Record<string, { border: string; tint: string }> = {
-  'text-amber-400':  { border: 'border-l-amber-400',  tint: 'from-amber-500/5'  },
-  'text-blue-400':   { border: 'border-l-blue-400',   tint: 'from-blue-500/5'   },
-  'text-purple-400': { border: 'border-l-purple-400', tint: 'from-purple-500/5' },
+const COLOR_META: Record<string, { icon: string; bar: string; text: string }> = {
+  amber: {
+    icon: 'text-amber-200 bg-amber-400/15',
+    bar: 'from-amber-300/80 to-amber-500/80',
+    text: 'text-amber-100',
+  },
+  cyan: {
+    icon: 'text-cyan-200 bg-cyan-400/15',
+    bar: 'from-cyan-300/80 to-cyan-500/80',
+    text: 'text-cyan-100',
+  },
+  blue: {
+    icon: 'text-blue-200 bg-blue-400/15',
+    bar: 'from-blue-300/80 to-blue-500/80',
+    text: 'text-blue-100',
+  },
 }
 
-function StatCard({ label, value, sub, icon: Icon, color }: {
-  label: string; value: string; sub?: string; icon: React.ElementType; color: string
+function StatCard({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  color,
+}: {
+  label: string
+  value: string
+  sub?: string
+  icon: React.ElementType
+  color: keyof typeof COLOR_META
 }) {
-  const meta = COLOR_META[color] ?? { border: 'border-l-zinc-600', tint: 'from-zinc-600/5' }
+  const meta = COLOR_META[color]
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`
-        bg-zinc-900 rounded-xl p-6 border border-zinc-800/50
-        border-l-[3px] ${meta.border}
-        hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20
-        transition-all duration-200 cursor-default
-      `}
+      className="surface-panel surface-panel-hover rounded-2xl p-5 md:p-6"
     >
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-zinc-400 text-sm">{label}</span>
-        <Icon size={18} className={color} />
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs uppercase tracking-[0.11em] text-[var(--text-muted)]">{label}</p>
+          <p className={`kpi-value mt-2 ${meta.text}`}>{value}</p>
+          {sub && <p className="text-xs text-[var(--text-secondary)] mt-1.5">{sub}</p>}
+        </div>
+
+        <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${meta.icon}`}>
+          <Icon size={18} aria-hidden="true" />
+        </div>
       </div>
-      <p className="text-2xl font-bold text-stone-50 font-data tabular-nums">{value}</p>
-      {sub && <p className="text-xs text-zinc-500 mt-1">{sub}</p>}
+
+      <div className={`mt-5 h-1.5 rounded-full bg-gradient-to-r ${meta.bar}`} />
     </motion.div>
   )
 }
@@ -46,143 +77,139 @@ export default function DashboardPage() {
 
   useEffect(() => {
     portfolioApi.list().then(setPortfolios).finally(() => setLoading(false))
+
     marketApi.batchQuotes(WATCH_TICKERS)
       .then(data => {
         const parsed: Record<string, QuoteData | null> = {}
-        for (const t of WATCH_TICKERS) {
-          const q = data[t]
-          parsed[t] = q && !('error' in q) ? q as QuoteData : null
+        for (const ticker of WATCH_TICKERS) {
+          const quote = data[ticker]
+          parsed[ticker] = quote && !('error' in quote) ? (quote as QuoteData) : null
         }
         setQuotes(parsed)
       })
       .catch(() => {
         const failed: Record<string, null> = {}
-        WATCH_TICKERS.forEach(t => { failed[t] = null })
+        WATCH_TICKERS.forEach(ticker => { failed[ticker] = null })
         setQuotes(failed)
       })
   }, [])
 
-  const totalValue = portfolios.reduce((s, p) => s + Number(p.totalValue), 0)
-  const totalHoldings = portfolios.reduce((s, p) => s + p.holdings.length, 0)
+  const totalValue = portfolios.reduce((sum, p) => sum + Number(p.totalValue), 0)
+  const totalHoldings = portfolios.reduce((sum, p) => sum + p.holdings.length, 0)
 
   return (
-    <div className="p-10 space-y-10">
-      {/* Page title */}
-      <div>
-        <h1 className="text-3xl font-display text-stone-50">
-          Dashboard
-        </h1>
-        <p className="text-zinc-500 text-sm mt-2">Portfolio overview &amp; market watchlist</p>
-      </div>
+    <div className="px-4 py-6 md:px-8 md:py-8 space-y-7">
+      <section className="glass-panel rounded-3xl p-6 md:p-8">
+        <p className="text-xs uppercase tracking-[0.13em] text-amber-200/80">Portfolio Intelligence</p>
+        <h1 className="page-title mt-3">Dashboard</h1>
+        <p className="page-subtitle max-w-2xl">Track value concentration, monitor top holdings, and react to market movement in one view.</p>
+      </section>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
         <StatCard
           label="Total AUM"
           value={`$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={DollarSign}
-          color="text-amber-400"
+          color="amber"
         />
-        <StatCard label="Portfolios" value={String(portfolios.length)} icon={Briefcase} color="text-blue-400" />
-        <StatCard label="Holdings" value={String(totalHoldings)} icon={TrendingUp} color="text-purple-400" />
-      </div>
+        <StatCard
+          label="Portfolio Count"
+          value={String(portfolios.length)}
+          icon={Briefcase}
+          color="cyan"
+        />
+        <StatCard
+          label="Holding Positions"
+          value={String(totalHoldings)}
+          icon={Layers3}
+          color="blue"
+        />
+      </section>
 
-      {/* Portfolio cards */}
-      <section>
-        <div className="flex items-center gap-3 mb-5">
-          <span className="w-[2px] h-5 bg-amber-500 rounded-full inline-block" />
-          <h2 className="text-lg font-semibold text-zinc-200">Your Portfolios</h2>
+      <section className="surface-panel rounded-3xl p-5 md:p-6">
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="text-xl font-display text-[var(--text-primary)]">Your Portfolios</h2>
+            <p className="text-sm text-[var(--text-secondary)] mt-0.5">Current market value and holding density</p>
+          </div>
+          <Link to="/portfolio" className="btn-ghost px-3 py-2 text-xs">Open Manager</Link>
         </div>
 
         {loading ? (
-          <p className="text-zinc-500">Loading...</p>
+          <p className="text-sm text-[var(--text-muted)]">Loading portfolios...</p>
         ) : portfolios.length === 0 ? (
-          <div className="bg-zinc-900 border border-dashed border-zinc-700/50 rounded-xl p-8 text-center">
-            <p className="text-zinc-400">No portfolios yet.</p>
-            <Link to="/portfolio" className="text-amber-400/80 text-sm hover:underline mt-2 inline-block">
-              Create your first portfolio →
+          <div className="rounded-2xl border border-dashed border-[color:var(--border-strong)] bg-slate-800/20 px-5 py-8 text-center">
+            <p className="text-[var(--text-secondary)]">No portfolios yet.</p>
+            <Link to="/portfolio" className="inline-flex mt-2 text-sm font-semibold text-amber-200 hover:text-amber-100 transition-colors">
+              Create your first portfolio
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {portfolios.map((p, i) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {portfolios.map((portfolio, i) => (
               <motion.div
-                key={p.id}
-                initial={{ opacity: 0, y: 16 }}
+                key={portfolio.id}
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
-                className="
-                  bg-zinc-900 rounded-xl p-6 border border-zinc-800/50
-                  hover:border-amber-500/30 hover:-translate-y-0.5
-                  hover:shadow-lg hover:shadow-black/20
-                  transition-all duration-200 cursor-default
-                "
+                className="surface-panel surface-panel-hover rounded-2xl p-5"
               >
-                <p className="font-semibold text-stone-50 truncate">{p.name}</p>
-                <p className="text-zinc-500 text-xs truncate mt-0.5">{p.description || 'No description'}</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-4 font-data tabular-nums">
-                  ${Number(p.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                <p className="text-base font-semibold text-[var(--text-primary)] truncate">{portfolio.name}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1 truncate">{portfolio.description || 'No description'}</p>
+                <p className="kpi-value mt-4 text-emerald-200">
+                  ${Number(portfolio.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </p>
-                <p className="text-zinc-500 text-xs mt-1">{p.holdings.length} holdings</p>
+                <div className="mt-3 flex items-center justify-between text-xs text-[var(--text-secondary)]">
+                  <span>{portfolio.holdings.length} holdings</span>
+                  <Link to="/portfolio" className="inline-flex items-center gap-1 text-amber-200 hover:text-amber-100">
+                    Details <ArrowUpRight size={13} />
+                  </Link>
+                </div>
               </motion.div>
             ))}
           </div>
         )}
       </section>
 
-      {/* Market watchlist */}
-      <section>
-        <div className="flex items-center gap-3 mb-5">
-          <span className="w-[2px] h-5 bg-amber-500 rounded-full inline-block" />
-          <h2 className="text-lg font-semibold text-zinc-200">Market Watchlist</h2>
+      <section className="surface-panel rounded-3xl p-5 md:p-6">
+        <div className="mb-4">
+          <h2 className="text-xl font-display text-[var(--text-primary)]">Market Watchlist</h2>
+          <p className="text-sm text-[var(--text-secondary)] mt-0.5">Selected tickers with intraday direction</p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
           {WATCH_TICKERS.map(ticker => {
-            const q = quotes[ticker]
+            const quote = quotes[ticker]
             const isLoading = !(ticker in quotes)
-            const isFailed = ticker in quotes && q === null
-            const change = q && q.open !== 0 ? ((q.close - q.open) / q.open) * 100 : null
+            const isFailed = ticker in quotes && quote === null
+            const change = quote && quote.open !== 0 ? ((quote.close - quote.open) / quote.open) * 100 : null
             const isUp = change !== null && change >= 0
 
             return (
               <Link
                 to={`/stock/${ticker}`}
                 key={ticker}
-                className="bg-zinc-900 rounded-xl p-5 border border-zinc-800/50 hover:-translate-y-0.5 hover:shadow-md hover:border-amber-500/30 transition-all duration-200"
+                className="surface-panel surface-panel-hover rounded-2xl p-4"
               >
-                <div className="flex items-center gap-1.5">
-                  {q && change !== null ? (
-                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isUp ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                  ) : isFailed ? (
-                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-yellow-500" />
-                  ) : (
-                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-zinc-600" />
-                  )}
-                  <p className="font-data font-bold text-stone-50 tracking-wider text-sm">{ticker}</p>
-                </div>
-
-                {q && change !== null ? (
-                  <>
-                    <p className="text-lg font-bold mt-2 text-stone-50 font-data tabular-nums">${q.close.toFixed(2)}</p>
-                    <span
-                      className={`
-                        inline-flex items-center gap-1 mt-1.5 px-2 py-0.5
-                        rounded-full text-xs font-medium
-                        ${isUp
-                          ? 'bg-emerald-500/15 text-emerald-400'
-                          : 'bg-red-500/15 text-red-400'
-                        }
-                      `}
-                    >
-                      {isUp ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="font-data text-sm font-bold tracking-wide text-[var(--text-primary)]">{ticker}</p>
+                  {change !== null && (
+                    <span className={`status-chip border-0 ${isUp ? 'bg-emerald-500/20 text-emerald-100' : 'bg-red-500/20 text-red-100'}`}>
+                      {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                       {isUp ? '+' : ''}{change.toFixed(2)}%
                     </span>
+                  )}
+                </div>
+
+                {quote && change !== null ? (
+                  <>
+                    <p className="kpi-value mt-3 text-lg md:text-xl">${quote.close.toFixed(2)}</p>
+                    <p className="text-[11px] text-[var(--text-muted)] mt-1">open ${quote.open.toFixed(2)}</p>
                   </>
                 ) : isFailed ? (
-                  <p className="text-yellow-600 text-sm mt-1">Market data unavailable</p>
+                  <p className="text-sm text-yellow-200 mt-3">Market data unavailable</p>
                 ) : isLoading ? (
-                  <p className="text-zinc-600 text-sm mt-1">Loading…</p>
+                  <p className="text-sm text-[var(--text-muted)] mt-3">Loading...</p>
                 ) : null}
               </Link>
             )

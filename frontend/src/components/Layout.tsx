@@ -1,27 +1,62 @@
-import { useState } from 'react'
-import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import {
-  LayoutDashboard, MessageSquare, Briefcase, BarChart2,
-  FileText, FileDown, Newspaper, LogOut, Menu, X, Shield
+  LayoutDashboard,
+  MessageSquare,
+  Briefcase,
+  BarChart2,
+  FileText,
+  FileDown,
+  Newspaper,
+  LogOut,
+  Menu,
+  X,
+  Shield,
+  ChevronRight,
+  UserCircle2,
 } from 'lucide-react'
 
 const NAV = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/chat', label: 'Chat', icon: MessageSquare },
+  { to: '/chat', label: 'Advisor Chat', icon: MessageSquare },
   { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
-  { to: '/analysis', label: 'Analysis', icon: BarChart2 },
+  { to: '/analysis', label: 'Risk Analysis', icon: BarChart2 },
   { to: '/documents', label: 'Documents', icon: FileText },
   { to: '/reports', label: 'Reports', icon: FileDown },
-  { to: '/news', label: 'News', icon: Newspaper },
+  { to: '/news', label: 'News Feed', icon: Newspaper },
 ]
+
+function routeMeta(pathname: string) {
+  if (pathname.startsWith('/stock/')) {
+    const ticker = pathname.split('/').at(-1)?.toUpperCase() ?? 'Ticker'
+    return {
+      title: `${ticker} Snapshot`,
+      subtitle: 'Price profile, daily movement, and market context',
+    }
+  }
+
+  const map: Record<string, { title: string; subtitle: string }> = {
+    '/dashboard': { title: 'Control Room', subtitle: 'Portfolio pulse and market breadth at a glance' },
+    '/chat': { title: 'Advisor Chat', subtitle: 'Conversational risk and compliance intelligence' },
+    '/portfolio': { title: 'Portfolio Studio', subtitle: 'Manage positions, weights, and sectors with precision' },
+    '/analysis': { title: 'Risk Analysis', subtitle: 'Structured assessment with factor-level breakdown' },
+    '/documents': { title: 'Documents', subtitle: 'Upload, parse, and manage financial source files' },
+    '/reports': { title: 'Reports', subtitle: 'Generate and export investor-ready deliverables' },
+    '/news': { title: 'News Feed', subtitle: 'Live headlines that affect your holdings' },
+  }
+
+  return map[pathname] ?? { title: 'FinSentinel', subtitle: 'AI-powered investment risk intelligence platform' }
+}
 
 export default function Layout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const meta = useMemo(() => routeMeta(location.pathname), [location.pathname])
 
   const handleLogout = () => {
     logout()
@@ -30,119 +65,144 @@ export default function Layout() {
 
   const sidebarContent = (
     <>
-      {/* Logo area */}
-      <div className="px-5 py-6 border-b border-zinc-800/50">
-        <div className="flex items-center gap-2.5">
-          <Shield size={18} className="text-amber-400/80 flex-shrink-0" aria-hidden="true" />
-          <p className="text-xl font-display text-amber-400 tracking-tight">
-            FinSentinel
-          </p>
+      <div className="px-5 py-5 border-b border-[color:var(--border-subtle)]">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-[#1d1302] flex items-center justify-center shadow-lg shadow-amber-600/25">
+            <Shield size={18} aria-hidden="true" />
+          </div>
+          <div>
+            <p className="font-display text-2xl leading-none text-[var(--text-primary)]">FinSentinel</p>
+            <p className="mt-1 text-[11px] tracking-[0.11em] uppercase text-[var(--text-muted)]">Risk Intelligence</p>
+          </div>
         </div>
-        <p className="text-xs text-zinc-600 truncate mt-1 pl-[26px]">{user?.username}</p>
       </div>
 
-      {/* Nav links */}
-      <nav className="flex-1 px-3 py-5 space-y-0.5" aria-label="Main navigation">
+      <nav className="flex-1 px-3 py-4 space-y-1.5" aria-label="Main navigation">
         {NAV.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
-              `relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
+              `group flex items-center gap-3 rounded-xl px-3 py-2.5 border transition-all duration-200 ${
                 isActive
-                  ? 'border-l-[2px] border-amber-500 bg-amber-500/5 text-amber-400 pl-[10px]'
-                  : 'border-l-[2px] border-transparent text-zinc-500 hover:bg-zinc-800/40 hover:text-stone-50 pl-[10px]'
+                  ? 'border-amber-300/25 bg-amber-400/10 text-amber-100'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 hover:border-[color:var(--border-subtle)]'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <Icon size={isActive ? 17 : 16} aria-hidden="true" />
-                {label}
+                <span
+                  className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${
+                    isActive ? 'bg-amber-400/20 text-amber-200' : 'bg-slate-700/30 text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'
+                  }`}
+                >
+                  <Icon size={16} aria-hidden="true" />
+                </span>
+                <span className="text-sm font-medium">{label}</span>
               </>
             )}
           </NavLink>
         ))}
       </nav>
 
-      {/* Logout button */}
-      <button
-        onClick={handleLogout}
-        className="flex items-center gap-3 px-6 py-4 w-full text-sm text-zinc-600 border-t border-zinc-800/50 transition-all duration-200 hover:bg-red-500/8 hover:text-red-400"
-        aria-label="Log out"
-      >
-        <LogOut size={16} aria-hidden="true" /> Logout
-      </button>
+      <div className="px-3 pb-3">
+        <div className="surface-panel rounded-xl px-3 py-2.5 mb-2">
+          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+            <UserCircle2 size={15} aria-hidden="true" />
+            <p className="text-xs font-medium truncate">{user?.username}</p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleLogout}
+          className="w-full btn-ghost px-3 py-2.5 text-sm"
+          aria-label="Log out"
+        >
+          <LogOut size={15} aria-hidden="true" />
+          Logout
+        </button>
+      </div>
     </>
   )
 
   return (
-    <div className="flex h-screen bg-zinc-950 text-stone-50">
-      {/* Mobile header */}
-      <div
-        className="fixed top-0 left-0 right-0 z-30 flex items-center h-14 px-4 border-b border-zinc-800/50 bg-zinc-950 md:hidden"
-      >
-        <button
-          onClick={() => setSidebarOpen(true)}
-          aria-label="Open menu"
-          className="text-zinc-500 hover:text-stone-50 transition-colors"
-        >
-          <Menu size={20} aria-hidden="true" />
-        </button>
-        <div className="flex items-center gap-2 ml-3">
-          <Shield size={16} className="text-amber-400/80 flex-shrink-0" aria-hidden="true" />
-          <p className="text-lg font-display text-amber-400">
-            FinSentinel
-          </p>
-        </div>
+    <div className="app-shell text-[var(--text-primary)]">
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="absolute -right-20 top-28 h-80 w-80 rounded-full bg-amber-400/10 blur-3xl" />
       </div>
 
-      {/* Mobile overlay */}
-      {sidebarOpen && (
+      <div className="relative z-10 flex min-h-screen">
         <div
           className="fixed inset-0 z-40 bg-black/60 md:hidden"
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
+          style={{ display: sidebarOpen ? 'block' : 'none' }}
         />
-      )}
 
-      {/* Sidebar */}
-      <aside
-        className={`
-          fixed inset-y-0 left-0 z-50 w-56 flex flex-col border-r border-zinc-800/50
-          bg-zinc-950 transform transition-transform duration-200 ease-in-out
-          md:relative md:translate-x-0
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
-        aria-label="Sidebar"
-      >
-        {/* Mobile close button */}
-        <button
-          onClick={() => setSidebarOpen(false)}
-          className="absolute top-5 right-3 text-zinc-600 hover:text-stone-50 transition-colors md:hidden"
-          aria-label="Close menu"
+        <aside
+          className={`
+            fixed inset-y-0 left-0 z-50 w-72 flex flex-col glass-panel border-r border-[color:var(--border-subtle)]
+            transform transition-transform duration-250 ease-out md:relative md:translate-x-0
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          `}
+          aria-label="Sidebar"
         >
-          <X size={18} aria-hidden="true" />
-        </button>
-        {sidebarContent}
-      </aside>
-
-      {/* Main content */}
-      <main className="flex-1 overflow-y-auto pt-14 md:pt-0">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={location.pathname}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="h-full"
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="absolute top-3 right-3 h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/10 transition-colors md:hidden"
+            aria-label="Close menu"
           >
-            <Outlet />
-          </motion.div>
-        </AnimatePresence>
-      </main>
+            <X size={16} aria-hidden="true" />
+          </button>
+          {sidebarContent}
+        </aside>
+
+        <div className="flex-1 min-w-0">
+          <header className="sticky top-0 z-30 px-4 pt-4 md:px-8">
+            <div className="glass-panel rounded-2xl px-4 py-3 md:px-5 md:py-3.5 flex items-center gap-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="h-9 w-9 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/10 transition-colors md:hidden"
+                aria-label="Open menu"
+              >
+                <Menu size={18} aria-hidden="true" />
+              </button>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.11em] text-[var(--text-muted)] mb-1">
+                  <span>Workspace</span>
+                  <ChevronRight size={12} aria-hidden="true" />
+                  <span>{meta.title}</span>
+                </div>
+                <p className="text-sm text-[var(--text-secondary)] truncate">{meta.subtitle}</p>
+              </div>
+
+              <div className="hidden sm:flex status-chip text-[var(--text-secondary)] bg-cyan-500/10 border-cyan-400/25">
+                <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
+                Live data
+              </div>
+            </div>
+          </header>
+
+          <main className="px-4 pb-6 md:px-8 md:pb-10">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="mx-auto max-w-[1500px]"
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
+          </main>
+        </div>
+      </div>
     </div>
   )
 }
