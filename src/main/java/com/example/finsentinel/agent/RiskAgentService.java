@@ -66,7 +66,12 @@ public class RiskAgentService {
                 report.riskScore(), report.riskLevel());
 
         if (portfolioId != null) {
-            persistReport(report, portfolioId);
+            try {
+                persistReport(report, portfolioId);
+            } catch (RuntimeException e) {
+                log.warn("Report computed successfully but persistence failed — " +
+                        "report will not appear in history: {}", e.getMessage());
+            }
         }
 
         return report;
@@ -105,10 +110,13 @@ public class RiskAgentService {
      */
 
     private void persistReport(RiskReport report, UUID portfolioId) {
-        try {
-            var portfolio = portfolioRepository.findById(portfolioId).orElse(null);
-            if (portfolio == null) return;
+        var portfolio = portfolioRepository.findById(portfolioId).orElse(null);
+        if (portfolio == null) {
+            log.warn("Cannot persist report: portfolio {} not found", portfolioId);
+            return;
+        }
 
+        try {
             RiskReportEntity entity = RiskReportEntity.builder()
                     .portfolio(portfolio)
                     .riskScore(report.riskScore())
@@ -122,7 +130,9 @@ public class RiskAgentService {
             riskReportRepository.save(entity);
             log.info("Persisted risk report for portfolio {}", portfolioId);
         } catch (Exception e) {
-            log.error("Failed to persist risk report", e);
+            // Rethrow so the caller knows persistence failed — the report was already
+            // computed successfully and returned, but history won't be available.
+            throw new RuntimeException("Failed to persist risk report for portfolio " + portfolioId, e);
         }
     }
 

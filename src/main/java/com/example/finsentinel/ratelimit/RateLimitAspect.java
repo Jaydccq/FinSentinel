@@ -104,8 +104,10 @@ public class RateLimitAspect {
         HttpServletRequest request = attrs.getRequest();
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {
+            // Take the first (leftmost) IP — the original client address.
+            // Proxies append their addresses to the right of the chain.
             String[] ips = forwarded.split(",");
-            return ips[ips.length - 1].trim();
+            return ips[0].trim();
         }
 
         return request.getRemoteAddr();

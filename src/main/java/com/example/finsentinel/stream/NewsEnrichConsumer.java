@@ -23,6 +23,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.data.domain.Range;
+import org.springframework.data.redis.connection.stream.PendingMessage;
+import org.springframework.data.redis.connection.stream.PendingMessages;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -70,6 +74,46 @@ public class NewsEnrichConsumer {
             }
         } catch (Exception e) {
             log.error("Error consuming from news-enrich stream", e);
+        }
+    }
+
+    /**
+     * Reclaims pending messages from dead consumers every 30 seconds.
+     */
+    @Scheduled(fixedDelay = 30_000)
+    public void reclaimPending() {
+        try {
+            PendingMessages pending = redisTemplate.opsForStream().pending(
+                    VectorizeStreamConstants.NEWS_ENRICH_STREAM_KEY,
+                    VectorizeStreamConstants.NEWS_ENRICH_GROUP_NAME,
+                    Range.unbounded(),
+                    10L
+            );
+
+            for (PendingMessage pm : pending) {
+                if (pm.getElapsedTimeSinceLastDelivery().compareTo(Duration.ofSeconds(30)) > 0
+                        && !pm.getConsumerName().equals(consumerName)) {
+                    try {
+                        List<MapRecord<String, Object, Object>> claimed = redisTemplate.opsForStream().read(
+                                Consumer.from(VectorizeStreamConstants.NEWS_ENRICH_GROUP_NAME, consumerName),
+                                StreamReadOptions.empty().count(1),
+                                StreamOffset.create(VectorizeStreamConstants.NEWS_ENRICH_STREAM_KEY,
+                                        ReadOffset.from(pm.getId().getValue()))
+                        );
+                        if (claimed != null) {
+                            for (MapRecord<String, Object, Object> msg : claimed) {
+                                log.info("Reclaimed pending news-enrich message {} from consumer {}",
+                                        msg.getId(), pm.getConsumerName());
+                                processMessage(msg);
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to reclaim news-enrich message {}: {}", pm.getId(), e.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.debug("Error checking news-enrich pending messages: {}", e.getMessage());
         }
     }
 

@@ -33,7 +33,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, UUID> 
             SELECT
                 cm.session_id AS sessionId,
                 (SELECT content FROM chat_messages sub
-                 WHERE sub.session_id = cm.session_id AND sub.role = 'user'
+                 WHERE sub.session_id = cm.session_id AND sub.user_id = :userId AND sub.role = 'user'
                  ORDER BY sub.created_at ASC LIMIT 1) AS firstMessage,
                 CAST(COUNT(*) AS int) AS messageCount,
                 MIN(cm.created_at) AS createdAt,
