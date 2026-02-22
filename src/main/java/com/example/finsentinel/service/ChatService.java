@@ -1,6 +1,7 @@
 package com.example.finsentinel.service;
 
 import com.example.finsentinel.agent.RiskAgentService;
+import com.example.finsentinel.dto.chat.ChatSessionSummary;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.ChatMessage;
 import com.example.finsentinel.repository.ChatMessageRepository;
@@ -115,15 +116,25 @@ public class ChatService {
     }
 
     /**
-     * Executes persist message.
-     *
-     * <p>This method belongs to {@link ChatService} and encapsulates the
-     * persist message workflow.
-     * @param userId user id (UUID)
-     * @param sessionId session id (UUID)
-     * @param role role (String)
-     * @param content content (String)
+     * Lists distinct chat sessions for a user, ordered by most recent activity.
+     * Uses database-level aggregation to avoid loading all messages into memory.
      */
+    public List<ChatSessionSummary> listSessions(UUID userId) {
+        return chatMessageRepository.findSessionSummaries(userId).stream()
+                .map(p -> {
+                    String msg = p.getFirstMessage();
+                    if (msg == null) msg = "New conversation";
+                    else if (msg.length() > 80) msg = msg.substring(0, 80) + "…";
+                    return new ChatSessionSummary(
+                            p.getSessionId(),
+                            msg,
+                            p.getMessageCount(),
+                            p.getCreatedAt(),
+                            p.getLastMessageAt()
+                    );
+                })
+                .toList();
+    }
 
     private void persistMessage(UUID userId, UUID sessionId, String role, String content) {
         chatMessageRepository.save(ChatMessage.builder()

@@ -2,6 +2,7 @@ package com.example.finsentinel.repository;
 
 import com.example.finsentinel.model.Document;
 import com.example.finsentinel.model.enums.DocumentStatus;
+import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.model.enums.StorageTier;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,13 +20,13 @@ import java.util.UUID;
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
 
 
-    List<Document> findByStatus(DocumentStatus status);
+    List<Document> findByStatusOrderByCreatedAtDesc(DocumentStatus status);
 
 
-    List<Document> findByDocType(com.example.finsentinel.model.enums.DocumentType docType);
+    List<Document> findByDocTypeOrderByCreatedAtDesc(DocumentType docType);
 
 
-    List<Document> findByStatusAndDocType(DocumentStatus status, com.example.finsentinel.model.enums.DocumentType docType);
+    List<Document> findByStatusAndDocTypeOrderByCreatedAtDesc(DocumentStatus status, DocumentType docType);
 
 
     boolean existsByOriginalFileName(String originalFileName);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Newspaper,
@@ -7,8 +7,14 @@ import {
   ChevronDown,
   Filter,
   CircleDot,
+  Search,
+  X,
+  Zap,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { newsApi, type NewsItemResponse, type NewsFeedStats } from '../api/news'
+import { NewsListSkeleton } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 
 const SOURCE_LABELS: Record<string, string> = {
   POLYGON: 'Polygon',
@@ -20,6 +26,12 @@ const SOURCE_COLORS: Record<string, string> = {
   POLYGON: 'bg-blue-500/20 text-blue-100 border-blue-300/30',
   RSS_CNBC: 'bg-amber-500/20 text-amber-100 border-amber-300/30',
   RSS_YAHOO: 'bg-violet-500/20 text-violet-100 border-violet-300/30',
+}
+
+const SENTIMENT_STYLE: Record<string, string> = {
+  POSITIVE: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/25',
+  NEGATIVE: 'bg-red-500/15 text-red-300 border-red-400/25',
+  NEUTRAL: 'bg-slate-600/20 text-slate-300 border-slate-400/25',
 }
 
 function timeAgo(dateStr: string): string {
@@ -41,6 +53,36 @@ function formatTime(dateStr: string): string {
   })
 }
 
+function SentimentBadge({ sentiment }: { sentiment: string | null }) {
+  if (!sentiment) return null
+  const upper = sentiment.toUpperCase()
+  const style = SENTIMENT_STYLE[upper]
+  if (!style) return null
+
+  return (
+    <span className={`status-chip border ${style}`}>
+      {sentiment.charAt(0).toUpperCase() + sentiment.slice(1).toLowerCase()}
+    </span>
+  )
+}
+
+function EnrichedDot({ enriched }: { enriched: boolean }) {
+  return (
+    <span
+      title={enriched ? 'Fully indexed for RAG' : 'Raw headline — not yet enriched'}
+      className={`inline-flex items-center gap-1 text-[11px] ${
+        enriched ? 'text-emerald-300' : 'text-[var(--text-muted)]'
+      }`}
+    >
+      {enriched ? (
+        <Zap size={10} className="text-emerald-400" />
+      ) : (
+        <span className="h-1.5 w-1.5 rounded-full bg-slate-600 inline-block" />
+      )}
+    </span>
+  )
+}
+
 function NewsCard({ item }: { item: NewsItemResponse }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -60,6 +102,8 @@ function NewsCard({ item }: { item: NewsItemResponse }) {
             <span className={`status-chip border ${SOURCE_COLORS[item.source] ?? 'bg-slate-700/50 text-slate-100 border-slate-400/30'}`}>
               {SOURCE_LABELS[item.source] ?? item.source}
             </span>
+            <SentimentBadge sentiment={item.sentiment} />
+            <EnrichedDot enriched={item.enriched} />
             <h3 className="text-sm md:text-[15px] font-semibold text-[var(--text-primary)] leading-snug">{item.title}</h3>
           </div>
 
@@ -115,6 +159,11 @@ export default function NewsPage() {
   const [totalPages, setTotalPages] = useState(0)
   const [liveCount, setLiveCount] = useState(0)
   const [sourceFilter, setSourceFilter] = useState<string>('ALL')
+  const [sentimentFilter, setSentimentFilter] = useState<string>('ALL')
+  const [tickerSearch, setTickerSearch] = useState('')
+  const [tickerActive, setTickerActive] = useState('')
+  const tickerActiveRef = useRef(tickerActive)
+  useEffect(() => { tickerActiveRef.current = tickerActive }, [tickerActive])
 
   useEffect(() => {
     Promise.all([newsApi.list(0, 50), newsApi.stats()])
@@ -123,11 +172,22 @@ export default function NewsPage() {
         setTotalPages(pageData.totalPages)
         setStats(statsData)
       })
+      .catch(() => toast.error('Failed to load news feed.'))
       .finally(() => setLoading(false))
   }, [])
 
   useEffect(() => {
     const cancel = newsApi.stream((item) => {
+      // Skip items that don't match the active ticker filter
+      const activeTicker = tickerActiveRef.current
+      if (activeTicker && !item.tickers?.includes(activeTicker)) {
+        // Still update stats (global count), but don't insert into list
+        setStats(prev => prev
+          ? { ...prev, todayCount: prev.todayCount + 1, totalCount: prev.totalCount + 1 }
+          : prev)
+        return
+      }
+
       setItems(prev => [item, ...prev])
       setLiveCount(count => count + 1)
       setStats(prev => prev
@@ -138,10 +198,48 @@ export default function NewsPage() {
     return cancel
   }, [])
 
+  // Fetch by ticker when ticker filter is activated
+  const searchByTicker = useCallback(() => {
+    const ticker = tickerSearch.trim().toUpperCase()
+    if (!ticker) return
+    setLoading(true)
+    setTickerActive(ticker)
+    newsApi.byTicker(ticker, 0, 50)
+      .then(pageData => {
+        setItems(pageData.content)
+        setTotalPages(pageData.totalPages)
+        setPage(0)
+      })
+      .catch(() => toast.error(`No news found for ${ticker}.`))
+      .finally(() => setLoading(false))
+  }, [tickerSearch])
+
+  const clearTicker = useCallback(() => {
+    setTickerSearch('')
+    setTickerActive('')
+    setLoading(true)
+    newsApi.list(0, 50)
+      .then(pageData => {
+        setItems(pageData.content)
+        setTotalPages(pageData.totalPages)
+        setPage(0)
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
   const filteredItems = useMemo(() => {
-    if (sourceFilter === 'ALL') return items
-    return items.filter(item => item.source === sourceFilter)
-  }, [items, sourceFilter])
+    let filtered = items
+    if (sourceFilter !== 'ALL') {
+      filtered = filtered.filter(item => item.source === sourceFilter)
+    }
+    if (sentimentFilter !== 'ALL') {
+      filtered = filtered.filter(item => {
+        const s = item.sentiment?.toUpperCase()
+        return s === sentimentFilter
+      })
+    }
+    return filtered
+  }, [items, sourceFilter, sentimentFilter])
 
   const sources = useMemo(() => {
     const set = new Set(items.map(item => item.source))
@@ -150,12 +248,16 @@ export default function NewsPage() {
 
   const loadMore = useCallback(() => {
     const nextPage = page + 1
-    newsApi.list(nextPage, 50).then(pageData => {
+    const fetcher = tickerActive
+      ? newsApi.byTicker(tickerActive, nextPage, 50)
+      : newsApi.list(nextPage, 50)
+
+    fetcher.then(pageData => {
       setItems(prev => [...prev, ...pageData.content])
       setPage(nextPage)
       setTotalPages(pageData.totalPages)
     })
-  }, [page])
+  }, [page, tickerActive])
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5">
@@ -183,7 +285,46 @@ export default function NewsPage() {
 
           <div className="section-divider my-4" />
 
-          <div className="flex items-center gap-2 flex-wrap">
+          {/* Ticker search */}
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)] inline-flex items-center gap-1.5">
+              <Search size={12} /> Ticker
+            </span>
+            <div className="relative flex-1 max-w-[200px]">
+              <input
+                className="field-input py-1.5 pr-8 text-xs font-data uppercase"
+                placeholder="e.g. AAPL"
+                value={tickerSearch}
+                onChange={e => setTickerSearch(e.target.value.toUpperCase())}
+                onKeyDown={e => e.key === 'Enter' && searchByTicker()}
+                maxLength={5}
+              />
+              {tickerActive && (
+                <button
+                  onClick={clearTicker}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                  aria-label="Clear ticker filter"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={searchByTicker}
+              disabled={!tickerSearch.trim()}
+              className="btn-ghost px-3 py-1.5 text-xs disabled:opacity-40"
+            >
+              Filter
+            </button>
+            {tickerActive && (
+              <span className="status-chip bg-cyan-500/12 border-cyan-400/20 text-cyan-100 font-data">
+                ${tickerActive}
+              </span>
+            )}
+          </div>
+
+          {/* Source filter */}
+          <div className="flex items-center gap-2 flex-wrap mb-3">
             <span className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)] inline-flex items-center gap-1.5">
               <Filter size={12} /> Source
             </span>
@@ -201,15 +342,36 @@ export default function NewsPage() {
               </button>
             ))}
           </div>
+
+          {/* Sentiment filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)] inline-flex items-center gap-1.5">
+              <Filter size={12} /> Sentiment
+            </span>
+            {['ALL', 'POSITIVE', 'NEGATIVE', 'NEUTRAL'].map(s => (
+              <button
+                key={s}
+                onClick={() => setSentimentFilter(s)}
+                className={`status-chip border transition-colors ${
+                  sentimentFilter === s
+                    ? 'bg-amber-400/18 border-amber-300/30 text-amber-100'
+                    : 'bg-slate-800/30 border-[color:var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                {s === 'ALL' ? 'All' : s.charAt(0) + s.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
-          <div className="surface-panel rounded-2xl p-8 text-center text-sm text-[var(--text-muted)]">Loading news...</div>
+          <NewsListSkeleton />
         ) : filteredItems.length === 0 ? (
-          <div className="surface-panel rounded-2xl border-dashed border-[color:var(--border-strong)] p-8 text-center">
-            <Newspaper size={30} className="text-[var(--text-muted)] mx-auto mb-3" />
-            <p className="text-[var(--text-secondary)]">No news in this filter yet.</p>
-          </div>
+          <EmptyState
+            icon={<Newspaper size={30} />}
+            title="No news in this filter yet."
+            description="Try adjusting your filters or check back later."
+          />
         ) : (
           <div className="space-y-3">
             <AnimatePresence initial={false}>

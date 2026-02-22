@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Trash2, ChevronDown } from 'lucide-react'
+import { toast } from 'sonner'
 import { portfolioApi, type PortfolioResponse } from '../api/portfolio'
+import { PortfolioListSkeleton } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 
 const SECTOR_COLORS: Record<string, string> = {
   Technology: 'bg-blue-500/15 text-blue-100 border-blue-300/30',
@@ -103,34 +106,54 @@ export default function PortfolioPage() {
   useEffect(() => { refresh() }, [])
 
   const createPortfolio = async () => {
-    await portfolioApi.create({ name: portForm.name, description: portForm.description })
-    setShowCreatePortfolio(false)
-    setPortForm({ name: '', description: '' })
-    refresh()
+    try {
+      await portfolioApi.create({ name: portForm.name, description: portForm.description })
+      toast.success(`Portfolio "${portForm.name}" created.`)
+      setShowCreatePortfolio(false)
+      setPortForm({ name: '', description: '' })
+      refresh()
+    } catch {
+      toast.error('Failed to create portfolio.')
+    }
   }
 
   const deletePortfolio = async (id: string) => {
     if (!confirm('Delete this portfolio?')) return
-    await portfolioApi.delete(id)
-    refresh()
+    try {
+      await portfolioApi.delete(id)
+      toast.success('Portfolio deleted.')
+      refresh()
+    } catch {
+      toast.error('Failed to delete portfolio.')
+    }
   }
 
   const addHolding = async (portfolioId: string) => {
-    await portfolioApi.addHolding(portfolioId, {
-      symbol: holdForm.symbol,
-      companyName: holdForm.companyName || undefined,
-      quantity: Number(holdForm.quantity),
-      averageCost: Number(holdForm.averageCost),
-      sector: holdForm.sector || undefined,
-    })
-    setShowAddHolding(null)
-    setHoldForm({ symbol: '', companyName: '', quantity: '', averageCost: '', sector: '' })
-    refresh()
+    try {
+      await portfolioApi.addHolding(portfolioId, {
+        symbol: holdForm.symbol,
+        companyName: holdForm.companyName || undefined,
+        quantity: Number(holdForm.quantity),
+        averageCost: Number(holdForm.averageCost),
+        sector: holdForm.sector || undefined,
+      })
+      toast.success(`${holdForm.symbol} added to portfolio.`)
+      setShowAddHolding(null)
+      setHoldForm({ symbol: '', companyName: '', quantity: '', averageCost: '', sector: '' })
+      refresh()
+    } catch {
+      toast.error('Failed to add holding.')
+    }
   }
 
   const deleteHolding = async (portfolioId: string, holdingId: string) => {
-    await portfolioApi.deleteHolding(portfolioId, holdingId)
-    refresh()
+    try {
+      await portfolioApi.deleteHolding(portfolioId, holdingId)
+      toast.success('Holding removed.')
+      refresh()
+    } catch {
+      toast.error('Failed to remove holding.')
+    }
   }
 
   return (
@@ -147,13 +170,13 @@ export default function PortfolioPage() {
       </section>
 
       {loading ? (
-        <div className="surface-panel rounded-2xl p-6">
-          <p className="text-sm text-[var(--text-muted)]">Loading portfolios...</p>
-        </div>
+        <PortfolioListSkeleton />
       ) : portfolios.length === 0 ? (
-        <div className="surface-panel rounded-2xl border-dashed border-[color:var(--border-strong)] p-8 text-center">
-          <p className="text-[var(--text-secondary)]">No portfolios yet. Create one to get started.</p>
-        </div>
+        <EmptyState
+          icon={<Plus size={28} />}
+          title="No portfolios yet."
+          description="Create one to get started with risk analysis."
+        />
       ) : (
         <section className="space-y-4">
           {portfolios.map(portfolio => (

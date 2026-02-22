@@ -30,7 +30,18 @@ export interface ChatMessage {
   createdAt: string
 }
 
+export interface ChatSessionSummary {
+  sessionId: string
+  firstMessage: string
+  messageCount: number
+  createdAt: string
+  lastMessageAt: string
+}
+
 export const chatApi = {
+  sessions: (): Promise<ChatSessionSummary[]> =>
+    apiFetch('/chat/sessions'),
+
   assess: (message: string, portfolioId?: string, sessionId?: string): Promise<RiskReport> => {
     const params = new URLSearchParams()
     if (portfolioId) params.set('portfolioId', portfolioId)
@@ -56,52 +67,56 @@ export const chatApi = {
       ? `${BASE}/chat/stream?portfolioId=${portfolioId}`
       : `${BASE}/chat/stream`
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'text/event-stream',
-        ...authHeaders(),
-      },
-      body: JSON.stringify({ message, sessionId }),
-    })
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          ...authHeaders(),
+        },
+        body: JSON.stringify({ message, sessionId }),
+      })
 
-    if (!res.ok) {
-      onError(`HTTP ${res.status}`)
-      return
-    }
+      if (!res.ok) {
+        onError(`HTTP ${res.status}`)
+        return
+      }
 
-    const reader = res.body!.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
+      const reader = res.body!.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
 
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() ?? ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() ?? ''
 
-      let eventName = ''
-      for (const line of lines) {
-        if (line.startsWith('event:')) {
-          eventName = line.slice(6).trim()
-        } else if (line.startsWith('data:')) {
-          const data = line.slice(5).trim()
-          if (eventName === 'done') {
-            onDone()
-          } else if (eventName === 'error') {
-            try { onError(JSON.parse(data).message) } catch { onError(data) }
-          } else if (eventName === 'message') {
-            try {
-              const parsed = JSON.parse(data)
-              onChunk(parsed.content ?? '', parsed.sessionId ?? '')
-            } catch { /* ignore malformed */ }
+        let eventName = ''
+        for (const line of lines) {
+          if (line.startsWith('event:')) {
+            eventName = line.slice(6).trim()
+          } else if (line.startsWith('data:')) {
+            const data = line.slice(5).trim()
+            if (eventName === 'done') {
+              onDone()
+            } else if (eventName === 'error') {
+              try { onError(JSON.parse(data).message) } catch { onError(data) }
+            } else if (eventName === 'message') {
+              try {
+                const parsed = JSON.parse(data)
+                onChunk(parsed.content ?? '', parsed.sessionId ?? '')
+              } catch { /* ignore malformed */ }
+            }
+          } else if (line === '') {
+            eventName = ''
           }
-        } else if (line === '') {
-          eventName = ''
         }
       }
+    } catch (err) {
+      onError(err instanceof Error ? err.message : 'Connection failed')
     }
   },
 }

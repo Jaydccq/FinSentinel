@@ -107,6 +107,18 @@ app:
       - name: Yahoo Finance
         url: https://finance.yahoo.com/news/rssindex
         source: RSS_YAHOO
+      - name: BBC Business
+        url: https://feeds.bbci.co.uk/news/business/rss.xml
+        source: RSS_BBC
+      - name: Guardian Business
+        url: https://www.theguardian.com/uk/business/rss
+        source: RSS_GUARDIAN
+      - name: NPR Economy
+        url: https://feeds.npr.org/1017/rss.xml
+        source: RSS_NPR
+      - name: Reuters Economy (Google News Proxy)
+        url: "https://news.google.com/rss/search?q=site:reuters.com+economy&hl=en-US&gl=US&ceid=US:en"
+        source: RSS_REUTERS_PROXY
     retention-days: 30
     enrich:
       enabled: ${APP_NEWS_ENRICH_ENABLED:true}

@@ -1,9 +1,13 @@
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Upload, FileText, CheckCircle, Clock, AlertCircle, File, BookOpen, Newspaper, BarChart2, FolderOpen } from 'lucide-react'
+import { toast } from 'sonner'
 import { documentsApi, type DocumentResponse } from '../api/documents'
+import { DocumentListSkeleton } from '../components/Skeleton'
+import EmptyState from '../components/EmptyState'
 
 const DOC_TYPES = ['REGULATION', 'RESEARCH', 'NEWS', 'EARNINGS', 'OTHER']
+const STATUSES = ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED']
 
 const STATUS_STYLE: Record<string, { border: string; badge: string; label: string }> = {
   COMPLETED: {
@@ -49,27 +53,123 @@ function formatSize(bytes: number): string {
   return                              `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+function FilterChips({
+  label,
+  options,
+  selected,
+  onSelect,
+}: {
+  label: string
+  options: string[]
+  selected: string
+  onSelect: (v: string) => void
+}) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)] font-medium">{label}</span>
+      <button
+        onClick={() => onSelect('')}
+        className={`status-chip border transition-colors ${
+          selected === ''
+            ? 'bg-amber-400/18 border-amber-300/30 text-amber-100'
+            : 'bg-slate-800/30 border-[color:var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+        }`}
+      >
+        All
+      </button>
+      {options.map(opt => (
+        <button
+          key={opt}
+          onClick={() => onSelect(opt)}
+          className={`status-chip border transition-colors ${
+            selected === opt
+              ? 'bg-amber-400/18 border-amber-300/30 text-amber-100'
+              : 'bg-slate-800/30 border-[color:var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+          }`}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export default function DocumentsPage() {
-  const [docs,      setDocs]      = useState<DocumentResponse[]>([])
-  const [loading,   setLoading]   = useState(true)
-  const [uploading, setUploading] = useState(false)
-  const [docType,   setDocType]   = useState('REGULATION')
-  const [sector,    setSector]    = useState('')
-  const [dragOver,  setDragOver]  = useState(false)
+  const [docs,         setDocs]         = useState<DocumentResponse[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [uploading,    setUploading]    = useState(false)
+  const [docType,      setDocType]      = useState('REGULATION')
+  const [sector,       setSector]       = useState('')
+  const [dragOver,     setDragOver]     = useState(false)
+  const [statusFilter, setStatusFilter] = useState('')
+  const [typeFilter,   setTypeFilter]   = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const prevStatusRef = useRef<Record<string, string>>({})
 
-  const refresh = () =>
-    documentsApi.list().then(setDocs).finally(() => setLoading(false))
+  const refresh = useCallback(() => {
+    return documentsApi.list(statusFilter || undefined, typeFilter || undefined)
+      .then(newDocs => {
+        // Detect status transitions for toast notifications
+        for (const doc of newDocs) {
+          const prev = prevStatusRef.current[doc.id]
+          if (prev && prev !== doc.status) {
+            if (doc.status === 'COMPLETED') {
+              toast.success(`"${doc.fileName}" processed successfully.`)
+            } else if (doc.status === 'FAILED') {
+              toast.error(`"${doc.fileName}" processing failed.`)
+            }
+          }
+        }
+        // Update previous status map
+        const map: Record<string, string> = {}
+        for (const doc of newDocs) map[doc.id] = doc.status
+        prevStatusRef.current = map
 
-  useEffect(() => { refresh() }, [])
+        setDocs(newDocs)
+        return newDocs
+      })
+      .catch(() => {
+        toast.error('Failed to load documents.')
+        setDocs([])
+        return [] as DocumentResponse[]
+      })
+      .finally(() => setLoading(false))
+  }, [statusFilter, typeFilter])
+
+  // Initial load + re-fetch when filters change
+  useEffect(() => {
+    setLoading(true)
+    refresh()
+  }, [refresh])
+
+  // Polling: check every 3s if any docs are PENDING/PROCESSING
+  useEffect(() => {
+    const hasPending = docs.some(d => d.status === 'PENDING' || d.status === 'PROCESSING')
+
+    if (hasPending && !pollRef.current) {
+      pollRef.current = setInterval(() => { refresh() }, 3000)
+    } else if (!hasPending && pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+      }
+    }
+  }, [docs, refresh])
 
   const upload = async (file: File) => {
     setUploading(true)
     try {
       await documentsApi.upload(file, docType, sector || undefined)
+      toast.success(`"${file.name}" uploaded successfully.`)
       refresh()
     } catch {
-      alert('Upload failed')
+      toast.error('Upload failed. Please try again.')
     } finally {
       setUploading(false)
     }
@@ -199,6 +299,12 @@ export default function DocumentsPage() {
         </div>
       </div>
 
+      {/* Filter chips */}
+      <div className="space-y-3">
+        <FilterChips label="Status" options={STATUSES} selected={statusFilter} onSelect={setStatusFilter} />
+        <FilterChips label="Type" options={DOC_TYPES} selected={typeFilter} onSelect={setTypeFilter} />
+      </div>
+
       {/* Document list */}
       <div>
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
@@ -207,12 +313,13 @@ export default function DocumentsPage() {
         </h2>
 
         {loading ? (
-          <p className="text-zinc-500 text-sm">Loading…</p>
+          <DocumentListSkeleton />
         ) : docs.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-zinc-800/50 p-10 text-center">
-            <File size={28} className="mx-auto text-zinc-700 mb-2" />
-            <p className="text-zinc-600 text-sm">No documents uploaded yet.</p>
-          </div>
+          <EmptyState
+            icon={<File size={28} />}
+            title="No documents match the current filters."
+            description="Upload a document or adjust your filters."
+          />
         ) : (
           <div className="space-y-2">
             {docs.map((d, i) => {

@@ -2,6 +2,7 @@ package com.example.finsentinel.controller;
 
 import com.example.finsentinel.dto.chat.ChatMessageResponse;
 import com.example.finsentinel.dto.chat.ChatRequest;
+import com.example.finsentinel.dto.chat.ChatSessionSummary;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.ChatMessage;
 import com.example.finsentinel.model.User;
@@ -78,6 +79,16 @@ public class ChatController {
                 user.getId(), request.sessionId());
 
         return ResponseEntity.ok(report);
+    }
+
+    /**
+     * Lists all distinct chat sessions for the authenticated user.
+     */
+    @GetMapping("/sessions")
+    public ResponseEntity<List<ChatSessionSummary>> listSessions(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        User user = resolveUser(userDetails);
+        return ResponseEntity.ok(chatService.listSessions(user.getId()));
     }
 
     /**

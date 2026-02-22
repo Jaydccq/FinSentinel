@@ -71,13 +71,13 @@ public class DocumentController {
         List<Document> documents;
 
         if (status != null && docType != null) {
-            documents = documentRepository.findByStatusAndDocType(status, docType);
+            documents = documentRepository.findByStatusAndDocTypeOrderByCreatedAtDesc(status, docType);
         } else if (status != null) {
             // Status filter only
-            documents = documentRepository.findByStatus(status);
+            documents = documentRepository.findByStatusOrderByCreatedAtDesc(status);
         } else if (docType != null) {
             // Type filter only
-            documents = documentRepository.findByDocType(docType);
+            documents = documentRepository.findByDocTypeOrderByCreatedAtDesc(docType);
         } else {
             // No filters
             documents = documentRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
