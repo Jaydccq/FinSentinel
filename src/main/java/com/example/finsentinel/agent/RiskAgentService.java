@@ -117,10 +117,18 @@ public class RiskAgentService {
         }
 
         try {
+            RiskLevel level;
+            try {
+                level = RiskLevel.valueOf(report.riskLevel().toUpperCase().trim());
+            } catch (IllegalArgumentException e) {
+                log.warn("Unknown risk level '{}' from LLM, defaulting to MEDIUM", report.riskLevel());
+                level = RiskLevel.MEDIUM;
+            }
+
             RiskReportEntity entity = RiskReportEntity.builder()
                     .portfolio(portfolio)
                     .riskScore(report.riskScore())
-                    .riskLevel(RiskLevel.valueOf(report.riskLevel()))
+                    .riskLevel(level)
                     .summary(report.summary())
                     .factorsJson(objectMapper.writeValueAsString(report.factors()))
                     .adviceJson(objectMapper.writeValueAsString(report.actionableAdvice()))

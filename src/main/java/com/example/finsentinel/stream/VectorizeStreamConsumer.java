@@ -22,6 +22,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Range;
 import org.springframework.data.redis.connection.stream.PendingMessage;
 import org.springframework.data.redis.connection.stream.PendingMessages;
+import org.springframework.data.redis.connection.stream.RecordId;
 
 /**
  * Consumer for Redis Stream-based async document vectorization.
@@ -87,8 +88,8 @@ public class VectorizeStreamConsumer {
 
     /**
      * Reclaims pending messages from dead consumers every 30 seconds.
-     * Messages idle for more than 30 seconds are assumed to belong to crashed consumers
-     * and are re-assigned to this consumer for processing.
+     * Uses XCLAIM to transfer ownership of messages idle for >30 seconds,
+     * then processes them under this consumer.
      */
     @Scheduled(fixedDelay = 30_000)
     public void reclaimPending() {
@@ -101,22 +102,22 @@ public class VectorizeStreamConsumer {
             );
 
             for (PendingMessage pm : pending) {
-                // Reclaim messages idle for over 30 seconds that belong to other consumers
                 if (pm.getElapsedTimeSinceLastDelivery().compareTo(Duration.ofSeconds(30)) > 0
                         && !pm.getConsumerName().equals(consumerName)) {
                     try {
-                        List<MapRecord<String, Object, Object>> claimed = redisTemplate.opsForStream().read(
-                                Consumer.from(VectorizeStreamConstants.GROUP_NAME, consumerName),
-                                StreamReadOptions.empty().count(1),
-                                StreamOffset.create(VectorizeStreamConstants.STREAM_KEY,
-                                        ReadOffset.from(pm.getId().getValue()))
-                        );
-                        if (claimed != null) {
-                            for (MapRecord<String, Object, Object> msg : claimed) {
-                                log.info("Reclaimed pending message {} from consumer {}",
-                                        msg.getId(), pm.getConsumerName());
-                                processMessage(msg);
-                            }
+                        // XCLAIM: transfer ownership to this consumer
+                        List<MapRecord<String, Object, Object>> claimed =
+                                redisTemplate.opsForStream().claim(
+                                        VectorizeStreamConstants.STREAM_KEY,
+                                        VectorizeStreamConstants.GROUP_NAME,
+                                        consumerName,
+                                        Duration.ofSeconds(30),
+                                        RecordId.of(pm.getId().getValue())
+                                );
+                        for (MapRecord<String, Object, Object> msg : claimed) {
+                            log.info("Reclaimed pending message {} from consumer {}",
+                                    msg.getId(), pm.getConsumerName());
+                            processMessage(msg);
                         }
                     } catch (Exception e) {
                         log.warn("Failed to reclaim message {}: {}", pm.getId(), e.getMessage());

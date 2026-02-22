@@ -53,9 +53,14 @@ public class MarketDataService {
         String cacheKey = "market:quote:" + ticker;
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
-            log.debug("Cache hit for quote: {}", ticker);
-
-            return parseJsonMap(cached);
+            Map<String, Object> parsed = parseJsonMap(cached);
+            if (!parsed.isEmpty()) {
+                log.debug("Cache hit for quote: {}", ticker);
+                return parsed;
+            }
+            // Cache corrupted — evict and fall through to origin
+            redisTemplate.delete(cacheKey);
+            log.warn("Evicted corrupted quote cache for {}", ticker);
         }
 
         JsonNode bar = fetchLatestBar(ticker);
@@ -90,9 +95,14 @@ public class MarketDataService {
         String cacheKey = "market:history:" + ticker + ":" + days;
         String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
-            log.debug("Cache hit for history: {} ({}d)", ticker, days);
-
-            return parseJsonNode(cached);
+            JsonNode parsed = parseJsonNode(cached);
+            if (!parsed.isEmpty()) {
+                log.debug("Cache hit for history: {} ({}d)", ticker, days);
+                return parsed;
+            }
+            // Cache corrupted — evict and fall through to origin
+            redisTemplate.delete(cacheKey);
+            log.warn("Evicted corrupted history cache for {} ({}d)", ticker, days);
         }
 
         String to = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
@@ -121,12 +131,13 @@ public class MarketDataService {
      */
     public Map<String, Object> getBatchQuotes(List<String> tickers) {
         Map<String, Object> result = new LinkedHashMap<>();
-        for (int i = 0; i < tickers.size(); i++) {
-            String ticker = tickers.get(i);
+        for (String ticker : tickers) {
+            if (ticker == null || ticker.isBlank()) continue;
+            String key = ticker.toUpperCase().trim();
             try {
-                result.put(ticker.toUpperCase().trim(), getQuote(ticker));
+                result.put(key, getQuote(ticker));
             } catch (Exception e) {
-                result.put(ticker.toUpperCase().trim(), Map.of("error", e.getMessage()));
+                result.put(key, Map.of("error", e.getMessage() != null ? e.getMessage() : "Unknown error"));
             }
         }
         return result;

@@ -26,6 +26,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Range;
 import org.springframework.data.redis.connection.stream.PendingMessage;
 import org.springframework.data.redis.connection.stream.PendingMessages;
+import org.springframework.data.redis.connection.stream.RecordId;
 
 @Slf4j
 @Component
@@ -79,6 +80,7 @@ public class NewsEnrichConsumer {
 
     /**
      * Reclaims pending messages from dead consumers every 30 seconds.
+     * Uses XCLAIM to transfer ownership of messages idle for >30 seconds.
      */
     @Scheduled(fixedDelay = 30_000)
     public void reclaimPending() {
@@ -94,18 +96,18 @@ public class NewsEnrichConsumer {
                 if (pm.getElapsedTimeSinceLastDelivery().compareTo(Duration.ofSeconds(30)) > 0
                         && !pm.getConsumerName().equals(consumerName)) {
                     try {
-                        List<MapRecord<String, Object, Object>> claimed = redisTemplate.opsForStream().read(
-                                Consumer.from(VectorizeStreamConstants.NEWS_ENRICH_GROUP_NAME, consumerName),
-                                StreamReadOptions.empty().count(1),
-                                StreamOffset.create(VectorizeStreamConstants.NEWS_ENRICH_STREAM_KEY,
-                                        ReadOffset.from(pm.getId().getValue()))
-                        );
-                        if (claimed != null) {
-                            for (MapRecord<String, Object, Object> msg : claimed) {
-                                log.info("Reclaimed pending news-enrich message {} from consumer {}",
-                                        msg.getId(), pm.getConsumerName());
-                                processMessage(msg);
-                            }
+                        List<MapRecord<String, Object, Object>> claimed =
+                                redisTemplate.opsForStream().claim(
+                                        VectorizeStreamConstants.NEWS_ENRICH_STREAM_KEY,
+                                        VectorizeStreamConstants.NEWS_ENRICH_GROUP_NAME,
+                                        consumerName,
+                                        Duration.ofSeconds(30),
+                                        RecordId.of(pm.getId().getValue())
+                                );
+                        for (MapRecord<String, Object, Object> msg : claimed) {
+                            log.info("Reclaimed pending news-enrich message {} from consumer {}",
+                                    msg.getId(), pm.getConsumerName());
+                            processMessage(msg);
                         }
                     } catch (Exception e) {
                         log.warn("Failed to reclaim news-enrich message {}: {}", pm.getId(), e.getMessage());
