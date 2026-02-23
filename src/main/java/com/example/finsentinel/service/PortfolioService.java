@@ -15,8 +15,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Implements portfolio service business operations and integrations.
@@ -167,6 +171,87 @@ public class PortfolioService {
 
         return holdingRepository.findByPortfolioId(portfolioId).stream()
                 .map(holdingMapper::toResponse).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PortfolioAnalyticsResponse getAnalytics(UUID portfolioId, UUID userId) {
+        Portfolio portfolio = findOwnedPortfolio(portfolioId, userId);
+        List<Holding> holdings = holdingRepository.findByPortfolioId(portfolioId);
+
+        if (holdings.isEmpty()) {
+            return new PortfolioAnalyticsResponse(
+                    BigDecimal.ZERO, Map.of(), 0.0, "N/A", List.of(), List.of());
+        }
+
+        BigDecimal totalMarketValue = BigDecimal.ZERO;
+        List<PortfolioAnalyticsResponse.HoldingWeight> weights = new ArrayList<>();
+
+        for (Holding h : holdings) {
+            BigDecimal price = h.getCurrentPrice() != null ? h.getCurrentPrice() : h.getAverageCost();
+            BigDecimal marketValue = price.multiply(h.getQuantity());
+            BigDecimal costBasis = h.getAverageCost().multiply(h.getQuantity());
+            BigDecimal unrealizedPnl = marketValue.subtract(costBasis);
+            BigDecimal pnlPct = costBasis.compareTo(BigDecimal.ZERO) != 0
+                    ? unrealizedPnl.divide(costBasis, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100))
+                    : BigDecimal.ZERO;
+
+            totalMarketValue = totalMarketValue.add(marketValue);
+            weights.add(new PortfolioAnalyticsResponse.HoldingWeight(
+                    h.getSymbol(), h.getCompanyName(), h.getSector(),
+                    marketValue, BigDecimal.ZERO, unrealizedPnl, pnlPct));
+        }
+
+        // Calculate weight percentages
+        BigDecimal finalTotal = totalMarketValue;
+        weights = weights.stream()
+                .map(w -> new PortfolioAnalyticsResponse.HoldingWeight(
+                        w.symbol(), w.companyName(), w.sector(), w.marketValue(),
+                        w.marketValue().divide(finalTotal, 4, RoundingMode.HALF_UP)
+                                .multiply(BigDecimal.valueOf(100)),
+                        w.unrealizedPnl(), w.pnlPercent()))
+                .sorted((a, b) -> b.marketValue().compareTo(a.marketValue()))
+                .toList();
+
+        // Sector allocation
+        Map<String, BigDecimal> sectorAllocation = weights.stream()
+                .filter(w -> w.sector() != null)
+                .collect(Collectors.groupingBy(
+                        PortfolioAnalyticsResponse.HoldingWeight::sector,
+                        Collectors.reducing(BigDecimal.ZERO,
+                                PortfolioAnalyticsResponse.HoldingWeight::weightPercent,
+                                BigDecimal::add)));
+
+        // HHI calculation
+        double hhi = weights.stream()
+                .mapToDouble(w -> {
+                    double wPct = w.marketValue().divide(finalTotal, 4, RoundingMode.HALF_UP).doubleValue();
+                    return wPct * wPct;
+                })
+                .sum() * 10000;
+
+        String hhiClassification;
+        if (hhi > 2500) hhiClassification = "Highly Concentrated";
+        else if (hhi > 1500) hhiClassification = "Moderately Concentrated";
+        else hhiClassification = "Well Diversified";
+
+        // Concentration warnings
+        List<String> warnings = new ArrayList<>();
+        for (PortfolioAnalyticsResponse.HoldingWeight w : weights) {
+            if (w.weightPercent().doubleValue() > 20) {
+                warnings.add(String.format("%s is %.1f%% of portfolio (>20%% single-stock concentration risk)",
+                        w.symbol(), w.weightPercent().doubleValue()));
+            }
+        }
+        for (Map.Entry<String, BigDecimal> e : sectorAllocation.entrySet()) {
+            if (e.getValue().doubleValue() > 40) {
+                warnings.add(String.format("%s sector is %.1f%% of portfolio (>40%% sector concentration risk)",
+                        e.getKey(), e.getValue().doubleValue()));
+            }
+        }
+
+        return new PortfolioAnalyticsResponse(
+                totalMarketValue.setScale(2, RoundingMode.HALF_UP),
+                sectorAllocation, hhi, hhiClassification, weights, warnings);
     }
 
     /**

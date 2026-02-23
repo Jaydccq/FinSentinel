@@ -43,6 +43,25 @@ export interface HoldingRequest {
   sector?: string
 }
 
+export interface HoldingWeight {
+  symbol: string
+  companyName: string
+  sector: string
+  marketValue: number
+  weightPercent: number
+  unrealizedPnl: number
+  pnlPercent: number
+}
+
+export interface PortfolioAnalytics {
+  totalMarketValue: number
+  sectorAllocation: Record<string, number>
+  hhiIndex: number
+  hhiClassification: string
+  holdingWeights: HoldingWeight[]
+  concentrationWarnings: string[]
+}
+
 export const portfolioApi = {
   list: () => apiFetch<PortfolioResponse[]>('/portfolios'),
   get: (id: string) => apiFetch<PortfolioResponse>(`/portfolios/${id}`),
@@ -65,4 +84,7 @@ export const portfolioApi = {
 
   listReports: (portfolioId: string) =>
     apiFetch<RiskReportSummary[]>(`/portfolios/${portfolioId}/reports`),
+
+  getAnalytics: (id: string) =>
+    apiFetch<PortfolioAnalytics>(`/portfolios/${id}/analytics`),
 }

@@ -46,4 +46,30 @@ export const documentsApi = {
     if (!res.ok) throw new Error(`${res.status}`)
     return res.json()
   },
+
+  download: async (id: string): Promise<void> => {
+    const res = await fetch(`${BASE}/documents/${id}/download`, {
+      headers: { ...authHeaders() },
+    })
+    if (res.status === 401) {
+      localStorage.removeItem('auth_user')
+      localStorage.removeItem('jwt_token')
+      window.location.href = '/login'
+      throw new Error('Session expired')
+    }
+    if (!res.ok) throw new Error(`${res.status}`)
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `document-${id}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await apiFetch<void>(`/documents/${id}`, { method: 'DELETE' })
+  },
 }

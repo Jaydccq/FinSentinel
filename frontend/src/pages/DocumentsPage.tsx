@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Upload, FileText, CheckCircle, Clock, AlertCircle, File, BookOpen, Newspaper, BarChart2, FolderOpen } from 'lucide-react'
+import { Upload, FileText, CheckCircle, Clock, AlertCircle, File, BookOpen, Newspaper, BarChart2, FolderOpen, Download, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { documentsApi, type DocumentResponse } from '../api/documents'
 import { DocumentListSkeleton } from '../components/Skeleton'
@@ -187,6 +187,26 @@ export default function DocumentsPage() {
     if (f) upload(f)
   }
 
+  const downloadDoc = async (id: string) => {
+    try {
+      await documentsApi.download(id)
+      toast.success('Download started.')
+    } catch {
+      toast.error('Download failed.')
+    }
+  }
+
+  const deleteDoc = async (id: string) => {
+    if (!confirm('Delete this document? This cannot be undone.')) return
+    try {
+      await documentsApi.delete(id)
+      toast.success('Document deleted.')
+      refresh()
+    } catch {
+      toast.error('Failed to delete document.')
+    }
+  }
+
   return (
     <div className="p-10 space-y-10">
 
@@ -359,6 +379,25 @@ export default function DocumentsPage() {
                   >
                     <StatusIcon status={d.status} />
                     {statusStyle.label}
+                  </div>
+
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {d.status === 'COMPLETED' && (
+                      <button
+                        onClick={() => downloadDoc(d.id)}
+                        aria-label={`Download ${d.fileName}`}
+                        className="h-7 w-7 rounded-md flex items-center justify-center text-[var(--text-muted)] hover:text-emerald-200 hover:bg-emerald-500/15 transition-colors"
+                      >
+                        <Download size={14} />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deleteDoc(d.id)}
+                      aria-label={`Delete ${d.fileName}`}
+                      className="h-7 w-7 rounded-md flex items-center justify-center text-[var(--text-muted)] hover:text-red-200 hover:bg-red-500/15 transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 </motion.div>
               )

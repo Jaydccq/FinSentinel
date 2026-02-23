@@ -212,6 +212,13 @@ public class PortfolioController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/{id}/analytics")
+    public ResponseEntity<PortfolioAnalyticsResponse> getAnalytics(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return ResponseEntity.ok(portfolioService.getAnalytics(id, resolveUserId(userDetails)));
+    }
+
     // --- Reports sub-resource ---
 
     /**

@@ -5,6 +5,7 @@ import com.example.finsentinel.model.NewsItem;
 import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.repository.DocumentRepository;
 import com.example.finsentinel.repository.NewsItemRepository;
+import com.example.finsentinel.service.news.NewsSentimentService;
 import com.example.finsentinel.service.scraper.FirecrawlClient;
 import com.example.finsentinel.service.storage.StorageService;
 import com.example.finsentinel.util.MarkdownToPdfConverter;
@@ -41,6 +42,7 @@ public class NewsEnrichConsumer {
     private final StorageService storageService;
     private final VectorizeStreamProducer vectorizeStreamProducer;
     private final NewsEnrichProducer newsEnrichProducer;
+    private final NewsSentimentService newsSentimentService;
 
     private final String consumerName = "news-enrich-" + UUID.randomUUID().toString().substring(0, 8);
 
@@ -204,6 +206,8 @@ public class NewsEnrichConsumer {
             vectorizeStreamProducer.send(doc.getId());
 
             newsItem.setEnriched(true);
+            String sentiment = newsSentimentService.classify(newsItem.getTitle(), newsItem.getSummary());
+            newsItem.setSentiment(sentiment);
             newsItem.setDocumentId(doc.getId());
             newsItemRepository.save(newsItem);
 

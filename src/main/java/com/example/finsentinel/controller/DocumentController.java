@@ -1,14 +1,18 @@
 package com.example.finsentinel.controller;
 
 import com.example.finsentinel.dto.document.DocumentUploadResponse;
+import com.example.finsentinel.ratelimit.RateLimit;
 import com.example.finsentinel.model.Document;
 import com.example.finsentinel.model.enums.DocumentStatus;
 import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.repository.DocumentRepository;
 import com.example.finsentinel.service.document.DocumentUploadService;
+import com.example.finsentinel.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +34,7 @@ public class DocumentController {
 
     private final DocumentUploadService documentUploadService;
     private final DocumentRepository documentRepository;
+    private final StorageService storageService;
 
     /**
      * Uploads and processes a document through the RAG pipeline.
@@ -40,6 +45,7 @@ public class DocumentController {
      * @param regionId the compliance region (optional, defaults to "US")
      * @return upload response with document metadata
      */
+    @RateLimit(limit = 20, windowSecs = 60, key = "document:upload")
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<DocumentUploadResponse> uploadDocument(
             @RequestParam("file") MultipartFile file,
@@ -105,6 +111,50 @@ public class DocumentController {
         Document document = documentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Document not found: " + id));
         return ResponseEntity.ok(toResponse(document));
+    }
+
+    /**
+     * Downloads a document file by ID.
+     * Returns the raw file bytes with Content-Disposition attachment header.
+     */
+    @GetMapping("/{id}/download")
+    public ResponseEntity<byte[]> downloadDocument(@PathVariable UUID id) {
+        log.info("GET /api/documents/{}/download", id);
+
+        Document document = documentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found: " + id));
+
+        byte[] content = storageService.download(document.getStorageKey());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentDisposition(ContentDisposition.attachment()
+                .filename(document.getFileName())
+                .build());
+        headers.setContentType(MediaType.APPLICATION_PDF);
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(content);
+    }
+
+    /**
+     * Deletes a document by ID — removes from storage and database.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteDocument(@PathVariable UUID id) {
+        log.info("DELETE /api/documents/{}", id);
+
+        Document document = documentRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found: " + id));
+
+        try {
+            storageService.delete(document.getStorageKey());
+        } catch (Exception e) {
+            log.warn("Failed to delete document from storage: {}", e.getMessage());
+        }
+
+        documentRepository.delete(document);
+        return ResponseEntity.noContent().build();
     }
 
     /**

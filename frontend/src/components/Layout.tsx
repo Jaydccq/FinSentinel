@@ -16,6 +16,7 @@ import {
   Shield,
   ChevronRight,
   UserCircle2,
+  Settings,
 } from 'lucide-react'
 
 const NAV = [
@@ -26,6 +27,7 @@ const NAV = [
   { to: '/documents', label: 'Documents', icon: FileText },
   { to: '/reports', label: 'Reports', icon: FileDown },
   { to: '/news', label: 'News Feed', icon: Newspaper },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
 function routeMeta(pathname: string) {
@@ -45,6 +47,7 @@ function routeMeta(pathname: string) {
     '/documents': { title: 'Documents', subtitle: 'Upload, parse, and manage financial source files' },
     '/reports': { title: 'Reports', subtitle: 'Generate and export investor-ready deliverables' },
     '/news': { title: 'News Feed', subtitle: 'Live headlines that affect your holdings' },
+    '/settings': { title: 'Settings', subtitle: 'Account preferences and watchlist management' },
   }
 
   return map[pathname] ?? { title: 'FinSentinel', subtitle: 'AI-powered investment risk intelligence platform' }

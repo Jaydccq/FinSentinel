@@ -38,37 +38,50 @@ public class FirecrawlClient {
                 .build();
     }
 
+    private static final int MAX_RETRIES = 3;
+    private static final long INITIAL_BACKOFF_MS = 1000;
+
     /**
      * Scrape a single URL and return the markdown content.
-     * Returns null if scraping fails.
+     * Returns null if scraping fails after all retries.
      */
     public ScrapeResult scrape(String url) {
-        try {
-            JsonNode response = restClient.post()
-                    .uri("/scrape")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of(
-                            "url", url,
-                            "formats", new String[]{"markdown"}
-                    ))
-                    .retrieve()
-                    .body(JsonNode.class);
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                JsonNode response = restClient.post()
+                        .uri("/scrape")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(Map.of(
+                                "url", url,
+                                "formats", new String[]{"markdown"}
+                        ))
+                        .retrieve()
+                        .body(JsonNode.class);
 
-            if (response != null && response.has("data")) {
-                JsonNode data = response.get("data");
-                String markdown = data.has("markdown") ? data.get("markdown").asText() : "";
-                String title = data.has("metadata") && data.get("metadata").has("title")
-                        ? data.get("metadata").get("title").asText()
-                        : url;
-
-                return new ScrapeResult(title, markdown, url);
+                if (response != null && response.has("data")) {
+                    JsonNode data = response.get("data");
+                    String markdown = data.has("markdown") ? data.get("markdown").asText() : "";
+                    String title = data.has("metadata") && data.get("metadata").has("title")
+                            ? data.get("metadata").get("title").asText()
+                            : url;
+                    return new ScrapeResult(title, markdown, url);
+                }
+                log.warn("Firecrawl returned no data for URL (attempt {}/{}): {}", attempt, MAX_RETRIES, url);
+            } catch (Exception e) {
+                log.warn("Firecrawl scrape failed (attempt {}/{}): {} - {}", attempt, MAX_RETRIES, url, e.getMessage());
+                if (attempt < MAX_RETRIES) {
+                    try {
+                        long backoffMs = INITIAL_BACKOFF_MS * (1L << (attempt - 1));
+                        Thread.sleep(backoffMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return null;
+                    }
+                }
             }
-            log.warn("Firecrawl returned no data for URL: {}", url);
-            return null;
-        } catch (Exception e) {
-            log.error("Firecrawl scrape failed for URL: {}", url, e);
-            return null;
         }
+        log.error("Firecrawl scrape failed after {} retries for URL: {}", MAX_RETRIES, url);
+        return null;
     }
 
     /**

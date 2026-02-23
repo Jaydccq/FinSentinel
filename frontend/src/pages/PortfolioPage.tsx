@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { Plus, Trash2, ChevronDown } from 'lucide-react'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { toast } from 'sonner'
-import { portfolioApi, type PortfolioResponse } from '../api/portfolio'
+import { portfolioApi, type PortfolioResponse, type PortfolioAnalytics } from '../api/portfolio'
 import { PortfolioListSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 
@@ -17,6 +18,17 @@ const SECTOR_COLORS: Record<string, string> = {
   Utilities: 'bg-teal-500/15 text-teal-100 border-teal-300/30',
   Materials: 'bg-lime-500/15 text-lime-100 border-lime-300/30',
   Communication: 'bg-sky-500/15 text-sky-100 border-sky-300/30',
+}
+
+const PIE_COLORS = [
+  '#60a5fa', '#34d399', '#a78bfa', '#fbbf24', '#fb7185',
+  '#22d3ee', '#f97316', '#2dd4bf', '#a3e635', '#38bdf8',
+]
+
+const HHI_STYLE: Record<string, string> = {
+  'Well Diversified': 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30',
+  'Moderately Concentrated': 'bg-amber-500/15 text-amber-300 border-amber-400/30',
+  'Highly Concentrated': 'bg-red-500/15 text-red-300 border-red-400/30',
 }
 
 function sectorClass(sector?: string | null) {
@@ -101,6 +113,7 @@ export default function PortfolioPage() {
   const [portForm, setPortForm] = useState({ name: '', description: '' })
   const [holdForm, setHoldForm] = useState({ symbol: '', companyName: '', quantity: '', averageCost: '', sector: '' })
   const [loading, setLoading] = useState(true)
+  const [analytics, setAnalytics] = useState<Record<string, PortfolioAnalytics>>({})
 
   const refresh = () => portfolioApi.list().then(setPortfolios).finally(() => setLoading(false))
   useEffect(() => { refresh() }, [])
@@ -143,6 +156,19 @@ export default function PortfolioPage() {
       refresh()
     } catch {
       toast.error('Failed to add holding.')
+    }
+  }
+
+  const toggleExpand = (id: string) => {
+    if (expanded === id) {
+      setExpanded(null)
+      return
+    }
+    setExpanded(id)
+    if (!analytics[id]) {
+      portfolioApi.getAnalytics(id)
+        .then(data => setAnalytics(prev => ({ ...prev, [id]: data })))
+        .catch(() => toast.error('Failed to load analytics.'))
     }
   }
 
@@ -189,7 +215,7 @@ export default function PortfolioPage() {
               <div className="flex items-center justify-between gap-3 px-4 py-4 md:px-5 md:py-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <button
-                    onClick={() => setExpanded(expanded === portfolio.id ? null : portfolio.id)}
+                    onClick={() => toggleExpand(portfolio.id)}
                     aria-label={expanded === portfolio.id ? 'Collapse holdings' : 'Expand holdings'}
                     className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
                   >
@@ -225,6 +251,67 @@ export default function PortfolioPage() {
 
               {expanded === portfolio.id && (
                 <div className="border-t border-[color:var(--border-subtle)] overflow-x-auto">
+                {analytics[portfolio.id] && (() => {
+                  const a = analytics[portfolio.id]
+                  const pieData = Object.entries(a.sectorAllocation).map(([name, value]) => ({ name, value: Number(value) }))
+                  return (
+                    <div className="px-5 py-4 border-b border-[color:var(--border-subtle)] space-y-4">
+                      <div className="flex flex-wrap items-start gap-6">
+                        {pieData.length > 0 && (
+                          <div className="w-52 h-52">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={pieData}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={40}
+                                  outerRadius={70}
+                                  dataKey="value"
+                                  stroke="none"
+                                >
+                                  {pieData.map((_, i) => (
+                                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                                  ))}
+                                </Pie>
+                                <Tooltip
+                                  formatter={(v: number | undefined) => v != null ? `${v.toFixed(1)}%` : ''}
+                                  contentStyle={{ background: '#1e1e2e', border: '1px solid #333', borderRadius: '8px', fontSize: '12px' }}
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-[200px] space-y-3">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${HHI_STYLE[a.hhiClassification] ?? 'bg-slate-700 text-slate-300 border-slate-500/30'}`}>
+                              HHI: {a.hhiIndex.toFixed(0)} — {a.hhiClassification}
+                            </span>
+                          </div>
+                          {pieData.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {pieData.map((entry, i) => (
+                                <span key={entry.name} className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+                                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                                  {entry.name}: {entry.value.toFixed(1)}%
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {a.concentrationWarnings.length > 0 && (
+                            <div className="space-y-1">
+                              {a.concentrationWarnings.map((w, i) => (
+                                <p key={i} className="text-xs text-amber-400/90 flex items-start gap-1.5">
+                                  <span className="mt-0.5">&#9888;</span> {w}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()}
                   <table className="w-full text-sm min-w-[760px]">
                     <thead>
                       <tr className="bg-slate-900/35 text-[var(--text-muted)] text-xs border-b border-[color:var(--border-subtle)]">
