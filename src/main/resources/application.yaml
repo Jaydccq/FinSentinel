@@ -11,11 +11,15 @@ spring:
   jpa:
     defer-datasource-initialization: true
     hibernate:
-      ddl-auto: ${HIBERNATE_DDL_AUTO:update}
+      ddl-auto: ${HIBERNATE_DDL_AUTO:validate}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
+
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 0
 
   sql:
     init:
