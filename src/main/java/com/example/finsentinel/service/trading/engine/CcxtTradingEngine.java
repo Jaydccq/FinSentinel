@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.knowm.xchange.Exchange;
 import org.knowm.xchange.ExchangeFactory;
 import org.knowm.xchange.ExchangeSpecification;
-import org.knowm.xchange.binance.BinanceExchange;
 import org.knowm.xchange.currency.Currency;
 import org.knowm.xchange.currency.CurrencyPair;
 import org.knowm.xchange.dto.Order.OrderType;
@@ -40,7 +39,9 @@ public class CcxtTradingEngine implements TradingEngine {
 
         if (apiKey != null && secretKey != null) {
             try {
-                ExchangeSpecification spec = new BinanceExchange().getDefaultExchangeSpecification();
+                ExchangeSpecification spec = ExchangeFactory.INSTANCE
+                        .createExchange(this.exchangeName)
+                        .getDefaultExchangeSpecification();
                 spec.setApiKey(apiKey);
                 spec.setSecretKey(secretKey);
                 if (sandbox) {

@@ -34,6 +34,15 @@ public class HybridStorageService implements StorageService {
 
     @Override
     public void delete(String key) {
-        hotStorage.delete(key);
+        try {
+            hotStorage.delete(key);
+        } catch (Exception e) {
+            log.warn("Failed to delete from hot storage: {}", key, e);
+        }
+        try {
+            coldStorage.delete(key);
+        } catch (Exception e) {
+            log.warn("Failed to delete from cold storage: {}", key, e);
+        }
     }
 }

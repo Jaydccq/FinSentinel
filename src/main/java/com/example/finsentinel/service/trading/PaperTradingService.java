@@ -8,6 +8,7 @@ import com.example.finsentinel.repository.TradeWalletRepository;
 import com.example.finsentinel.repository.UserRepository;
 import com.example.finsentinel.service.MarketDataService;
 import com.example.finsentinel.service.trading.engine.*;
+import com.example.finsentinel.util.HashUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -15,9 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -107,10 +105,11 @@ public class PaperTradingService {
     public String stage(UUID userId, TradeOperation operation) {
         validateOperation(operation);
 
-        stagingAreas.computeIfAbsent(userId, k -> Collections.synchronizedList(new ArrayList<>()));
-        stagingAreas.get(userId).add(operation);
+        List<TradeOperation> userStaging = stagingAreas.computeIfAbsent(
+                userId, k -> Collections.synchronizedList(new ArrayList<>()));
+        userStaging.add(operation);
 
-        int count = stagingAreas.get(userId).size();
+        int count = userStaging.size();
         String detail = formatOperationSummary(operation);
         log.info("User {} staged operation: {} ({} total staged)", userId, detail, count);
         return String.format("Staged: %s (%d operation%s staged)", detail, count, count == 1 ? "" : "s");
@@ -150,7 +149,7 @@ public class PaperTradingService {
         // Generate commit hash
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FMT);
         String hashInput = message + "|" + staged.toString() + "|" + timestamp;
-        String hash = sha256(hashInput).substring(0, 8);
+        String hash = HashUtils.sha256(hashInput);
 
         // Build commit metadata (not yet persisted -- pending until execute)
         List<Map<String, Object>> operationMaps = staged.stream()
@@ -384,7 +383,7 @@ public class PaperTradingService {
      * @param limit  maximum number of commits to return
      * @return formatted commit log
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public String getCommitLog(UUID userId, int limit) {
         TradeWallet wallet = getOrCreateWallet(userId);
         List<Map<String, Object>> history = wallet.getCommitHistory();
@@ -455,7 +454,7 @@ public class PaperTradingService {
      * @param changePercent the percentage change to simulate (e.g., -10.0 for a 10% drop)
      * @return formatted impact analysis
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public String simulatePriceChange(UUID userId, String ticker, double changePercent) {
         TradeWallet wallet = getOrCreateWallet(userId);
         final String normalizedTicker = ticker.toUpperCase().trim();
@@ -557,8 +556,8 @@ public class PaperTradingService {
         if (!action.equals("BUY") && !action.equals("SELL") && !action.equals("CLOSE")) {
             throw new IllegalArgumentException("Invalid action: " + action + ". Must be BUY, SELL, or CLOSE");
         }
-        if (operation.ticker() == null || !operation.ticker().matches("^[A-Za-z]{1,5}$")) {
-            throw new IllegalArgumentException("Invalid ticker: " + operation.ticker() + ". Must be 1-5 letters");
+        if (operation.ticker() == null || !operation.ticker().matches("^[A-Za-z]{1,10}(/[A-Za-z]{1,5})?$")) {
+            throw new IllegalArgumentException("Invalid ticker: " + operation.ticker() + ". Must be 1-10 letters, optionally with /PAIR");
         }
         if (!action.equals("CLOSE")) {
             if ((operation.shares() == null || operation.shares().compareTo(BigDecimal.ZERO) <= 0)
@@ -575,69 +574,6 @@ public class PaperTradingService {
             throw new IllegalStateException("No price data available for " + ticker);
         }
         return toBigDecimal(closePrice);
-    }
-
-    /**
-     * Resolves the number of shares from either the shares field or the dollar amount.
-     */
-    private BigDecimal resolveShares(Map<String, Object> op, BigDecimal currentPrice) {
-        Object sharesObj = op.get("shares");
-        Object amountObj = op.get("amount");
-
-        if (sharesObj != null) {
-            BigDecimal shares = toBigDecimal(sharesObj);
-            if (shares.compareTo(BigDecimal.ZERO) > 0) {
-                return shares;
-            }
-        }
-        if (amountObj != null) {
-            BigDecimal amount = toBigDecimal(amountObj);
-            if (amount.compareTo(BigDecimal.ZERO) > 0) {
-                // Convert dollar amount to shares (fractional allowed in paper trading)
-                return amount.divide(currentPrice, 6, RoundingMode.HALF_DOWN);
-            }
-        }
-        throw new IllegalArgumentException("Cannot resolve shares: both shares and amount are missing or zero");
-    }
-
-    private void addOrUpdatePosition(TradeWallet wallet, String ticker, BigDecimal newShares, BigDecimal price) {
-        Map<String, Object> existing = findPosition(wallet, ticker);
-        if (existing != null) {
-            BigDecimal oldShares = toBigDecimal(existing.get("shares"));
-            BigDecimal oldAvgCost = toBigDecimal(existing.get("avgCost"));
-            // Weighted average cost
-            BigDecimal totalCost = oldShares.multiply(oldAvgCost).add(newShares.multiply(price));
-            BigDecimal totalShares = oldShares.add(newShares);
-            BigDecimal newAvgCost = totalCost.divide(totalShares, 2, RoundingMode.HALF_UP);
-
-            existing.put("shares", totalShares);
-            existing.put("avgCost", newAvgCost);
-            existing.put("currentPrice", price);
-        } else {
-            Map<String, Object> position = new LinkedHashMap<>();
-            position.put("ticker", ticker);
-            position.put("shares", newShares);
-            position.put("avgCost", price);
-            position.put("currentPrice", price);
-            wallet.getPositions().add(position);
-        }
-    }
-
-    private void reducePosition(TradeWallet wallet, String ticker, BigDecimal sharesToSell, BigDecimal currentPrice) {
-        Map<String, Object> position = findPosition(wallet, ticker);
-        if (position == null) return;
-
-        BigDecimal remaining = toBigDecimal(position.get("shares")).subtract(sharesToSell);
-        if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
-            removePosition(wallet, ticker);
-        } else {
-            position.put("shares", remaining);
-            position.put("currentPrice", currentPrice);
-        }
-    }
-
-    private void removePosition(TradeWallet wallet, String ticker) {
-        wallet.getPositions().removeIf(p -> ticker.equals(p.get("ticker")));
     }
 
     private Map<String, Object> findPosition(TradeWallet wallet, String ticker) {
@@ -686,18 +622,4 @@ public class PaperTradingService {
         return new BigDecimal(value.toString());
     }
 
-    private String sha256(String input) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder();
-            for (byte b : hash) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
-        } catch (NoSuchAlgorithmException e) {
-            // SHA-256 is always available in Java
-            throw new RuntimeException("SHA-256 not available", e);
-        }
-    }
 }

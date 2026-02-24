@@ -4,14 +4,12 @@ import com.example.finsentinel.model.AgentBrain;
 import com.example.finsentinel.model.User;
 import com.example.finsentinel.repository.AgentBrainRepository;
 import com.example.finsentinel.repository.UserRepository;
+import com.example.finsentinel.util.HashUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -67,6 +65,9 @@ public class AgentBrainService {
      */
     @Transactional
     public String updateFrontalLobe(UUID userId, String content) {
+        if (content == null) {
+            return "Error: strategy content cannot be null";
+        }
         AgentBrain brain = getOrCreateBrain(userId);
         String previousContent = brain.getFrontalLobe();
         brain.setFrontalLobe(content);
@@ -139,7 +140,7 @@ public class AgentBrainService {
     private void addCommit(AgentBrain brain, String type, String message) {
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FMT);
         String hashInput = type + "|" + message + "|" + timestamp;
-        String hash = sha256(hashInput).substring(0, 8);
+        String hash = HashUtils.sha256(hashInput);
 
         Map<String, Object> commit = new LinkedHashMap<>();
         commit.put("hash", hash);
@@ -160,18 +161,4 @@ public class AgentBrainService {
         }
     }
 
-    private String sha256(String input) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder();
-            for (byte b : hash) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
-        } catch (NoSuchAlgorithmException e) {
-            // SHA-256 is always available in Java
-            throw new RuntimeException("SHA-256 not available", e);
-        }
-    }
 }

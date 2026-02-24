@@ -203,8 +203,8 @@ public class MarketDataService {
     String validateTicker(String ticker) {
         if (ticker == null) throw new IllegalArgumentException("Invalid ticker: null");
         ticker = ticker.toUpperCase().trim();
-        if (!ticker.matches("^[A-Z]{1,5}$")) {
-            throw new IllegalArgumentException("Invalid ticker symbol: " + ticker + ". Must be 1-5 uppercase letters.");
+        if (!ticker.matches("^[A-Z]{1,10}(/[A-Z]{1,5})?$")) {
+            throw new IllegalArgumentException("Invalid ticker symbol: " + ticker + ". Must be 1-10 uppercase letters, optionally with /PAIR.");
         }
         return ticker;
     }
