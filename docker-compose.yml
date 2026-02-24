@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: finsentinel
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -59,7 +59,7 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_DB: finsentinel
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123456
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 0
@@ -73,7 +73,7 @@ services:
       AI_MODEL: ${AI_MODEL:-google/gemini-3-flash-preview}
       POLYGON_API_KEY: ${POLYGON_API_KEY}
       FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
-      JWT_SECRET: ${JWT_SECRET:-H9c3pV2mX7nQ5sL8kR4tY6wZ1aD0fG8hJ3uK9eB2nM5xS7qP4vT6rW1yZ8dC0a}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
       APP_STORAGE_PROVIDER: ${APP_STORAGE_PROVIDER:-rustfs}
       GOOGLE_DRIVE_CLIENT_ID: ${GOOGLE_DRIVE_CLIENT_ID:-}

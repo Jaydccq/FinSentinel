@@ -67,7 +67,7 @@ public class ChatService {
                     log.error("Stream error for session {}", session, error);
                     try {
                         emitter.send(SseEmitter.event().name("error")
-                                .data(Map.of("message", error.getMessage())));
+                                .data(Map.of("message", "An error occurred while processing your request. Please try again.")));
                     } catch (IOException ignored) {
                     }
                     emitter.completeWithError(error);
