@@ -73,6 +73,10 @@ dependencies {
     // Statistical Analysis (Quantitative Risk Analytics)
     implementation 'org.apache.commons:commons-math3:3.6.1'
 
+    // XChange — Java crypto exchange library (CCXT equivalent)
+    implementation 'org.knowm.xchange:xchange-core:5.2.1'
+    implementation 'org.knowm.xchange:xchange-binance:5.2.1'
+
     // MapStruct
     implementation "org.mapstruct:mapstruct:${mapstructVersion}"
     annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
