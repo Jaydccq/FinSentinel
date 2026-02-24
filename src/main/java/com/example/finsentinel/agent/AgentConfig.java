@@ -48,16 +48,17 @@ public class AgentConfig {
             TechnicalIndicatorTool technicalIndicatorTool,
             PortfolioAnalysisTool portfolioAnalysisTool,
             ComplianceCheckTool complianceCheckTool,
+            TradingTool tradingTool,
+            BrainTool brainTool,
             QuestionAnswerAdvisor questionAnswerAdvisor,
             UserContextAdvisor userContextAdvisor,
             ComplianceGuardrailAdvisor complianceGuardrailAdvisor) {
-
 
         return ChatClient.builder(chatModel)
                 .defaultSystem(systemPrompt)
                 .defaultTools(stockMarketTool, newsAnalysisTool,
                         technicalIndicatorTool, portfolioAnalysisTool,
-                        complianceCheckTool)
+                        complianceCheckTool, tradingTool, brainTool)
                 .defaultAdvisors(questionAnswerAdvisor, userContextAdvisor, complianceGuardrailAdvisor)
                 .build();
     }

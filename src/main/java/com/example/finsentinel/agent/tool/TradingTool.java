@@ -1,6 +1,7 @@
 package com.example.finsentinel.agent.tool;
 
 import com.example.finsentinel.model.TradeOperation;
+import com.example.finsentinel.model.enums.TradingMode;
 import com.example.finsentinel.service.trading.PaperTradingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -180,6 +181,29 @@ public class TradingTool {
         } catch (Exception e) {
             log.error("Failed to simulate impact for user {}", userId, e);
             return "Error simulating impact: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Switch between paper trading (simulated) and live trading (real broker). " +
+            "PAPER mode simulates trades at current market prices with no real money. " +
+            "LIVE mode executes real trades via Alpaca (US stocks) or crypto exchange. " +
+            "WARNING: LIVE mode uses real money. Ensure broker API is configured.")
+    public String switchTradingMode(
+            @ToolParam(description = "User UUID") String userId,
+            @ToolParam(description = "Trading mode: PAPER or LIVE") String mode) {
+        try {
+            UUID id = UUID.fromString(userId);
+            TradingMode tradingMode = TradingMode.valueOf(mode.toUpperCase().trim());
+            tradingService.switchMode(id, tradingMode);
+            return String.format("Trading mode switched to %s. %s",
+                    tradingMode,
+                    tradingMode == TradingMode.LIVE
+                        ? "WARNING: Real money trades will be executed via broker."
+                        : "Trades will be simulated against market prices.");
+        } catch (IllegalArgumentException e) {
+            return "Error: Invalid mode. Use PAPER or LIVE. " + e.getMessage();
+        } catch (Exception e) {
+            return "Error switching mode: " + e.getMessage();
         }
     }
 }

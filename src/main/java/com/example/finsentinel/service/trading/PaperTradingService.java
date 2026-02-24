@@ -3,9 +3,11 @@ package com.example.finsentinel.service.trading;
 import com.example.finsentinel.model.TradeOperation;
 import com.example.finsentinel.model.TradeWallet;
 import com.example.finsentinel.model.User;
+import com.example.finsentinel.model.enums.TradingMode;
 import com.example.finsentinel.repository.TradeWalletRepository;
 import com.example.finsentinel.repository.UserRepository;
 import com.example.finsentinel.service.MarketDataService;
+import com.example.finsentinel.service.trading.engine.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,6 +46,7 @@ public class PaperTradingService {
     private final TradeWalletRepository walletRepository;
     private final UserRepository userRepository;
     private final MarketDataService marketDataService;
+    private final TradingEngineFactory engineFactory;
 
     /** In-memory staging areas per user (userId -> staged operations). */
     private final ConcurrentHashMap<UUID, List<TradeOperation>> stagingAreas = new ConcurrentHashMap<>();
@@ -73,6 +76,20 @@ public class PaperTradingService {
             log.info("Created paper trading wallet for user {}", userId);
             return walletRepository.save(wallet);
         });
+    }
+
+    /**
+     * Switches the trading mode for a user's wallet (PAPER or LIVE).
+     *
+     * @param userId the user's UUID
+     * @param mode   the desired trading mode
+     */
+    @Transactional
+    public void switchMode(UUID userId, TradingMode mode) {
+        TradeWallet wallet = getOrCreateWallet(userId);
+        wallet.setTradingMode(mode);
+        walletRepository.save(wallet);
+        log.info("User {} switched trading mode to {}", userId, mode);
     }
 
     // ───────────────────────── Phase 1: Stage ───────────────────────────────
@@ -157,11 +174,17 @@ public class PaperTradingService {
     // ───────────────────────── Phase 3: Execute ─────────────────────────────
 
     /**
-     * Executes the pending commit -- simulates trades at current market prices.
+     * Executes the pending commit by delegating to the appropriate {@link TradingEngine}.
      *
-     * <p>Similar to {@code git push} -- finalizes the committed trades. For each
-     * staged operation, this method fetches the current price, updates the wallet's
-     * cash balance and positions, and records the results in the commit history.
+     * <p>Similar to {@code git push} -- finalizes the committed trades. The wallet's
+     * {@code tradingMode} determines which engine is used:
+     * <ul>
+     *   <li><b>PAPER</b> -- simulates trades at current market prices via {@link PaperTradingEngine}</li>
+     *   <li><b>LIVE</b> -- executes real trades via Alpaca (US equities) or crypto exchange</li>
+     * </ul>
+     *
+     * <p>For paper mode, the engine's in-memory state is synchronised from and back to
+     * the wallet's persisted JSONB columns, ensuring consistency across sessions.
      *
      * @param userId the user's UUID
      * @return formatted execution report with results for each operation
@@ -175,12 +198,22 @@ public class PaperTradingService {
         try {
             TradeWallet wallet = getOrCreateWallet(userId);
 
+            // Create the appropriate engine based on wallet trading mode
+            TradingEngine engine = engineFactory.createEngine(wallet.getTradingMode(), wallet.getCashBalance());
+
+            // For paper engine, sync wallet state into the engine
+            if (engine instanceof PaperTradingEngine paperEngine) {
+                paperEngine.setCash(wallet.getCashBalance());
+                paperEngine.setPositions(wallet.getPositions());
+            }
+
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> operations = (List<Map<String, Object>>) commitData.get("operations");
 
             List<Map<String, Object>> results = new ArrayList<>();
             StringBuilder report = new StringBuilder();
             report.append("=== Execution Report ===\n");
+            report.append(String.format("Engine: %s\n", engine.engineName()));
             report.append(String.format("Commit: %s -- %s\n\n", commitData.get("hash"), commitData.get("message")));
 
             for (Map<String, Object> op : operations) {
@@ -191,84 +224,33 @@ public class PaperTradingService {
                 result.put("ticker", ticker);
 
                 try {
-                    switch (action) {
-                    case "BUY" -> {
-                        BigDecimal currentPrice = getCurrentPrice(ticker);
-                        BigDecimal shares = resolveShares(op, currentPrice);
-                        BigDecimal cost = shares.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
+                    OrderRequest orderRequest = toOrderRequest(op);
+                    OrderResult orderResult = engine.placeOrder(orderRequest);
 
-                        if (cost.compareTo(wallet.getCashBalance()) > 0) {
-                            result.put("success", false);
-                            result.put("error", String.format("Insufficient funds. Need $%s but only have $%s",
-                                    cost.toPlainString(), wallet.getCashBalance().toPlainString()));
-                            report.append(String.format("  FAILED BUY %s shares of %s: Insufficient funds\n",
-                                    shares.toPlainString(), ticker));
-                        } else {
-                            wallet.setCashBalance(wallet.getCashBalance().subtract(cost));
-                            addOrUpdatePosition(wallet, ticker, shares, currentPrice);
-                            result.put("success", true);
-                            result.put("filledPrice", currentPrice);
-                            result.put("shares", shares);
-                            result.put("cost", cost);
-                            report.append(String.format("  BUY %s shares of %s @ $%s = $%s\n",
-                                    shares.toPlainString(), ticker, currentPrice.toPlainString(), cost.toPlainString()));
-                        }
-                    }
-                    case "SELL" -> {
-                        BigDecimal currentPrice = getCurrentPrice(ticker);
-                        BigDecimal sharesToSell = resolveShares(op, currentPrice);
-                        Map<String, Object> position = findPosition(wallet, ticker);
-
-                        if (position == null) {
-                            result.put("success", false);
-                            result.put("error", "No position in " + ticker);
-                            report.append(String.format("  FAILED SELL %s: No position\n", ticker));
-                        } else {
-                            BigDecimal heldShares = toBigDecimal(position.get("shares"));
-                            if (sharesToSell.compareTo(heldShares) > 0) {
-                                result.put("success", false);
-                                result.put("error", String.format("Insufficient shares. Have %s but tried to sell %s",
-                                        heldShares.toPlainString(), sharesToSell.toPlainString()));
-                                report.append(String.format("  FAILED SELL %s shares of %s: Only have %s\n",
-                                        sharesToSell.toPlainString(), ticker, heldShares.toPlainString()));
-                            } else {
-                                BigDecimal proceeds = sharesToSell.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
-                                wallet.setCashBalance(wallet.getCashBalance().add(proceeds));
-                                reducePosition(wallet, ticker, sharesToSell, currentPrice);
-                                result.put("success", true);
-                                result.put("filledPrice", currentPrice);
-                                result.put("shares", sharesToSell);
-                                result.put("proceeds", proceeds);
-                                report.append(String.format("  SELL %s shares of %s @ $%s = $%s\n",
-                                        sharesToSell.toPlainString(), ticker, currentPrice.toPlainString(), proceeds.toPlainString()));
-                            }
-                        }
-                    }
-                    case "CLOSE" -> {
-                        Map<String, Object> position = findPosition(wallet, ticker);
-                        if (position == null) {
-                            result.put("success", false);
-                            result.put("error", "No position in " + ticker + " to close");
-                            report.append(String.format("  FAILED CLOSE %s: No position\n", ticker));
-                        } else {
-                            BigDecimal currentPrice = getCurrentPrice(ticker);
-                            BigDecimal heldShares = toBigDecimal(position.get("shares"));
-                            BigDecimal proceeds = heldShares.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
-                            wallet.setCashBalance(wallet.getCashBalance().add(proceeds));
-                            removePosition(wallet, ticker);
-                            result.put("success", true);
-                            result.put("filledPrice", currentPrice);
-                            result.put("shares", heldShares);
+                    result.put("success", orderResult.success());
+                    if (orderResult.success()) {
+                        result.put("filledPrice", orderResult.filledPrice());
+                        result.put("shares", orderResult.filledQty());
+                        if ("sell".equalsIgnoreCase(orderRequest.side())) {
+                            BigDecimal proceeds = orderResult.filledQty()
+                                    .multiply(orderResult.filledPrice())
+                                    .setScale(2, RoundingMode.HALF_UP);
                             result.put("proceeds", proceeds);
-                            report.append(String.format("  CLOSE %s: Sold %s shares @ $%s = $%s\n",
-                                    ticker, heldShares.toPlainString(), currentPrice.toPlainString(), proceeds.toPlainString()));
+                            report.append(String.format("  %s %s shares of %s @ $%s = $%s\n",
+                                    action, orderResult.filledQty().toPlainString(), ticker,
+                                    orderResult.filledPrice().toPlainString(), proceeds.toPlainString()));
+                        } else {
+                            BigDecimal cost = orderResult.filledQty()
+                                    .multiply(orderResult.filledPrice())
+                                    .setScale(2, RoundingMode.HALF_UP);
+                            result.put("cost", cost);
+                            report.append(String.format("  %s %s shares of %s @ $%s = $%s\n",
+                                    action, orderResult.filledQty().toPlainString(), ticker,
+                                    orderResult.filledPrice().toPlainString(), cost.toPlainString()));
                         }
-                    }
-                    default -> {
-                        result.put("success", false);
-                        result.put("error", "Unknown action: " + action);
-                        report.append(String.format("  FAILED: Unknown action '%s'\n", action));
-                    }
+                    } else {
+                        result.put("error", orderResult.error());
+                        report.append(String.format("  FAILED %s %s: %s\n", action, ticker, orderResult.error()));
                     }
                 } catch (Exception e) {
                     result.put("success", false);
@@ -277,6 +259,12 @@ public class PaperTradingService {
                     log.error("Error executing {} {} for user {}", action, ticker, userId, e);
                 }
                 results.add(result);
+            }
+
+            // For paper engine, sync results back to wallet
+            if (engine instanceof PaperTradingEngine paperEngine) {
+                wallet.setCashBalance(paperEngine.getCash());
+                wallet.setPositions(paperEngine.getPositionMaps());
             }
 
             // Record commit in history
@@ -302,7 +290,8 @@ public class PaperTradingService {
             report.append(String.format("\nCash balance: $%s\n", wallet.getCashBalance().toPlainString()));
             report.append(String.format("Positions: %d\n", wallet.getPositions().size()));
 
-            log.info("User {} executed commit {}: {} operations", userId, commitData.get("hash"), results.size());
+            log.info("User {} executed commit {} via {}: {} operations",
+                    userId, commitData.get("hash"), engine.engineName(), results.size());
             return report.toString();
         } finally {
             // Ensure in-memory state does not get stuck when execution fails unexpectedly.
@@ -543,6 +532,22 @@ public class PaperTradingService {
     }
 
     // ───────────────────────── Internal helpers ──────────────────────────────
+
+    /**
+     * Converts a commit operation map into an {@link OrderRequest} for the trading engine.
+     */
+    private OrderRequest toOrderRequest(Map<String, Object> op) {
+        String action = (String) op.get("action");
+        String ticker = (String) op.get("ticker");
+        String side = "CLOSE".equals(action) || "SELL".equals(action) ? "sell" : "buy";
+        BigDecimal shares = op.containsKey("shares") ? toBigDecimal(op.get("shares")) : null;
+        BigDecimal amount = op.containsKey("amount") ? toBigDecimal(op.get("amount")) : null;
+        BigDecimal price = op.containsKey("price") ? toBigDecimal(op.get("price")) : null;
+        String type = price != null ? "limit" : "market";
+
+        return new OrderRequest(ticker, side, type, shares, amount, price, null, "day",
+                "CLOSE".equals(action));
+    }
 
     private void validateOperation(TradeOperation operation) {
         if (operation.action() == null || operation.action().isBlank()) {
