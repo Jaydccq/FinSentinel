@@ -1,6 +1,9 @@
 package com.example.finsentinel.service;
 
-import com.example.finsentinel.config.PolygonProperties;
+import com.example.finsentinel.dto.market.MarketBar;
+import com.example.finsentinel.dto.market.MarketQuote;
+import com.example.finsentinel.service.market.MarketDataProvider;
+import com.example.finsentinel.service.market.MarketDataProviderRegistry;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JsonNode;
@@ -9,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -22,16 +24,21 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 /**
- * Provides market quote and history retrieval backed by Polygon API and Redis cache.
+ * Provides market quote and history retrieval backed by a pluggable
+ * {@link MarketDataProvider} and Redis cache.
  *
- * <p>The service normalizes ticker symbols, applies short-lived caching for quote
- * and history payloads, and exposes both structured and text-oriented responses for
- * API controllers and AI tools.
+ * <p>This service is the public-facing API consumed by controllers and AI tools.
+ * It delegates data fetching to the active provider via
+ * {@link MarketDataProviderRegistry} while keeping the caching, validation,
+ * and response-formatting concerns in one place.
+ *
+ * <p>The public method signatures are intentionally unchanged from the original
+ * Polygon-only implementation so that {@code StockMarketTool},
+ * {@code MarketDataController}, and all existing tests remain fully compatible.
  */
 public class MarketDataService {
 
-    private final RestClient restClient;
-    private final PolygonProperties polygonProperties;
+    private final MarketDataProviderRegistry providerRegistry;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -42,7 +49,7 @@ public class MarketDataService {
      * Retrieves the latest quote payload for a ticker.
      *
      * <p>The method validates the ticker, checks Redis cache first, falls back to
-     * Polygon aggregated bars when needed, and caches the normalized response map.
+     * the active provider when needed, and caches the normalized response map.
      *
      * @param ticker raw ticker symbol input
      * @return a map containing ticker, OHLC, volume, and timestamp fields
@@ -58,23 +65,23 @@ public class MarketDataService {
                 log.debug("Cache hit for quote: {}", ticker);
                 return parsed;
             }
-            // Cache corrupted — evict and fall through to origin
+            // Cache corrupted -- evict and fall through to origin
             redisTemplate.delete(cacheKey);
             log.warn("Evicted corrupted quote cache for {}", ticker);
         }
 
-        JsonNode bar = fetchLatestBar(ticker);
+        MarketQuote quote = provider().getQuote(ticker);
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("ticker", ticker);
-        result.put("close", bar.get("c").asDouble());
-        result.put("open", bar.get("o").asDouble());
-        result.put("high", bar.get("h").asDouble());
-        result.put("low", bar.get("l").asDouble());
-        result.put("volume", bar.get("v").asLong());
-        result.put("timestamp", bar.get("t").asLong());
+        result.put("ticker", quote.ticker());
+        result.put("close", quote.close().doubleValue());
+        result.put("open", quote.open().doubleValue());
+        result.put("high", quote.high().doubleValue());
+        result.put("low", quote.low().doubleValue());
+        result.put("volume", quote.volume());
+        result.put("timestamp", quote.timestamp());
 
         cacheJson(cacheKey, result, QUOTE_TTL);
-        log.info("Fetched quote for {}: close=${}", ticker, bar.get("c").asDouble());
+        log.info("Fetched quote for {}: close=${}", ticker, quote.close());
         return result;
     }
 
@@ -82,11 +89,12 @@ public class MarketDataService {
      * Retrieves historical daily bars for the requested ticker and day window.
      *
      * <p>The day window is clamped to [1, 365], responses are cached in Redis,
-     * and only the Polygon "results" array is returned to callers.
+     * and the result format matches the original Polygon "results" array so that
+     * downstream consumers (AI tools, controllers) remain unchanged.
      *
      * @param ticker raw ticker symbol input
      * @param days number of days requested
-     * @return Polygon aggregated daily bar results
+     * @return JSON array of OHLCV bar objects (Polygon-compatible field names)
      * @throws IllegalArgumentException if ticker is invalid or history is unavailable
      */
     public JsonNode getHistory(String ticker, int days) {
@@ -100,21 +108,14 @@ public class MarketDataService {
                 log.debug("Cache hit for history: {} ({}d)", ticker, days);
                 return parsed;
             }
-            // Cache corrupted — evict and fall through to origin
+            // Cache corrupted -- evict and fall through to origin
             redisTemplate.delete(cacheKey);
             log.warn("Evicted corrupted history cache for {} ({}d)", ticker, days);
         }
 
-        String to = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        String from = LocalDate.now().minusDays(days).format(DateTimeFormatter.ISO_LOCAL_DATE);
-        JsonNode response = callPolygonAggs(ticker, from, to, "asc", days + 10);
+        List<MarketBar> bars = provider().getHistoricalBars(ticker, days);
+        JsonNode results = barsToJsonNode(bars);
 
-        if (response == null || !response.has("results")) {
-
-            throw new IllegalArgumentException("No historical data for " + ticker);
-        }
-
-        JsonNode results = response.get("results");
         redisTemplate.opsForValue().set(cacheKey, results.toString(), HISTORY_TTL);
         log.info("Fetched {} days of history for {}", days, ticker);
         return results;
@@ -154,7 +155,7 @@ public class MarketDataService {
             return cached;
         }
 
-        JsonNode bar = fetchLatestBar(ticker);
+        MarketQuote quote = provider().getQuote(ticker);
         String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
         String result = String.format(
                 """
@@ -166,11 +167,11 @@ public class MarketDataService {
                 - Volume: %d
                 - Data as of: %s""",
                 ticker,
-                bar.get("c").asDouble(),
-                bar.get("o").asDouble(),
-                bar.get("h").asDouble(),
-                bar.get("l").asDouble(),
-                bar.get("v").asLong(),
+                quote.close().doubleValue(),
+                quote.open().doubleValue(),
+                quote.high().doubleValue(),
+                quote.low().doubleValue(),
+                quote.volume(),
                 today);
 
         redisTemplate.opsForValue().set(cacheKey, result, QUOTE_TTL);
@@ -189,15 +190,12 @@ public class MarketDataService {
             return cached;
         }
 
-        String to = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        String from = LocalDate.now().minusDays(days).format(DateTimeFormatter.ISO_LOCAL_DATE);
-        JsonNode response = callPolygonAggs(ticker, from, to, "asc", days + 10);
-
-        if (response == null || !response.has("results")) {
+        List<MarketBar> bars = provider().getHistoricalBars(ticker, days);
+        if (bars.isEmpty()) {
             return "No historical data for " + ticker;
         }
 
-        String result = response.get("results").toString();
+        String result = barsToJsonNode(bars).toString();
         redisTemplate.opsForValue().set(cacheKey, result, HISTORY_TTL);
         return result;
     }
@@ -206,58 +204,42 @@ public class MarketDataService {
         if (ticker == null) throw new IllegalArgumentException("Invalid ticker: null");
         ticker = ticker.toUpperCase().trim();
         if (!ticker.matches("^[A-Z]{1,5}$")) {
-
             throw new IllegalArgumentException("Invalid ticker symbol: " + ticker + ". Must be 1-5 uppercase letters.");
         }
         return ticker;
     }
 
+    // ──────────────────────────────── internal helpers ───────────────────────────
+
     /**
-     * Loads the most recent available daily bar for a ticker.
-     *
-     * @param ticker normalized ticker symbol
-     * @return latest daily aggregate bar node
-     * @throws IllegalArgumentException if no market data is returned
+     * Resolves the active market data provider from the registry.
      */
-    private JsonNode fetchLatestBar(String ticker) {
-        String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        String from = LocalDate.now().minusDays(5).format(DateTimeFormatter.ISO_LOCAL_DATE);
-
-        JsonNode response = callPolygonAggs(ticker, from, today, "desc", 1);
-
-        if (response == null || !response.has("results") || response.get("results").isEmpty()) {
-
-            throw new IllegalArgumentException("No market data available for " + ticker);
-        }
-
-        return response.get("results").get(0);
+    private MarketDataProvider provider() {
+        return providerRegistry.getDefaultProvider();
     }
 
     /**
-     * Executes a Polygon aggregate-bars request.
-     *
-     * @param ticker ticker symbol
-     * @param from start date in ISO-8601 format
-     * @param to end date in ISO-8601 format
-     * @param sort result sort direction
-     * @param limit max number of bars to return
-     * @return parsed JSON response node
+     * Converts a list of {@link MarketBar} records into a JSON array node with
+     * Polygon-compatible field names ({@code o,h,l,c,v,t}) so that downstream
+     * consumers like {@code TechnicalIndicatorTool.parseBars()} remain unchanged.
      */
-    private JsonNode callPolygonAggs(String ticker, String from, String to, String sort, int limit) {
-        return restClient.get()
-                .uri(polygonProperties.getBaseUrl()
-                                + "/v2/aggs/ticker/{ticker}/range/1/day/{from}/{to}?adjusted=true&sort={sort}&limit={limit}&apiKey={apiKey}",
-                        ticker, from, to, sort, limit, polygonProperties.getApiKey())
-                .retrieve()
-                .body(JsonNode.class);
+    private JsonNode barsToJsonNode(List<MarketBar> bars) {
+        var arrayNode = objectMapper.createArrayNode();
+        for (MarketBar bar : bars) {
+            var node = objectMapper.createObjectNode();
+            node.put("o", bar.open().doubleValue());
+            node.put("h", bar.high().doubleValue());
+            node.put("l", bar.low().doubleValue());
+            node.put("c", bar.close().doubleValue());
+            node.put("v", bar.volume());
+            node.put("t", bar.timestamp());
+            arrayNode.add(node);
+        }
+        return arrayNode;
     }
 
     /**
      * Serializes and caches a map payload into Redis with TTL.
-     *
-     * @param key redis cache key
-     * @param value payload map to serialize
-     * @param ttl cache time-to-live
      */
     private void cacheJson(String key, Map<String, Object> value, Duration ttl) {
         try {
@@ -267,37 +249,26 @@ public class MarketDataService {
         }
     }
 
-    @SuppressWarnings("unchecked")
     /**
      * Parses a JSON object string into a map structure.
-     *
-     * @param json JSON payload
-     * @return parsed map, or empty map when parsing fails
      */
     private Map<String, Object> parseJsonMap(String json) {
         try {
-
             return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (JacksonException e) {
             log.error("Failed to parse cached JSON", e);
-
             return Map.of();
         }
     }
 
     /**
      * Parses a JSON string into a Jackson tree.
-     *
-     * @param json JSON payload
-     * @return parsed JSON tree, or empty object node on parsing failure
      */
     private JsonNode parseJsonNode(String json) {
         try {
-
             return objectMapper.readTree(json);
         } catch (JacksonException e) {
             log.error("Failed to parse cached JSON node", e);
-
             return objectMapper.createObjectNode();
         }
     }

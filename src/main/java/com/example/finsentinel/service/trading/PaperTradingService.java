@@ -1,0 +1,697 @@
+package com.example.finsentinel.service.trading;
+
+import com.example.finsentinel.model.TradeOperation;
+import com.example.finsentinel.model.TradeWallet;
+import com.example.finsentinel.model.User;
+import com.example.finsentinel.repository.TradeWalletRepository;
+import com.example.finsentinel.repository.UserRepository;
+import com.example.finsentinel.service.MarketDataService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * Core paper trading service implementing the OpenAlice git-like wallet workflow.
+ *
+ * <p>The three-phase trading lifecycle:
+ * <ol>
+ *   <li><b>Stage</b> -- add trade operations to an in-memory staging area (like {@code git add})</li>
+ *   <li><b>Commit</b> -- seal staged operations with a rationale message (like {@code git commit})</li>
+ *   <li><b>Execute</b> -- simulate trades against current market prices (like {@code git push})</li>
+ * </ol>
+ *
+ * <p>Every executed commit is recorded as an immutable entry in the wallet's JSONB
+ * commit history, providing a full audit trail of what was traded, why, and what happened.
+ *
+ * <p>This class is part of the service layer in FinSentinel.
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class PaperTradingService {
+
+    private final TradeWalletRepository walletRepository;
+    private final UserRepository userRepository;
+    private final MarketDataService marketDataService;
+
+    /** In-memory staging areas per user (userId -> staged operations). */
+    private final ConcurrentHashMap<UUID, List<TradeOperation>> stagingAreas = new ConcurrentHashMap<>();
+
+    /** Pending commits per user (userId -> commit metadata). Cleared after execute(). */
+    private final ConcurrentHashMap<UUID, Map<String, Object>> pendingCommits = new ConcurrentHashMap<>();
+
+    private static final int MAX_COMMIT_HISTORY = 100;
+    private static final DateTimeFormatter TIMESTAMP_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+
+    // ─────────────────────────── Wallet lifecycle ────────────────────────────
+
+    /**
+     * Retrieves the user's paper trading wallet, creating one with $100,000 if none exists.
+     *
+     * @param userId the user's UUID
+     * @return the user's trade wallet
+     */
+    @Transactional
+    public TradeWallet getOrCreateWallet(UUID userId) {
+        return walletRepository.findByUserId(userId).orElseGet(() -> {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+            TradeWallet wallet = TradeWallet.builder()
+                    .user(user)
+                    .build();
+            log.info("Created paper trading wallet for user {}", userId);
+            return walletRepository.save(wallet);
+        });
+    }
+
+    // ───────────────────────── Phase 1: Stage ───────────────────────────────
+
+    /**
+     * Stages a trade operation in the user's in-memory staging area.
+     *
+     * <p>Similar to {@code git add} -- the operation is recorded but not executed.
+     * Validates ticker format and that shares/amount are positive.
+     *
+     * @param userId    the user's UUID
+     * @param operation the trade operation to stage
+     * @return confirmation message with staging area count
+     */
+    public String stage(UUID userId, TradeOperation operation) {
+        validateOperation(operation);
+
+        stagingAreas.computeIfAbsent(userId, k -> Collections.synchronizedList(new ArrayList<>()));
+        stagingAreas.get(userId).add(operation);
+
+        int count = stagingAreas.get(userId).size();
+        String detail = formatOperationSummary(operation);
+        log.info("User {} staged operation: {} ({} total staged)", userId, detail, count);
+        return String.format("Staged: %s (%d operation%s staged)", detail, count, count == 1 ? "" : "s");
+    }
+
+    /**
+     * Returns the current staging area for a user (like {@code git status}).
+     *
+     * @param userId the user's UUID
+     * @return list of staged operations, empty if none
+     */
+    public List<TradeOperation> getStagingArea(UUID userId) {
+        return stagingAreas.getOrDefault(userId, List.of());
+    }
+
+    // ───────────────────────── Phase 2: Commit ──────────────────────────────
+
+    /**
+     * Commits the staged operations with a rationale message.
+     *
+     * <p>Similar to {@code git commit} -- seals the staged operations into a commit
+     * record with a hash, but does NOT execute them. Call {@link #execute(UUID)} next.
+     *
+     * @param userId  the user's UUID
+     * @param message the commit message explaining the trading rationale
+     * @return confirmation with commit hash and operation count
+     */
+    public String commit(UUID userId, String message) {
+        List<TradeOperation> staged = stagingAreas.get(userId);
+        if (staged == null || staged.isEmpty()) {
+            return "Error: Nothing to commit. Stage orders first with stageTradeOrder.";
+        }
+        if (message == null || message.isBlank()) {
+            return "Error: Commit message is required. Explain your trading rationale.";
+        }
+
+        // Generate commit hash
+        String timestamp = LocalDateTime.now().format(TIMESTAMP_FMT);
+        String hashInput = message + "|" + staged.toString() + "|" + timestamp;
+        String hash = sha256(hashInput).substring(0, 8);
+
+        // Build commit metadata (not yet persisted -- pending until execute)
+        List<Map<String, Object>> operationMaps = staged.stream()
+                .map(this::operationToMap)
+                .toList();
+
+        Map<String, Object> commitData = new LinkedHashMap<>();
+        commitData.put("hash", hash);
+        commitData.put("message", message);
+        commitData.put("timestamp", timestamp);
+        commitData.put("operations", operationMaps);
+
+        pendingCommits.put(userId, commitData);
+
+        int opCount = staged.size();
+        log.info("User {} committed: {} -- {} ({} operations)", userId, hash, message, opCount);
+        return String.format("Committed: %s -- %s (%d operation%s). Call executeTrade to finalize.",
+                hash, message, opCount, opCount == 1 ? "" : "s");
+    }
+
+    // ───────────────────────── Phase 3: Execute ─────────────────────────────
+
+    /**
+     * Executes the pending commit -- simulates trades at current market prices.
+     *
+     * <p>Similar to {@code git push} -- finalizes the committed trades. For each
+     * staged operation, this method fetches the current price, updates the wallet's
+     * cash balance and positions, and records the results in the commit history.
+     *
+     * @param userId the user's UUID
+     * @return formatted execution report with results for each operation
+     */
+    @Transactional
+    public String execute(UUID userId) {
+        Map<String, Object> commitData = pendingCommits.get(userId);
+        if (commitData == null) {
+            return "Error: No pending commit. Stage orders and commit first.";
+        }
+
+        TradeWallet wallet = getOrCreateWallet(userId);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> operations = (List<Map<String, Object>>) commitData.get("operations");
+
+        List<Map<String, Object>> results = new ArrayList<>();
+        StringBuilder report = new StringBuilder();
+        report.append("=== Execution Report ===\n");
+        report.append(String.format("Commit: %s -- %s\n\n", commitData.get("hash"), commitData.get("message")));
+
+        for (Map<String, Object> op : operations) {
+            String action = (String) op.get("action");
+            String ticker = (String) op.get("ticker");
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("action", action);
+            result.put("ticker", ticker);
+
+            try {
+                switch (action) {
+                    case "BUY" -> {
+                        BigDecimal currentPrice = getCurrentPrice(ticker);
+                        BigDecimal shares = resolveShares(op, currentPrice);
+                        BigDecimal cost = shares.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
+
+                        if (cost.compareTo(wallet.getCashBalance()) > 0) {
+                            result.put("success", false);
+                            result.put("error", String.format("Insufficient funds. Need $%s but only have $%s",
+                                    cost.toPlainString(), wallet.getCashBalance().toPlainString()));
+                            report.append(String.format("  FAILED BUY %s shares of %s: Insufficient funds\n",
+                                    shares.toPlainString(), ticker));
+                        } else {
+                            wallet.setCashBalance(wallet.getCashBalance().subtract(cost));
+                            addOrUpdatePosition(wallet, ticker, shares, currentPrice);
+                            result.put("success", true);
+                            result.put("filledPrice", currentPrice);
+                            result.put("shares", shares);
+                            result.put("cost", cost);
+                            report.append(String.format("  BUY %s shares of %s @ $%s = $%s\n",
+                                    shares.toPlainString(), ticker, currentPrice.toPlainString(), cost.toPlainString()));
+                        }
+                    }
+                    case "SELL" -> {
+                        BigDecimal currentPrice = getCurrentPrice(ticker);
+                        BigDecimal sharesToSell = resolveShares(op, currentPrice);
+                        Map<String, Object> position = findPosition(wallet, ticker);
+
+                        if (position == null) {
+                            result.put("success", false);
+                            result.put("error", "No position in " + ticker);
+                            report.append(String.format("  FAILED SELL %s: No position\n", ticker));
+                        } else {
+                            BigDecimal heldShares = toBigDecimal(position.get("shares"));
+                            if (sharesToSell.compareTo(heldShares) > 0) {
+                                result.put("success", false);
+                                result.put("error", String.format("Insufficient shares. Have %s but tried to sell %s",
+                                        heldShares.toPlainString(), sharesToSell.toPlainString()));
+                                report.append(String.format("  FAILED SELL %s shares of %s: Only have %s\n",
+                                        sharesToSell.toPlainString(), ticker, heldShares.toPlainString()));
+                            } else {
+                                BigDecimal proceeds = sharesToSell.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
+                                wallet.setCashBalance(wallet.getCashBalance().add(proceeds));
+                                reducePosition(wallet, ticker, sharesToSell, currentPrice);
+                                result.put("success", true);
+                                result.put("filledPrice", currentPrice);
+                                result.put("shares", sharesToSell);
+                                result.put("proceeds", proceeds);
+                                report.append(String.format("  SELL %s shares of %s @ $%s = $%s\n",
+                                        sharesToSell.toPlainString(), ticker, currentPrice.toPlainString(), proceeds.toPlainString()));
+                            }
+                        }
+                    }
+                    case "CLOSE" -> {
+                        Map<String, Object> position = findPosition(wallet, ticker);
+                        if (position == null) {
+                            result.put("success", false);
+                            result.put("error", "No position in " + ticker + " to close");
+                            report.append(String.format("  FAILED CLOSE %s: No position\n", ticker));
+                        } else {
+                            BigDecimal currentPrice = getCurrentPrice(ticker);
+                            BigDecimal heldShares = toBigDecimal(position.get("shares"));
+                            BigDecimal proceeds = heldShares.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
+                            wallet.setCashBalance(wallet.getCashBalance().add(proceeds));
+                            removePosition(wallet, ticker);
+                            result.put("success", true);
+                            result.put("filledPrice", currentPrice);
+                            result.put("shares", heldShares);
+                            result.put("proceeds", proceeds);
+                            report.append(String.format("  CLOSE %s: Sold %s shares @ $%s = $%s\n",
+                                    ticker, heldShares.toPlainString(), currentPrice.toPlainString(), proceeds.toPlainString()));
+                        }
+                    }
+                    default -> {
+                        result.put("success", false);
+                        result.put("error", "Unknown action: " + action);
+                        report.append(String.format("  FAILED: Unknown action '%s'\n", action));
+                    }
+                }
+            } catch (Exception e) {
+                result.put("success", false);
+                result.put("error", e.getMessage());
+                report.append(String.format("  FAILED %s %s: %s\n", action, ticker, e.getMessage()));
+                log.error("Error executing {} {} for user {}", action, ticker, userId, e);
+            }
+            results.add(result);
+        }
+
+        // Record commit in history
+        String parentHash = wallet.getCommitHistory().isEmpty()
+                ? null
+                : (String) wallet.getCommitHistory().getLast().get("hash");
+
+        Map<String, Object> historyEntry = new LinkedHashMap<>(commitData);
+        historyEntry.put("parentHash", parentHash);
+        historyEntry.put("results", results);
+        historyEntry.put("walletStateAfter", buildWalletSnapshot(wallet));
+
+        List<Map<String, Object>> history = new ArrayList<>(wallet.getCommitHistory());
+        history.add(historyEntry);
+        // Cap at MAX_COMMIT_HISTORY entries
+        if (history.size() > MAX_COMMIT_HISTORY) {
+            history = new ArrayList<>(history.subList(history.size() - MAX_COMMIT_HISTORY, history.size()));
+        }
+        wallet.setCommitHistory(history);
+
+        walletRepository.save(wallet);
+
+        // Clear staging area and pending commit
+        stagingAreas.remove(userId);
+        pendingCommits.remove(userId);
+
+        report.append(String.format("\nCash balance: $%s\n", wallet.getCashBalance().toPlainString()));
+        report.append(String.format("Positions: %d\n", wallet.getPositions().size()));
+
+        log.info("User {} executed commit {}: {} operations", userId, commitData.get("hash"), results.size());
+        return report.toString();
+    }
+
+    // ───────────────────────── Query methods ─────────────────────────────────
+
+    /**
+     * Returns a formatted summary of the wallet's current state including
+     * cash balance, positions with P/L, and total portfolio value.
+     *
+     * @param userId the user's UUID
+     * @return formatted wallet status string
+     */
+    @Transactional(readOnly = true)
+    public String getWalletStatus(UUID userId) {
+        TradeWallet wallet = getOrCreateWallet(userId);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Paper Trading Wallet ===\n");
+        sb.append(String.format("Initial Capital: $%s\n", wallet.getInitialCapital().toPlainString()));
+        sb.append(String.format("Cash Balance:    $%s\n", wallet.getCashBalance().toPlainString()));
+        sb.append("\n--- Positions ---\n");
+
+        BigDecimal totalPositionValue = BigDecimal.ZERO;
+
+        if (wallet.getPositions().isEmpty()) {
+            sb.append("  (no open positions)\n");
+        } else {
+            for (Map<String, Object> pos : wallet.getPositions()) {
+                String ticker = (String) pos.get("ticker");
+                BigDecimal shares = toBigDecimal(pos.get("shares"));
+                BigDecimal avgCost = toBigDecimal(pos.get("avgCost"));
+                BigDecimal currentPrice;
+
+                try {
+                    currentPrice = getCurrentPrice(ticker);
+                    // Update stored current price
+                    pos.put("currentPrice", currentPrice);
+                } catch (Exception e) {
+                    // Fall back to last known price
+                    currentPrice = pos.containsKey("currentPrice")
+                            ? toBigDecimal(pos.get("currentPrice"))
+                            : avgCost;
+                    log.warn("Could not fetch current price for {}, using last known: {}", ticker, currentPrice);
+                }
+
+                BigDecimal posValue = shares.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal costBasis = shares.multiply(avgCost).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal pnl = posValue.subtract(costBasis);
+                BigDecimal pnlPct = costBasis.compareTo(BigDecimal.ZERO) > 0
+                        ? pnl.divide(costBasis, 4, RoundingMode.HALF_UP).multiply(new BigDecimal("100"))
+                        : BigDecimal.ZERO;
+
+                totalPositionValue = totalPositionValue.add(posValue);
+
+                sb.append(String.format("  %s: %s shares @ avg $%s | Current: $%s | Value: $%s | P&L: %s$%s (%.2f%%)\n",
+                        ticker, shares.toPlainString(), avgCost.toPlainString(),
+                        currentPrice.toPlainString(), posValue.toPlainString(),
+                        pnl.signum() >= 0 ? "+" : "-",
+                        pnl.abs().toPlainString(), pnlPct.doubleValue()));
+            }
+        }
+
+        BigDecimal totalValue = wallet.getCashBalance().add(totalPositionValue);
+        BigDecimal totalReturn = totalValue.subtract(wallet.getInitialCapital());
+        BigDecimal totalReturnPct = wallet.getInitialCapital().compareTo(BigDecimal.ZERO) > 0
+                ? totalReturn.divide(wallet.getInitialCapital(), 4, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100"))
+                : BigDecimal.ZERO;
+
+        sb.append(String.format("\nTotal Portfolio Value: $%s\n", totalValue.toPlainString()));
+        sb.append(String.format("Overall Return: %s$%s (%.2f%%)\n",
+                totalReturn.signum() >= 0 ? "+" : "-",
+                totalReturn.abs().toPlainString(), totalReturnPct.doubleValue()));
+
+        // Save updated current prices
+        walletRepository.save(wallet);
+
+        return sb.toString();
+    }
+
+    /**
+     * Returns the last N commits from the wallet's history (like {@code git log}).
+     *
+     * @param userId the user's UUID
+     * @param limit  maximum number of commits to return
+     * @return formatted commit log
+     */
+    @Transactional(readOnly = true)
+    public String getCommitLog(UUID userId, int limit) {
+        TradeWallet wallet = getOrCreateWallet(userId);
+        List<Map<String, Object>> history = wallet.getCommitHistory();
+
+        if (history.isEmpty()) {
+            return "No trade history yet. Stage, commit, and execute your first trade.";
+        }
+
+        limit = Math.min(Math.max(limit, 1), history.size());
+        List<Map<String, Object>> recent = history.subList(history.size() - limit, history.size());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Trade Commit Log ===\n\n");
+
+        // Display in reverse chronological order
+        for (int i = recent.size() - 1; i >= 0; i--) {
+            Map<String, Object> entry = recent.get(i);
+            sb.append(String.format("commit %s", entry.get("hash")));
+            if (entry.get("parentHash") != null) {
+                sb.append(String.format(" (parent: %s)", entry.get("parentHash")));
+            }
+            sb.append("\n");
+            sb.append(String.format("Date:    %s\n", entry.get("timestamp")));
+            sb.append(String.format("Message: %s\n", entry.get("message")));
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> ops = (List<Map<String, Object>>) entry.get("operations");
+            if (ops != null) {
+                sb.append("Operations:\n");
+                for (Map<String, Object> op : ops) {
+                    sb.append(String.format("  %s %s", op.get("action"), op.get("ticker")));
+                    if (op.get("shares") != null) {
+                        sb.append(String.format(" (%s shares)", op.get("shares")));
+                    }
+                    sb.append("\n");
+                }
+            }
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> results = (List<Map<String, Object>>) entry.get("results");
+            if (results != null) {
+                sb.append("Results:\n");
+                for (Map<String, Object> res : results) {
+                    boolean success = Boolean.TRUE.equals(res.get("success"));
+                    if (success) {
+                        sb.append(String.format("  OK %s %s: %s shares @ $%s\n",
+                                res.get("action"), res.get("ticker"),
+                                res.get("shares"), res.get("filledPrice")));
+                    } else {
+                        sb.append(String.format("  FAIL %s %s: %s\n",
+                                res.get("action"), res.get("ticker"), res.get("error")));
+                    }
+                }
+            }
+            sb.append("\n");
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * Simulates the impact of a hypothetical price change on the portfolio.
+     *
+     * <p>Does NOT modify any positions -- purely hypothetical what-if analysis.
+     *
+     * @param userId        the user's UUID
+     * @param ticker        the ticker to simulate a price change for
+     * @param changePercent the percentage change to simulate (e.g., -10.0 for a 10% drop)
+     * @return formatted impact analysis
+     */
+    @Transactional(readOnly = true)
+    public String simulatePriceChange(UUID userId, String ticker, double changePercent) {
+        TradeWallet wallet = getOrCreateWallet(userId);
+        final String normalizedTicker = ticker.toUpperCase().trim();
+
+        Map<String, Object> position = findPosition(wallet, normalizedTicker);
+        if (position == null) {
+            return String.format("No position in %s to simulate. Current positions: %s",
+                    normalizedTicker,
+                    wallet.getPositions().stream()
+                            .map(p -> (String) p.get("ticker"))
+                            .toList());
+        }
+
+        BigDecimal shares = toBigDecimal(position.get("shares"));
+        BigDecimal avgCost = toBigDecimal(position.get("avgCost"));
+
+        BigDecimal currentPrice;
+        try {
+            currentPrice = getCurrentPrice(normalizedTicker);
+        } catch (Exception e) {
+            currentPrice = position.containsKey("currentPrice")
+                    ? toBigDecimal(position.get("currentPrice"))
+                    : avgCost;
+        }
+
+        BigDecimal changeFactor = BigDecimal.ONE.add(
+                new BigDecimal(changePercent).divide(new BigDecimal("100"), 6, RoundingMode.HALF_UP));
+        BigDecimal hypotheticalPrice = currentPrice.multiply(changeFactor).setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal currentValue = shares.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal hypotheticalValue = shares.multiply(hypotheticalPrice).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal costBasis = shares.multiply(avgCost).setScale(2, RoundingMode.HALF_UP);
+
+        BigDecimal currentPnl = currentValue.subtract(costBasis);
+        BigDecimal hypotheticalPnl = hypotheticalValue.subtract(costBasis);
+        BigDecimal valueDelta = hypotheticalValue.subtract(currentValue);
+
+        BigDecimal totalPortfolio = wallet.getCashBalance().add(
+                wallet.getPositions().stream()
+                        .map(p -> {
+                            BigDecimal s = toBigDecimal(p.get("shares"));
+                            BigDecimal price = normalizedTicker.equals(p.get("ticker"))
+                                    ? hypotheticalPrice
+                                    : (p.containsKey("currentPrice")
+                                        ? toBigDecimal(p.get("currentPrice"))
+                                        : toBigDecimal(p.get("avgCost")));
+                            return s.multiply(price).setScale(2, RoundingMode.HALF_UP);
+                        })
+                        .reduce(BigDecimal.ZERO, BigDecimal::add));
+
+        return String.format("""
+                === What-If Analysis: %s %s%.1f%% ===
+                Current price:      $%s
+                Hypothetical price: $%s
+
+                Position: %s shares
+                Cost basis:         $%s
+                Current value:      $%s (P&L: %s$%s)
+                Hypothetical value: $%s (P&L: %s$%s)
+                Value change:       %s$%s
+
+                Portfolio value (hypothetical): $%s""",
+                normalizedTicker, changePercent >= 0 ? "+" : "", changePercent,
+                currentPrice.toPlainString(),
+                hypotheticalPrice.toPlainString(),
+                shares.toPlainString(),
+                costBasis.toPlainString(),
+                currentValue.toPlainString(),
+                currentPnl.signum() >= 0 ? "+" : "-", currentPnl.abs().toPlainString(),
+                hypotheticalValue.toPlainString(),
+                hypotheticalPnl.signum() >= 0 ? "+" : "-", hypotheticalPnl.abs().toPlainString(),
+                valueDelta.signum() >= 0 ? "+" : "-", valueDelta.abs().toPlainString(),
+                totalPortfolio.toPlainString());
+    }
+
+    // ───────────────────────── Internal helpers ──────────────────────────────
+
+    private void validateOperation(TradeOperation operation) {
+        if (operation.action() == null || operation.action().isBlank()) {
+            throw new IllegalArgumentException("Trade action is required (BUY, SELL, or CLOSE)");
+        }
+        String action = operation.action().toUpperCase().trim();
+        if (!action.equals("BUY") && !action.equals("SELL") && !action.equals("CLOSE")) {
+            throw new IllegalArgumentException("Invalid action: " + action + ". Must be BUY, SELL, or CLOSE");
+        }
+        if (operation.ticker() == null || !operation.ticker().matches("^[A-Za-z]{1,5}$")) {
+            throw new IllegalArgumentException("Invalid ticker: " + operation.ticker() + ". Must be 1-5 letters");
+        }
+        if (!action.equals("CLOSE")) {
+            if ((operation.shares() == null || operation.shares().compareTo(BigDecimal.ZERO) <= 0)
+                    && (operation.amount() == null || operation.amount().compareTo(BigDecimal.ZERO) <= 0)) {
+                throw new IllegalArgumentException("Either shares or amount must be positive for " + action);
+            }
+        }
+    }
+
+    private BigDecimal getCurrentPrice(String ticker) {
+        Map<String, Object> quote = marketDataService.getQuote(ticker);
+        Object closePrice = quote.get("close");
+        if (closePrice == null) {
+            throw new IllegalStateException("No price data available for " + ticker);
+        }
+        return toBigDecimal(closePrice);
+    }
+
+    /**
+     * Resolves the number of shares from either the shares field or the dollar amount.
+     */
+    private BigDecimal resolveShares(Map<String, Object> op, BigDecimal currentPrice) {
+        Object sharesObj = op.get("shares");
+        Object amountObj = op.get("amount");
+
+        if (sharesObj != null) {
+            BigDecimal shares = toBigDecimal(sharesObj);
+            if (shares.compareTo(BigDecimal.ZERO) > 0) {
+                return shares;
+            }
+        }
+        if (amountObj != null) {
+            BigDecimal amount = toBigDecimal(amountObj);
+            if (amount.compareTo(BigDecimal.ZERO) > 0) {
+                // Convert dollar amount to shares (fractional allowed in paper trading)
+                return amount.divide(currentPrice, 6, RoundingMode.HALF_DOWN);
+            }
+        }
+        throw new IllegalArgumentException("Cannot resolve shares: both shares and amount are missing or zero");
+    }
+
+    private void addOrUpdatePosition(TradeWallet wallet, String ticker, BigDecimal newShares, BigDecimal price) {
+        Map<String, Object> existing = findPosition(wallet, ticker);
+        if (existing != null) {
+            BigDecimal oldShares = toBigDecimal(existing.get("shares"));
+            BigDecimal oldAvgCost = toBigDecimal(existing.get("avgCost"));
+            // Weighted average cost
+            BigDecimal totalCost = oldShares.multiply(oldAvgCost).add(newShares.multiply(price));
+            BigDecimal totalShares = oldShares.add(newShares);
+            BigDecimal newAvgCost = totalCost.divide(totalShares, 2, RoundingMode.HALF_UP);
+
+            existing.put("shares", totalShares);
+            existing.put("avgCost", newAvgCost);
+            existing.put("currentPrice", price);
+        } else {
+            Map<String, Object> position = new LinkedHashMap<>();
+            position.put("ticker", ticker);
+            position.put("shares", newShares);
+            position.put("avgCost", price);
+            position.put("currentPrice", price);
+            wallet.getPositions().add(position);
+        }
+    }
+
+    private void reducePosition(TradeWallet wallet, String ticker, BigDecimal sharesToSell, BigDecimal currentPrice) {
+        Map<String, Object> position = findPosition(wallet, ticker);
+        if (position == null) return;
+
+        BigDecimal remaining = toBigDecimal(position.get("shares")).subtract(sharesToSell);
+        if (remaining.compareTo(BigDecimal.ZERO) <= 0) {
+            removePosition(wallet, ticker);
+        } else {
+            position.put("shares", remaining);
+            position.put("currentPrice", currentPrice);
+        }
+    }
+
+    private void removePosition(TradeWallet wallet, String ticker) {
+        wallet.getPositions().removeIf(p -> ticker.equals(p.get("ticker")));
+    }
+
+    private Map<String, Object> findPosition(TradeWallet wallet, String ticker) {
+        return wallet.getPositions().stream()
+                .filter(p -> ticker.equalsIgnoreCase((String) p.get("ticker")))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Map<String, Object> buildWalletSnapshot(TradeWallet wallet) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("cashBalance", wallet.getCashBalance());
+        snapshot.put("positions", new ArrayList<>(wallet.getPositions()));
+        return snapshot;
+    }
+
+    private Map<String, Object> operationToMap(TradeOperation op) {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("action", op.action().toUpperCase().trim());
+        map.put("ticker", op.ticker().toUpperCase().trim());
+        if (op.shares() != null) map.put("shares", op.shares());
+        if (op.amount() != null) map.put("amount", op.amount());
+        if (op.price() != null) map.put("price", op.price());
+        return map;
+    }
+
+    private String formatOperationSummary(TradeOperation op) {
+        String action = op.action().toUpperCase().trim();
+        String ticker = op.ticker().toUpperCase().trim();
+        if (action.equals("CLOSE")) {
+            return "CLOSE all shares of " + ticker;
+        }
+        if (op.shares() != null && op.shares().compareTo(BigDecimal.ZERO) > 0) {
+            return String.format("%s %s shares of %s", action, op.shares().toPlainString(), ticker);
+        }
+        if (op.amount() != null && op.amount().compareTo(BigDecimal.ZERO) > 0) {
+            return String.format("%s $%s of %s", action, op.amount().toPlainString(), ticker);
+        }
+        return action + " " + ticker;
+    }
+
+    private BigDecimal toBigDecimal(Object value) {
+        if (value == null) return BigDecimal.ZERO;
+        if (value instanceof BigDecimal bd) return bd;
+        if (value instanceof Number n) return new BigDecimal(n.toString());
+        return new BigDecimal(value.toString());
+    }
+
+    private String sha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.toString();
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256 is always available in Java
+            throw new RuntimeException("SHA-256 not available", e);
+        }
+    }
+}

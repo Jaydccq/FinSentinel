@@ -1,6 +1,9 @@
 package com.example.finsentinel.service;
 
-import com.example.finsentinel.config.PolygonProperties;
+import com.example.finsentinel.dto.market.MarketBar;
+import com.example.finsentinel.dto.market.MarketQuote;
+import com.example.finsentinel.service.market.MarketDataProvider;
+import com.example.finsentinel.service.market.MarketDataProviderRegistry;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -11,8 +14,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.web.client.RestClient;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -23,47 +26,39 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 /**
- * Implements market data service test business operations and integrations.
- *
- * <p>This class belongs to the service layer in FinSentinel.
+ * Unit tests for {@link MarketDataService} verifying caching, batch handling,
+ * ticker validation, and delegation to the provider registry.
  */
-
 @ExtendWith(MockitoExtension.class)
 class MarketDataServiceTest {
 
-    @Mock private RestClient restClient;
-    @Mock private RestClient.RequestHeadersUriSpec requestHeadersUriSpec;
-    @Mock private RestClient.RequestHeadersSpec requestHeadersSpec;
-    @Mock private RestClient.ResponseSpec responseSpec;
+    @Mock private MarketDataProviderRegistry providerRegistry;
+    @Mock private MarketDataProvider provider;
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private ValueOperations<String, String> valueOps;
 
     private MarketDataService service;
     private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
-
     @BeforeEach
     void setUp() {
-        PolygonProperties props = new PolygonProperties();
-        props.setApiKey("test-key");
-        props.setBaseUrl("https://api.polygon.io");
-        service = new MarketDataService(restClient, props, redisTemplate, objectMapper);
+        service = new MarketDataService(providerRegistry, redisTemplate, objectMapper);
     }
 
-
     @Test
-    void getQuote_shouldReturnStructuredDataFromApi() throws Exception {
+    void getQuote_shouldReturnStructuredDataFromProvider() {
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
         when(valueOps.get("market:quote:AAPL")).thenReturn(null);
-
-        String apiResponse = """
-                {"results":[{"o":150.0,"h":155.0,"l":149.0,"c":153.5,"v":50000000,"t":1708128000000}]}""";
-        JsonNode responseNode = objectMapper.readTree(apiResponse);
-
-        when(restClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString(), any(Object[].class))).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(JsonNode.class)).thenReturn(responseNode);
+        when(providerRegistry.getDefaultProvider()).thenReturn(provider);
+        when(provider.getQuote("AAPL")).thenReturn(new MarketQuote(
+                "AAPL",
+                BigDecimal.valueOf(150.0),
+                BigDecimal.valueOf(155.0),
+                BigDecimal.valueOf(149.0),
+                BigDecimal.valueOf(153.5),
+                50000000L,
+                1708128000000L
+        ));
 
         Map<String, Object> result = service.getQuote("AAPL");
 
@@ -76,7 +71,6 @@ class MarketDataServiceTest {
         verify(valueOps).set(eq("market:quote:AAPL"), anyString(), eq(Duration.ofMinutes(5)));
     }
 
-
     @Test
     void getQuote_shouldUseCacheOnSecondCall() {
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
@@ -87,30 +81,32 @@ class MarketDataServiceTest {
         Map<String, Object> result = service.getQuote("AAPL");
 
         assertThat(result).containsEntry("ticker", "AAPL");
-        verify(restClient, never()).get();
+        // Provider should never be called when cache hits
+        verifyNoInteractions(providerRegistry);
     }
 
-
     @Test
-    void getHistory_shouldRespectDaysBounds() throws Exception {
+    void getHistory_shouldRespectDaysBounds() {
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
         when(valueOps.get(anyString())).thenReturn(null);
-
-        String apiResponse = """
-                {"results":[{"o":150.0,"h":155.0,"l":149.0,"c":153.5,"v":50000000,"t":1708128000000}]}""";
-        JsonNode responseNode = objectMapper.readTree(apiResponse);
-
-        when(restClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString(), any(Object[].class))).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(JsonNode.class)).thenReturn(responseNode);
+        when(providerRegistry.getDefaultProvider()).thenReturn(provider);
+        when(provider.getHistoricalBars("AAPL", 365)).thenReturn(List.of(
+                new MarketBar(
+                        BigDecimal.valueOf(150.0),
+                        BigDecimal.valueOf(155.0),
+                        BigDecimal.valueOf(149.0),
+                        BigDecimal.valueOf(153.5),
+                        50000000L,
+                        1708128000000L
+                )
+        ));
 
         JsonNode result = service.getHistory("AAPL", 500); // should cap at 365
 
         assertThat(result).isNotNull();
+        verify(provider).getHistoricalBars("AAPL", 365);
         verify(valueOps).set(startsWith("market:history:AAPL:365"), anyString(), eq(Duration.ofMinutes(30)));
     }
-
 
     @Test
     void getBatchQuotes_shouldHandleMixedResults() {
@@ -118,13 +114,10 @@ class MarketDataServiceTest {
         String cachedJson = """
                 {"ticker":"AAPL","close":153.5,"open":150.0,"high":155.0,"low":149.0,"volume":50000000,"timestamp":1708128000000}""";
         when(valueOps.get("market:quote:AAPL")).thenReturn(cachedJson);
-        // XYZ is a valid ticker (1-5 chars) but will fail when Polygon returns null
+        // XYZ is a valid ticker (1-5 chars) but provider will throw
         when(valueOps.get("market:quote:XYZ")).thenReturn(null);
-
-        when(restClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(anyString(), any(Object[].class))).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(JsonNode.class)).thenReturn(null);
+        when(providerRegistry.getDefaultProvider()).thenReturn(provider);
+        when(provider.getQuote("XYZ")).thenThrow(new IllegalArgumentException("No market data available for XYZ"));
 
         Map<String, Object> result = service.getBatchQuotes(List.of("AAPL", "XYZ"));
 
@@ -137,7 +130,6 @@ class MarketDataServiceTest {
         Map<String, Object> xyzResult = (Map<String, Object>) result.get("XYZ");
         assertThat(xyzResult).containsKey("error");
     }
-
 
     @Test
     void validateTicker_shouldRejectInvalidSymbols() {

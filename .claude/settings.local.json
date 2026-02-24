@@ -54,7 +54,10 @@
       "Bash(npm run build:*)",
       "Bash(cd /Users/hongxichen/Desktop/FinSentinel/frontend && npm install sonner 2>&1)",
       "Bash(cd /Users/hongxichen/Desktop/FinSentinel/frontend && npx eslint src/pages/DashboardPage.tsx 2>&1)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(bash:*)",
+      "Bash(ls:*)",
+      "Bash(tail:*)"
     ]
   },
   "hooks": {

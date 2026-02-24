@@ -13,6 +13,11 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.EMAIndicator;
 import org.ta4j.core.indicators.SMAIndicator;
+import org.ta4j.core.indicators.ATRIndicator;
+import org.ta4j.core.indicators.StochasticOscillatorKIndicator;
+import org.ta4j.core.indicators.adx.ADXIndicator;
+import org.ta4j.core.indicators.adx.PlusDIIndicator;
+import org.ta4j.core.indicators.adx.MinusDIIndicator;
 import org.ta4j.core.indicators.statistics.StandardDeviationIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 
@@ -211,6 +216,420 @@ public class TechnicalIndicatorTool {
             log.error("Bollinger Bands calculation failed", e);
 
             return "Error calculating Bollinger Bands: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Calculate EMA (Exponential Moving Average) from historical price data. " +
+            "EMA reacts faster to recent price changes than SMA. " +
+            "Price above EMA = bullish trend, price below EMA = bearish trend. " +
+            "Useful for identifying trend direction and dynamic support/resistance levels. " +
+            "Input is JSON array of OHLCV bars from getHistoricalPrices.")
+    public String calculateEMA(
+            @ToolParam(description = "JSON array of price bars [{o,h,l,c,v,t}, ...]") String barsJson,
+            @ToolParam(description = "EMA period (common: 9 for short-term, 21 for medium, 50 or 200 for long-term)") int period) {
+        try {
+            BarSeries series = parseBars(barsJson);
+            if (series.getBarCount() < period) {
+                return "Insufficient data: need at least " + period + " bars, got " + series.getBarCount();
+            }
+
+            ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+            EMAIndicator ema = new EMAIndicator(closePrice, period);
+
+            int lastIndex = series.getEndIndex();
+            double emaValue = ema.getValue(lastIndex).doubleValue();
+            double currentPrice = closePrice.getValue(lastIndex).doubleValue();
+            double priceDiffPct = ((currentPrice - emaValue) / emaValue) * 100;
+
+            String trendDirection;
+            if (currentPrice > emaValue) {
+                trendDirection = "BULLISH (price %.2f%% above EMA)".formatted(priceDiffPct);
+            } else if (currentPrice < emaValue) {
+                trendDirection = "BEARISH (price %.2f%% below EMA)".formatted(Math.abs(priceDiffPct));
+            } else {
+                trendDirection = "NEUTRAL (price at EMA)";
+            }
+
+            // Collect last 5 EMA values
+            double[] last5 = new double[5];
+            for (int i = 0; i < 5; i++) {
+                int idx = lastIndex - 4 + i;
+                last5[i] = idx >= 0 ? ema.getValue(idx).doubleValue() : 0.0;
+            }
+
+            // Determine EMA trend direction from last 5 values
+            String emaTrend;
+            if (last5[4] > last5[0] && last5[4] > last5[2]) {
+                emaTrend = "RISING (upward momentum)";
+            } else if (last5[4] < last5[0] && last5[4] < last5[2]) {
+                emaTrend = "FALLING (downward momentum)";
+            } else {
+                emaTrend = "FLAT (consolidating)";
+            }
+
+            return String.format("""
+                    EMA(%d) Analysis:
+                    - Current EMA: $%.2f
+                    - Current Price: $%.2f
+                    - Price vs EMA: %s
+                    - EMA Trend: %s
+                    - Last 5 EMA values: $%.2f, $%.2f, $%.2f, $%.2f, $%.2f""",
+                    period, emaValue, currentPrice, trendDirection, emaTrend,
+                    last5[0], last5[1], last5[2], last5[3], last5[4]);
+
+        } catch (Exception e) {
+            log.error("EMA calculation failed", e);
+            return "Error calculating EMA: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Calculate SMA (Simple Moving Average) from historical price data. " +
+            "Price above SMA = uptrend, below SMA = downtrend. " +
+            "Also detects Golden Cross (SMA50 crosses above SMA200 = strong bullish) and " +
+            "Death Cross (SMA50 crosses below SMA200 = strong bearish) when enough data is available. " +
+            "Input is JSON array of OHLCV bars from getHistoricalPrices.")
+    public String calculateSMA(
+            @ToolParam(description = "JSON array of price bars [{o,h,l,c,v,t}, ...]") String barsJson,
+            @ToolParam(description = "SMA period (common: 20, 50, 100, 200)") int period) {
+        try {
+            BarSeries series = parseBars(barsJson);
+            if (series.getBarCount() < period) {
+                return "Insufficient data: need at least " + period + " bars, got " + series.getBarCount();
+            }
+
+            ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+            SMAIndicator sma = new SMAIndicator(closePrice, period);
+
+            int lastIndex = series.getEndIndex();
+            double smaValue = sma.getValue(lastIndex).doubleValue();
+            double currentPrice = closePrice.getValue(lastIndex).doubleValue();
+            double priceDiffPct = ((currentPrice - smaValue) / smaValue) * 100;
+
+            String pricePosition;
+            if (currentPrice > smaValue) {
+                pricePosition = "ABOVE SMA (uptrend, price %.2f%% above)".formatted(priceDiffPct);
+            } else if (currentPrice < smaValue) {
+                pricePosition = "BELOW SMA (downtrend, price %.2f%% below)".formatted(Math.abs(priceDiffPct));
+            } else {
+                pricePosition = "AT SMA (neutral)";
+            }
+
+            // Golden/Death cross detection if enough data for SMA 50 and SMA 200
+            String crossSignal = "N/A (need 200+ bars for cross detection)";
+            if (series.getBarCount() >= 201) {
+                SMAIndicator sma50 = new SMAIndicator(closePrice, 50);
+                SMAIndicator sma200 = new SMAIndicator(closePrice, 200);
+                double sma50Current = sma50.getValue(lastIndex).doubleValue();
+                double sma200Current = sma200.getValue(lastIndex).doubleValue();
+                double sma50Prev = sma50.getValue(lastIndex - 1).doubleValue();
+                double sma200Prev = sma200.getValue(lastIndex - 1).doubleValue();
+
+                if (sma50Current > sma200Current && sma50Prev <= sma200Prev) {
+                    crossSignal = "GOLDEN CROSS DETECTED (SMA50 crossed above SMA200 — strong bullish signal)";
+                } else if (sma50Current < sma200Current && sma50Prev >= sma200Prev) {
+                    crossSignal = "DEATH CROSS DETECTED (SMA50 crossed below SMA200 — strong bearish signal)";
+                } else if (sma50Current > sma200Current) {
+                    crossSignal = "SMA50 above SMA200 (bullish alignment, SMA50=$%.2f, SMA200=$%.2f)".formatted(sma50Current, sma200Current);
+                } else {
+                    crossSignal = "SMA50 below SMA200 (bearish alignment, SMA50=$%.2f, SMA200=$%.2f)".formatted(sma50Current, sma200Current);
+                }
+            }
+
+            return String.format("""
+                    SMA(%d) Analysis:
+                    - Current SMA: $%.2f
+                    - Current Price: $%.2f
+                    - Price vs SMA: %s
+                    - Golden/Death Cross: %s""",
+                    period, smaValue, currentPrice, pricePosition, crossSignal);
+
+        } catch (Exception e) {
+            log.error("SMA calculation failed", e);
+            return "Error calculating SMA: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Calculate ATR (Average True Range) from historical price data. " +
+            "ATR measures market volatility — higher ATR means more volatile (riskier) asset. " +
+            "ATR as percentage of price provides normalized volatility for cross-asset comparison. " +
+            "High ATR = high risk/reward, Low ATR = stable/low risk. " +
+            "Input is JSON array of OHLCV bars from getHistoricalPrices.")
+    public String calculateATR(
+            @ToolParam(description = "JSON array of price bars [{o,h,l,c,v,t}, ...]") String barsJson,
+            @ToolParam(description = "ATR period, typically 14") int period) {
+        try {
+            BarSeries series = parseBars(barsJson);
+            if (series.getBarCount() < period + 1) {
+                return "Insufficient data: need at least " + (period + 1) + " bars, got " + series.getBarCount();
+            }
+
+            ATRIndicator atr = new ATRIndicator(series, period);
+            ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+
+            int lastIndex = series.getEndIndex();
+            double atrValue = atr.getValue(lastIndex).doubleValue();
+            double currentPrice = closePrice.getValue(lastIndex).doubleValue();
+            double atrPct = (atrValue / currentPrice) * 100;
+
+            String volatilityAssessment;
+            if (atrPct > 5.0) {
+                volatilityAssessment = "VERY HIGH VOLATILITY (ATR > 5%% of price — significant risk)";
+            } else if (atrPct > 3.0) {
+                volatilityAssessment = "HIGH VOLATILITY (ATR 3-5%% of price — elevated risk)";
+            } else if (atrPct > 1.5) {
+                volatilityAssessment = "MODERATE VOLATILITY (ATR 1.5-3%% of price — normal market conditions)";
+            } else {
+                volatilityAssessment = "LOW VOLATILITY (ATR < 1.5%% of price — stable/low risk)";
+            }
+
+            // Collect last 5 ATR values for trend
+            double[] last5 = new double[5];
+            for (int i = 0; i < 5; i++) {
+                int idx = lastIndex - 4 + i;
+                last5[i] = idx >= 0 ? atr.getValue(idx).doubleValue() : 0.0;
+            }
+
+            String atrTrend;
+            if (last5[4] > last5[0] * 1.1) {
+                atrTrend = "EXPANDING (volatility increasing — rising risk)";
+            } else if (last5[4] < last5[0] * 0.9) {
+                atrTrend = "CONTRACTING (volatility decreasing — stabilizing)";
+            } else {
+                atrTrend = "STABLE (volatility unchanged)";
+            }
+
+            return String.format("""
+                    ATR(%d) Analysis:
+                    - Current ATR: $%.4f
+                    - ATR as %% of Price: %.2f%%
+                    - Current Price: $%.2f
+                    - Volatility Assessment: %s
+                    - ATR Trend: %s
+                    - Last 5 ATR values: $%.4f, $%.4f, $%.4f, $%.4f, $%.4f""",
+                    period, atrValue, atrPct, currentPrice, volatilityAssessment, atrTrend,
+                    last5[0], last5[1], last5[2], last5[3], last5[4]);
+
+        } catch (Exception e) {
+            log.error("ATR calculation failed", e);
+            return "Error calculating ATR: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Calculate Stochastic Oscillator from historical price data. " +
+            "Measures momentum by comparing closing price to price range over a period. " +
+            "%%K > 80 = overbought (bearish signal), %%K < 20 = oversold (bullish signal). " +
+            "%%K crossing above %%D = bullish, %%K crossing below %%D = bearish. " +
+            "Input is JSON array of OHLCV bars from getHistoricalPrices.")
+    public String calculateStochastic(
+            @ToolParam(description = "JSON array of price bars [{o,h,l,c,v,t}, ...]") String barsJson,
+            @ToolParam(description = "%%K period (lookback window), typically 14") int kPeriod,
+            @ToolParam(description = "%%D period (%%K smoothing), typically 3") int dPeriod) {
+        try {
+            BarSeries series = parseBars(barsJson);
+            if (series.getBarCount() < kPeriod + dPeriod) {
+                return "Insufficient data: need at least " + (kPeriod + dPeriod) + " bars, got " + series.getBarCount();
+            }
+
+            StochasticOscillatorKIndicator stochK = new StochasticOscillatorKIndicator(series, kPeriod);
+            // %D = SMA of %K over dPeriod (Ta4j 0.16 StochasticOscillatorDIndicator uses fixed 3-period)
+            SMAIndicator stochD = new SMAIndicator(stochK, dPeriod);
+
+            int lastIndex = series.getEndIndex();
+            double kValue = stochK.getValue(lastIndex).doubleValue();
+            double dValue = stochD.getValue(lastIndex).doubleValue();
+
+            // Previous values for crossover detection
+            double kPrev = lastIndex > 0 ? stochK.getValue(lastIndex - 1).doubleValue() : kValue;
+            double dPrev = lastIndex > 0 ? stochD.getValue(lastIndex - 1).doubleValue() : dValue;
+
+            String zone;
+            if (kValue > 80) {
+                zone = "OVERBOUGHT (%%K > 80 — potential bearish reversal)";
+            } else if (kValue < 20) {
+                zone = "OVERSOLD (%%K < 20 — potential bullish reversal)";
+            } else {
+                zone = "NEUTRAL (%%K in normal range)";
+            }
+
+            String crossSignal;
+            if (kValue > dValue && kPrev <= dPrev) {
+                crossSignal = "BULLISH CROSSOVER (%%K crossed above %%D — buy signal)";
+            } else if (kValue < dValue && kPrev >= dPrev) {
+                crossSignal = "BEARISH CROSSOVER (%%K crossed below %%D — sell signal)";
+            } else if (kValue > dValue) {
+                crossSignal = "%%K above %%D (bullish momentum)";
+            } else {
+                crossSignal = "%%K below %%D (bearish momentum)";
+            }
+
+            return String.format("""
+                    Stochastic(%d,%d) Analysis:
+                    - %%K: %.2f
+                    - %%D: %.2f
+                    - Zone: %s
+                    - Crossover Signal: %s""",
+                    kPeriod, dPeriod, kValue, dValue, zone, crossSignal);
+
+        } catch (Exception e) {
+            log.error("Stochastic Oscillator calculation failed", e);
+            return "Error calculating Stochastic Oscillator: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Calculate ADX (Average Directional Index) from historical price data. " +
+            "ADX measures trend strength regardless of direction. " +
+            "ADX > 25 = strong trend, ADX < 20 = weak/no trend, ADX > 50 = very strong trend. " +
+            "+DI > -DI = bullish trend direction, -DI > +DI = bearish trend direction. " +
+            "Useful for risk assessment: strong trends are more predictable. " +
+            "Input is JSON array of OHLCV bars from getHistoricalPrices.")
+    public String calculateADX(
+            @ToolParam(description = "JSON array of price bars [{o,h,l,c,v,t}, ...]") String barsJson,
+            @ToolParam(description = "ADX period, typically 14") int period) {
+        try {
+            BarSeries series = parseBars(barsJson);
+            if (series.getBarCount() < period * 2) {
+                return "Insufficient data: need at least " + (period * 2) + " bars, got " + series.getBarCount();
+            }
+
+            ADXIndicator adx = new ADXIndicator(series, period);
+            PlusDIIndicator plusDI = new PlusDIIndicator(series, period);
+            MinusDIIndicator minusDI = new MinusDIIndicator(series, period);
+
+            int lastIndex = series.getEndIndex();
+            double adxValue = adx.getValue(lastIndex).doubleValue();
+            double plusDIValue = plusDI.getValue(lastIndex).doubleValue();
+            double minusDIValue = minusDI.getValue(lastIndex).doubleValue();
+
+            String trendStrength;
+            if (adxValue > 50) {
+                trendStrength = "VERY STRONG TREND (ADX > 50 — highly directional, trend-following favorable)";
+            } else if (adxValue > 25) {
+                trendStrength = "STRONG TREND (ADX 25-50 — clear directional movement)";
+            } else if (adxValue > 20) {
+                trendStrength = "WEAK TREND (ADX 20-25 — trend developing or fading)";
+            } else {
+                trendStrength = "NO TREND / RANGING (ADX < 20 — sideways market, mean-reversion strategies preferred)";
+            }
+
+            String trendDirection;
+            if (plusDIValue > minusDIValue) {
+                trendDirection = "BULLISH (+DI > -DI — upward directional pressure)";
+            } else if (minusDIValue > plusDIValue) {
+                trendDirection = "BEARISH (-DI > +DI — downward directional pressure)";
+            } else {
+                trendDirection = "NEUTRAL (+DI equals -DI — no directional bias)";
+            }
+
+            // DI crossover detection
+            double plusDIPrev = lastIndex > 0 ? plusDI.getValue(lastIndex - 1).doubleValue() : plusDIValue;
+            double minusDIPrev = lastIndex > 0 ? minusDI.getValue(lastIndex - 1).doubleValue() : minusDIValue;
+            String diCross = "No crossover";
+            if (plusDIValue > minusDIValue && plusDIPrev <= minusDIPrev) {
+                diCross = "BULLISH DI CROSSOVER (+DI crossed above -DI — potential buy signal)";
+            } else if (minusDIValue > plusDIValue && minusDIPrev <= plusDIPrev) {
+                diCross = "BEARISH DI CROSSOVER (-DI crossed above +DI — potential sell signal)";
+            }
+
+            return String.format("""
+                    ADX(%d) Analysis:
+                    - ADX: %.2f
+                    - +DI: %.2f
+                    - -DI: %.2f
+                    - Trend Strength: %s
+                    - Trend Direction: %s
+                    - DI Crossover: %s""",
+                    period, adxValue, plusDIValue, minusDIValue,
+                    trendStrength, trendDirection, diCross);
+
+        } catch (Exception e) {
+            log.error("ADX calculation failed", e);
+            return "Error calculating ADX: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Calculate OBV (On-Balance Volume) from historical price data. " +
+            "OBV uses volume flow to predict price changes — volume precedes price. " +
+            "Rising OBV + rising price = confirmed uptrend (strong). " +
+            "Rising OBV + falling price = accumulation / bullish divergence (potential reversal up). " +
+            "Falling OBV + rising price = distribution / bearish divergence (potential reversal down). " +
+            "Falling OBV + falling price = confirmed downtrend (weak). " +
+            "Input is JSON array of OHLCV bars from getHistoricalPrices.")
+    public String calculateOBV(
+            @ToolParam(description = "JSON array of price bars [{o,h,l,c,v,t}, ...]") String barsJson) {
+        try {
+            BarSeries series = parseBars(barsJson);
+            if (series.getBarCount() < 6) {
+                return "Insufficient data: need at least 6 bars, got " + series.getBarCount();
+            }
+
+            ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+
+            // Manually calculate OBV (not available in Ta4j 0.16)
+            // OBV = cumulative volume, added on up-close days, subtracted on down-close days
+            int lastIndex = series.getEndIndex();
+            double[] obvValues = new double[series.getBarCount()];
+            obvValues[0] = series.getBar(0).getVolume().doubleValue();
+            for (int i = 1; i < series.getBarCount(); i++) {
+                double currentClose = series.getBar(i).getClosePrice().doubleValue();
+                double prevClose = series.getBar(i - 1).getClosePrice().doubleValue();
+                double volume = series.getBar(i).getVolume().doubleValue();
+                if (currentClose > prevClose) {
+                    obvValues[i] = obvValues[i - 1] + volume;
+                } else if (currentClose < prevClose) {
+                    obvValues[i] = obvValues[i - 1] - volume;
+                } else {
+                    obvValues[i] = obvValues[i - 1];
+                }
+            }
+
+            double obvValue = obvValues[lastIndex];
+
+            // Collect last 5 OBV and price values for trend analysis
+            double[] obvLast5 = new double[5];
+            double[] priceLast5 = new double[5];
+            for (int i = 0; i < 5; i++) {
+                int idx = lastIndex - 4 + i;
+                obvLast5[i] = idx >= 0 ? obvValues[idx] : 0.0;
+                priceLast5[i] = idx >= 0 ? closePrice.getValue(idx).doubleValue() : 0.0;
+            }
+
+            // OBV trend (comparing first and last of the 5 values)
+            boolean obvRising = obvLast5[4] > obvLast5[0];
+            boolean priceRising = priceLast5[4] > priceLast5[0];
+
+            String obvTrend;
+            if (obvRising) {
+                obvTrend = "RISING (buying pressure increasing)";
+            } else {
+                obvTrend = "FALLING (selling pressure increasing)";
+            }
+
+            String divergenceSignal;
+            if (obvRising && priceRising) {
+                divergenceSignal = "CONFIRMED UPTREND (rising OBV + rising price — volume supports price advance)";
+            } else if (obvRising && !priceRising) {
+                divergenceSignal = "BULLISH DIVERGENCE (rising OBV + falling price — accumulation detected, potential reversal up)";
+            } else if (!obvRising && priceRising) {
+                divergenceSignal = "BEARISH DIVERGENCE (falling OBV + rising price — distribution detected, potential reversal down)";
+            } else {
+                divergenceSignal = "CONFIRMED DOWNTREND (falling OBV + falling price — volume supports price decline)";
+            }
+
+            return String.format("""
+                    OBV Analysis:
+                    - Current OBV: %.0f
+                    - OBV Trend (last 5 bars): %s
+                    - Price Trend (last 5 bars): %s
+                    - Volume-Price Signal: %s
+                    - Last 5 OBV values: %.0f, %.0f, %.0f, %.0f, %.0f""",
+                    obvValue, obvTrend,
+                    priceRising ? "RISING" : "FALLING",
+                    divergenceSignal,
+                    obvLast5[0], obvLast5[1], obvLast5[2], obvLast5[3], obvLast5[4]);
+
+        } catch (Exception e) {
+            log.error("OBV calculation failed", e);
+            return "Error calculating OBV: " + e.getMessage();
         }
     }
 
