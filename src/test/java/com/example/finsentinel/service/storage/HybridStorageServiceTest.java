@@ -56,10 +56,10 @@ class HybridStorageServiceTest {
     }
 
     @Test
-    void deleteOnlyAffectsHotStorage() {
+    void deleteAffectsBothHotAndColdStorage() {
         hybridService.delete("key.pdf");
 
         verify(hotStorage).delete("key.pdf");
-        verifyNoInteractions(coldStorage);
+        verify(coldStorage).delete("key.pdf");
     }
 }

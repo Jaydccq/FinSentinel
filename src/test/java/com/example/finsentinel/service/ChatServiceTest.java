@@ -151,7 +151,7 @@ class ChatServiceTest {
                 .sessionId(sessionId).userId(userId).role("user").content("Q").build();
         ChatMessage msg2 = ChatMessage.builder()
                 .sessionId(sessionId).userId(userId).role("assistant").content("A").build();
-        when(chatMessageRepository.findBySessionIdAndUserIdOrderByCreatedAtAsc(sessionId, userId))
+        when(chatMessageRepository.findTop100BySessionIdAndUserIdOrderByCreatedAtAsc(sessionId, userId))
                 .thenReturn(List.of(msg1, msg2));
 
         List<ChatMessage> history = service.getSessionHistory(sessionId, userId);
