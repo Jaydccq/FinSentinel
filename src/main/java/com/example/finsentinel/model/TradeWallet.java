@@ -1,5 +1,6 @@
 package com.example.finsentinel.model;
 
+import com.example.finsentinel.model.enums.TradingMode;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -54,6 +55,14 @@ public class TradeWallet {
     @Column(precision = 15, scale = 2, nullable = false)
     @Builder.Default
     private BigDecimal cashBalance = new BigDecimal("100000.00");
+
+    /**
+     * Trading execution mode for this wallet.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10, nullable = false)
+    @Builder.Default
+    private TradingMode tradingMode = TradingMode.PAPER;
 
     /**
      * Current positions as JSONB.
