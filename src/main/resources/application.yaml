@@ -202,3 +202,17 @@ app:
       - "sure thing"
       - "can't lose"
       - "100% safe"
+
+  trading:
+    default-mode: PAPER
+    alpaca:
+      enabled: false
+      paper: true
+      api-key: ${ALPACA_API_KEY:}
+      secret-key: ${ALPACA_SECRET_KEY:}
+    crypto:
+      enabled: false
+      exchange: binance
+      sandbox: true
+      api-key: ${CRYPTO_API_KEY:}
+      secret-key: ${CRYPTO_SECRET_KEY:}
