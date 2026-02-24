@@ -71,6 +71,10 @@ app:
     api-key: ${POLYGON_API_KEY}
     base-url: https://api.polygon.io
 
+  yahoo-finance:
+    enabled: ${APP_YAHOO_FINANCE_ENABLED:true}
+    base-url: https://query1.finance.yahoo.com
+
   jwt:
     secret: ${JWT_SECRET}
     expiration: ${JWT_EXPIRATION:86400000}
