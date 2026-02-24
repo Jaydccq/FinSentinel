@@ -172,26 +172,26 @@ public class PaperTradingService {
         if (commitData == null) {
             return "Error: No pending commit. Stage orders and commit first.";
         }
+        try {
+            TradeWallet wallet = getOrCreateWallet(userId);
 
-        TradeWallet wallet = getOrCreateWallet(userId);
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> operations = (List<Map<String, Object>>) commitData.get("operations");
 
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> operations = (List<Map<String, Object>>) commitData.get("operations");
+            List<Map<String, Object>> results = new ArrayList<>();
+            StringBuilder report = new StringBuilder();
+            report.append("=== Execution Report ===\n");
+            report.append(String.format("Commit: %s -- %s\n\n", commitData.get("hash"), commitData.get("message")));
 
-        List<Map<String, Object>> results = new ArrayList<>();
-        StringBuilder report = new StringBuilder();
-        report.append("=== Execution Report ===\n");
-        report.append(String.format("Commit: %s -- %s\n\n", commitData.get("hash"), commitData.get("message")));
+            for (Map<String, Object> op : operations) {
+                String action = (String) op.get("action");
+                String ticker = (String) op.get("ticker");
+                Map<String, Object> result = new LinkedHashMap<>();
+                result.put("action", action);
+                result.put("ticker", ticker);
 
-        for (Map<String, Object> op : operations) {
-            String action = (String) op.get("action");
-            String ticker = (String) op.get("ticker");
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("action", action);
-            result.put("ticker", ticker);
-
-            try {
-                switch (action) {
+                try {
+                    switch (action) {
                     case "BUY" -> {
                         BigDecimal currentPrice = getCurrentPrice(ticker);
                         BigDecimal shares = resolveShares(op, currentPrice);
@@ -269,45 +269,46 @@ public class PaperTradingService {
                         result.put("error", "Unknown action: " + action);
                         report.append(String.format("  FAILED: Unknown action '%s'\n", action));
                     }
+                    }
+                } catch (Exception e) {
+                    result.put("success", false);
+                    result.put("error", e.getMessage());
+                    report.append(String.format("  FAILED %s %s: %s\n", action, ticker, e.getMessage()));
+                    log.error("Error executing {} {} for user {}", action, ticker, userId, e);
                 }
-            } catch (Exception e) {
-                result.put("success", false);
-                result.put("error", e.getMessage());
-                report.append(String.format("  FAILED %s %s: %s\n", action, ticker, e.getMessage()));
-                log.error("Error executing {} {} for user {}", action, ticker, userId, e);
+                results.add(result);
             }
-            results.add(result);
+
+            // Record commit in history
+            String parentHash = wallet.getCommitHistory().isEmpty()
+                    ? null
+                    : (String) wallet.getCommitHistory().getLast().get("hash");
+
+            Map<String, Object> historyEntry = new LinkedHashMap<>(commitData);
+            historyEntry.put("parentHash", parentHash);
+            historyEntry.put("results", results);
+            historyEntry.put("walletStateAfter", buildWalletSnapshot(wallet));
+
+            List<Map<String, Object>> history = new ArrayList<>(wallet.getCommitHistory());
+            history.add(historyEntry);
+            // Cap at MAX_COMMIT_HISTORY entries
+            if (history.size() > MAX_COMMIT_HISTORY) {
+                history = new ArrayList<>(history.subList(history.size() - MAX_COMMIT_HISTORY, history.size()));
+            }
+            wallet.setCommitHistory(history);
+
+            walletRepository.save(wallet);
+
+            report.append(String.format("\nCash balance: $%s\n", wallet.getCashBalance().toPlainString()));
+            report.append(String.format("Positions: %d\n", wallet.getPositions().size()));
+
+            log.info("User {} executed commit {}: {} operations", userId, commitData.get("hash"), results.size());
+            return report.toString();
+        } finally {
+            // Ensure in-memory state does not get stuck when execution fails unexpectedly.
+            stagingAreas.remove(userId);
+            pendingCommits.remove(userId);
         }
-
-        // Record commit in history
-        String parentHash = wallet.getCommitHistory().isEmpty()
-                ? null
-                : (String) wallet.getCommitHistory().getLast().get("hash");
-
-        Map<String, Object> historyEntry = new LinkedHashMap<>(commitData);
-        historyEntry.put("parentHash", parentHash);
-        historyEntry.put("results", results);
-        historyEntry.put("walletStateAfter", buildWalletSnapshot(wallet));
-
-        List<Map<String, Object>> history = new ArrayList<>(wallet.getCommitHistory());
-        history.add(historyEntry);
-        // Cap at MAX_COMMIT_HISTORY entries
-        if (history.size() > MAX_COMMIT_HISTORY) {
-            history = new ArrayList<>(history.subList(history.size() - MAX_COMMIT_HISTORY, history.size()));
-        }
-        wallet.setCommitHistory(history);
-
-        walletRepository.save(wallet);
-
-        // Clear staging area and pending commit
-        stagingAreas.remove(userId);
-        pendingCommits.remove(userId);
-
-        report.append(String.format("\nCash balance: $%s\n", wallet.getCashBalance().toPlainString()));
-        report.append(String.format("Positions: %d\n", wallet.getPositions().size()));
-
-        log.info("User {} executed commit {}: {} operations", userId, commitData.get("hash"), results.size());
-        return report.toString();
     }
 
     // ───────────────────────── Query methods ─────────────────────────────────
@@ -319,7 +320,7 @@ public class PaperTradingService {
      * @param userId the user's UUID
      * @return formatted wallet status string
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public String getWalletStatus(UUID userId) {
         TradeWallet wallet = getOrCreateWallet(userId);
 

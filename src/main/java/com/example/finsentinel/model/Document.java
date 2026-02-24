@@ -50,6 +50,10 @@ public class Document {
     @Builder.Default
     private String regionId = "US";
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
+
     private Long fileSize;
 
     private Integer chunkCount;

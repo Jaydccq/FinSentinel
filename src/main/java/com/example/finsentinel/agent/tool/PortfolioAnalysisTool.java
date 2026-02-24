@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -55,6 +57,11 @@ public class PortfolioAnalysisTool {
         }
 
         Portfolio portfolio = portfolioOpt.get();
+        String currentUser = resolveAuthenticatedUsername();
+        if (currentUser == null || portfolio.getUser() == null
+                || !currentUser.equals(portfolio.getUser().getUsername())) {
+            return "Portfolio not found: " + portfolioId;
+        }
         List<Holding> holdings = holdingRepository.findByPortfolioId(id);
 
         if (holdings.isEmpty()) {
@@ -77,6 +84,9 @@ public class PortfolioAnalysisTool {
             analyses.add(new HoldingAnalysis(h.getSymbol(), h.getCompanyName(), h.getSector(),
                     marketValue, costBasis, unrealizedPnl, pnlPct));
             totalMarketValue = totalMarketValue.add(marketValue);
+        }
+        if (totalMarketValue.compareTo(BigDecimal.ZERO) <= 0) {
+            return "Portfolio '" + portfolio.getName() + "' has zero market value and cannot be analyzed yet.";
         }
 
         analyses.sort((a, b) -> b.marketValue.compareTo(a.marketValue));
@@ -148,6 +158,14 @@ public class PortfolioAnalysisTool {
 
 
         return sb.toString();
+    }
+
+    private String resolveAuthenticatedUsername() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(auth.getPrincipal())) {
+            return null;
+        }
+        return auth.getName();
     }
 
     /**

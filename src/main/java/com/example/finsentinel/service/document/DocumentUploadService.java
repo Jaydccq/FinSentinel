@@ -5,6 +5,7 @@ import com.example.finsentinel.model.Document;
 import com.example.finsentinel.model.enums.DocumentStatus;
 import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.repository.DocumentRepository;
+import com.example.finsentinel.repository.UserRepository;
 import com.example.finsentinel.service.storage.StorageService;
 import com.example.finsentinel.stream.VectorizeStreamProducer;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class DocumentUploadService {
     private final VectorizeStreamProducer vectorizeStreamProducer;
     private final StorageService storageService;
     private final DocumentRepository documentRepository;
+    private final UserRepository userRepository;
 
     /**
      * Uploads a document and queues it for async vectorization via Redis Stream.
@@ -44,12 +46,14 @@ public class DocumentUploadService {
      * @throws IllegalArgumentException if file validation fails
      * @throws RuntimeException if upload to storage fails
      */
-    public DocumentUploadResponse upload(MultipartFile file, DocumentType docType, String sector, String regionId) {
+    public DocumentUploadResponse upload(MultipartFile file, DocumentType docType, String sector, String regionId, UUID userId) {
         log.info("Starting document upload: filename={}, type={}, sector={}, region={}",
                 file.getOriginalFilename(), docType, sector, regionId);
 
         // Validate file
         validateFile(file);
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         Document document = null;
         try {
@@ -63,6 +67,7 @@ public class DocumentUploadService {
                     .status(DocumentStatus.PENDING)
                     .sector(sector)
                     .regionId(regionId != null ? regionId : "US")
+                    .user(user)
                     .fileSize(file.getSize())
                     .storageKey(storageKey)
                     .createdAt(LocalDateTime.now())

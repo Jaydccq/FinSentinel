@@ -42,7 +42,7 @@ public class RiskAgentService {
      * The LLM will autonomously call tools (StockMarketTool, TechnicalIndicatorTool, etc.)
      * and return a structured RiskReport.
      */
-    public RiskReport assess(String userMessage, UUID portfolioId) {
+    public RiskReport assess(String userMessage, UUID portfolioId, UUID userId) {
         log.info("Starting risk assessment: query='{}', portfolio={}",
                 truncate(userMessage, 80), portfolioId);
 
@@ -51,6 +51,7 @@ public class RiskAgentService {
                 : "";
 
         RiskReport report = riskAgentChatClient.prompt()
+                .advisors(advisor -> advisor.param("userId", userId))
                 .system(sp -> sp
                         .param("complianceRegion", complianceProperties.getRegion())
                         .param("disclaimer", complianceProperties.getDisclaimer()))
@@ -82,12 +83,13 @@ public class RiskAgentService {
 
      * Returns the raw text stream (not structured output).
      */
-    public reactor.core.publisher.Flux<String> assessStream(String userMessage, UUID portfolioId) {
+    public reactor.core.publisher.Flux<String> assessStream(String userMessage, UUID portfolioId, UUID userId) {
         String portfolioContext = portfolioId != null
                 ? "- Use analyzePortfolio with portfolio ID: " + portfolioId
                 : "";
 
         return riskAgentChatClient.prompt()
+                .advisors(advisor -> advisor.param("userId", userId))
                 .system(sp -> sp
                         .param("complianceRegion", complianceProperties.getRegion())
                         .param("disclaimer", complianceProperties.getDisclaimer()))
@@ -119,8 +121,12 @@ public class RiskAgentService {
         try {
             RiskLevel level;
             try {
-                level = RiskLevel.valueOf(report.riskLevel().toUpperCase().trim());
-            } catch (IllegalArgumentException e) {
+                String rawLevel = report.riskLevel();
+                if (rawLevel == null || rawLevel.isBlank()) {
+                    throw new IllegalArgumentException("Missing risk level");
+                }
+                level = RiskLevel.valueOf(rawLevel.toUpperCase().trim());
+            } catch (IllegalArgumentException | NullPointerException e) {
                 log.warn("Unknown risk level '{}' from LLM, defaulting to MEDIUM", report.riskLevel());
                 level = RiskLevel.MEDIUM;
             }

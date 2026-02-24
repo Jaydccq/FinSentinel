@@ -54,7 +54,7 @@ class ChatServiceTest {
         when(portfolioRepository.existsByIdAndUserId(portfolioId, userId)).thenReturn(true);
         when(chatMessageRepository.save(any(ChatMessage.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
-        when(riskAgentService.assessStream("Test question", portfolioId))
+        when(riskAgentService.assessStream("Test question", portfolioId, userId))
                 .thenReturn(Flux.just("Hello", " World"));
 
         SseEmitter emitter = new SseEmitter(120_000L);
@@ -81,7 +81,7 @@ class ChatServiceTest {
         when(portfolioRepository.existsByIdAndUserId(portfolioId, userId)).thenReturn(true);
         when(chatMessageRepository.save(any(ChatMessage.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
-        when(riskAgentService.assessStream("Test", portfolioId))
+        when(riskAgentService.assessStream("Test", portfolioId, userId))
                 .thenReturn(Flux.just("Response"));
 
         SseEmitter emitter = new SseEmitter(120_000L);
@@ -102,7 +102,7 @@ class ChatServiceTest {
         RiskReport report = new RiskReport(
                 65, "HIGH", "Test risk", List.of(), List.of(),
                 new ComplianceNote("Disclaimer", "SEC", true));
-        when(riskAgentService.assess("Analyze AAPL", portfolioId)).thenReturn(report);
+        when(riskAgentService.assess("Analyze AAPL", portfolioId, userId)).thenReturn(report);
         when(chatMessageRepository.save(any(ChatMessage.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
@@ -125,7 +125,7 @@ class ChatServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Portfolio not found");
 
-        verify(riskAgentService, never()).assess(any(), any());
+        verify(riskAgentService, never()).assess(any(), any(), any());
     }
 
     @Test
@@ -141,7 +141,7 @@ class ChatServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Portfolio not found");
 
-        verify(riskAgentService, never()).assessStream(any(), any());
+        verify(riskAgentService, never()).assessStream(any(), any(), any());
     }
 
 

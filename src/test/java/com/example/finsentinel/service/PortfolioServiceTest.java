@@ -251,6 +251,29 @@ class PortfolioServiceTest {
         verify(holdingRepository, never()).deleteById(any(UUID.class));
     }
 
+    @Test
+    void getAnalytics_whenPortfolioValueIsZero_shouldReturnSafeResponse() {
+        Portfolio portfolio = buildPortfolio("Zero Portfolio", userId);
+        Holding zeroHolding = Holding.builder()
+                .portfolio(portfolio)
+                .symbol("AAPL")
+                .quantity(BigDecimal.ZERO)
+                .averageCost(new BigDecimal("100"))
+                .currentPrice(BigDecimal.ZERO)
+                .sector("Technology")
+                .build();
+
+        when(portfolioRepository.findById(portfolioId)).thenReturn(Optional.of(portfolio));
+        when(holdingRepository.findByPortfolioId(portfolioId)).thenReturn(List.of(zeroHolding));
+
+        PortfolioAnalyticsResponse response = service.getAnalytics(portfolioId, userId);
+
+        assertThat(response.totalMarketValue()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(response.holdingWeights()).isEmpty();
+        assertThat(response.sectorAllocation()).isEmpty();
+        assertThat(response.concentrationWarnings()).contains("Portfolio market value is zero");
+    }
+
     /**
      * Builds portfolio.
      *

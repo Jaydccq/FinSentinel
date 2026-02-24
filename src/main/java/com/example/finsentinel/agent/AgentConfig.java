@@ -1,6 +1,7 @@
 package com.example.finsentinel.agent;
 
 import com.example.finsentinel.agent.advisor.ComplianceGuardrailAdvisor;
+import com.example.finsentinel.agent.advisor.UserContextAdvisor;
 import com.example.finsentinel.agent.tool.*;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
@@ -34,6 +35,7 @@ public class AgentConfig {
      * @param portfolioAnalysisTool portfolio analysis tool (PortfolioAnalysisTool)
      * @param complianceCheckTool compliance check tool (ComplianceCheckTool)
      * @param questionAnswerAdvisor question answer advisor (QuestionAnswerAdvisor)
+     * @param userContextAdvisor user context advisor (UserContextAdvisor)
      * @param complianceGuardrailAdvisor compliance guardrail advisor (ComplianceGuardrailAdvisor)
      * @return the risk agent chat client result (ChatClient)
      */
@@ -47,6 +49,7 @@ public class AgentConfig {
             PortfolioAnalysisTool portfolioAnalysisTool,
             ComplianceCheckTool complianceCheckTool,
             QuestionAnswerAdvisor questionAnswerAdvisor,
+            UserContextAdvisor userContextAdvisor,
             ComplianceGuardrailAdvisor complianceGuardrailAdvisor) {
 
 
@@ -55,7 +58,7 @@ public class AgentConfig {
                 .defaultTools(stockMarketTool, newsAnalysisTool,
                         technicalIndicatorTool, portfolioAnalysisTool,
                         complianceCheckTool)
-                .defaultAdvisors(questionAnswerAdvisor, complianceGuardrailAdvisor)
+                .defaultAdvisors(questionAnswerAdvisor, userContextAdvisor, complianceGuardrailAdvisor)
                 .build();
     }
 }

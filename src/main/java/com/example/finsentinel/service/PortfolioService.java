@@ -201,6 +201,11 @@ public class PortfolioService {
                     marketValue, BigDecimal.ZERO, unrealizedPnl, pnlPct));
         }
 
+        if (totalMarketValue.compareTo(BigDecimal.ZERO) <= 0) {
+            return new PortfolioAnalyticsResponse(
+                    BigDecimal.ZERO, Map.of(), 0.0, "N/A", List.of(), List.of("Portfolio market value is zero"));
+        }
+
         // Calculate weight percentages
         BigDecimal finalTotal = totalMarketValue;
         weights = weights.stream()

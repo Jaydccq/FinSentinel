@@ -6,15 +6,19 @@ import com.example.finsentinel.model.Document;
 import com.example.finsentinel.model.enums.DocumentStatus;
 import com.example.finsentinel.model.enums.DocumentType;
 import com.example.finsentinel.repository.DocumentRepository;
+import com.example.finsentinel.repository.UserRepository;
 import com.example.finsentinel.service.document.DocumentUploadService;
 import com.example.finsentinel.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -35,6 +39,7 @@ public class DocumentController {
     private final DocumentUploadService documentUploadService;
     private final DocumentRepository documentRepository;
     private final StorageService storageService;
+    private final UserRepository userRepository;
 
     /**
      * Uploads and processes a document through the RAG pipeline.
@@ -51,12 +56,14 @@ public class DocumentController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("docType") DocumentType docType,
             @RequestParam(value = "sector", required = false) String sector,
-            @RequestParam(value = "regionId", required = false, defaultValue = "US") String regionId) {
+            @RequestParam(value = "regionId", required = false, defaultValue = "US") String regionId,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         log.info("POST /api/documents - file={}, docType={}, sector={}, regionId={}",
                 file.getOriginalFilename(), docType, sector, regionId);
 
-        DocumentUploadResponse response = documentUploadService.upload(file, docType, sector, regionId);
+        UUID userId = resolveUserId(userDetails);
+        DocumentUploadResponse response = documentUploadService.upload(file, docType, sector, regionId, userId);
         return ResponseEntity.ok(response);
     }
 
@@ -70,23 +77,30 @@ public class DocumentController {
     @GetMapping
     public ResponseEntity<List<DocumentUploadResponse>> listDocuments(
             @RequestParam(value = "status", required = false) DocumentStatus status,
-            @RequestParam(value = "docType", required = false) DocumentType docType) {
+            @RequestParam(value = "docType", required = false) DocumentType docType,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "50") int size,
+            @AuthenticationPrincipal UserDetails userDetails) {
 
         log.info("GET /api/documents - status={}, docType={}", status, docType);
+        UUID userId = resolveUserId(userDetails);
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.max(1, Math.min(size, 200));
+        Pageable pageable = PageRequest.of(safePage, safeSize);
 
         List<Document> documents;
 
         if (status != null && docType != null) {
-            documents = documentRepository.findByStatusAndDocTypeOrderByCreatedAtDesc(status, docType);
+            documents = documentRepository.findByUserIdAndStatusAndDocTypeOrderByCreatedAtDesc(
+                    userId, status, docType, pageable).getContent();
         } else if (status != null) {
-            // Status filter only
-            documents = documentRepository.findByStatusOrderByCreatedAtDesc(status);
+            documents = documentRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, status, pageable)
+                    .getContent();
         } else if (docType != null) {
-            // Type filter only
-            documents = documentRepository.findByDocTypeOrderByCreatedAtDesc(docType);
+            documents = documentRepository.findByUserIdAndDocTypeOrderByCreatedAtDesc(userId, docType, pageable)
+                    .getContent();
         } else {
-            // No filters
-            documents = documentRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt"));
+            documents = documentRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable).getContent();
         }
 
         List<DocumentUploadResponse> responses = documents.stream()
@@ -105,11 +119,10 @@ public class DocumentController {
      * @throws IllegalArgumentException if document not found
      */
     @GetMapping("/{id}")
-    public ResponseEntity<DocumentUploadResponse> getDocument(@PathVariable UUID id) {
+    public ResponseEntity<DocumentUploadResponse> getDocument(@PathVariable UUID id,
+                                                              @AuthenticationPrincipal UserDetails userDetails) {
         log.info("GET /api/documents/{}", id);
-
-        Document document = documentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Document not found: " + id));
+        Document document = findOwnedDocument(id, resolveUserId(userDetails));
         return ResponseEntity.ok(toResponse(document));
     }
 
@@ -118,17 +131,16 @@ public class DocumentController {
      * Returns the raw file bytes with Content-Disposition attachment header.
      */
     @GetMapping("/{id}/download")
-    public ResponseEntity<byte[]> downloadDocument(@PathVariable UUID id) {
+    public ResponseEntity<byte[]> downloadDocument(@PathVariable UUID id,
+                                                   @AuthenticationPrincipal UserDetails userDetails) {
         log.info("GET /api/documents/{}/download", id);
-
-        Document document = documentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Document not found: " + id));
+        Document document = findOwnedDocument(id, resolveUserId(userDetails));
 
         byte[] content = storageService.download(document.getStorageKey());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentDisposition(ContentDisposition.attachment()
-                .filename(document.getFileName())
+                .filename(document.getOriginalFileName())
                 .build());
         headers.setContentType(MediaType.APPLICATION_PDF);
 
@@ -141,11 +153,10 @@ public class DocumentController {
      * Deletes a document by ID — removes from storage and database.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDocument(@PathVariable UUID id) {
+    public ResponseEntity<Void> deleteDocument(@PathVariable UUID id,
+                                               @AuthenticationPrincipal UserDetails userDetails) {
         log.info("DELETE /api/documents/{}", id);
-
-        Document document = documentRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Document not found: " + id));
+        Document document = findOwnedDocument(id, resolveUserId(userDetails));
 
         try {
             storageService.delete(document.getStorageKey());
@@ -175,5 +186,19 @@ public class DocumentController {
                 document.getArchivedAt(),
                 document.getCreatedAt()
         );
+    }
+
+    private UUID resolveUserId(UserDetails userDetails) {
+        if (userDetails == null) {
+            throw new IllegalStateException("Authenticated user not found");
+        }
+        return userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new IllegalStateException("User not found"))
+                .getId();
+    }
+
+    private Document findOwnedDocument(UUID id, UUID userId) {
+        return documentRepository.findByIdAndUserId(id, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found: " + id));
     }
 }

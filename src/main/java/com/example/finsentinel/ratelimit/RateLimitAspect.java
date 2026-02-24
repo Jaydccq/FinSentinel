@@ -102,15 +102,41 @@ public class RateLimitAspect {
             return "unknown";
         }
         HttpServletRequest request = attrs.getRequest();
+        String remoteAddr = request.getRemoteAddr();
         String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            // Take the first (leftmost) IP — the original client address.
-            // Proxies append their addresses to the right of the chain.
+        if (forwarded != null && !forwarded.isBlank() && isTrustedProxy(remoteAddr)) {
             String[] ips = forwarded.split(",");
-            return ips[0].trim();
+            if (ips.length > 0 && !ips[0].isBlank()) {
+                return ips[0].trim();
+            }
         }
 
-        return request.getRemoteAddr();
+        return remoteAddr;
+    }
+
+    private boolean isTrustedProxy(String remoteAddr) {
+        if (remoteAddr == null) {
+            return false;
+        }
+        if ("127.0.0.1".equals(remoteAddr)
+                || "::1".equals(remoteAddr)
+                || remoteAddr.startsWith("10.")
+                || remoteAddr.startsWith("192.168.")) {
+            return true;
+        }
+        if (!remoteAddr.startsWith("172.")) {
+            return false;
+        }
+        String[] parts = remoteAddr.split("\\.");
+        if (parts.length < 2) {
+            return false;
+        }
+        try {
+            int secondOctet = Integer.parseInt(parts[1]);
+            return secondOctet >= 16 && secondOctet <= 31;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
     }
 
     /**

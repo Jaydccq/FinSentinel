@@ -44,7 +44,7 @@ public class ChatService {
         persistMessage(userId, session, "user", message);
 
         StringBuilder fullResponse = new StringBuilder();
-        riskAgentService.assessStream(message, portfolioId)
+        riskAgentService.assessStream(message, portfolioId, userId)
                 .doOnNext(chunk -> {
                     try {
                         fullResponse.append(chunk);
@@ -82,7 +82,7 @@ public class ChatService {
         ensurePortfolioOwnership(portfolioId, userId);
         UUID session = sessionId != null ? sessionId : UUID.randomUUID();
         persistMessage(userId, session, "user", message);
-        RiskReport report = riskAgentService.assess(message, portfolioId);
+        RiskReport report = riskAgentService.assess(message, portfolioId, userId);
         persistMessage(userId, session, "assistant", report.toString());
         return report;
     }
