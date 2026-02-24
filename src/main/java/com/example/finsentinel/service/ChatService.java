@@ -98,7 +98,7 @@ public class ChatService {
 
     public List<ChatMessage> getSessionHistory(UUID sessionId, UUID userId) {
 
-        return chatMessageRepository.findBySessionIdAndUserIdOrderByCreatedAtAsc(sessionId, userId);
+        return chatMessageRepository.findTop100BySessionIdAndUserIdOrderByCreatedAtAsc(sessionId, userId);
     }
 
     /**
@@ -112,7 +112,7 @@ public class ChatService {
 
     public List<ChatMessage> getUserHistory(UUID userId) {
 
-        return chatMessageRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        return chatMessageRepository.findTop50ByUserIdOrderByCreatedAtDesc(userId);
     }
 
     /**

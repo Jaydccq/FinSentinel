@@ -34,6 +34,13 @@ public class AgentConfig {
      * @param technicalIndicatorTool technical indicator tool (TechnicalIndicatorTool)
      * @param portfolioAnalysisTool portfolio analysis tool (PortfolioAnalysisTool)
      * @param complianceCheckTool compliance check tool (ComplianceCheckTool)
+     * @param tradingTool trading tool (TradingTool)
+     * @param brainTool brain tool (BrainTool)
+     * @param companyResearchTool company research tool (CompanyResearchTool)
+     * @param equityScreenerTool equity screener tool (EquityScreenerTool)
+     * @param quantAnalysisTool quant analysis tool (QuantAnalysisTool)
+     * @param thinkingTool thinking tool (ThinkingTool)
+     * @param userProfileTool user profile tool (UserProfileTool)
      * @param questionAnswerAdvisor question answer advisor (QuestionAnswerAdvisor)
      * @param userContextAdvisor user context advisor (UserContextAdvisor)
      * @param complianceGuardrailAdvisor compliance guardrail advisor (ComplianceGuardrailAdvisor)
@@ -50,6 +57,11 @@ public class AgentConfig {
             ComplianceCheckTool complianceCheckTool,
             TradingTool tradingTool,
             BrainTool brainTool,
+            CompanyResearchTool companyResearchTool,
+            EquityScreenerTool equityScreenerTool,
+            QuantAnalysisTool quantAnalysisTool,
+            ThinkingTool thinkingTool,
+            UserProfileTool userProfileTool,
             QuestionAnswerAdvisor questionAnswerAdvisor,
             UserContextAdvisor userContextAdvisor,
             ComplianceGuardrailAdvisor complianceGuardrailAdvisor) {
@@ -58,7 +70,9 @@ public class AgentConfig {
                 .defaultSystem(systemPrompt)
                 .defaultTools(stockMarketTool, newsAnalysisTool,
                         technicalIndicatorTool, portfolioAnalysisTool,
-                        complianceCheckTool, tradingTool, brainTool)
+                        complianceCheckTool, tradingTool, brainTool,
+                        companyResearchTool, equityScreenerTool,
+                        quantAnalysisTool, thinkingTool, userProfileTool)
                 .defaultAdvisors(questionAnswerAdvisor, userContextAdvisor, complianceGuardrailAdvisor)
                 .build();
     }
