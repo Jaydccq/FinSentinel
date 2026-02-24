@@ -3,6 +3,7 @@ package com.example.finsentinel.agent.tool;
 import com.example.finsentinel.model.TradeOperation;
 import com.example.finsentinel.model.enums.TradingMode;
 import com.example.finsentinel.service.trading.PaperTradingService;
+import com.example.finsentinel.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
@@ -26,6 +27,9 @@ import java.util.UUID;
  * rationale and can be reviewed before execution. The full commit history provides
  * an immutable audit trail.
  *
+ * <p>User identity is resolved from Spring Security's SecurityContext -- never from
+ * LLM-provided parameters -- to prevent cross-user operations.
+ *
  * <p>This class is part of the agent layer in FinSentinel.
  */
 @Component
@@ -40,13 +44,12 @@ public class TradingTool {
             "CLOSE (sell all shares of ticker). Specify either shares OR amount in dollars. " +
             "This works like 'git add' -- staging your intended trades before committing.")
     public String stageTradeOrder(
-            @ToolParam(description = "User UUID") String userId,
             @ToolParam(description = "Trade action: BUY, SELL, or CLOSE") String action,
             @ToolParam(description = "Stock ticker symbol, e.g. AAPL") String ticker,
             @ToolParam(description = "Number of shares (use 0 if specifying amount instead)") double shares,
             @ToolParam(description = "Dollar amount (use 0 if specifying shares instead)") double amount) {
         try {
-            UUID id = UUID.fromString(userId);
+            UUID userId = SecurityUtils.getCurrentUserId();
             TradeOperation operation = new TradeOperation(
                     action.toUpperCase().trim(),
                     ticker.toUpperCase().trim(),
@@ -54,12 +57,12 @@ public class TradingTool {
                     amount > 0 ? BigDecimal.valueOf(amount) : null,
                     null  // market order
             );
-            return tradingService.stage(id, operation);
+            return tradingService.stage(userId, operation);
         } catch (IllegalArgumentException e) {
             log.error("Invalid stage request: {}", e.getMessage());
             return "Error staging trade: " + e.getMessage();
         } catch (Exception e) {
-            log.error("Failed to stage trade for user {}", userId, e);
+            log.error("Failed to stage trade", e);
             return "Error staging trade: " + e.getMessage();
         }
     }
@@ -68,17 +71,16 @@ public class TradingTool {
             "records your trading decision and reasoning. Must stage orders first with stageTradeOrder, " +
             "then commit, then execute with executeTrade.")
     public String commitTrade(
-            @ToolParam(description = "User UUID") String userId,
             @ToolParam(description = "Commit message explaining the trading rationale, " +
                     "e.g. 'Going long AAPL based on strong Q4 earnings and bullish technicals'") String message) {
         try {
-            UUID id = UUID.fromString(userId);
-            return tradingService.commit(id, message);
+            UUID userId = SecurityUtils.getCurrentUserId();
+            return tradingService.commit(userId, message);
         } catch (IllegalArgumentException e) {
             log.error("Invalid commit request: {}", e.getMessage());
             return "Error committing trade: " + e.getMessage();
         } catch (Exception e) {
-            log.error("Failed to commit trade for user {}", userId, e);
+            log.error("Failed to commit trade", e);
             return "Error committing trade: " + e.getMessage();
         }
     }
@@ -86,32 +88,27 @@ public class TradingTool {
     @Tool(description = "Execute the committed trade operations (paper trading -- simulated). " +
             "Like 'git push' -- finalizes the trade at current market prices. " +
             "Must commit first with commitTrade. Returns execution report with filled prices and P&L.")
-    public String executeTrade(
-            @ToolParam(description = "User UUID") String userId) {
+    public String executeTrade() {
         try {
-            UUID id = UUID.fromString(userId);
-            return tradingService.execute(id);
+            UUID userId = SecurityUtils.getCurrentUserId();
+            return tradingService.execute(userId);
         } catch (IllegalArgumentException e) {
             log.error("Invalid execute request: {}", e.getMessage());
             return "Error executing trade: " + e.getMessage();
         } catch (Exception e) {
-            log.error("Failed to execute trade for user {}", userId, e);
+            log.error("Failed to execute trade", e);
             return "Error executing trade: " + e.getMessage();
         }
     }
 
     @Tool(description = "View paper trading portfolio status including cash balance, positions with " +
             "current prices and P&L, and total portfolio value with overall return percentage.")
-    public String getWalletStatus(
-            @ToolParam(description = "User UUID") String userId) {
+    public String getWalletStatus() {
         try {
-            UUID id = UUID.fromString(userId);
-            return tradingService.getWalletStatus(id);
-        } catch (IllegalArgumentException e) {
-            log.error("Invalid user ID: {}", userId);
-            return "Error: Invalid user ID format -- " + userId;
+            UUID userId = SecurityUtils.getCurrentUserId();
+            return tradingService.getWalletStatus(userId);
         } catch (Exception e) {
-            log.error("Failed to get wallet status for user {}", userId, e);
+            log.error("Failed to get wallet status", e);
             return "Error fetching wallet status: " + e.getMessage();
         }
     }
@@ -119,28 +116,23 @@ public class TradingTool {
     @Tool(description = "View trade commit history -- a timeline of all trading decisions with rationale " +
             "and results. Like 'git log' -- shows what was traded, why, and what happened.")
     public String getTradeHistory(
-            @ToolParam(description = "User UUID") String userId,
             @ToolParam(description = "Number of recent commits to show (max 50)") int limit) {
         try {
-            UUID id = UUID.fromString(userId);
+            UUID userId = SecurityUtils.getCurrentUserId();
             int clampedLimit = Math.min(Math.max(limit, 1), 50);
-            return tradingService.getCommitLog(id, clampedLimit);
-        } catch (IllegalArgumentException e) {
-            log.error("Invalid user ID: {}", userId);
-            return "Error: Invalid user ID format -- " + userId;
+            return tradingService.getCommitLog(userId, clampedLimit);
         } catch (Exception e) {
-            log.error("Failed to get trade history for user {}", userId, e);
+            log.error("Failed to get trade history", e);
             return "Error fetching trade history: " + e.getMessage();
         }
     }
 
     @Tool(description = "View currently staged (uncommitted) trade orders. Like 'git status' -- " +
             "shows what orders are queued but not yet committed or executed.")
-    public String getStagedOrders(
-            @ToolParam(description = "User UUID") String userId) {
+    public String getStagedOrders() {
         try {
-            UUID id = UUID.fromString(userId);
-            var staged = tradingService.getStagingArea(id);
+            UUID userId = SecurityUtils.getCurrentUserId();
+            var staged = tradingService.getStagingArea(userId);
             if (staged.isEmpty()) {
                 return "No staged orders. Use stageTradeOrder to queue trades.";
             }
@@ -156,11 +148,8 @@ public class TradingTool {
             sb.append(String.format("\n%d order%s staged. Call commitTrade to commit.", staged.size(),
                     staged.size() == 1 ? "" : "s"));
             return sb.toString();
-        } catch (IllegalArgumentException e) {
-            log.error("Invalid user ID: {}", userId);
-            return "Error: Invalid user ID format -- " + userId;
         } catch (Exception e) {
-            log.error("Failed to get staged orders for user {}", userId, e);
+            log.error("Failed to get staged orders", e);
             return "Error fetching staged orders: " + e.getMessage();
         }
     }
@@ -169,17 +158,16 @@ public class TradingTool {
             "Does NOT modify positions -- purely hypothetical. " +
             "Example: 'If AAPL drops 10%, what happens to my portfolio?'")
     public String simulateImpact(
-            @ToolParam(description = "User UUID") String userId,
             @ToolParam(description = "Stock ticker symbol to simulate price change for") String ticker,
             @ToolParam(description = "Percentage change to simulate, e.g. -10.0 for 10% drop, 15.0 for 15% gain") double changePercent) {
         try {
-            UUID id = UUID.fromString(userId);
-            return tradingService.simulatePriceChange(id, ticker, changePercent);
+            UUID userId = SecurityUtils.getCurrentUserId();
+            return tradingService.simulatePriceChange(userId, ticker, changePercent);
         } catch (IllegalArgumentException e) {
             log.error("Invalid simulate request: {}", e.getMessage());
             return "Error simulating impact: " + e.getMessage();
         } catch (Exception e) {
-            log.error("Failed to simulate impact for user {}", userId, e);
+            log.error("Failed to simulate impact", e);
             return "Error simulating impact: " + e.getMessage();
         }
     }
@@ -189,12 +177,11 @@ public class TradingTool {
             "LIVE mode executes real trades via Alpaca (US stocks) or crypto exchange. " +
             "WARNING: LIVE mode uses real money. Ensure broker API is configured.")
     public String switchTradingMode(
-            @ToolParam(description = "User UUID") String userId,
             @ToolParam(description = "Trading mode: PAPER or LIVE") String mode) {
         try {
-            UUID id = UUID.fromString(userId);
+            UUID userId = SecurityUtils.getCurrentUserId();
             TradingMode tradingMode = TradingMode.valueOf(mode.toUpperCase().trim());
-            tradingService.switchMode(id, tradingMode);
+            tradingService.switchMode(userId, tradingMode);
             return String.format("Trading mode switched to %s. %s",
                     tradingMode,
                     tradingMode == TradingMode.LIVE

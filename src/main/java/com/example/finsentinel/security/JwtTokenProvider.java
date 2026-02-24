@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 /**
  * Provides security infrastructure for jwt token provider concerns.
@@ -36,21 +37,22 @@ public class JwtTokenProvider {
     }
 
     /**
-     * Generates token.
+     * Generates token with embedded userId claim.
      *
      * <p>This method belongs to {@link JwtTokenProvider} and encapsulates the
      * generate token workflow.
      * @param username username (String)
+     * @param userId userId (UUID)
      * @return the generate token result (String)
      */
 
-    public String generateToken(String username) {
+    public String generateToken(String username, UUID userId) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtProperties.getExpiration());
 
-
         return Jwts.builder()
                 .subject(username)
+                .claim("uid", userId.toString())
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
@@ -74,6 +76,25 @@ public class JwtTokenProvider {
                 .parseSignedClaims(token)
                 .getPayload()
                 .getSubject();
+    }
+
+    /**
+     * Returns userId from token.
+     *
+     * <p>This method belongs to {@link JwtTokenProvider} and encapsulates the
+     * get userId from token workflow.
+     * @param token token (String)
+     * @return the userId (UUID) or null if not present
+     */
+
+    public UUID getUserIdFromToken(String token) {
+        String uid = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("uid", String.class);
+        return uid != null ? UUID.fromString(uid) : null;
     }
 
     /**

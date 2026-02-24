@@ -1,6 +1,7 @@
 package com.example.finsentinel.agent.tool;
 
 import com.example.finsentinel.service.trading.AgentBrainService;
+import com.example.finsentinel.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
@@ -23,6 +24,9 @@ import java.util.UUID;
  * <p>Every update is recorded as an immutable commit in the brain's history, providing
  * a full audit trail of cognitive state evolution.
  *
+ * <p>User identity is resolved from Spring Security's SecurityContext -- never from
+ * LLM-provided parameters -- to prevent cross-user operations.
+ *
  * <p>This class is part of the agent layer in FinSentinel.
  */
 @Component
@@ -36,16 +40,12 @@ public class BrainTool {
             "This is the agent's persistent memory of what it has learned from past trades, " +
             "market analysis, and user interactions. Read this at the start of conversations " +
             "to recall prior knowledge.")
-    public String readStrategy(
-            @ToolParam(description = "User UUID") String userId) {
+    public String readStrategy() {
         try {
-            UUID id = UUID.fromString(userId);
-            return brainService.getFrontalLobe(id);
-        } catch (IllegalArgumentException e) {
-            log.error("Invalid user ID: {}", userId);
-            return "Error: Invalid user ID format -- " + userId;
+            UUID userId = SecurityUtils.getCurrentUserId();
+            return brainService.getFrontalLobe(userId);
         } catch (Exception e) {
-            log.error("Failed to read strategy for user {}", userId, e);
+            log.error("Failed to read strategy", e);
             return "Error reading strategy: " + e.getMessage();
         }
     }
@@ -55,17 +55,16 @@ public class BrainTool {
             "will remember these insights next time. Include what was learned and why it matters. " +
             "A commit is automatically recorded in the brain's history.")
     public String updateStrategy(
-            @ToolParam(description = "User UUID") String userId,
             @ToolParam(description = "New strategy content -- the agent's updated trading insights, " +
                     "learned patterns, and reasoning framework") String content) {
         try {
-            UUID id = UUID.fromString(userId);
-            return brainService.updateFrontalLobe(id, content);
+            UUID userId = SecurityUtils.getCurrentUserId();
+            return brainService.updateFrontalLobe(userId, content);
         } catch (IllegalArgumentException e) {
             log.error("Invalid update strategy request: {}", e.getMessage());
             return "Error updating strategy: " + e.getMessage();
         } catch (Exception e) {
-            log.error("Failed to update strategy for user {}", userId, e);
+            log.error("Failed to update strategy", e);
             return "Error updating strategy: " + e.getMessage();
         }
     }
@@ -76,19 +75,18 @@ public class BrainTool {
             "after significant trades, or when risk levels change. Include a reason " +
             "explaining what triggered the emotional shift.")
     public String reportEmotion(
-            @ToolParam(description = "User UUID") String userId,
             @ToolParam(description = "New emotional state: neutral, confident, cautious, " +
                     "fearful, greedy, euphoric, or anxious") String emotion,
             @ToolParam(description = "Reason for the emotional change, e.g. " +
                     "'Portfolio dropped 5% due to tech selloff'") String reason) {
         try {
-            UUID id = UUID.fromString(userId);
-            return brainService.updateEmotion(id, emotion, reason);
+            UUID userId = SecurityUtils.getCurrentUserId();
+            return brainService.updateEmotion(userId, emotion, reason);
         } catch (IllegalArgumentException e) {
             log.error("Invalid emotion report request: {}", e.getMessage());
             return "Error reporting emotion: " + e.getMessage();
         } catch (Exception e) {
-            log.error("Failed to report emotion for user {}", userId, e);
+            log.error("Failed to report emotion", e);
             return "Error reporting emotion: " + e.getMessage();
         }
     }
@@ -97,16 +95,12 @@ public class BrainTool {
             "(e.g. neutral, confident, cautious). Use this to factor emotional awareness into " +
             "trading decisions -- a fearful agent should be more conservative, a greedy agent " +
             "should double-check risk levels.")
-    public String checkEmotion(
-            @ToolParam(description = "User UUID") String userId) {
+    public String checkEmotion() {
         try {
-            UUID id = UUID.fromString(userId);
-            return brainService.getEmotion(id);
-        } catch (IllegalArgumentException e) {
-            log.error("Invalid user ID: {}", userId);
-            return "Error: Invalid user ID format -- " + userId;
+            UUID userId = SecurityUtils.getCurrentUserId();
+            return brainService.getEmotion(userId);
         } catch (Exception e) {
-            log.error("Failed to check emotion for user {}", userId, e);
+            log.error("Failed to check emotion", e);
             return "Error checking emotion: " + e.getMessage();
         }
     }
