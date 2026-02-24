@@ -18,8 +18,13 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+
+import org.springframework.data.redis.core.StringRedisTemplate;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Core paper trading service implementing the OpenAlice git-like wallet workflow.
@@ -45,12 +50,13 @@ public class PaperTradingService {
     private final UserRepository userRepository;
     private final MarketDataService marketDataService;
     private final TradingEngineFactory engineFactory;
+    private final StringRedisTemplate redisTemplate;
 
-    /** In-memory staging areas per user (userId -> staged operations). */
-    private final ConcurrentHashMap<UUID, List<TradeOperation>> stagingAreas = new ConcurrentHashMap<>();
+    private static final ObjectMapper objectMapper = JsonMapper.builder().build();
 
-    /** Pending commits per user (userId -> commit metadata). Cleared after execute(). */
-    private final ConcurrentHashMap<UUID, Map<String, Object>> pendingCommits = new ConcurrentHashMap<>();
+    private static final String STAGING_KEY_PREFIX = "trading:staging:";
+    private static final String PENDING_KEY_PREFIX = "trading:pending:";
+    private static final Duration STATE_TTL = Duration.ofMinutes(30);
 
     private static final int MAX_COMMIT_HISTORY = 100;
     private static final DateTimeFormatter TIMESTAMP_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
@@ -105,11 +111,11 @@ public class PaperTradingService {
     public String stage(UUID userId, TradeOperation operation) {
         validateOperation(operation);
 
-        List<TradeOperation> userStaging = stagingAreas.computeIfAbsent(
-                userId, k -> Collections.synchronizedList(new ArrayList<>()));
-        userStaging.add(operation);
+        List<TradeOperation> staging = getRedisStaging(userId);
+        staging.add(operation);
+        saveRedisStaging(userId, staging);
 
-        int count = userStaging.size();
+        int count = staging.size();
         String detail = formatOperationSummary(operation);
         log.info("User {} staged operation: {} ({} total staged)", userId, detail, count);
         return String.format("Staged: %s (%d operation%s staged)", detail, count, count == 1 ? "" : "s");
@@ -122,7 +128,7 @@ public class PaperTradingService {
      * @return list of staged operations, empty if none
      */
     public List<TradeOperation> getStagingArea(UUID userId) {
-        return stagingAreas.getOrDefault(userId, List.of());
+        return getRedisStaging(userId);
     }
 
     // ───────────────────────── Phase 2: Commit ──────────────────────────────
@@ -138,7 +144,7 @@ public class PaperTradingService {
      * @return confirmation with commit hash and operation count
      */
     public String commit(UUID userId, String message) {
-        List<TradeOperation> staged = stagingAreas.get(userId);
+        List<TradeOperation> staged = getRedisStaging(userId);
         if (staged == null || staged.isEmpty()) {
             return "Error: Nothing to commit. Stage orders first with stageTradeOrder.";
         }
@@ -162,7 +168,7 @@ public class PaperTradingService {
         commitData.put("timestamp", timestamp);
         commitData.put("operations", operationMaps);
 
-        pendingCommits.put(userId, commitData);
+        saveRedisPendingCommit(userId, commitData);
 
         int opCount = staged.size();
         log.info("User {} committed: {} -- {} ({} operations)", userId, hash, message, opCount);
@@ -190,7 +196,7 @@ public class PaperTradingService {
      */
     @Transactional
     public String execute(UUID userId) {
-        Map<String, Object> commitData = pendingCommits.get(userId);
+        Map<String, Object> commitData = getRedisPendingCommit(userId);
         if (commitData == null) {
             return "Error: No pending commit. Stage orders and commit first.";
         }
@@ -293,9 +299,9 @@ public class PaperTradingService {
                     userId, commitData.get("hash"), engine.engineName(), results.size());
             return report.toString();
         } finally {
-            // Ensure in-memory state does not get stuck when execution fails unexpectedly.
-            stagingAreas.remove(userId);
-            pendingCommits.remove(userId);
+            // Ensure Redis state does not get stuck when execution fails unexpectedly.
+            clearRedisStaging(userId);
+            clearRedisPendingCommit(userId);
         }
     }
 
@@ -528,6 +534,56 @@ public class PaperTradingService {
                 hypotheticalPnl.signum() >= 0 ? "+" : "-", hypotheticalPnl.abs().toPlainString(),
                 valueDelta.signum() >= 0 ? "+" : "-", valueDelta.abs().toPlainString(),
                 totalPortfolio.toPlainString());
+    }
+
+    // ───────────────────────── Redis state helpers ────────────────────────────
+
+    private List<TradeOperation> getRedisStaging(UUID userId) {
+        try {
+            String json = redisTemplate.opsForValue().get(STAGING_KEY_PREFIX + userId);
+            if (json == null) return new ArrayList<>();
+            return objectMapper.readValue(json, new TypeReference<List<TradeOperation>>() {});
+        } catch (Exception e) {
+            log.warn("Failed to read staging from Redis for user {}", userId, e);
+            return new ArrayList<>();
+        }
+    }
+
+    private void saveRedisStaging(UUID userId, List<TradeOperation> ops) {
+        try {
+            String json = objectMapper.writeValueAsString(ops);
+            redisTemplate.opsForValue().set(STAGING_KEY_PREFIX + userId, json, STATE_TTL);
+        } catch (Exception e) {
+            log.error("Failed to save staging to Redis for user {}", userId, e);
+        }
+    }
+
+    private void clearRedisStaging(UUID userId) {
+        redisTemplate.delete(STAGING_KEY_PREFIX + userId);
+    }
+
+    private Map<String, Object> getRedisPendingCommit(UUID userId) {
+        try {
+            String json = redisTemplate.opsForValue().get(PENDING_KEY_PREFIX + userId);
+            if (json == null) return null;
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.warn("Failed to read pending commit from Redis for user {}", userId, e);
+            return null;
+        }
+    }
+
+    private void saveRedisPendingCommit(UUID userId, Map<String, Object> commitData) {
+        try {
+            String json = objectMapper.writeValueAsString(commitData);
+            redisTemplate.opsForValue().set(PENDING_KEY_PREFIX + userId, json, STATE_TTL);
+        } catch (Exception e) {
+            log.error("Failed to save pending commit to Redis for user {}", userId, e);
+        }
+    }
+
+    private void clearRedisPendingCommit(UUID userId) {
+        redisTemplate.delete(PENDING_KEY_PREFIX + userId);
     }
 
     // ───────────────────────── Internal helpers ──────────────────────────────
