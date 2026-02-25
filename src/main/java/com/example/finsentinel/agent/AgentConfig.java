@@ -41,6 +41,7 @@ public class AgentConfig {
      * @param quantAnalysisTool quant analysis tool (QuantAnalysisTool)
      * @param thinkingTool thinking tool (ThinkingTool)
      * @param userProfileTool user profile tool (UserProfileTool)
+     * @param confirmationTool confirmation tool (ConfirmationTool)
      * @param questionAnswerAdvisor question answer advisor (QuestionAnswerAdvisor)
      * @param userContextAdvisor user context advisor (UserContextAdvisor)
      * @param complianceGuardrailAdvisor compliance guardrail advisor (ComplianceGuardrailAdvisor)
@@ -62,6 +63,7 @@ public class AgentConfig {
             QuantAnalysisTool quantAnalysisTool,
             ThinkingTool thinkingTool,
             UserProfileTool userProfileTool,
+            ConfirmationTool confirmationTool,
             QuestionAnswerAdvisor questionAnswerAdvisor,
             UserContextAdvisor userContextAdvisor,
             ComplianceGuardrailAdvisor complianceGuardrailAdvisor) {
@@ -72,7 +74,8 @@ public class AgentConfig {
                         technicalIndicatorTool, portfolioAnalysisTool,
                         complianceCheckTool, tradingTool, brainTool,
                         companyResearchTool, equityScreenerTool,
-                        quantAnalysisTool, thinkingTool, userProfileTool)
+                        quantAnalysisTool, thinkingTool, userProfileTool,
+                        confirmationTool)
                 .defaultAdvisors(questionAnswerAdvisor, userContextAdvisor, complianceGuardrailAdvisor)
                 .build();
     }
