@@ -4,6 +4,7 @@ import com.example.finsentinel.model.AgentBrain;
 import com.example.finsentinel.model.User;
 import com.example.finsentinel.repository.AgentBrainRepository;
 import com.example.finsentinel.repository.UserRepository;
+import com.example.finsentinel.service.event.AgentEventService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,13 +22,14 @@ class AgentBrainServiceTest {
 
     @Mock private AgentBrainRepository brainRepository;
     @Mock private UserRepository userRepository;
+    @Mock private AgentEventService agentEventService;
 
     private AgentBrainService service;
     private final UUID userId = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
-        service = new AgentBrainService(brainRepository, userRepository);
+        service = new AgentBrainService(brainRepository, userRepository, agentEventService);
     }
 
     @Test
@@ -125,6 +127,13 @@ class AgentBrainServiceTest {
         assertThat(result).contains("neutral").contains("confident");
         assertThat(brain.getCommitHistory()).hasSize(1);
         assertThat(brain.getCommitHistory().get(0).get("type")).isEqualTo("emotion");
+    }
+
+    @Test
+    void updateEmotion_withBlankEmotion_returnsErrorMessage() {
+        String result = service.updateEmotion(userId, "   ", "missing");
+
+        assertThat(result).contains("emotion cannot be blank");
     }
 
     private User createUser() {

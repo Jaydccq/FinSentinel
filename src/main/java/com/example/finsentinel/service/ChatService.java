@@ -4,14 +4,19 @@ import com.example.finsentinel.agent.RiskAgentService;
 import com.example.finsentinel.dto.chat.ChatSessionSummary;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.ChatMessage;
+import com.example.finsentinel.model.enums.AgentEventAggregateType;
+import com.example.finsentinel.model.enums.AgentEventType;
 import com.example.finsentinel.repository.ChatMessageRepository;
 import com.example.finsentinel.repository.PortfolioRepository;
+import com.example.finsentinel.service.chat.ChatContextCompactionService;
+import com.example.finsentinel.service.event.AgentEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -30,6 +35,8 @@ public class ChatService {
     private final RiskAgentService riskAgentService;
     private final ChatMessageRepository chatMessageRepository;
     private final PortfolioRepository portfolioRepository;
+    private final AgentEventService agentEventService;
+    private final ChatContextCompactionService chatContextCompactionService;
 
     /**
 
@@ -40,11 +47,15 @@ public class ChatService {
                            UUID userId, SseEmitter emitter) {
         ensurePortfolioOwnership(portfolioId, userId);
         UUID session = sessionId != null ? sessionId : UUID.randomUUID();
+        if (sessionId == null) {
+            emitEvent(userId, session, AgentEventType.CHAT_SESSION_STARTED, Map.of("mode", "stream"), "chat-session-start:" + session);
+        }
+        String augmentedMessage = chatContextCompactionService.augmentPrompt(userId, session, message);
 
         persistMessage(userId, session, "user", message);
 
         StringBuilder fullResponse = new StringBuilder();
-        riskAgentService.assessStream(message, portfolioId, userId)
+        riskAgentService.assessStream(augmentedMessage, portfolioId, userId)
                 .doOnNext(chunk -> {
                     try {
                         fullResponse.append(chunk);
@@ -65,6 +76,8 @@ public class ChatService {
                 })
                 .doOnError(error -> {
                     log.error("Stream error for session {}", session, error);
+                    emitEvent(userId, session, AgentEventType.CHAT_STREAM_ERROR,
+                            Map.of("errorType", error.getClass().getSimpleName()), null);
                     try {
                         emitter.send(SseEmitter.event().name("error")
                                 .data(Map.of("message", "An error occurred while processing your request. Please try again.")));
@@ -81,8 +94,12 @@ public class ChatService {
     public RiskReport assess(String message, UUID portfolioId, UUID userId, UUID sessionId) {
         ensurePortfolioOwnership(portfolioId, userId);
         UUID session = sessionId != null ? sessionId : UUID.randomUUID();
+        if (sessionId == null) {
+            emitEvent(userId, session, AgentEventType.CHAT_SESSION_STARTED, Map.of("mode", "assess"), "chat-session-start:" + session);
+        }
+        String augmentedMessage = chatContextCompactionService.augmentPrompt(userId, session, message);
         persistMessage(userId, session, "user", message);
-        RiskReport report = riskAgentService.assess(message, portfolioId, userId);
+        RiskReport report = riskAgentService.assess(augmentedMessage, portfolioId, userId);
         persistMessage(userId, session, "assistant", report.toString());
         return report;
     }
@@ -137,12 +154,18 @@ public class ChatService {
     }
 
     private void persistMessage(UUID userId, UUID sessionId, String role, String content) {
-        chatMessageRepository.save(ChatMessage.builder()
+        ChatMessage saved = chatMessageRepository.save(ChatMessage.builder()
                 .userId(userId)
                 .sessionId(sessionId)
                 .role(role)
                 .content(content)
                 .build());
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("role", role);
+        payload.put("messageId", saved.getId());
+        payload.put("contentLength", content != null ? content.length() : 0);
+        emitEvent(userId, sessionId, AgentEventType.CHAT_MESSAGE_PERSISTED, payload, "chat-msg:" + saved.getId());
     }
 
     private void ensurePortfolioOwnership(UUID portfolioId, UUID userId) {
@@ -151,6 +174,22 @@ public class ChatService {
         }
         if (!portfolioRepository.existsByIdAndUserId(portfolioId, userId)) {
             throw new IllegalArgumentException("Portfolio not found");
+        }
+    }
+
+    private void emitEvent(UUID userId, UUID sessionId, AgentEventType eventType,
+                           Map<String, Object> payload, String idempotencyKey) {
+        try {
+            agentEventService.append(
+                    userId,
+                    AgentEventAggregateType.CHAT_SESSION,
+                    sessionId,
+                    eventType,
+                    payload,
+                    idempotencyKey
+            );
+        } catch (Exception e) {
+            log.warn("Failed to append chat event {} for session {}: {}", eventType, sessionId, e.getMessage());
         }
     }
 }

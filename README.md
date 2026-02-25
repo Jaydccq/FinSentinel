@@ -60,6 +60,7 @@ FinSentinel is a full-stack intelligent investment risk assessment tool built wi
 
 - Docker & Docker Compose
 - API keys: [OpenRouter](https://openrouter.ai), [Polygon.io](https://polygon.io)
+- Optional OpenBB Public Data integration (run OpenBB API service separately)
 
 ### 1. Clone & Configure
 
@@ -68,6 +69,21 @@ git clone https://github.com/Jaydccq/FinSentinel.git
 cd FinSentinel
 cp .env.example .env
 # Edit .env with your API keys
+```
+
+If you want OpenBB public-agency datasets (BLS/FRED/SEC/OECD/IMF/ECB/etc.), also configure:
+
+```bash
+APP_OPENBB_ENABLED=true
+OPENBB_BASE_URL=http://localhost:6900
+OPENBB_API_PREFIX=/api/v1
+# Optional provider keys
+OPENBB_BLS_API_KEY=
+OPENBB_CONGRESS_GOV_API_KEY=
+OPENBB_CFTC_APP_TOKEN=
+OPENBB_FRED_API_KEY=
+OPENBB_POLYGON_API_KEY=
+OPENBB_US_EIA_API_KEY=
 ```
 
 ### 2. Start All Services
@@ -116,15 +132,67 @@ npm run build              # Production build
 | POST | `/api/auth/login` | Login, returns JWT |
 | POST | `/api/chat/stream` | SSE streaming AI chat |
 | POST | `/api/chat/assess` | Synchronous risk assessment |
-| GET | `/api/chat/sessions/{id}/messages` | Chat session history |
+| GET | `/api/chat/sessions/{id}` | Chat session history |
+| GET | `/api/events` | Typed agent event timeline/replay (`afterSeq`, `limit`) |
+| GET/POST/PUT/DELETE | `/api/schedules` | User-managed autonomous cron tasks |
+| POST | `/api/schedules/{id}/pause` | Pause one cron task |
+| POST | `/api/schedules/{id}/resume` | Resume one cron task |
+| GET/PUT | `/api/heartbeat` | Heartbeat wake-up config (interval, threshold) |
 | GET/POST/DELETE | `/api/portfolios` | Portfolio CRUD |
 | POST/DELETE | `/api/portfolios/{id}/holdings` | Holdings management |
 | GET | `/api/portfolios/{id}/reports` | List risk reports |
 | GET | `/api/market/quote/{ticker}` | Real-time stock quote |
 | GET | `/api/market/history` | Historical price data |
+| GET | `/api/openbb/public/providers` | OpenBB public connector status |
+| GET | `/api/openbb/public/query` | Proxy query to OpenBB public data routes |
+| GET | `/api/openbb/business/macro/us/cpi` | Business API: US CPI |
+| GET | `/api/openbb/business/macro/us/unemployment` | Business API: US unemployment rate |
+| GET | `/api/openbb/business/macro/us/fed-funds-rate` | Business API: US Fed funds rate |
 | POST | `/api/documents/upload` | Upload document for RAG |
 | GET | `/api/documents` | List documents |
 | GET | `/api/reports/{id}/pdf` | Download PDF risk report |
+
+### OpenBB Public Data Usage
+
+1. Start your OpenBB API service (outside FinSentinel).
+2. Set `APP_OPENBB_ENABLED=true` and `OPENBB_BASE_URL` in `.env`.
+3. Query through FinSentinel:
+
+```bash
+# Check connector config status
+curl -H "Authorization: Bearer <your-jwt>" \
+  http://localhost:8080/api/openbb/public/providers
+
+# Generic public data query
+curl -G -H "Authorization: Bearer <your-jwt>" \
+  --data-urlencode "path=economy/cpi" \
+  --data-urlencode "provider=fred" \
+  --data-urlencode "series_id=CPIAUCSL" \
+  http://localhost:8080/api/openbb/public/query
+```
+
+### OpenBB Business APIs (Macro)
+
+These endpoints wrap common macro datasets so frontend or agent tools don't need
+to know OpenBB route path details.
+
+```bash
+# US CPI
+curl -G -H "Authorization: Bearer <your-jwt>" \
+  --data-urlencode "startDate=2019-01-01" \
+  --data-urlencode "limit=60" \
+  http://localhost:8080/api/openbb/business/macro/us/cpi
+
+# US unemployment rate
+curl -G -H "Authorization: Bearer <your-jwt>" \
+  --data-urlencode "startDate=2019-01-01" \
+  http://localhost:8080/api/openbb/business/macro/us/unemployment
+
+# US fed funds rate
+curl -G -H "Authorization: Bearer <your-jwt>" \
+  --data-urlencode "startDate=2019-01-01" \
+  http://localhost:8080/api/openbb/business/macro/us/fed-funds-rate
+```
 
 ## Project Structure
 

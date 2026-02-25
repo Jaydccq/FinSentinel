@@ -39,6 +39,8 @@ public class RiskAgentService {
     @Value("classpath:prompts/risk-assessment.st")
     private Resource riskAssessmentPrompt;
 
+    private record ParseOutcome(RiskReport report, boolean fallbackUsed) {}
+
     /**
      * Run a full risk assessment for a user query.
      *
@@ -70,16 +72,21 @@ public class RiskAgentService {
                 .content();
 
         // Parse with retry — tools do NOT re-execute
-        RiskReport report = parseWithRetry(rawResponse);
+        ParseOutcome parseOutcome = parseWithRetry(rawResponse);
+        RiskReport report = parseOutcome.report();
 
         log.info("Risk assessment complete: score={}, level={}",
                 report.riskScore(), report.riskLevel());
 
         if (portfolioId != null) {
-            try {
-                persistReport(report, portfolioId);
-            } catch (RuntimeException e) {
-                log.warn("Report computed but persistence failed: {}", e.getMessage());
+            if (parseOutcome.fallbackUsed()) {
+                log.warn("Skipping persistence for portfolio {}: parsed fallback report due to malformed model output", portfolioId);
+            } else {
+                try {
+                    persistReport(report, portfolioId);
+                } catch (RuntimeException e) {
+                    log.warn("Report computed but persistence failed: {}", e.getMessage());
+                }
             }
         }
         return report;
@@ -96,10 +103,10 @@ public class RiskAgentService {
      *   <li>Return a minimal valid report so the caller never receives null</li>
      * </ol>
      */
-    private RiskReport parseWithRetry(String rawResponse) {
+    private ParseOutcome parseWithRetry(String rawResponse) {
         // First attempt: direct parse
         try {
-            return objectMapper.readValue(rawResponse, RiskReport.class);
+            return new ParseOutcome(objectMapper.readValue(rawResponse, RiskReport.class), false);
         } catch (Exception e) {
             log.warn("Structured output parse failed, asking LLM to fix JSON: {}", e.getMessage());
         }
@@ -112,18 +119,22 @@ public class RiskAgentService {
                           "Extract and return ONLY the valid JSON, fixing any formatting issues:\n\n" + rawResponse)
                     .call()
                     .content();
-            return objectMapper.readValue(fixed, RiskReport.class);
+            return new ParseOutcome(objectMapper.readValue(fixed, RiskReport.class), false);
         } catch (Exception retryEx) {
             log.error("Parse retry also failed, returning minimal report", retryEx);
         }
 
         // Final fallback: return a minimal valid report
+        return new ParseOutcome(buildFallbackReport(), true);
+    }
+
+    private RiskReport buildFallbackReport() {
         return new RiskReport(1, "LOW",
                 "Risk assessment completed but output could not be parsed. Please try again.",
                 java.util.List.of(),
                 java.util.List.of("Retry your query for a structured risk report."),
                 new ComplianceNote(
-                        complianceProperties.getDisclaimer(), "SEC", true));
+                        complianceProperties.getDisclaimer(), getExpectedFramework(), false));
     }
 
     /**
@@ -198,7 +209,7 @@ public class RiskAgentService {
                     .factorsJson(objectMapper.writeValueAsString(report.factors()))
                     .adviceJson(objectMapper.writeValueAsString(report.actionableAdvice()))
                     .disclaimer(report.complianceNote() != null ? report.complianceNote().disclaimer() : complianceProperties.getDisclaimer())
-                    .regulatoryFramework(report.complianceNote() != null ? report.complianceNote().regulatoryFramework() : "SEC")
+                    .regulatoryFramework(report.complianceNote() != null ? report.complianceNote().regulatoryFramework() : getExpectedFramework())
                     .build();
             riskReportRepository.save(entity);
             log.info("Persisted risk report for portfolio {}", portfolioId);
@@ -207,6 +218,15 @@ public class RiskAgentService {
             // computed successfully and returned, but history won't be available.
             throw new RuntimeException("Failed to persist risk report for portfolio " + portfolioId, e);
         }
+    }
+
+    private String getExpectedFramework() {
+        return switch (complianceProperties.getRegion()) {
+            case "US" -> "SEC";
+            case "UK" -> "FCA";
+            case "EU" -> "ESMA";
+            default -> "SEC";
+        };
     }
 
     /**

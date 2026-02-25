@@ -79,6 +79,27 @@ app:
     api-key: ${POLYGON_API_KEY}
     base-url: https://api.polygon.io
 
+  openbb:
+    enabled: ${APP_OPENBB_ENABLED:false}
+    base-url: ${OPENBB_BASE_URL:http://localhost:6900}
+    api-prefix: ${OPENBB_API_PREFIX:/api/v1}
+    api-key: ${OPENBB_API_KEY:}
+    credentials:
+      bls-api-key: ${OPENBB_BLS_API_KEY:}
+      congress-gov-api-key: ${OPENBB_CONGRESS_GOV_API_KEY:}
+      cftc-app-token: ${OPENBB_CFTC_APP_TOKEN:}
+      fred-api-key: ${OPENBB_FRED_API_KEY:}
+      polygon-api-key: ${OPENBB_POLYGON_API_KEY:${POLYGON_API_KEY:}}
+      us-eia-api-key: ${OPENBB_US_EIA_API_KEY:}
+    business:
+      macro-provider: ${OPENBB_BUSINESS_MACRO_PROVIDER:fred}
+      cpi-path: ${OPENBB_BUSINESS_CPI_PATH:economy/cpi}
+      unemployment-path: ${OPENBB_BUSINESS_UNEMPLOYMENT_PATH:economy/unemployment}
+      fed-funds-path: ${OPENBB_BUSINESS_FED_FUNDS_PATH:economy/federal_funds_rate}
+      cpi-series-id: ${OPENBB_BUSINESS_CPI_SERIES_ID:CPIAUCSL}
+      unemployment-series-id: ${OPENBB_BUSINESS_UNEMPLOYMENT_SERIES_ID:UNRATE}
+      fed-funds-series-id: ${OPENBB_BUSINESS_FED_FUNDS_SERIES_ID:FEDFUNDS}
+
   yahoo-finance:
     enabled: ${APP_YAHOO_FINANCE_ENABLED:true}
     base-url: https://query1.finance.yahoo.com
@@ -99,6 +120,26 @@ app:
       max-top-k: 20
       query-rewrite-enabled: true
       query-rewrite-max-length: 80
+
+  autonomy:
+    heartbeat:
+      enabled: ${APP_AUTONOMY_HEARTBEAT_ENABLED:true}
+      dispatcher-interval-ms: ${APP_AUTONOMY_HEARTBEAT_DISPATCH_MS:30000}
+      default-interval-seconds: ${APP_AUTONOMY_HEARTBEAT_DEFAULT_SECONDS:600}
+      min-interval-seconds: ${APP_AUTONOMY_HEARTBEAT_MIN_SECONDS:60}
+      max-interval-seconds: ${APP_AUTONOMY_HEARTBEAT_MAX_SECONDS:3600}
+      default-drawdown-alert-pct: ${APP_AUTONOMY_HEARTBEAT_DRAWDOWN_PCT:10.00}
+
+  chat:
+    compaction:
+      enabled: ${APP_CHAT_COMPACTION_ENABLED:true}
+      threshold-messages: ${APP_CHAT_COMPACTION_THRESHOLD_MESSAGES:24}
+      recent-window: ${APP_CHAT_COMPACTION_RECENT_WINDOW:10}
+      max-summary-chars: ${APP_CHAT_COMPACTION_MAX_SUMMARY_CHARS:1200}
+
+  confirmation:
+    trade-amount-threshold: ${CONFIRMATION_TRADE_THRESHOLD:10000}
+    block-live-mode: true
 
   archival:
     enabled: ${APP_ARCHIVAL_ENABLED:false}

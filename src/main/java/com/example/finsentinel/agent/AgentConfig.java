@@ -42,6 +42,7 @@ public class AgentConfig {
      * @param thinkingTool thinking tool (ThinkingTool)
      * @param userProfileTool user profile tool (UserProfileTool)
      * @param confirmationTool confirmation tool (ConfirmationTool)
+     * @param autonomyTool autonomy tool (AutonomyTool)
      * @param questionAnswerAdvisor question answer advisor (QuestionAnswerAdvisor)
      * @param userContextAdvisor user context advisor (UserContextAdvisor)
      * @param complianceGuardrailAdvisor compliance guardrail advisor (ComplianceGuardrailAdvisor)
@@ -64,6 +65,7 @@ public class AgentConfig {
             ThinkingTool thinkingTool,
             UserProfileTool userProfileTool,
             ConfirmationTool confirmationTool,
+            AutonomyTool autonomyTool,
             QuestionAnswerAdvisor questionAnswerAdvisor,
             UserContextAdvisor userContextAdvisor,
             ComplianceGuardrailAdvisor complianceGuardrailAdvisor) {
@@ -75,7 +77,7 @@ public class AgentConfig {
                         complianceCheckTool, tradingTool, brainTool,
                         companyResearchTool, equityScreenerTool,
                         quantAnalysisTool, thinkingTool, userProfileTool,
-                        confirmationTool)
+                        confirmationTool, autonomyTool)
                 .defaultAdvisors(questionAnswerAdvisor, userContextAdvisor, complianceGuardrailAdvisor)
                 .build();
     }

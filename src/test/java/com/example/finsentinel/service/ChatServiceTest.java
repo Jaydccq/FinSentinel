@@ -6,6 +6,8 @@ import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.ChatMessage;
 import com.example.finsentinel.repository.PortfolioRepository;
 import com.example.finsentinel.repository.ChatMessageRepository;
+import com.example.finsentinel.service.chat.ChatContextCompactionService;
+import com.example.finsentinel.service.event.AgentEventService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +37,8 @@ class ChatServiceTest {
     @Mock private RiskAgentService riskAgentService;
     @Mock private ChatMessageRepository chatMessageRepository;
     @Mock private PortfolioRepository portfolioRepository;
+    @Mock private AgentEventService agentEventService;
+    @Mock private ChatContextCompactionService chatContextCompactionService;
 
     private ChatService service;
 
@@ -45,7 +49,10 @@ class ChatServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ChatService(riskAgentService, chatMessageRepository, portfolioRepository);
+        service = new ChatService(riskAgentService, chatMessageRepository, portfolioRepository,
+                agentEventService, chatContextCompactionService);
+        lenient().when(chatContextCompactionService.augmentPrompt(any(), any(), any()))
+                .thenAnswer(inv -> inv.getArgument(2));
     }
 
 
