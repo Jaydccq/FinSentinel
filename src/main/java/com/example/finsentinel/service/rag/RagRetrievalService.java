@@ -1,5 +1,6 @@
 package com.example.finsentinel.service.rag;
 
+import com.example.finsentinel.config.RagRetrievalProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.document.Document;
@@ -22,6 +23,7 @@ import java.util.List;
 public class RagRetrievalService {
 
     private final VectorStore vectorStore;
+    private final RagRetrievalProperties ragRetrievalProperties;
 
     /**
      * Search for relevant document chunks with optional metadata filters.
@@ -53,18 +55,23 @@ public class RagRetrievalService {
      * @return matching document chunks sorted by relevance
      */
     public List<Document> search(String query, int topK, String docType, String sector, String regionId, String afterDate) {
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+
+        int cappedTopK = Math.min(topK, ragRetrievalProperties.getMaxTopK());
         String filterExpression = buildFilterExpression(docType, sector, regionId, afterDate);
 
         SearchRequest searchRequest = SearchRequest.builder()
                 .query(query)
-                .topK(topK)
-                .similarityThreshold(0.65)
+                .topK(cappedTopK)
+                .similarityThreshold(ragRetrievalProperties.getSimilarityThreshold())
                 .filterExpression(filterExpression)
                 .build();
 
         List<Document> results = vectorStore.similaritySearch(searchRequest);
         log.info("RAG search: query='{}', topK={}, filters=[docType={}, sector={}, region={}, afterDate={}], found={}",
-                truncate(query, 50), topK, docType, sector, regionId, afterDate, results.size());
+                truncate(query, 50), cappedTopK, docType, sector, regionId, afterDate, results.size());
         return results;
     }
 

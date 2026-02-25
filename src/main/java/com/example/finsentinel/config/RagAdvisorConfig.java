@@ -19,17 +19,20 @@ public class RagAdvisorConfig {
      * Creates a QuestionAnswerAdvisor bean for RAG retrieval.
 
      * Uses pgvector with HNSW index (configured in application.yaml).
+     * TopK and similarity threshold are driven by {@link RagRetrievalProperties}.
      *
      * @param vectorStore the pgvector-backed VectorStore (auto-configured by Spring AI)
-     * @return QuestionAnswerAdvisor with topK=5 and similarity threshold=0.7
+     * @param ragProps    externalized retrieval parameters
+     * @return QuestionAnswerAdvisor configured from application properties
      */
     @Bean
-    public QuestionAnswerAdvisor questionAnswerAdvisor(VectorStore vectorStore) {
+    public QuestionAnswerAdvisor questionAnswerAdvisor(VectorStore vectorStore,
+                                                       RagRetrievalProperties ragProps) {
 
         return QuestionAnswerAdvisor.builder(vectorStore)
                 .searchRequest(SearchRequest.builder()
-                        .topK(5)
-                        .similarityThreshold(0.7)
+                        .topK(ragProps.getDefaultTopK())
+                        .similarityThreshold(ragProps.getSimilarityThreshold())
                         .build())
                 .build();
     }
