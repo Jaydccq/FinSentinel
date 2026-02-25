@@ -1,9 +1,12 @@
 package com.example.finsentinel.config;
 
 import com.example.finsentinel.security.JwtAuthenticationFilter;
+import com.example.finsentinel.security.McpApiKeyAuthFilter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -35,6 +38,34 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     /**
+     * MCP server security filter chain — API-key auth for {@code /mcp/**} paths.
+     *
+     * <p>Evaluated before the default JWT chain ({@link Order @Order(1)} vs
+     * {@link Order @Order(2)}). Only active when {@code app.mcp.enabled=true}.
+     */
+    @Bean
+    @Order(1)
+    @ConditionalOnProperty(name = "app.mcp.enabled", havingValue = "true")
+    public SecurityFilterChain mcpSecurityFilterChain(HttpSecurity http,
+                                                      McpServerProperties mcpServerProperties) throws Exception {
+        http
+                .securityMatcher("/mcp/**")
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED,
+                                        "Unauthorized"))
+                )
+                .addFilterBefore(new McpApiKeyAuthFilter(mcpServerProperties),
+                        UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    /**
      * Builds the HTTP security filter chain for API endpoints.
      *
      * <p>The chain disables CSRF for stateless APIs, enables CORS with the
@@ -48,6 +79,7 @@ public class SecurityConfig {
      */
 
     @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))

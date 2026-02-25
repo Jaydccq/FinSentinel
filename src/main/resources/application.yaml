@@ -43,6 +43,14 @@ spring:
         options:
           model: ${AI_MODEL:google/gemini-3-flash-preview}
           temperature: 0.2
+    mcp:
+      server:
+        enabled: ${MCP_SERVER_ENABLED:false}
+        name: finsentinel
+        version: 1.0.0
+        type: SYNC
+        sse-message-endpoint: /mcp/messages
+        keep-alive-interval: 30s
     vectorstore:
       pgvector:
         initialize-schema: true
@@ -56,6 +64,11 @@ spring:
       max-request-size: 50MB
 
 app:
+  mcp:
+    enabled: ${MCP_SERVER_ENABLED:false}
+    api-key: ${MCP_API_KEY:}
+    user-id: ${MCP_USER_ID:}
+
   agent:
     persona: ${APP_AGENT_PERSONA:default}
     personas-dir: classpath:prompts/personas/
