@@ -14,12 +14,14 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class RagRetrievalServiceTest {
 
     @Mock private VectorStore vectorStore;
+    @Mock private QueryRewriteService queryRewriteService;
 
     private RagRetrievalProperties ragProps;
     private RagRetrievalService ragRetrievalService;
@@ -27,11 +29,12 @@ class RagRetrievalServiceTest {
     @BeforeEach
     void setUp() {
         ragProps = new RagRetrievalProperties();
-        ragRetrievalService = new RagRetrievalService(vectorStore, ragProps);
+        ragRetrievalService = new RagRetrievalService(vectorStore, ragProps, queryRewriteService);
     }
 
     @Test
     void search_withAfterDate_shouldIncludeDateFilter() {
+        when(queryRewriteService.rewrite(anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
         ragRetrievalService.search("test query", 8, "NEWS", null, null, "2026-01-01");
@@ -45,6 +48,7 @@ class RagRetrievalServiceTest {
 
     @Test
     void search_withoutAfterDate_shouldNotIncludeDateFilter() {
+        when(queryRewriteService.rewrite(anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
         ragRetrievalService.search("test query", 5, null, null, null, null);
@@ -57,6 +61,7 @@ class RagRetrievalServiceTest {
 
     @Test
     void search_fiveParamOverload_shouldDelegateToSixParam() {
+        when(queryRewriteService.rewrite(anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
         ragRetrievalService.search("test query", 5, "SEC_FILING", null, null);
@@ -71,6 +76,7 @@ class RagRetrievalServiceTest {
     @Test
     void search_shouldCapTopKAtMax() {
         ragProps.setMaxTopK(10);
+        when(queryRewriteService.rewrite(anyString())).thenAnswer(inv -> inv.getArgument(0));
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
         ragRetrievalService.search("analyze AAPL earnings report risk", 50, null, null, null);
@@ -90,5 +96,17 @@ class RagRetrievalServiceTest {
     void search_blankQuery_shouldReturnEmptyList() {
         assertThat(ragRetrievalService.search("  ", 5, null, null, null)).isEmpty();
         verifyNoInteractions(vectorStore);
+    }
+
+    @Test
+    void search_shouldUseRewrittenQuery() {
+        when(queryRewriteService.rewrite("AAPL risk?")).thenReturn("Apple AAPL stock risk analysis volatility");
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+
+        ragRetrievalService.search("AAPL risk?", 5, null, null, null);
+
+        ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
+        verify(vectorStore).similaritySearch(captor.capture());
+        assertThat(captor.getValue().getQuery()).isEqualTo("Apple AAPL stock risk analysis volatility");
     }
 }

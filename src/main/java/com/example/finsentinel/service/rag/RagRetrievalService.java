@@ -24,6 +24,7 @@ public class RagRetrievalService {
 
     private final VectorStore vectorStore;
     private final RagRetrievalProperties ragRetrievalProperties;
+    private final QueryRewriteService queryRewriteService;
 
     /**
      * Search for relevant document chunks with optional metadata filters.
@@ -59,19 +60,20 @@ public class RagRetrievalService {
             return List.of();
         }
 
+        String effectiveQuery = queryRewriteService.rewrite(query);
         int cappedTopK = Math.min(topK, ragRetrievalProperties.getMaxTopK());
         String filterExpression = buildFilterExpression(docType, sector, regionId, afterDate);
 
         SearchRequest searchRequest = SearchRequest.builder()
-                .query(query)
+                .query(effectiveQuery)
                 .topK(cappedTopK)
                 .similarityThreshold(ragRetrievalProperties.getSimilarityThreshold())
                 .filterExpression(filterExpression)
                 .build();
 
         List<Document> results = vectorStore.similaritySearch(searchRequest);
-        log.info("RAG search: query='{}', topK={}, filters=[docType={}, sector={}, region={}, afterDate={}], found={}",
-                truncate(query, 50), cappedTopK, docType, sector, regionId, afterDate, results.size());
+        log.info("RAG search: query='{}', effectiveQuery='{}', topK={}, filters=[docType={}, sector={}, region={}, afterDate={}], found={}",
+                truncate(query, 50), truncate(effectiveQuery, 50), cappedTopK, docType, sector, regionId, afterDate, results.size());
         return results;
     }
 
