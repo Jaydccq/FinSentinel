@@ -10,6 +10,13 @@ export interface QuoteData {
   timestamp: number
 }
 
+export interface TickerSearchResult {
+  symbol: string
+  name: string
+  exchange: string
+  assetType: string // EQUITY, CRYPTOCURRENCY, ETF, MUTUALFUND
+}
+
 export const marketApi = {
   quote: (ticker: string) => apiFetch<QuoteData>(`/market/quote/${ticker}`),
   batchQuotes: (tickers: string[]) =>
@@ -21,4 +28,6 @@ export const marketApi = {
     apiFetch<Array<{ t: number; o: number; h: number; l: number; c: number; v: number }>>(
       `/market/history/${ticker}?days=${days}`
     ),
+  search: (query: string, limit = 8) =>
+    apiFetch<TickerSearchResult[]>(`/market/search?q=${encodeURIComponent(query)}&limit=${limit}`),
 }

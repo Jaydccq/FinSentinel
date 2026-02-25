@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { portfolioApi, type PortfolioResponse, type PortfolioAnalytics } from '../api/portfolio'
 import { PortfolioListSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
+import TickerSearchInput from '../components/TickerSearchInput'
 
 const SECTOR_COLORS: Record<string, string> = {
   Technology: 'bg-blue-500/15 text-blue-100 border-blue-300/30',
@@ -373,12 +374,48 @@ export default function PortfolioPage() {
       {showAddHolding && (
         <Modal title="Add Holding" onClose={() => setShowAddHolding(null)}>
           <div className="space-y-3">
-            <InputField id="hold-symbol" label="Symbol (e.g. AAPL)" value={holdForm.symbol} onChange={v => setHoldForm(f => ({ ...f, symbol: v }))} />
+            {!holdForm.symbol ? (
+              <div>
+                <label className="field-label">Search Ticker</label>
+                <TickerSearchInput
+                  onSelect={({ symbol, name, assetType }) => {
+                    setHoldForm(f => ({
+                      ...f,
+                      symbol,
+                      companyName: name || '',
+                      sector: assetType === 'CRYPTOCURRENCY' ? 'Crypto' : f.sector,
+                    }))
+                  }}
+                  placeholder="Search stocks or crypto..."
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="field-label">Symbol</label>
+                <div className="flex items-center gap-2">
+                  <span className="field-input flex-1 py-2 text-amber-200 font-data font-bold">
+                    {holdForm.symbol}
+                  </span>
+                  <button
+                    onClick={() => setHoldForm(f => ({ ...f, symbol: '', companyName: '' }))}
+                    className="btn-ghost px-2 py-1.5 text-xs"
+                  >
+                    Change
+                  </button>
+                </div>
+              </div>
+            )}
             <InputField id="hold-company" label="Company Name" value={holdForm.companyName} onChange={v => setHoldForm(f => ({ ...f, companyName: v }))} />
             <InputField id="hold-qty" label="Quantity" value={holdForm.quantity} onChange={v => setHoldForm(f => ({ ...f, quantity: v }))} type="number" />
             <InputField id="hold-cost" label="Average Cost ($)" value={holdForm.averageCost} onChange={v => setHoldForm(f => ({ ...f, averageCost: v }))} type="number" />
             <InputField id="hold-sector" label="Sector" value={holdForm.sector} onChange={v => setHoldForm(f => ({ ...f, sector: v }))} />
-            <button onClick={() => addHolding(showAddHolding)} className="btn-primary w-full py-2.5 text-sm">Add Holding</button>
+            <button
+              onClick={() => addHolding(showAddHolding)}
+              disabled={!holdForm.symbol || !holdForm.quantity || !holdForm.averageCost}
+              className="btn-primary w-full py-2.5 text-sm disabled:opacity-40"
+            >
+              Add Holding
+            </button>
           </div>
         </Modal>
       )}

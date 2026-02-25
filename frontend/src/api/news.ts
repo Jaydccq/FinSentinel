@@ -28,6 +28,13 @@ export interface NewsFeedStats {
   countBySource: Record<string, number>
 }
 
+export interface NewsSummary {
+  ticker: string
+  summary: string
+  articleCount: number
+  generatedAt: string
+}
+
 export const newsApi = {
   list: (page = 0, size = 50, source?: string) => {
     const params = new URLSearchParams({ page: String(page), size: String(size) })
@@ -39,6 +46,9 @@ export const newsApi = {
 
   byTicker: (ticker: string, page = 0, size = 20) =>
     apiFetch<NewsPage>(`/news/by-ticker/${encodeURIComponent(ticker)}?page=${page}&size=${size}`),
+
+  summary: (ticker: string) =>
+    apiFetch<NewsSummary>(`/news/summary/${encodeURIComponent(ticker)}`),
 
   stream: (
     onNews: (item: NewsItemResponse) => void,

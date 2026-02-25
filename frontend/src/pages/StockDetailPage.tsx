@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, TrendingUp, TrendingDown, ExternalLink } from 'lucide-react'
+import { ArrowLeft, TrendingUp, TrendingDown, ExternalLink, Sparkles } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 import { marketApi, type QuoteData } from '../api/market'
-import { newsApi, type NewsItemResponse } from '../api/news'
+import { newsApi, type NewsSummary, type NewsItemResponse } from '../api/news'
 
 interface HistoryBar {
   t: number; o: number; h: number; l: number; c: number; v: number
@@ -14,6 +14,7 @@ interface HistoryBar {
 
 export default function StockDetailPage() {
   const { ticker } = useParams<{ ticker: string }>()
+  const isCrypto = ticker?.includes('-')
   const requestVersionRef = useRef(0)
   const [quote, setQuote] = useState<QuoteData | null>(null)
   const [history, setHistory] = useState<HistoryBar[]>([])
@@ -22,6 +23,8 @@ export default function StockDetailPage() {
   const [hasMoreNews, setHasMoreNews] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [summary, setSummary] = useState<NewsSummary | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(true)
 
   useEffect(() => {
     if (!ticker) return
@@ -35,20 +38,25 @@ export default function StockDetailPage() {
     setNews([])
     setNewsPage(0)
     setHasMoreNews(true)
+    setSummary(null)
+    setSummaryLoading(true)
 
     Promise.all([
       marketApi.quote(ticker).catch(() => null),
       marketApi.history(ticker, 30).catch(() => []),
-      newsApi.byTicker(ticker, 0, 10).catch(() => ({ content: [], totalPages: 0, totalElements: 0, number: 0 })),
-    ]).then(([q, h, n]) => {
+      newsApi.byTicker(isCrypto ? ticker.split('-')[0] : ticker, 0, 10).catch(() => ({ content: [], totalPages: 0, totalElements: 0, number: 0 })),
+      newsApi.summary(ticker).catch(() => null),
+    ]).then(([q, h, n, s]) => {
       if (cancelled || requestVersion !== requestVersionRef.current) return
       setQuote(q)
       setHistory(h)
       setNews(n.content)
       setHasMoreNews(n.totalPages > 1)
+      setSummary(s)
     }).finally(() => {
       if (cancelled || requestVersion !== requestVersionRef.current) return
       setLoading(false)
+      setSummaryLoading(false)
     })
 
     return () => {
@@ -61,7 +69,7 @@ export default function StockDetailPage() {
     const requestVersion = requestVersionRef.current
     setLoadingMore(true)
     const next = newsPage + 1
-    newsApi.byTicker(ticker, next, 10).then(n => {
+    newsApi.byTicker(isCrypto ? ticker!.split('-')[0] : ticker!, next, 10).then(n => {
       if (requestVersion !== requestVersionRef.current) return
       setNews(prev => {
         const existingIds = new Set(prev.map(item => item.id))
@@ -104,13 +112,27 @@ export default function StockDetailPage() {
           <p className="text-zinc-500">Loading quote data...</p>
         ) : !quote ? (
           <div>
-            <h1 className="text-3xl font-display text-stone-50">{ticker}</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-display text-stone-50">{ticker}</h1>
+              {isCrypto && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-300 font-medium border border-orange-400/20">
+                  CRYPTO
+                </span>
+              )}
+            </div>
             <p className="text-yellow-600 mt-2">Market data unavailable</p>
           </div>
         ) : (
           <>
             <div className="flex items-baseline gap-4 flex-wrap">
-              <h1 className="text-3xl font-display text-stone-50">{ticker}</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-display text-stone-50">{ticker}</h1>
+                {isCrypto && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-300 font-medium border border-orange-400/20">
+                    CRYPTO
+                  </span>
+                )}
+              </div>
               <span className="text-3xl font-bold text-stone-50 font-data tabular-nums">
                 ${quote.close.toFixed(2)}
               </span>
@@ -145,24 +167,49 @@ export default function StockDetailPage() {
             {/* Broker links */}
             <div className="flex items-center gap-3 mt-6">
               <span className="text-zinc-500 text-xs">Trade on</span>
-              <a
-                href={`https://robinhood.com/stocks/${ticker}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700/50 text-zinc-300 text-sm font-medium hover:border-zinc-600 hover:text-stone-50 transition-all duration-200"
-              >
-                <ExternalLink size={12} />
-                Robinhood
-              </a>
-              <a
-                href={`https://www.interactivebrokers.com/en/index.php?f=2222&exch=smart&ticker=${ticker}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700/50 text-zinc-300 text-sm font-medium hover:border-zinc-600 hover:text-stone-50 transition-all duration-200"
-              >
-                <ExternalLink size={12} />
-                IBKR
-              </a>
+              {isCrypto ? (
+                <>
+                  <a
+                    href="https://www.binance.com/trade"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700/50 text-zinc-300 text-sm font-medium hover:border-zinc-600 hover:text-stone-50 transition-all duration-200"
+                  >
+                    <ExternalLink size={12} />
+                    Binance
+                  </a>
+                  <a
+                    href="https://www.coinbase.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700/50 text-zinc-300 text-sm font-medium hover:border-zinc-600 hover:text-stone-50 transition-all duration-200"
+                  >
+                    <ExternalLink size={12} />
+                    Coinbase
+                  </a>
+                </>
+              ) : (
+                <>
+                  <a
+                    href={`https://robinhood.com/stocks/${ticker}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700/50 text-zinc-300 text-sm font-medium hover:border-zinc-600 hover:text-stone-50 transition-all duration-200"
+                  >
+                    <ExternalLink size={12} />
+                    Robinhood
+                  </a>
+                  <a
+                    href={`https://www.interactivebrokers.com/en/index.php?f=2222&exch=smart&ticker=${ticker}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-700/50 text-zinc-300 text-sm font-medium hover:border-zinc-600 hover:text-stone-50 transition-all duration-200"
+                  >
+                    <ExternalLink size={12} />
+                    IBKR
+                  </a>
+                </>
+              )}
             </div>
           </>
         )}
@@ -215,6 +262,37 @@ export default function StockDetailPage() {
               />
             </AreaChart>
           </ResponsiveContainer>
+        )}
+      </motion.div>
+
+      {/* AI News Brief */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
+        className="bg-zinc-900 rounded-xl p-6 border border-zinc-800/50"
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <span className="w-[2px] h-5 bg-purple-500 rounded-full inline-block" />
+          <Sparkles size={16} className="text-purple-400" />
+          <h2 className="text-lg font-display text-zinc-200">AI News Brief</h2>
+          {summary && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300">
+              {summary.articleCount} articles analyzed
+            </span>
+          )}
+        </div>
+
+        {summaryLoading ? (
+          <div className="space-y-2">
+            <div className="h-4 bg-zinc-800 rounded animate-pulse w-full" />
+            <div className="h-4 bg-zinc-800 rounded animate-pulse w-5/6" />
+            <div className="h-4 bg-zinc-800 rounded animate-pulse w-4/6" />
+          </div>
+        ) : summary?.summary ? (
+          <p className="text-sm text-zinc-300 leading-relaxed">{summary.summary}</p>
+        ) : (
+          <p className="text-sm text-zinc-500">No news summary available for {ticker}.</p>
         )}
       </motion.div>
 

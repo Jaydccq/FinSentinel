@@ -9,7 +9,6 @@ import {
   Layers3,
   ArrowUpRight,
   Pencil,
-  Plus,
   X,
   Check,
 } from 'lucide-react'
@@ -18,8 +17,9 @@ import { portfolioApi, type PortfolioResponse } from '../api/portfolio'
 import { marketApi, type QuoteData } from '../api/market'
 import { StatCardsSkeleton, PortfolioListSkeleton, WatchlistSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
+import TickerSearchInput from '../components/TickerSearchInput'
 
-const DEFAULT_TICKERS = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'TSLA', 'AMD', 'AMZN', 'AVGO', 'CRM', 'PLTR', 'SNOW']
+const DEFAULT_TICKERS = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'TSLA', 'BTC-USD', 'ETH-USD', 'AMD', 'AMZN', 'AVGO', 'SOL-USD']
 const LS_KEY = 'finsentinel_watchlist'
 
 function loadWatchlist(): string[] {
@@ -100,7 +100,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [quotesLoading, setQuotesLoading] = useState(true)
   const [editing, setEditing] = useState(false)
-  const [newTicker, setNewTicker] = useState('')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchQuotes = useCallback((tickers: string[]) => {
@@ -164,27 +163,6 @@ export default function DashboardPage() {
     }
   }, [watchlist, fetchQuotes])
 
-  const addTicker = () => {
-    const ticker = newTicker.trim().toUpperCase()
-    if (!ticker || ticker.length > 5 || watchlist.includes(ticker)) return
-    const updated = [...watchlist, ticker]
-    setWatchlist(updated)
-    saveWatchlist(updated)
-    setNewTicker('')
-    // Fetch the new ticker's quote immediately
-    marketApi.batchQuotes([ticker])
-      .then(data => {
-        const quote = data[ticker]
-        setQuotes(prev => ({
-          ...prev,
-          [ticker]: quote && !('error' in quote) ? (quote as QuoteData) : null,
-        }))
-      })
-      .catch(() => {
-        setQuotes(prev => ({ ...prev, [ticker]: null }))
-      })
-  }
-
   const removeTicker = (ticker: string) => {
     const updated = watchlist.filter(t => t !== ticker)
     setWatchlist(updated)
@@ -193,7 +171,6 @@ export default function DashboardPage() {
 
   const doneEditing = () => {
     setEditing(false)
-    setNewTicker('')
   }
 
   const totalValue = portfolios.reduce((sum, p) => sum + Number(p.totalValue), 0)
@@ -300,22 +277,29 @@ export default function DashboardPage() {
         </div>
 
         {editing && (
-          <div className="flex items-center gap-2 mb-4">
-            <input
-              className="field-input py-1.5 max-w-[160px] text-xs font-data uppercase"
-              placeholder="e.g. AAPL"
-              value={newTicker}
-              onChange={e => setNewTicker(e.target.value.toUpperCase())}
-              onKeyDown={e => e.key === 'Enter' && addTicker()}
-              maxLength={5}
+          <div className="mb-4 max-w-sm">
+            <TickerSearchInput
+              onSelect={({ symbol }) => {
+                if (!watchlist.includes(symbol)) {
+                  const updated = [...watchlist, symbol]
+                  setWatchlist(updated)
+                  saveWatchlist(updated)
+                  marketApi.batchQuotes([symbol])
+                    .then(data => {
+                      const quote = data[symbol]
+                      setQuotes(prev => ({
+                        ...prev,
+                        [symbol]: quote && !('error' in quote) ? (quote as QuoteData) : null,
+                      }))
+                    })
+                    .catch(() => {
+                      setQuotes(prev => ({ ...prev, [symbol]: null }))
+                    })
+                }
+              }}
+              excludeSymbols={watchlist}
+              placeholder="Search stocks or crypto to add..."
             />
-            <button
-              onClick={addTicker}
-              disabled={!newTicker.trim() || watchlist.includes(newTicker.trim().toUpperCase())}
-              className="btn-primary px-3 py-1.5 text-xs disabled:opacity-40"
-            >
-              <Plus size={13} /> Add
-            </button>
           </div>
         )}
 
@@ -352,7 +336,14 @@ export default function DashboardPage() {
                     className={`surface-panel rounded-2xl p-4 block ${editing ? 'ring-1 ring-amber-400/25' : 'surface-panel-hover'}`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-data text-sm font-bold tracking-wide text-[var(--text-primary)]">{ticker}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-data text-sm font-bold tracking-wide text-[var(--text-primary)]">{ticker}</p>
+                        {ticker.includes('-') && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-300 font-medium">
+                            CRYPTO
+                          </span>
+                        )}
+                      </div>
                       {change !== null && !editing && (
                         <span className={`status-chip border-0 ${isUp ? 'bg-emerald-500/20 text-emerald-100' : 'bg-red-500/20 text-red-100'}`}>
                           {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}

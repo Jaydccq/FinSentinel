@@ -12,13 +12,23 @@ export interface DocumentResponse {
   createdAt: string
 }
 
+export interface DocumentPage {
+  content: DocumentResponse[]
+  totalPages: number
+  totalElements: number
+  number: number
+  size: number
+}
+
 export const documentsApi = {
-  list: async (status?: string, docType?: string): Promise<DocumentResponse[]> => {
-    const params = new URLSearchParams()
+  list: async (page = 0, size = 20, status?: string, docType?: string): Promise<DocumentPage> => {
+    const params = new URLSearchParams({
+      page: String(page),
+      size: String(size),
+    })
     if (status) params.set('status', status)
     if (docType) params.set('docType', docType)
-    const qs = params.toString() ? `?${params}` : ''
-    return apiFetch<DocumentResponse[]>(`/documents${qs}`)
+    return apiFetch<DocumentPage>(`/documents?${params}`)
   },
 
   upload: async (

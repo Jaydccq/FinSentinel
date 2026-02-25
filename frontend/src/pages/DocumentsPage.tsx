@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Upload, FileText, CheckCircle, Clock, AlertCircle, File, BookOpen, Newspaper, BarChart2, FolderOpen, Download, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import Pagination from '../components/Pagination'
 import { documentsApi, type DocumentResponse } from '../api/documents'
 import { DocumentListSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
@@ -103,15 +104,19 @@ export default function DocumentsPage() {
   const [dragOver,     setDragOver]     = useState(false)
   const [statusFilter, setStatusFilter] = useState('')
   const [typeFilter,   setTypeFilter]   = useState('')
+  const [page,         setPage]         = useState(0)
+  const [pageSize,     setPageSize]     = useState(20)
+  const [totalPages,   setTotalPages]   = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const prevStatusRef = useRef<Record<string, string>>({})
 
   const refresh = useCallback(() => {
-    return documentsApi.list(statusFilter || undefined, typeFilter || undefined)
-      .then(newDocs => {
+    return documentsApi.list(page, pageSize, statusFilter || undefined, typeFilter || undefined)
+      .then(result => {
         // Detect status transitions for toast notifications
-        for (const doc of newDocs) {
+        for (const doc of result.content) {
           const prev = prevStatusRef.current[doc.id]
           if (prev && prev !== doc.status) {
             if (doc.status === 'COMPLETED') {
@@ -123,11 +128,13 @@ export default function DocumentsPage() {
         }
         // Update previous status map
         const map: Record<string, string> = {}
-        for (const doc of newDocs) map[doc.id] = doc.status
+        for (const doc of result.content) map[doc.id] = doc.status
         prevStatusRef.current = map
 
-        setDocs(newDocs)
-        return newDocs
+        setDocs(result.content)
+        setTotalPages(result.totalPages)
+        setTotalElements(result.totalElements)
+        return result.content
       })
       .catch(() => {
         toast.error('Failed to load documents.')
@@ -135,7 +142,7 @@ export default function DocumentsPage() {
         return [] as DocumentResponse[]
       })
       .finally(() => setLoading(false))
-  }, [statusFilter, typeFilter])
+  }, [page, pageSize, statusFilter, typeFilter])
 
   // Initial load + re-fetch when filters change
   useEffect(() => {
@@ -206,6 +213,9 @@ export default function DocumentsPage() {
       toast.error('Failed to delete document.')
     }
   }
+
+  const handleStatusFilter = (v: string) => { setStatusFilter(v); setPage(0) }
+  const handleTypeFilter = (v: string) => { setTypeFilter(v); setPage(0) }
 
   return (
     <div className="p-10 space-y-10">
@@ -321,15 +331,15 @@ export default function DocumentsPage() {
 
       {/* Filter chips */}
       <div className="space-y-3">
-        <FilterChips label="Status" options={STATUSES} selected={statusFilter} onSelect={setStatusFilter} />
-        <FilterChips label="Type" options={DOC_TYPES} selected={typeFilter} onSelect={setTypeFilter} />
+        <FilterChips label="Status" options={STATUSES} selected={statusFilter} onSelect={handleStatusFilter} />
+        <FilterChips label="Type" options={DOC_TYPES} selected={typeFilter} onSelect={handleTypeFilter} />
       </div>
 
       {/* Document list */}
       <div>
         <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
           Uploaded Documents
-          <span className="ml-2 text-zinc-600 normal-case font-normal">({docs.length})</span>
+          <span className="ml-2 text-zinc-600 normal-case font-normal">({totalElements})</span>
         </h2>
 
         {loading ? (
@@ -403,6 +413,17 @@ export default function DocumentsPage() {
               )
             })}
           </div>
+        )}
+
+        {!loading && docs.length > 0 && (
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            totalElements={totalElements}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={s => { setPageSize(s); setPage(0) }}
+          />
         )}
       </div>
     </div>
