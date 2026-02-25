@@ -25,6 +25,10 @@ spring:
     init:
       mode: ${SPRING_SQL_INIT_MODE:never}
 
+  threads:
+    virtual:
+      enabled: true
+
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -38,7 +42,7 @@ spring:
       chat:
         options:
           model: ${AI_MODEL:google/gemini-3-flash-preview}
-          temperature: 0.3
+          temperature: 0.2
     vectorstore:
       pgvector:
         initialize-schema: true
