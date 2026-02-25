@@ -3,12 +3,16 @@ package com.example.finsentinel.service.trading;
 import com.example.finsentinel.model.TradeOperation;
 import com.example.finsentinel.model.TradeWallet;
 import com.example.finsentinel.model.User;
+import com.example.finsentinel.model.enums.AgentEventAggregateType;
+import com.example.finsentinel.model.enums.AgentEventType;
 import com.example.finsentinel.model.enums.TradingMode;
 import com.example.finsentinel.repository.TradeWalletRepository;
 import com.example.finsentinel.repository.UserRepository;
 import com.example.finsentinel.service.MarketDataService;
+import com.example.finsentinel.service.event.AgentEventService;
 import com.example.finsentinel.service.trading.engine.*;
 import com.example.finsentinel.util.HashUtils;
+import com.example.finsentinel.util.NumberUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -51,6 +55,7 @@ public class PaperTradingService {
     private final MarketDataService marketDataService;
     private final TradingEngineFactory engineFactory;
     private final StringRedisTemplate redisTemplate;
+    private final AgentEventService agentEventService;
 
     private static final ObjectMapper objectMapper = JsonMapper.builder().build();
 
@@ -93,6 +98,9 @@ public class PaperTradingService {
         TradeWallet wallet = getOrCreateWallet(userId);
         wallet.setTradingMode(mode);
         walletRepository.save(wallet);
+        emitTradeEvent(userId, wallet.getId(), AgentEventType.TRADING_MODE_SWITCHED, Map.of(
+                "mode", mode.name()
+        ), null);
         log.info("User {} switched trading mode to {}", userId, mode);
     }
 
@@ -169,6 +177,7 @@ public class PaperTradingService {
      */
     public String stage(UUID userId, TradeOperation operation) {
         validateOperation(operation);
+        TradeWallet wallet = getOrCreateWallet(userId);
 
         List<TradeOperation> staging = getRedisStaging(userId);
         staging.add(operation);
@@ -176,6 +185,11 @@ public class PaperTradingService {
 
         int count = staging.size();
         String detail = formatOperationSummary(operation);
+        emitTradeEvent(userId, wallet.getId(), AgentEventType.TRADE_OPERATION_STAGED, Map.of(
+                "action", operation.action().toUpperCase().trim(),
+                "ticker", operation.ticker().toUpperCase().trim(),
+                "stagedCount", count
+        ), null);
         log.info("User {} staged operation: {} ({} total staged)", userId, detail, count);
         return String.format("Staged: %s (%d operation%s staged)", detail, count, count == 1 ? "" : "s");
     }
@@ -210,6 +224,7 @@ public class PaperTradingService {
         if (message == null || message.isBlank()) {
             return "Error: Commit message is required. Explain your trading rationale.";
         }
+        TradeWallet wallet = getOrCreateWallet(userId);
 
         // Generate commit hash
         String timestamp = LocalDateTime.now().format(TIMESTAMP_FMT);
@@ -228,6 +243,14 @@ public class PaperTradingService {
         commitData.put("operations", operationMaps);
 
         saveRedisPendingCommit(userId, commitData);
+        emitTradeEvent(userId, wallet.getId(), AgentEventType.TRADE_COMMIT_CREATED, Map.of(
+                "hash", hash,
+                "operationCount", staged.size(),
+                "messageLength", message.length()
+        ), "trade-commit-created:" + hash);
+
+        // Clear staging after successful commit (like git: staged items move to pending)
+        clearRedisStaging(userId);
 
         int opCount = staged.size();
         log.info("User {} committed: {} -- {} ({} operations)", userId, hash, message, opCount);
@@ -354,6 +377,19 @@ public class PaperTradingService {
             report.append(String.format("\nCash balance: $%s\n", wallet.getCashBalance().toPlainString()));
             report.append(String.format("Positions: %d\n", wallet.getPositions().size()));
 
+            long successCount = results.stream()
+                    .filter(r -> Boolean.TRUE.equals(r.get("success")))
+                    .count();
+            long failCount = results.size() - successCount;
+            String commitHash = String.valueOf(commitData.get("hash"));
+            emitTradeEvent(userId, wallet.getId(), AgentEventType.TRADE_COMMIT_EXECUTED, Map.of(
+                    "hash", commitHash,
+                    "engine", engine.engineName(),
+                    "operationCount", results.size(),
+                    "successCount", successCount,
+                    "failureCount", failCount
+            ), "trade-commit-executed:" + commitHash);
+
             log.info("User {} executed commit {} via {}: {} operations",
                     userId, commitData.get("hash"), engine.engineName(), results.size());
             return report.toString();
@@ -390,8 +426,8 @@ public class PaperTradingService {
         } else {
             for (Map<String, Object> pos : wallet.getPositions()) {
                 String ticker = (String) pos.get("ticker");
-                BigDecimal shares = toBigDecimal(pos.get("shares"));
-                BigDecimal avgCost = toBigDecimal(pos.get("avgCost"));
+                BigDecimal shares = NumberUtils.toBigDecimal(pos.get("shares"));
+                BigDecimal avgCost = NumberUtils.toBigDecimal(pos.get("avgCost"));
                 BigDecimal currentPrice;
 
                 try {
@@ -401,7 +437,7 @@ public class PaperTradingService {
                 } catch (Exception e) {
                     // Fall back to last known price
                     currentPrice = pos.containsKey("currentPrice")
-                            ? toBigDecimal(pos.get("currentPrice"))
+                            ? NumberUtils.toBigDecimal(pos.get("currentPrice"))
                             : avgCost;
                     log.warn("Could not fetch current price for {}, using last known: {}", ticker, currentPrice);
                 }
@@ -533,15 +569,15 @@ public class PaperTradingService {
                             .toList());
         }
 
-        BigDecimal shares = toBigDecimal(position.get("shares"));
-        BigDecimal avgCost = toBigDecimal(position.get("avgCost"));
+        BigDecimal shares = NumberUtils.toBigDecimal(position.get("shares"));
+        BigDecimal avgCost = NumberUtils.toBigDecimal(position.get("avgCost"));
 
         BigDecimal currentPrice;
         try {
             currentPrice = getCurrentPrice(normalizedTicker);
         } catch (Exception e) {
             currentPrice = position.containsKey("currentPrice")
-                    ? toBigDecimal(position.get("currentPrice"))
+                    ? NumberUtils.toBigDecimal(position.get("currentPrice"))
                     : avgCost;
         }
 
@@ -560,12 +596,12 @@ public class PaperTradingService {
         BigDecimal totalPortfolio = wallet.getCashBalance().add(
                 wallet.getPositions().stream()
                         .map(p -> {
-                            BigDecimal s = toBigDecimal(p.get("shares"));
+                            BigDecimal s = NumberUtils.toBigDecimal(p.get("shares"));
                             BigDecimal price = normalizedTicker.equals(p.get("ticker"))
                                     ? hypotheticalPrice
                                     : (p.containsKey("currentPrice")
-                                        ? toBigDecimal(p.get("currentPrice"))
-                                        : toBigDecimal(p.get("avgCost")));
+                                        ? NumberUtils.toBigDecimal(p.get("currentPrice"))
+                                        : NumberUtils.toBigDecimal(p.get("avgCost")));
                             return s.multiply(price).setScale(2, RoundingMode.HALF_UP);
                         })
                         .reduce(BigDecimal.ZERO, BigDecimal::add));
@@ -654,9 +690,9 @@ public class PaperTradingService {
         String action = (String) op.get("action");
         String ticker = (String) op.get("ticker");
         String side = "CLOSE".equals(action) || "SELL".equals(action) ? "sell" : "buy";
-        BigDecimal shares = op.containsKey("shares") ? toBigDecimal(op.get("shares")) : null;
-        BigDecimal amount = op.containsKey("amount") ? toBigDecimal(op.get("amount")) : null;
-        BigDecimal price = op.containsKey("price") ? toBigDecimal(op.get("price")) : null;
+        BigDecimal shares = op.containsKey("shares") ? NumberUtils.toBigDecimal(op.get("shares")) : null;
+        BigDecimal amount = op.containsKey("amount") ? NumberUtils.toBigDecimal(op.get("amount")) : null;
+        BigDecimal price = op.containsKey("price") ? NumberUtils.toBigDecimal(op.get("price")) : null;
         String type = price != null ? "limit" : "market";
 
         return new OrderRequest(ticker, side, type, shares, amount, price, null, "day",
@@ -688,7 +724,7 @@ public class PaperTradingService {
         if (closePrice == null) {
             throw new IllegalStateException("No price data available for " + ticker);
         }
-        return toBigDecimal(closePrice);
+        return NumberUtils.toBigDecimal(closePrice);
     }
 
     private Map<String, Object> findPosition(TradeWallet wallet, String ticker) {
@@ -730,11 +766,23 @@ public class PaperTradingService {
         return action + " " + ticker;
     }
 
-    private BigDecimal toBigDecimal(Object value) {
-        if (value == null) return BigDecimal.ZERO;
-        if (value instanceof BigDecimal bd) return bd;
-        if (value instanceof Number n) return new BigDecimal(n.toString());
-        return new BigDecimal(value.toString());
+    private void emitTradeEvent(UUID userId,
+                                UUID walletId,
+                                AgentEventType eventType,
+                                Map<String, Object> payload,
+                                String idempotencyKey) {
+        try {
+            agentEventService.append(
+                    userId,
+                    AgentEventAggregateType.TRADE_WALLET,
+                    walletId,
+                    eventType,
+                    payload,
+                    idempotencyKey
+            );
+        } catch (Exception e) {
+            log.warn("Failed to append trading event {} for user {}: {}", eventType, userId, e.getMessage());
+        }
     }
 
 }
