@@ -10,32 +10,21 @@ import com.example.finsentinel.service.scraper.FirecrawlClient;
 import com.example.finsentinel.service.storage.StorageService;
 import com.example.finsentinel.util.MarkdownToPdfConverter;
 import com.example.finsentinel.util.SectorMapper;
-import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.redis.connection.stream.*;
+import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.springframework.data.domain.Range;
-import org.springframework.data.redis.connection.stream.PendingMessage;
-import org.springframework.data.redis.connection.stream.PendingMessages;
-import org.springframework.data.redis.connection.stream.RecordId;
-
 @Slf4j
 @Component
-@RequiredArgsConstructor
 @ConditionalOnProperty(name = "app.news.enrich.enabled", havingValue = "true")
-public class NewsEnrichConsumer {
+public class NewsEnrichConsumer extends AbstractStreamConsumer {
 
-    private final StringRedisTemplate redisTemplate;
     private final NewsItemRepository newsItemRepository;
     private final DocumentRepository documentRepository;
     private final FirecrawlClient firecrawlClient;
@@ -44,84 +33,39 @@ public class NewsEnrichConsumer {
     private final NewsEnrichProducer newsEnrichProducer;
     private final NewsSentimentService newsSentimentService;
 
-    private final String consumerName = "news-enrich-" + UUID.randomUUID().toString().substring(0, 8);
-
-    @PostConstruct
-    public void init() {
-        try {
-            redisTemplate.opsForStream().createGroup(
-                    VectorizeStreamConstants.NEWS_ENRICH_STREAM_KEY,
-                    ReadOffset.from("0"),
-                    VectorizeStreamConstants.NEWS_ENRICH_GROUP_NAME);
-            log.info("Created consumer group: {}", VectorizeStreamConstants.NEWS_ENRICH_GROUP_NAME);
-        } catch (Exception e) {
-            log.debug("Consumer group already exists: {}", VectorizeStreamConstants.NEWS_ENRICH_GROUP_NAME);
-        }
+    public NewsEnrichConsumer(StringRedisTemplate redisTemplate,
+                               NewsItemRepository newsItemRepository,
+                               DocumentRepository documentRepository,
+                               FirecrawlClient firecrawlClient,
+                               StorageService storageService,
+                               VectorizeStreamProducer vectorizeStreamProducer,
+                               NewsEnrichProducer newsEnrichProducer,
+                               NewsSentimentService newsSentimentService) {
+        super(redisTemplate,
+              VectorizeStreamConstants.NEWS_ENRICH_STREAM_KEY,
+              VectorizeStreamConstants.NEWS_ENRICH_GROUP_NAME,
+              "news-enrich");
+        this.newsItemRepository = newsItemRepository;
+        this.documentRepository = documentRepository;
+        this.firecrawlClient = firecrawlClient;
+        this.storageService = storageService;
+        this.vectorizeStreamProducer = vectorizeStreamProducer;
+        this.newsEnrichProducer = newsEnrichProducer;
+        this.newsSentimentService = newsSentimentService;
     }
 
     @Scheduled(fixedDelay = 2000)
-    public void consume() {
-        try {
-            List<MapRecord<String, Object, Object>> messages = redisTemplate.opsForStream().read(
-                    Consumer.from(VectorizeStreamConstants.NEWS_ENRICH_GROUP_NAME, consumerName),
-                    StreamReadOptions.empty().count(5).block(Duration.ofMillis(500)),
-                    StreamOffset.create(VectorizeStreamConstants.NEWS_ENRICH_STREAM_KEY, ReadOffset.lastConsumed())
-            );
-
-            if (messages == null || messages.isEmpty()) {
-                return;
-            }
-
-            for (MapRecord<String, Object, Object> message : messages) {
-                processMessage(message);
-            }
-        } catch (Exception e) {
-            log.error("Error consuming from news-enrich stream", e);
-        }
-    }
+    public void consume() { doPoll(); }
 
     /**
      * Reclaims pending messages from dead consumers every 30 seconds.
      * Uses XCLAIM to transfer ownership of messages idle for >30 seconds.
      */
     @Scheduled(fixedDelay = 30_000)
-    public void reclaimPending() {
-        try {
-            PendingMessages pending = redisTemplate.opsForStream().pending(
-                    VectorizeStreamConstants.NEWS_ENRICH_STREAM_KEY,
-                    VectorizeStreamConstants.NEWS_ENRICH_GROUP_NAME,
-                    Range.unbounded(),
-                    10L
-            );
+    public void reclaimPending() { doReclaimPending(); }
 
-            for (PendingMessage pm : pending) {
-                if (pm.getElapsedTimeSinceLastDelivery().compareTo(Duration.ofSeconds(30)) > 0
-                        && !pm.getConsumerName().equals(consumerName)) {
-                    try {
-                        List<MapRecord<String, Object, Object>> claimed =
-                                redisTemplate.opsForStream().claim(
-                                        VectorizeStreamConstants.NEWS_ENRICH_STREAM_KEY,
-                                        VectorizeStreamConstants.NEWS_ENRICH_GROUP_NAME,
-                                        consumerName,
-                                        Duration.ofSeconds(30),
-                                        RecordId.of(pm.getId().getValue())
-                                );
-                        for (MapRecord<String, Object, Object> msg : claimed) {
-                            log.info("Reclaimed pending news-enrich message {} from consumer {}",
-                                    msg.getId(), pm.getConsumerName());
-                            processMessage(msg);
-                        }
-                    } catch (Exception e) {
-                        log.warn("Failed to reclaim news-enrich message {}: {}", pm.getId(), e.getMessage());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.debug("Error checking news-enrich pending messages: {}", e.getMessage());
-        }
-    }
-
-    private void processMessage(MapRecord<String, Object, Object> message) {
+    @Override
+    protected void processMessage(MapRecord<String, Object, Object> message) {
         Map<Object, Object> body = message.getValue();
         String newsItemIdStr = (String) body.get(VectorizeStreamConstants.FIELD_NEWS_ITEM_ID);
         String retryCountStr = (String) body.getOrDefault(VectorizeStreamConstants.FIELD_RETRY_COUNT, "0");
@@ -224,13 +168,5 @@ public class NewsEnrichConsumer {
         } finally {
             ack(message);
         }
-    }
-
-    private void ack(MapRecord<String, Object, Object> message) {
-        redisTemplate.opsForStream().acknowledge(
-                VectorizeStreamConstants.NEWS_ENRICH_STREAM_KEY,
-                VectorizeStreamConstants.NEWS_ENRICH_GROUP_NAME,
-                message.getId()
-        );
     }
 }

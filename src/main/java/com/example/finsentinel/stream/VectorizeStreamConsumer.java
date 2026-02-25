@@ -6,23 +6,14 @@ import com.example.finsentinel.repository.DocumentRepository;
 import com.example.finsentinel.service.document.DocumentParseService;
 import com.example.finsentinel.service.document.DocumentVectorService;
 import com.example.finsentinel.service.storage.StorageService;
-import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.stream.*;
+import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
-import org.springframework.data.domain.Range;
-import org.springframework.data.redis.connection.stream.PendingMessage;
-import org.springframework.data.redis.connection.stream.PendingMessages;
-import org.springframework.data.redis.connection.stream.RecordId;
 
 /**
  * Consumer for Redis Stream-based async document vectorization.
@@ -31,34 +22,29 @@ import org.springframework.data.redis.connection.stream.RecordId;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
-public class VectorizeStreamConsumer {
+public class VectorizeStreamConsumer extends AbstractStreamConsumer {
 
-    private final StringRedisTemplate redisTemplate;
     private final DocumentRepository documentRepository;
     private final DocumentParseService documentParseService;
     private final DocumentVectorService documentVectorService;
     private final StorageService storageService;
     private final VectorizeStreamProducer vectorizeStreamProducer;
 
-    private final String consumerName = "consumer-" + UUID.randomUUID().toString().substring(0, 8);
-
-    /**
-     * Initializes the Redis Stream consumer group.
-     * Creates the group on first startup; ignores error if group already exists.
-     */
-    @PostConstruct
-    public void init() {
-        try {
-            redisTemplate.opsForStream().createGroup(
-                    VectorizeStreamConstants.STREAM_KEY,
-                    ReadOffset.from("0"),
-                    VectorizeStreamConstants.GROUP_NAME);
-            log.info("Created consumer group: {}", VectorizeStreamConstants.GROUP_NAME);
-        } catch (Exception e) {
-            // Group already exists — this is expected on restart
-            log.debug("Consumer group already exists: {}", VectorizeStreamConstants.GROUP_NAME);
-        }
+    public VectorizeStreamConsumer(StringRedisTemplate redisTemplate,
+                                    DocumentRepository documentRepository,
+                                    DocumentParseService documentParseService,
+                                    DocumentVectorService documentVectorService,
+                                    StorageService storageService,
+                                    VectorizeStreamProducer vectorizeStreamProducer) {
+        super(redisTemplate,
+              VectorizeStreamConstants.STREAM_KEY,
+              VectorizeStreamConstants.GROUP_NAME,
+              "consumer");
+        this.documentRepository = documentRepository;
+        this.documentParseService = documentParseService;
+        this.documentVectorService = documentVectorService;
+        this.storageService = storageService;
+        this.vectorizeStreamProducer = vectorizeStreamProducer;
     }
 
     /**
@@ -66,68 +52,14 @@ public class VectorizeStreamConsumer {
      * Uses consumer group with blocking read for efficient consumption.
      */
     @Scheduled(fixedDelay = 1000)
-    public void consume() {
-        try {
-            List<MapRecord<String, Object, Object>> messages = redisTemplate.opsForStream().read(
-                    Consumer.from(VectorizeStreamConstants.GROUP_NAME, consumerName),
-                    StreamReadOptions.empty().count(5).block(Duration.ofMillis(500)),
-                    StreamOffset.create(VectorizeStreamConstants.STREAM_KEY, ReadOffset.lastConsumed())
-            );
-
-            if (messages == null || messages.isEmpty()) {
-                return;
-            }
-
-            for (MapRecord<String, Object, Object> message : messages) {
-                processMessage(message);
-            }
-        } catch (Exception e) {
-            log.error("Error consuming from vectorize stream", e);
-        }
-    }
+    public void consume() { doPoll(); }
 
     /**
      * Reclaims pending messages from dead consumers every 30 seconds.
-     * Uses XCLAIM to transfer ownership of messages idle for >30 seconds,
-     * then processes them under this consumer.
+     * Uses XCLAIM to transfer ownership of messages idle for >30 seconds.
      */
     @Scheduled(fixedDelay = 30_000)
-    public void reclaimPending() {
-        try {
-            PendingMessages pending = redisTemplate.opsForStream().pending(
-                    VectorizeStreamConstants.STREAM_KEY,
-                    VectorizeStreamConstants.GROUP_NAME,
-                    Range.unbounded(),
-                    10L
-            );
-
-            for (PendingMessage pm : pending) {
-                if (pm.getElapsedTimeSinceLastDelivery().compareTo(Duration.ofSeconds(30)) > 0
-                        && !pm.getConsumerName().equals(consumerName)) {
-                    try {
-                        // XCLAIM: transfer ownership to this consumer
-                        List<MapRecord<String, Object, Object>> claimed =
-                                redisTemplate.opsForStream().claim(
-                                        VectorizeStreamConstants.STREAM_KEY,
-                                        VectorizeStreamConstants.GROUP_NAME,
-                                        consumerName,
-                                        Duration.ofSeconds(30),
-                                        RecordId.of(pm.getId().getValue())
-                                );
-                        for (MapRecord<String, Object, Object> msg : claimed) {
-                            log.info("Reclaimed pending message {} from consumer {}",
-                                    msg.getId(), pm.getConsumerName());
-                            processMessage(msg);
-                        }
-                    } catch (Exception e) {
-                        log.warn("Failed to reclaim message {}: {}", pm.getId(), e.getMessage());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.debug("Error checking pending messages: {}", e.getMessage());
-        }
-    }
+    public void reclaimPending() { doReclaimPending(); }
 
     /**
      * Processes a single vectorization task message.
@@ -137,7 +69,8 @@ public class VectorizeStreamConsumer {
      *
      * @param message the Redis Stream message record
      */
-    private void processMessage(MapRecord<String, Object, Object> message) {
+    @Override
+    protected void processMessage(MapRecord<String, Object, Object> message) {
         Map<Object, Object> body = message.getValue();
         String documentIdStr = (String) body.get(VectorizeStreamConstants.FIELD_DOCUMENT_ID);
         String retryCountStr = (String) body.getOrDefault(VectorizeStreamConstants.FIELD_RETRY_COUNT, "0");
@@ -202,20 +135,5 @@ public class VectorizeStreamConsumer {
             // Always ACK the original message
             ack(message);
         }
-    }
-
-    /**
-     * Acknowledges a message in the Redis Stream consumer group.
-
-     * This removes the message from the pending entries list (PEL).
-     *
-     * @param message the message to acknowledge
-     */
-    private void ack(MapRecord<String, Object, Object> message) {
-        redisTemplate.opsForStream().acknowledge(
-                VectorizeStreamConstants.STREAM_KEY,
-                VectorizeStreamConstants.GROUP_NAME,
-                message.getId()
-        );
     }
 }
