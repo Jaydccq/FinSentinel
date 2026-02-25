@@ -56,6 +56,10 @@ spring:
       max-request-size: 50MB
 
 app:
+  agent:
+    persona: ${APP_AGENT_PERSONA:default}
+    personas-dir: classpath:prompts/personas/
+
   storage:
     provider: ${APP_STORAGE_PROVIDER:rustfs}
     endpoint: ${APP_STORAGE_ENDPOINT:http://localhost:9000}

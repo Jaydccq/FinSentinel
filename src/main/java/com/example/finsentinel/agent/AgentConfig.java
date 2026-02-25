@@ -3,13 +3,15 @@ package com.example.finsentinel.agent;
 import com.example.finsentinel.agent.advisor.ComplianceGuardrailAdvisor;
 import com.example.finsentinel.agent.advisor.UserContextAdvisor;
 import com.example.finsentinel.agent.tool.*;
+import com.example.finsentinel.config.PersonaProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 
 /**
  * Implements AI agent logic for agent config workflows.
@@ -18,10 +20,10 @@ import org.springframework.core.io.Resource;
  */
 
 @Configuration
+@RequiredArgsConstructor
 public class AgentConfig {
 
-    @Value("classpath:prompts/system-prompt.st")
-    private Resource systemPrompt;
+    private final PersonaProperties personaProperties;
 
     /**
      * Executes risk agent chat client.
@@ -43,6 +45,9 @@ public class AgentConfig {
      * @param userProfileTool user profile tool (UserProfileTool)
      * @param confirmationTool confirmation tool (ConfirmationTool)
      * @param autonomyTool autonomy tool (AutonomyTool)
+     * @param marketCalendarTool market calendar tool (MarketCalendarTool)
+     * @param ownershipTool ownership tool (OwnershipTool)
+     * @param shortInterestTool short interest tool (ShortInterestTool)
      * @param questionAnswerAdvisor question answer advisor (QuestionAnswerAdvisor)
      * @param userContextAdvisor user context advisor (UserContextAdvisor)
      * @param complianceGuardrailAdvisor compliance guardrail advisor (ComplianceGuardrailAdvisor)
@@ -52,6 +57,7 @@ public class AgentConfig {
     @Bean
     public ChatClient riskAgentChatClient(
             ChatModel chatModel,
+            ResourceLoader resourceLoader,
             StockMarketTool stockMarketTool,
             NewsAnalysisTool newsAnalysisTool,
             TechnicalIndicatorTool technicalIndicatorTool,
@@ -66,9 +72,15 @@ public class AgentConfig {
             UserProfileTool userProfileTool,
             ConfirmationTool confirmationTool,
             AutonomyTool autonomyTool,
+            MarketCalendarTool marketCalendarTool,
+            OwnershipTool ownershipTool,
+            ShortInterestTool shortInterestTool,
             QuestionAnswerAdvisor questionAnswerAdvisor,
             UserContextAdvisor userContextAdvisor,
             ComplianceGuardrailAdvisor complianceGuardrailAdvisor) {
+
+        String personaPath = personaProperties.getPersonasDir() + personaProperties.getPersona() + ".st";
+        Resource systemPrompt = resourceLoader.getResource(personaPath);
 
         return ChatClient.builder(chatModel)
                 .defaultSystem(systemPrompt)
@@ -77,7 +89,8 @@ public class AgentConfig {
                         complianceCheckTool, tradingTool, brainTool,
                         companyResearchTool, equityScreenerTool,
                         quantAnalysisTool, thinkingTool, userProfileTool,
-                        confirmationTool, autonomyTool)
+                        confirmationTool, autonomyTool,
+                        marketCalendarTool, ownershipTool, shortInterestTool)
                 .defaultAdvisors(questionAnswerAdvisor, userContextAdvisor, complianceGuardrailAdvisor)
                 .build();
     }
