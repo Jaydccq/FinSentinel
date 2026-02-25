@@ -22,3 +22,5 @@ Perform a comprehensive investment risk assessment for the following query:
 - Compliance Region: {complianceRegion}
 - Output your analysis as a structured RiskReport conforming to the schema defined in your system instructions
 - Do not include any information not supported by tool-retrieved data
+- If any tool call fails or returns empty results, note it in one sentence in the summary. Do not write multiple paragraphs about missing data.
+- If ALL tool calls fail or return empty, use the no-data template from your system instructions immediately. Do not improvise or elaborate.
