@@ -91,6 +91,20 @@ public class BrainTool {
         }
     }
 
+    @Tool(description = "View the agent's cognitive commit history — a timeline of all strategy updates " +
+            "and emotional state changes. Like 'git log' for the brain. Use this to review past " +
+            "decisions and understand how the agent's thinking has evolved over time.")
+    public String getBrainLog(
+            @ToolParam(description = "Number of recent brain commits to show (max 50)") int limit) {
+        try {
+            UUID userId = SecurityUtils.getCurrentUserId();
+            return brainService.getBrainLog(userId, limit);
+        } catch (Exception e) {
+            log.error("Failed to get brain log", e);
+            return "Error fetching brain log: " + e.getMessage();
+        }
+    }
+
     @Tool(description = "Check the agent's current emotional state. Returns the current emotion " +
             "(e.g. neutral, confident, cautious). Use this to factor emotional awareness into " +
             "trading decisions -- a fearful agent should be more conservative, a greedy agent " +

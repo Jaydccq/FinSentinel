@@ -129,6 +129,43 @@ public class AgentBrainService {
     }
 
     /**
+     * Returns the last N commits from the brain's commit history,
+     * formatted as a human-readable timeline (newest first).
+     *
+     * @param userId the user's UUID
+     * @param limit  maximum number of commits to return (clamped to [1, 50])
+     * @return formatted brain commit log
+     */
+    @Transactional(readOnly = true)
+    public String getBrainLog(UUID userId, int limit) {
+        AgentBrain brain = getOrCreateBrain(userId);
+        List<Map<String, Object>> history = brain.getCommitHistory();
+
+        if (history == null || history.isEmpty()) {
+            return "No brain commits yet. The agent has not recorded any cognitive state changes.";
+        }
+
+        int clampedLimit = Math.min(Math.max(limit, 1), history.size());
+        List<Map<String, Object>> recent = history.subList(
+                history.size() - clampedLimit, history.size());
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Brain Commit Log ===\n\n");
+
+        // Display in reverse chronological order (newest first)
+        for (int i = recent.size() - 1; i >= 0; i--) {
+            Map<String, Object> commit = recent.get(i);
+            sb.append(String.format("commit %s\n", commit.get("hash")));
+            sb.append(String.format("Type:    %s\n", commit.get("type")));
+            sb.append(String.format("Date:    %s\n", commit.get("timestamp")));
+            sb.append(String.format("Message: %s\n\n", commit.get("message")));
+        }
+
+        sb.append(String.format("Showing %d of %d total commits.", clampedLimit, history.size()));
+        return sb.toString();
+    }
+
+    /**
      * Appends a commit entry to the brain's commit history JSONB.
      * <p>Caps history at {@value #MAX_COMMIT_HISTORY} entries by removing the oldest
      * entries when the limit is exceeded.
