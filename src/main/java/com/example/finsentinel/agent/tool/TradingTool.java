@@ -172,6 +172,19 @@ public class TradingTool {
         }
     }
 
+    @Tool(description = "Sync wallet with broker to check if any pending orders (limit/stop) have been filled. "
+            + "Use this at the start of conversations or before making new trades to ensure your wallet "
+            + "reflects the latest order statuses. Only relevant in LIVE trading mode.")
+    public String syncWalletOrders() {
+        try {
+            UUID userId = SecurityUtils.getCurrentUserId();
+            return tradingService.syncWithBroker(userId);
+        } catch (Exception e) {
+            log.error("Failed to sync orders", e);
+            return "Error syncing orders: " + e.getMessage();
+        }
+    }
+
     @Tool(description = "Switch between paper trading (simulated) and live trading (real broker). " +
             "PAPER mode simulates trades at current market prices with no real money. " +
             "LIVE mode executes real trades via Alpaca (US stocks) or crypto exchange. " +

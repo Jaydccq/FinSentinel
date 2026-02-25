@@ -14,4 +14,13 @@ public interface TradingEngine {
     AccountInfo getAccount();
     boolean cancelOrder(String orderId);
     String engineName();
+
+    /**
+     * Polls the broker for the latest status of open/pending orders.
+     * Returns a list of orders whose status has changed since last check.
+     * Default implementation returns the full order list (no diffing).
+     */
+    default List<OrderResult> syncOrders() {
+        return getOrders();
+    }
 }

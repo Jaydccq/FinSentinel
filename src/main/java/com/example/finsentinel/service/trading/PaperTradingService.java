@@ -96,6 +96,54 @@ public class PaperTradingService {
         log.info("User {} switched trading mode to {}", userId, mode);
     }
 
+    // ───────────────────────── Broker sync ────────────────────────────────
+
+    /**
+     * Polls the broker for the latest status of open/pending orders.
+     *
+     * <p>Only relevant in LIVE trading mode. In PAPER mode, returns immediately
+     * since there is no external broker to sync with.
+     *
+     * @param userId the user's UUID
+     * @return formatted sync report
+     */
+    @Transactional
+    public String syncWithBroker(UUID userId) {
+        TradeWallet wallet = getOrCreateWallet(userId);
+
+        if (wallet.getTradingMode() == TradingMode.PAPER) {
+            return "Paper trading mode — no broker orders to sync.";
+        }
+
+        TradingEngine engine = engineFactory.createEngine(wallet.getTradingMode(), wallet.getCashBalance());
+        List<OrderResult> openOrders = engine.syncOrders();
+
+        if (openOrders.isEmpty()) {
+            return "No open orders at broker. Wallet is up to date.";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Broker Order Sync ===\n");
+        int filledCount = 0;
+        int pendingCount = 0;
+
+        for (OrderResult order : openOrders) {
+            if ("filled".equals(order.status())) {
+                filledCount++;
+                sb.append(String.format("  FILLED: %s — %s shares @ $%s\n",
+                        order.orderId(),
+                        order.filledQty().toPlainString(),
+                        order.filledPrice().toPlainString()));
+            } else {
+                pendingCount++;
+                sb.append(String.format("  PENDING: %s — status: %s\n",
+                        order.orderId(), order.status()));
+            }
+        }
+        sb.append(String.format("\n%d filled, %d still pending.\n", filledCount, pendingCount));
+        return sb.toString();
+    }
+
     // ───────────────────────── Phase 1: Stage ───────────────────────────────
 
     /**

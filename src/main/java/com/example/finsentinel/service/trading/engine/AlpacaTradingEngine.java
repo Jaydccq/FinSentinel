@@ -59,18 +59,7 @@ public class AlpacaTradingEngine implements TradingEngine {
             HttpResponse<String> response = sendPost("/v2/orders", json);
             JsonNode node = objectMapper.readTree(response.body());
 
-            return new OrderResult(
-                    true,
-                    node.get("id").asText(),
-                    mapOrderStatus(node.get("status").asText()),
-                    node.has("filled_avg_price") && !node.get("filled_avg_price").isNull()
-                            ? new BigDecimal(node.get("filled_avg_price").asText()) : BigDecimal.ZERO,
-                    node.has("filled_qty") && !node.get("filled_qty").isNull()
-                            ? new BigDecimal(node.get("filled_qty").asText()) : BigDecimal.ZERO,
-                    null,
-                    node.has("filled_at") && !node.get("filled_at").isNull()
-                            ? LocalDateTime.parse(node.get("filled_at").asText().substring(0, 19)) : null
-            );
+            return parseOrderNode(node);
         } catch (Exception e) {
             log.error("Alpaca placeOrder failed for {}: {}", request.symbol(), e.getMessage(), e);
             String errorMsg = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
@@ -113,22 +102,27 @@ public class AlpacaTradingEngine implements TradingEngine {
 
             List<OrderResult> orders = new ArrayList<>();
             for (JsonNode node : array) {
-                orders.add(new OrderResult(
-                        true,
-                        node.get("id").asText(),
-                        mapOrderStatus(node.get("status").asText()),
-                        node.has("filled_avg_price") && !node.get("filled_avg_price").isNull()
-                                ? new BigDecimal(node.get("filled_avg_price").asText()) : BigDecimal.ZERO,
-                        node.has("filled_qty") && !node.get("filled_qty").isNull()
-                                ? new BigDecimal(node.get("filled_qty").asText()) : BigDecimal.ZERO,
-                        null,
-                        node.has("filled_at") && !node.get("filled_at").isNull()
-                                ? LocalDateTime.parse(node.get("filled_at").asText().substring(0, 19)) : null
-                ));
+                orders.add(parseOrderNode(node));
             }
             return orders;
         } catch (Exception e) {
             log.error("Alpaca getOrders failed: {}", e.getMessage(), e);
+            return List.of();
+        }
+    }
+
+    @Override
+    public List<OrderResult> syncOrders() {
+        try {
+            HttpResponse<String> response = sendGet("/v2/orders?status=open&limit=50");
+            JsonNode array = objectMapper.readTree(response.body());
+            List<OrderResult> orders = new ArrayList<>();
+            for (JsonNode node : array) {
+                orders.add(parseOrderNode(node));
+            }
+            return orders;
+        } catch (Exception e) {
+            log.error("Alpaca syncOrders failed: {}", e.getMessage(), e);
             return List.of();
         }
     }
@@ -175,6 +169,23 @@ public class AlpacaTradingEngine implements TradingEngine {
             log.error("Alpaca cancelOrder failed for {}: {}", orderId, e.getMessage(), e);
             return false;
         }
+    }
+
+    // ──────────────────────────────── Order parsing ────────────────────────────
+
+    private OrderResult parseOrderNode(JsonNode node) {
+        return new OrderResult(
+                true,
+                node.get("id").asText(),
+                mapOrderStatus(node.get("status").asText()),
+                node.has("filled_avg_price") && !node.get("filled_avg_price").isNull()
+                        ? new BigDecimal(node.get("filled_avg_price").asText()) : BigDecimal.ZERO,
+                node.has("filled_qty") && !node.get("filled_qty").isNull()
+                        ? new BigDecimal(node.get("filled_qty").asText()) : BigDecimal.ZERO,
+                null,
+                node.has("filled_at") && !node.get("filled_at").isNull()
+                        ? LocalDateTime.parse(node.get("filled_at").asText().substring(0, 19)) : null
+        );
     }
 
     // ──────────────────────────────── HTTP helpers ──────────────────────────────

@@ -63,4 +63,10 @@ class AlpacaTradingEngineTest {
         assertThat(result.status()).isEqualTo("rejected");
         assertThat(result.error()).isNotNull();
     }
+
+    @Test
+    void syncOrders_returnsEmptyListOnError() {
+        AlpacaTradingEngine engine = new AlpacaTradingEngine("bad", "bad", "http://localhost:1");
+        assertThat(engine.syncOrders()).isEmpty();
+    }
 }

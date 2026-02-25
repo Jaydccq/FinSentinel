@@ -57,7 +57,9 @@
       "Bash(npx eslint:*)",
       "Bash(bash:*)",
       "Bash(ls:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "mcp__plugin_claude-mem_mcp-search__search",
+      "mcp__plugin_claude-mem_mcp-search__get_observations"
     ]
   },
   "hooks": {
