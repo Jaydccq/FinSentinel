@@ -10,6 +10,7 @@ import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ import java.util.UUID;
 public class RiskAgentService {
 
     private final ChatClient riskAgentChatClient;
+    private final ChatModel chatModel;
     private final ComplianceProperties complianceProperties;
     private final RiskReportRepository riskReportRepository;
     private final PortfolioRepository portfolioRepository;
@@ -99,6 +101,17 @@ public class RiskAgentService {
                         .param("portfolioContext", portfolioContext)
                         .param("complianceRegion", complianceProperties.getRegion()))
                 .stream()
+                .content();
+    }
+
+    /**
+     * Lightweight synchronous LLM call without tools or advisors.
+     * Used for simple text-in / text-out tasks like news summarization.
+     */
+    public String quickChat(String prompt) {
+        return ChatClient.create(chatModel).prompt()
+                .user(prompt)
+                .call()
                 .content();
     }
 

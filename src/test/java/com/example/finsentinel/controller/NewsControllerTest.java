@@ -1,5 +1,6 @@
 package com.example.finsentinel.controller;
 
+import com.example.finsentinel.agent.RiskAgentService;
 import com.example.finsentinel.model.NewsItem;
 import com.example.finsentinel.model.enums.NewsSource;
 import com.example.finsentinel.repository.NewsItemRepository;
@@ -25,12 +26,13 @@ import static org.mockito.Mockito.when;
 class NewsControllerTest {
 
     @Mock private NewsItemRepository newsItemRepository;
+    @Mock private RiskAgentService riskAgentService;
 
     private NewsController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new NewsController(newsItemRepository);
+        controller = new NewsController(newsItemRepository, riskAgentService);
     }
 
     @Test

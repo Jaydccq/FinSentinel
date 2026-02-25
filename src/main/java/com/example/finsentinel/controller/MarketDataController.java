@@ -1,5 +1,6 @@
 package com.example.finsentinel.controller;
 
+import com.example.finsentinel.dto.market.TickerSearchResult;
 import com.example.finsentinel.ratelimit.RateLimit;
 import com.example.finsentinel.service.MarketDataService;
 import tools.jackson.databind.JsonNode;
@@ -71,5 +72,19 @@ public class MarketDataController {
 
             @RequestBody List<String> tickers) {
         return ResponseEntity.ok(marketDataService.getBatchQuotes(tickers));
+    }
+
+    /**
+     * Searches for tickers matching the given query string via Yahoo Finance.
+     *
+     * @param q     search query (e.g. "APP", "Apple", "BTC")
+     * @param limit maximum results to return (default 8, max 20)
+     * @return list of matching ticker search results
+     */
+    @GetMapping("/search")
+    public ResponseEntity<List<TickerSearchResult>> searchTickers(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "8") int limit) {
+        return ResponseEntity.ok(marketDataService.searchTickers(q, limit));
     }
 }

@@ -11,6 +11,7 @@ import com.example.finsentinel.service.document.DocumentUploadService;
 import com.example.finsentinel.service.storage.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ContentDisposition;
@@ -22,9 +23,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * REST controller for document upload and management.
@@ -72,42 +71,36 @@ public class DocumentController {
      *
      * @param status optional status filter
      * @param docType optional document type filter
-     * @return list of documents sorted by creation date descending
+     * @return page of documents sorted by creation date descending
      */
     @GetMapping
-    public ResponseEntity<List<DocumentUploadResponse>> listDocuments(
+    public ResponseEntity<Page<DocumentUploadResponse>> listDocuments(
             @RequestParam(value = "status", required = false) DocumentStatus status,
             @RequestParam(value = "docType", required = false) DocumentType docType,
             @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "50") int size,
+            @RequestParam(value = "size", defaultValue = "20") int size,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        log.info("GET /api/documents - status={}, docType={}", status, docType);
+        log.info("GET /api/documents - status={}, docType={}, page={}, size={}", status, docType, page, size);
         UUID userId = resolveUserId(userDetails);
         int safePage = Math.max(page, 0);
         int safeSize = Math.max(1, Math.min(size, 200));
         Pageable pageable = PageRequest.of(safePage, safeSize);
 
-        List<Document> documents;
+        Page<Document> documents;
 
         if (status != null && docType != null) {
             documents = documentRepository.findByUserIdAndStatusAndDocTypeOrderByCreatedAtDesc(
-                    userId, status, docType, pageable).getContent();
+                    userId, status, docType, pageable);
         } else if (status != null) {
-            documents = documentRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, status, pageable)
-                    .getContent();
+            documents = documentRepository.findByUserIdAndStatusOrderByCreatedAtDesc(userId, status, pageable);
         } else if (docType != null) {
-            documents = documentRepository.findByUserIdAndDocTypeOrderByCreatedAtDesc(userId, docType, pageable)
-                    .getContent();
+            documents = documentRepository.findByUserIdAndDocTypeOrderByCreatedAtDesc(userId, docType, pageable);
         } else {
-            documents = documentRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable).getContent();
+            documents = documentRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
         }
 
-        List<DocumentUploadResponse> responses = documents.stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-
-        log.debug("Found {} documents", responses.size());
+        Page<DocumentUploadResponse> responses = documents.map(this::toResponse);
         return ResponseEntity.ok(responses);
     }
 

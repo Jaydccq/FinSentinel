@@ -1,7 +1,9 @@
 package com.example.finsentinel.controller;
 
+import com.example.finsentinel.agent.RiskAgentService;
 import com.example.finsentinel.dto.news.NewsFeedStatsResponse;
 import com.example.finsentinel.dto.news.NewsItemResponse;
+import com.example.finsentinel.dto.news.NewsSummaryResponse;
 import com.example.finsentinel.model.NewsItem;
 import com.example.finsentinel.model.enums.NewsSource;
 import com.example.finsentinel.repository.NewsItemRepository;
@@ -12,6 +14,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -19,6 +22,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -29,6 +33,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class NewsController {
 
     private final NewsItemRepository newsItemRepository;
+    private final RiskAgentService riskAgentService;
     private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
 
     @GetMapping
@@ -56,6 +61,47 @@ public class NewsController {
         }
         return newsItemRepository.findByTickerContaining(normalized, PageRequest.of(page, size))
                 .map(this::toResponse);
+    }
+
+    @GetMapping("/summary/{ticker}")
+    public ResponseEntity<NewsSummaryResponse> summarizeNews(@PathVariable String ticker) {
+        String normalized = ticker.toUpperCase().trim();
+        if (!normalized.matches("^[A-Z]{1,10}([/\\\\\\-.][A-Z]{1,5})?$")) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        // For crypto tickers like BTC-USD, use the base symbol for news search
+        String searchTicker = normalized.contains("-") ? normalized.split("-")[0] : normalized;
+
+        // Fetch latest 15 news items for this ticker
+        Page<NewsItem> newsPage = newsItemRepository.findByTickerContaining(
+                searchTicker, PageRequest.of(0, 15));
+        List<NewsItem> items = newsPage.getContent();
+
+        if (items.isEmpty()) {
+            return ResponseEntity.ok(new NewsSummaryResponse(
+                    normalized, "No recent news found for " + normalized, 0, Instant.now()));
+        }
+
+        // Build prompt from headlines + summaries
+        StringBuilder newsContext = new StringBuilder();
+        for (NewsItem item : items) {
+            newsContext.append("- ").append(item.getTitle());
+            if (item.getSummary() != null && !item.getSummary().isBlank()) {
+                newsContext.append(": ").append(item.getSummary());
+            }
+            newsContext.append("\n");
+        }
+
+        String prompt = String.format(
+                "Summarize the following recent news about %s in 3-5 sentences. " +
+                "Focus on key themes, market impact, and sentiment. Be concise and factual.\n\n%s",
+                normalized, newsContext);
+
+        String summary = riskAgentService.quickChat(prompt);
+
+        return ResponseEntity.ok(new NewsSummaryResponse(
+                normalized, summary, items.size(), Instant.now()));
     }
 
     @GetMapping("/stats")

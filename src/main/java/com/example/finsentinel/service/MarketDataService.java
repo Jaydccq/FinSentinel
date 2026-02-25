@@ -2,6 +2,7 @@ package com.example.finsentinel.service;
 
 import com.example.finsentinel.dto.market.MarketBar;
 import com.example.finsentinel.dto.market.MarketQuote;
+import com.example.finsentinel.dto.market.TickerSearchResult;
 import com.example.finsentinel.service.market.MarketDataProvider;
 import com.example.finsentinel.service.market.MarketDataProviderRegistry;
 import tools.jackson.core.JacksonException;
@@ -12,10 +13,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,9 +46,11 @@ public class MarketDataService {
     private final MarketDataProviderRegistry providerRegistry;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final RestClient restClient;
 
     private static final Duration QUOTE_TTL = Duration.ofMinutes(5);
     private static final Duration HISTORY_TTL = Duration.ofMinutes(30);
+    private static final Duration SEARCH_TTL = Duration.ofMinutes(10);
 
     /**
      * Retrieves the latest quote payload for a ticker.
@@ -145,6 +152,69 @@ public class MarketDataService {
     }
 
     /**
+     * Searches Yahoo Finance for tickers matching the given query.
+     *
+     * <p>Results are cached in Redis for 10 minutes to reduce external API calls.
+     * The limit is clamped to [1, 20].
+     *
+     * @param query search string (e.g. "APP", "Apple")
+     * @param limit maximum number of results to return
+     * @return list of matching ticker search results
+     */
+    public List<TickerSearchResult> searchTickers(String query, int limit) {
+        if (query == null || query.isBlank()) return List.of();
+        String safeQuery = query.trim();
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+
+        String cacheKey = "market:search:" + safeQuery.toLowerCase() + ":" + safeLimit;
+        String cached = redisTemplate.opsForValue().get(cacheKey);
+        if (cached != null) {
+            try {
+                return objectMapper.readValue(cached, new TypeReference<List<TickerSearchResult>>() {});
+            } catch (JacksonException e) {
+                redisTemplate.delete(cacheKey);
+            }
+        }
+
+        String url = "https://query2.finance.yahoo.com/v1/finance/search?q="
+            + URLEncoder.encode(safeQuery, StandardCharsets.UTF_8)
+            + "&quotesCount=" + safeLimit
+            + "&newsCount=0&listsCount=0";
+
+        try {
+            String response = restClient.get()
+                .uri(url)
+                .header("User-Agent", "Mozilla/5.0")
+                .retrieve()
+                .body(String.class);
+
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode quotes = root.path("quotes");
+            List<TickerSearchResult> results = new ArrayList<>();
+
+            for (JsonNode q : quotes) {
+                results.add(new TickerSearchResult(
+                    q.path("symbol").asText(),
+                    q.path("shortname").asText(q.path("longname").asText("")),
+                    q.path("exchange").asText(""),
+                    q.path("quoteType").asText("EQUITY")
+                ));
+            }
+
+            try {
+                redisTemplate.opsForValue().set(cacheKey,
+                    objectMapper.writeValueAsString(results), SEARCH_TTL);
+            } catch (JacksonException e) {
+                log.error("Failed to cache ticker search results", e);
+            }
+            return results;
+        } catch (Exception e) {
+            log.warn("Yahoo Finance search failed for query '{}': {}", safeQuery, e.getMessage());
+            return List.of();
+        }
+    }
+
+    /**
      * Human-readable quote text for AI tools (StockMarketTool).
      */
     public String getQuoteText(String ticker) {
@@ -203,8 +273,11 @@ public class MarketDataService {
     String validateTicker(String ticker) {
         if (ticker == null) throw new IllegalArgumentException("Invalid ticker: null");
         ticker = ticker.toUpperCase().trim();
-        if (!ticker.matches("^[A-Z]{1,10}(/[A-Z]{1,5})?$")) {
-            throw new IllegalArgumentException("Invalid ticker symbol: " + ticker + ". Must be 1-10 uppercase letters, optionally with /PAIR.");
+        // Allow: AAPL, BTC/USD (CCXT), BTC-USD (Yahoo crypto), AAPL.L (LSE)
+        if (!ticker.matches("^[A-Z]{1,10}([/\\-.][A-Z]{1,5})?$")) {
+            throw new IllegalArgumentException(
+                "Invalid ticker symbol: " + ticker +
+                ". Must be 1-10 uppercase letters, optionally with /PAIR, -PAIR, or .SUFFIX.");
         }
         return ticker;
     }

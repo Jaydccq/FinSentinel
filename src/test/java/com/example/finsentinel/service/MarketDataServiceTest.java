@@ -36,13 +36,14 @@ class MarketDataServiceTest {
     @Mock private MarketDataProvider provider;
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private ValueOperations<String, String> valueOps;
+    @Mock private org.springframework.web.client.RestClient restClient;
 
     private MarketDataService service;
     private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
     @BeforeEach
     void setUp() {
-        service = new MarketDataService(providerRegistry, redisTemplate, objectMapper);
+        service = new MarketDataService(providerRegistry, redisTemplate, objectMapper, restClient);
     }
 
     @Test
@@ -136,5 +137,25 @@ class MarketDataServiceTest {
         assertThatThrownBy(() -> service.getQuote("invalid123"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid ticker");
+    }
+
+    @Test
+    void validateTicker_cryptoFormat_accepted() {
+        // Crypto hyphenated format (Yahoo Finance style)
+        assertThat(service.validateTicker("btc-usd")).isEqualTo("BTC-USD");
+        assertThat(service.validateTicker("ETH-USD")).isEqualTo("ETH-USD");
+        assertThat(service.validateTicker("sol-usd")).isEqualTo("SOL-USD");
+        // Existing formats still work
+        assertThat(service.validateTicker("aapl")).isEqualTo("AAPL");
+        assertThat(service.validateTicker("BTC/USD")).isEqualTo("BTC/USD");
+        // Dot suffix (e.g. London Stock Exchange)
+        assertThat(service.validateTicker("AAPL.L")).isEqualTo("AAPL.L");
+    }
+
+    @Test
+    void validateTicker_shouldRejectNull() {
+        assertThatThrownBy(() -> service.validateTicker(null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("null");
     }
 }
