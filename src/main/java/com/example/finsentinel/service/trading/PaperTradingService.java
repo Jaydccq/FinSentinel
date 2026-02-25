@@ -96,6 +96,17 @@ public class PaperTradingService {
         log.info("User {} switched trading mode to {}", userId, mode);
     }
 
+    // ───────────────────────── Engine access ─────────────────────────────
+
+    /**
+     * Creates and returns the appropriate trading engine for the user's current mode.
+     * Exposed for tools that need direct engine access (e.g. market clock, order sync).
+     */
+    public TradingEngine getEngineForUser(UUID userId) {
+        TradeWallet wallet = getOrCreateWallet(userId);
+        return engineFactory.createEngine(wallet.getTradingMode(), wallet.getCashBalance());
+    }
+
     // ───────────────────────── Broker sync ────────────────────────────────
 
     /**

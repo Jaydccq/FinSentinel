@@ -11,6 +11,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -124,6 +125,23 @@ public class AlpacaTradingEngine implements TradingEngine {
         } catch (Exception e) {
             log.error("Alpaca syncOrders failed: {}", e.getMessage(), e);
             return List.of();
+        }
+    }
+
+    @Override
+    public MarketClock getMarketClock() {
+        try {
+            HttpResponse<String> response = sendGet("/v2/clock");
+            JsonNode node = objectMapper.readTree(response.body());
+            return new MarketClock(
+                    node.get("is_open").asBoolean(),
+                    Instant.parse(node.get("next_open").asText()),
+                    Instant.parse(node.get("next_close").asText()),
+                    Instant.parse(node.get("timestamp").asText())
+            );
+        } catch (Exception e) {
+            log.error("Alpaca getMarketClock failed: {}", e.getMessage(), e);
+            return new MarketClock(false, null, null, Instant.now());
         }
     }
 

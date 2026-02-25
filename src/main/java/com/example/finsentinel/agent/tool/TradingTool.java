@@ -3,6 +3,8 @@ package com.example.finsentinel.agent.tool;
 import com.example.finsentinel.model.TradeOperation;
 import com.example.finsentinel.model.enums.TradingMode;
 import com.example.finsentinel.service.trading.PaperTradingService;
+import com.example.finsentinel.service.trading.engine.MarketClock;
+import com.example.finsentinel.service.trading.engine.TradingEngine;
 import com.example.finsentinel.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -182,6 +184,31 @@ public class TradingTool {
         } catch (Exception e) {
             log.error("Failed to sync orders", e);
             return "Error syncing orders: " + e.getMessage();
+        }
+    }
+
+    @Tool(description = "Check if the US stock market is currently open. Returns open/closed status, "
+            + "next open and close times. Use this before placing trades to avoid submitting orders "
+            + "when the market is closed. Crypto markets are always open (24/7).")
+    public String checkMarketHours() {
+        try {
+            UUID userId = SecurityUtils.getCurrentUserId();
+            TradingEngine engine = tradingService.getEngineForUser(userId);
+            MarketClock clock = engine.getMarketClock();
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("Market is %s\n", clock.isOpen() ? "OPEN" : "CLOSED"));
+            if (clock.nextOpen() != null) {
+                sb.append(String.format("Next open:  %s\n", clock.nextOpen()));
+            }
+            if (clock.nextClose() != null) {
+                sb.append(String.format("Next close: %s\n", clock.nextClose()));
+            }
+            sb.append(String.format("Engine: %s\n", engine.engineName()));
+            return sb.toString();
+        } catch (Exception e) {
+            log.error("Failed to check market hours", e);
+            return "Error checking market hours: " + e.getMessage();
         }
     }
 

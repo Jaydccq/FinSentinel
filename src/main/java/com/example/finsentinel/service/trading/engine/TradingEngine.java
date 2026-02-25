@@ -23,4 +23,12 @@ public interface TradingEngine {
     default List<OrderResult> syncOrders() {
         return getOrders();
     }
+
+    /**
+     * Returns the current market clock (open/closed status, next open/close times).
+     * Default returns an always-open clock for engines without market hours (crypto, paper).
+     */
+    default MarketClock getMarketClock() {
+        return new MarketClock(true, null, null, java.time.Instant.now());
+    }
 }

@@ -69,4 +69,12 @@ class AlpacaTradingEngineTest {
         AlpacaTradingEngine engine = new AlpacaTradingEngine("bad", "bad", "http://localhost:1");
         assertThat(engine.syncOrders()).isEmpty();
     }
+
+    @Test
+    void getMarketClock_returnsClosedOnError() {
+        AlpacaTradingEngine engine = new AlpacaTradingEngine("bad", "bad", "http://localhost:1");
+        MarketClock clock = engine.getMarketClock();
+        assertThat(clock.isOpen()).isFalse();
+        assertThat(clock.timestamp()).isNotNull();
+    }
 }
