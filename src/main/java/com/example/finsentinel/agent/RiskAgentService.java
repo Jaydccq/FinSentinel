@@ -1,6 +1,7 @@
 package com.example.finsentinel.agent;
 
 import com.example.finsentinel.config.ComplianceProperties;
+import com.example.finsentinel.dto.risk.ComplianceNote;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.RiskReportEntity;
 import com.example.finsentinel.model.enums.RiskLevel;
@@ -40,9 +41,11 @@ public class RiskAgentService {
 
     /**
      * Run a full risk assessment for a user query.
-
-     * The LLM will autonomously call tools (StockMarketTool, TechnicalIndicatorTool, etc.)
-     * and return a structured RiskReport.
+     *
+     * <p>The LLM will autonomously call tools (StockMarketTool, TechnicalIndicatorTool, etc.)
+     * and return a structured RiskReport. Tools execute exactly once during the
+     * {@code .call().content()} phase; if the raw JSON cannot be parsed, a lightweight
+     * LLM call (no tools) attempts to fix it before falling back to a minimal report.
      */
     public RiskReport assess(String userMessage, UUID portfolioId, UUID userId) {
         log.info("Starting risk assessment: query='{}', portfolio={}",
@@ -52,7 +55,8 @@ public class RiskAgentService {
                 ? "- Use analyzePortfolio with portfolio ID: " + portfolioId
                 : "";
 
-        RiskReport report = riskAgentChatClient.prompt()
+        // Get raw response — tools execute ONCE here
+        String rawResponse = riskAgentChatClient.prompt()
                 .advisors(advisor -> advisor.param("userId", userId))
                 .system(sp -> sp
                         .param("complianceRegion", complianceProperties.getRegion())
@@ -63,7 +67,10 @@ public class RiskAgentService {
                         .param("portfolioContext", portfolioContext)
                         .param("complianceRegion", complianceProperties.getRegion()))
                 .call()
-                .entity(RiskReport.class);
+                .content();
+
+        // Parse with retry — tools do NOT re-execute
+        RiskReport report = parseWithRetry(rawResponse);
 
         log.info("Risk assessment complete: score={}, level={}",
                 report.riskScore(), report.riskLevel());
@@ -72,12 +79,51 @@ public class RiskAgentService {
             try {
                 persistReport(report, portfolioId);
             } catch (RuntimeException e) {
-                log.warn("Report computed successfully but persistence failed — " +
-                        "report will not appear in history: {}", e.getMessage());
+                log.warn("Report computed but persistence failed: {}", e.getMessage());
             }
         }
-
         return report;
+    }
+
+    /**
+     * Parse raw LLM output into a {@link RiskReport}, retrying with a lightweight
+     * LLM call (no tools registered) if the initial parse fails.
+     *
+     * <p>Three-stage strategy:
+     * <ol>
+     *   <li>Direct {@code objectMapper.readValue()} on the raw string</li>
+     *   <li>Ask the LLM to extract/fix JSON (ephemeral ChatClient, no tools)</li>
+     *   <li>Return a minimal valid report so the caller never receives null</li>
+     * </ol>
+     */
+    private RiskReport parseWithRetry(String rawResponse) {
+        // First attempt: direct parse
+        try {
+            return objectMapper.readValue(rawResponse, RiskReport.class);
+        } catch (Exception e) {
+            log.warn("Structured output parse failed, asking LLM to fix JSON: {}", e.getMessage());
+        }
+
+        // Second attempt: ask LLM to extract/fix JSON (no tools — lightweight call)
+        try {
+            String fixed = ChatClient.create(chatModel).prompt()
+                    .user("The following text should be a valid JSON object conforming to the RiskReport schema " +
+                          "(riskScore, riskLevel, summary, factors, actionableAdvice, complianceNote). " +
+                          "Extract and return ONLY the valid JSON, fixing any formatting issues:\n\n" + rawResponse)
+                    .call()
+                    .content();
+            return objectMapper.readValue(fixed, RiskReport.class);
+        } catch (Exception retryEx) {
+            log.error("Parse retry also failed, returning minimal report", retryEx);
+        }
+
+        // Final fallback: return a minimal valid report
+        return new RiskReport(1, "LOW",
+                "Risk assessment completed but output could not be parsed. Please try again.",
+                java.util.List.of(),
+                java.util.List.of("Retry your query for a structured risk report."),
+                new ComplianceNote(
+                        complianceProperties.getDisclaimer(), "SEC", true));
     }
 
     /**
