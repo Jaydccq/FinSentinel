@@ -30,7 +30,6 @@ public class AgentEvent {
     @Column(updatable = false, nullable = false)
     private UUID id;
 
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "seq_no", insertable = false, updatable = false, nullable = false)
     private Long seqNo;
 
