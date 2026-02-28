@@ -17,6 +17,8 @@ import {
   ChevronRight,
   UserCircle2,
   Settings,
+  TrendingUp,
+  Bot,
 } from 'lucide-react'
 
 const NAV = [
@@ -26,7 +28,9 @@ const NAV = [
   { to: '/analysis', label: 'Risk Analysis', icon: BarChart2 },
   { to: '/documents', label: 'Documents', icon: FileText },
   { to: '/reports', label: 'Reports', icon: FileDown },
+  { to: '/trading', label: 'Trading', icon: TrendingUp },
   { to: '/news', label: 'News Feed', icon: Newspaper },
+  { to: '/autonomy', label: 'Autonomy', icon: Bot },
   { to: '/settings', label: 'Settings', icon: Settings },
 ]
 
@@ -46,7 +50,9 @@ function routeMeta(pathname: string) {
     '/analysis': { title: 'Risk Analysis', subtitle: 'Structured assessment with factor-level breakdown' },
     '/documents': { title: 'Documents', subtitle: 'Upload, parse, and manage financial source files' },
     '/reports': { title: 'Reports', subtitle: 'Generate and export investor-ready deliverables' },
+    '/trading': { title: 'Trading Desk', subtitle: 'Stage, commit, and execute trades with git-like workflow' },
     '/news': { title: 'News Feed', subtitle: 'Live headlines that affect your holdings' },
+    '/autonomy': { title: 'Agent Autonomy', subtitle: 'Scheduled tasks, heartbeat monitoring, and event timeline' },
     '/settings': { title: 'Settings', subtitle: 'Account preferences and watchlist management' },
   }
 
