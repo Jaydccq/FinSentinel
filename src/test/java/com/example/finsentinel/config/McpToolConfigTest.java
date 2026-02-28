@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.util.Arrays;
 import java.util.Set;
@@ -27,6 +28,10 @@ class McpToolConfigTest {
     @BeforeEach
     void setUp() {
         var config = new McpToolConfig();
+        @SuppressWarnings("unchecked")
+        ObjectProvider<CryptoNewsTool> cryptoProvider = mock(ObjectProvider.class);
+        @SuppressWarnings("unchecked")
+        ObjectProvider<TwitterTool> twitterProvider = mock(ObjectProvider.class);
         provider = config.mcpToolCallbackProvider(
                 mock(StockMarketTool.class),
                 mock(TechnicalIndicatorTool.class),
@@ -37,7 +42,9 @@ class McpToolConfigTest {
                 mock(OwnershipTool.class),
                 mock(ShortInterestTool.class),
                 mock(NewsAnalysisTool.class),
-                mock(ComplianceCheckTool.class));
+                mock(ComplianceCheckTool.class),
+                cryptoProvider,
+                twitterProvider);
     }
 
     @Test
