@@ -9,5 +9,6 @@ public enum NewsSource {
     RSS_NPR,
     RSS_REUTERS_PROXY,
     X_INFLUENCER,
+    RSS_SIGNALHUB,
     CRYPTO_6551
 }

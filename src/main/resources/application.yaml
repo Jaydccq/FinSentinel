@@ -195,6 +195,9 @@ app:
       - name: Reuters Economy (Google News Proxy)
         url: "https://news.google.com/rss/search?q=site:reuters.com+economy&hl=en-US&gl=US&ceid=US:en"
         source: RSS_REUTERS_PROXY
+      - name: SignalHub AI Viral Topic Radar
+        url: https://getsignalhub.com/trackers/cf0ff10f-fe20-4148-a70c-b9678173956e/rss
+        source: RSS_SIGNALHUB
     retention-days: 30
     enrich:
       enabled: ${APP_NEWS_ENRICH_ENABLED:true}
