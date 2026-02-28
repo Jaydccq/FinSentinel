@@ -261,6 +261,25 @@ app:
       - punk6529
       - frxresearch
 
+  crypto-news:
+    enabled: ${APP_CRYPTO_NEWS_ENABLED:false}
+    api-token: ${CRYPTO_NEWS_6551_TOKEN:}
+    base-url: ${CRYPTO_NEWS_BASE_URL:https://ai.6551.io}
+    poll-interval-ms: ${CRYPTO_NEWS_POLL_MS:300000}
+    min-ai-score: ${CRYPTO_NEWS_MIN_SCORE:70}
+    max-results-per-fetch: ${CRYPTO_NEWS_MAX_RESULTS:30}
+    watch-coins:
+      - BTC
+      - ETH
+      - SOL
+
+  twitter-6551:
+    enabled: ${APP_TWITTER_6551_ENABLED:false}
+    api-token: ${TWITTER_6551_TOKEN:}
+    base-url: ${TWITTER_6551_BASE_URL:https://ai.6551.io}
+    max-results: ${TWITTER_6551_MAX_RESULTS:100}
+    cache-ttl-minutes: ${TWITTER_6551_CACHE_TTL:10}
+
   compliance:
     region: US
     disclaimer: "This is AI-generated analysis for informational purposes only. It does not constitute investment advice. Past performance does not guarantee future results. Consult a licensed financial advisor before making investment decisions."

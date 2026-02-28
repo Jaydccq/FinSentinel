@@ -8,5 +8,6 @@ public enum NewsSource {
     RSS_GUARDIAN,
     RSS_NPR,
     RSS_REUTERS_PROXY,
-    X_INFLUENCER
+    X_INFLUENCER,
+    CRYPTO_6551
 }
