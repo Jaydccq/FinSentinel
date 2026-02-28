@@ -33,11 +33,11 @@ public class TwitterDataService {
     }
 
     public JsonNode getUserInfo(String username) {
-        return post("/open/twitter/user", Map.of("username", username));
+        return post("/open/twitter_user", Map.of("username", username));
     }
 
     public JsonNode getUserById(String userId) {
-        return post("/open/twitter/user_by_id", Map.of("userId", userId));
+        return post("/open/twitter_user_by_id", Map.of("userId", userId));
     }
 
     public JsonNode getUserTweets(String username, int maxResults,
@@ -47,7 +47,7 @@ public class TwitterDataService {
         body.put("maxResults", Math.min(maxResults, properties.getMaxResults()));
         body.put("includeReplies", includeReplies);
         body.put("includeRetweets", includeRetweets);
-        return post("/open/twitter/user_tweets", body);
+        return post("/open/twitter_user_tweets", body);
     }
 
     public JsonNode searchTweets(String keywords, String fromUser, String hashtag,
@@ -58,7 +58,7 @@ public class TwitterDataService {
         if (hashtag != null && !hashtag.isBlank()) body.put("hashtag", hashtag);
         if (minLikes > 0) body.put("minLikes", minLikes);
         body.put("maxResults", Math.min(maxResults, properties.getMaxResults()));
-        return post("/open/twitter/search", body);
+        return post("/open/twitter_search", body);
     }
 
     public JsonNode getFollowerEvents(String username, boolean isFollow, int maxResults) {
@@ -66,18 +66,18 @@ public class TwitterDataService {
         body.put("username", username);
         body.put("isFollow", isFollow);
         body.put("maxResults", Math.min(maxResults, properties.getMaxResults()));
-        return post("/open/twitter/follower_events", body);
+        return post("/open/twitter_follower_events", body);
     }
 
     public JsonNode getDeletedTweets(String username, int maxResults) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("username", username);
         body.put("maxResults", Math.min(maxResults, properties.getMaxResults()));
-        return post("/open/twitter/deleted_tweets", body);
+        return post("/open/twitter_deleted_tweets", body);
     }
 
     public JsonNode getKolFollowers(String username) {
-        return post("/open/twitter/kol_followers", Map.of("username", username));
+        return post("/open/twitter_kol_followers", Map.of("username", username));
     }
 
     private JsonNode post(String path, Map<String, Object> body) {
