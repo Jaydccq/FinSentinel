@@ -41,4 +41,7 @@ public interface NewsItemRepository extends JpaRepository<NewsItem, UUID> {
            countQuery = "SELECT COUNT(*) FROM news_items WHERE tickers @> jsonb_build_array(:ticker)",
            nativeQuery = true)
     Page<NewsItem> findByTickerContaining(@Param("ticker") String ticker, Pageable pageable);
+
+    @Query("SELECT n FROM NewsItem n WHERE n.enriched = true AND n.documentId IS NOT NULL AND n.createdAt < :before ORDER BY n.createdAt ASC")
+    List<NewsItem> findArchivableBefore(@Param("before") Instant before, Pageable pageable);
 }
