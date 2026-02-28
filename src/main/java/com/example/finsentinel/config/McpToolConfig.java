@@ -3,6 +3,7 @@ package com.example.finsentinel.config;
 import com.example.finsentinel.agent.tool.*;
 import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -34,20 +35,23 @@ public class McpToolConfig {
             OwnershipTool ownershipTool,
             ShortInterestTool shortInterestTool,
             NewsAnalysisTool newsAnalysisTool,
-            ComplianceCheckTool complianceCheckTool) {
+            ComplianceCheckTool complianceCheckTool,
+            ObjectProvider<CryptoNewsTool> cryptoNewsToolProvider,
+            ObjectProvider<TwitterTool> twitterToolProvider) {
+
+        var tools = new java.util.ArrayList<Object>(java.util.List.of(
+                stockMarketTool, technicalIndicatorTool, companyResearchTool,
+                equityScreenerTool, quantAnalysisTool, marketCalendarTool,
+                ownershipTool, shortInterestTool, newsAnalysisTool,
+                complianceCheckTool));
+
+        CryptoNewsTool cryptoNewsTool = cryptoNewsToolProvider.getIfAvailable();
+        if (cryptoNewsTool != null) tools.add(cryptoNewsTool);
+        TwitterTool twitterTool = twitterToolProvider.getIfAvailable();
+        if (twitterTool != null) tools.add(twitterTool);
 
         return MethodToolCallbackProvider.builder()
-                .toolObjects(
-                        stockMarketTool,
-                        technicalIndicatorTool,
-                        companyResearchTool,
-                        equityScreenerTool,
-                        quantAnalysisTool,
-                        marketCalendarTool,
-                        ownershipTool,
-                        shortInterestTool,
-                        newsAnalysisTool,
-                        complianceCheckTool)
+                .toolObjects(tools.toArray())
                 .build();
     }
 }

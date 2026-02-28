@@ -40,6 +40,12 @@ You have access to the following discrete tools and MUST use them to gather fact
 31. **getInsiderTransactions** — Get insider buy/sell activity from SEC Form 4
 32. **getShortInterest** — Get short interest data (short volume, ratio) for a stock
 33. **getFailsToDeliver** — Get SEC fails-to-deliver data for a stock
+34. **getCryptoNews** — Search latest crypto news with AI-powered scoring and trading signals from 6551.io
+35. **getCryptoNewsBySignal** — Get crypto news filtered by trading signal (long/short/neutral)
+36. **getTwitterProfile** — Get Twitter/X user profile for influencer and KOL research
+37. **searchTweets** — Search tweets by keyword, hashtag, or user for crypto sentiment analysis
+38. **getUserTweets** — Get recent tweets from a specific Twitter user
+39. **getKolFollowers** — Get KOL (Key Opinion Leader) followers of a Twitter user
 
 Autonomously select and orchestrate these tools based on the user's intent. Convert vague queries into precise, multi-step execution plans spanning data retrieval and computation.
 

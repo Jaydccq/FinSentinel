@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
@@ -48,6 +49,8 @@ public class AgentConfig {
      * @param marketCalendarTool market calendar tool (MarketCalendarTool)
      * @param ownershipTool ownership tool (OwnershipTool)
      * @param shortInterestTool short interest tool (ShortInterestTool)
+     * @param cryptoNewsToolProvider optional crypto news tool (CryptoNewsTool)
+     * @param twitterToolProvider optional twitter tool (TwitterTool)
      * @param questionAnswerAdvisor question answer advisor (QuestionAnswerAdvisor)
      * @param userContextAdvisor user context advisor (UserContextAdvisor)
      * @param complianceGuardrailAdvisor compliance guardrail advisor (ComplianceGuardrailAdvisor)
@@ -75,6 +78,8 @@ public class AgentConfig {
             MarketCalendarTool marketCalendarTool,
             OwnershipTool ownershipTool,
             ShortInterestTool shortInterestTool,
+            ObjectProvider<CryptoNewsTool> cryptoNewsToolProvider,
+            ObjectProvider<TwitterTool> twitterToolProvider,
             QuestionAnswerAdvisor questionAnswerAdvisor,
             UserContextAdvisor userContextAdvisor,
             ComplianceGuardrailAdvisor complianceGuardrailAdvisor) {
@@ -82,15 +87,21 @@ public class AgentConfig {
         String personaPath = personaProperties.getPersonasDir() + personaProperties.getPersona() + ".st";
         Resource systemPrompt = resourceLoader.getResource(personaPath);
 
+        var tools = new java.util.ArrayList<Object>(java.util.List.of(
+                stockMarketTool, newsAnalysisTool, technicalIndicatorTool,
+                portfolioAnalysisTool, complianceCheckTool, tradingTool, brainTool,
+                companyResearchTool, equityScreenerTool, quantAnalysisTool,
+                thinkingTool, userProfileTool, confirmationTool, autonomyTool,
+                marketCalendarTool, ownershipTool, shortInterestTool));
+
+        CryptoNewsTool cryptoNewsTool = cryptoNewsToolProvider.getIfAvailable();
+        if (cryptoNewsTool != null) tools.add(cryptoNewsTool);
+        TwitterTool twitterTool = twitterToolProvider.getIfAvailable();
+        if (twitterTool != null) tools.add(twitterTool);
+
         return ChatClient.builder(chatModel)
                 .defaultSystem(systemPrompt)
-                .defaultTools(stockMarketTool, newsAnalysisTool,
-                        technicalIndicatorTool, portfolioAnalysisTool,
-                        complianceCheckTool, tradingTool, brainTool,
-                        companyResearchTool, equityScreenerTool,
-                        quantAnalysisTool, thinkingTool, userProfileTool,
-                        confirmationTool, autonomyTool,
-                        marketCalendarTool, ownershipTool, shortInterestTool)
+                .defaultTools(tools.toArray())
                 .defaultAdvisors(questionAnswerAdvisor, userContextAdvisor, complianceGuardrailAdvisor)
                 .build();
     }
