@@ -59,7 +59,23 @@
       "Bash(ls:*)",
       "Bash(tail:*)",
       "mcp__plugin_claude-mem_mcp-search__search",
-      "mcp__plugin_claude-mem_mcp-search__get_observations"
+      "mcp__plugin_claude-mem_mcp-search__get_observations",
+      "Bash(./gradlew clean:*)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(done)",
+      "Bash(grep:*)",
+      "Bash(uv:*)",
+      "Bash(claude mcp:*)",
+      "Bash(__NEW_LINE_8904aac83dafadac__ curl:*)",
+      "Bash(./gradlew bootRun:*)",
+      "Bash(set:*)",
+      "Bash(docker restart:*)",
+      "Bash(xargs cat:*)",
+      "Bash(PGPASSWORD=123456 psql:*)",
+      "Bash(__NEW_LINE_b0ef5bd5c877b389__ echo:*)",
+      "Bash(echo Login failed - no token:*)",
+      "Bash(__NEW_LINE_e44ab607a646a23e__ echo:*)"
     ]
   },
   "hooks": {

@@ -21,8 +21,8 @@ export default function LoginPage() {
       const res = await apiLogin(username, password)
       login(res)
       navigate('/dashboard')
-    } catch {
-      setError('Invalid username or password')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid username or password')
     } finally {
       setLoading(false)
     }

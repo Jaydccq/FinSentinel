@@ -46,8 +46,8 @@ export default function RegisterPage() {
       const res = await apiRegister(form.username, form.email, form.password)
       login(res)
       navigate('/dashboard')
-    } catch {
-      setError('Registration failed. Username may already exist.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Registration failed.')
     } finally {
       setLoading(false)
     }
@@ -89,6 +89,10 @@ export default function RegisterPage() {
             </div>
           )
         })}
+
+        <p className="text-xs text-white/40">
+          Password: min 8 chars, must include uppercase, lowercase, and a digit.
+        </p>
 
         {error && (
           <div

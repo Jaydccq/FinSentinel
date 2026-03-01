@@ -68,7 +68,7 @@ services:
       APP_STORAGE_SECRET_KEY: rustfsadmin
       APP_STORAGE_BUCKET: finsentinel
       APP_STORAGE_REGION: us-east-1
-      HIBERNATE_DDL_AUTO: validate
+      HIBERNATE_DDL_AUTO: update
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       AI_MODEL: ${AI_MODEL:-google/gemini-3-flash-preview}
       POLYGON_API_KEY: ${POLYGON_API_KEY}
