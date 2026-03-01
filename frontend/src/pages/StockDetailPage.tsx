@@ -7,6 +7,7 @@ import {
 } from 'recharts'
 import { marketApi, type QuoteData } from '../api/market'
 import { newsApi, type NewsSummary, type NewsItemResponse } from '../api/news'
+import StockAnalysisSection from '../components/StockAnalysisSection'
 
 interface HistoryBar {
   t: number; o: number; h: number; l: number; c: number; v: number
@@ -290,6 +291,12 @@ export default function StockDetailPage() {
           </ResponsiveContainer>
         )}
       </motion.div>
+
+      {/* AI Stock Analysis */}
+      <StockAnalysisSection
+        ticker={ticker!}
+        currentPrice={quote?.close ?? null}
+      />
 
       {/* AI News Brief */}
       <motion.div

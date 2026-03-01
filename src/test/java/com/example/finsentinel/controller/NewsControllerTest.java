@@ -4,6 +4,7 @@ import com.example.finsentinel.agent.RiskAgentService;
 import com.example.finsentinel.model.NewsItem;
 import com.example.finsentinel.model.enums.NewsSource;
 import com.example.finsentinel.repository.NewsItemRepository;
+import com.example.finsentinel.service.news.OnDemandNewsFetchService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,12 +28,13 @@ class NewsControllerTest {
 
     @Mock private NewsItemRepository newsItemRepository;
     @Mock private RiskAgentService riskAgentService;
+    @Mock private OnDemandNewsFetchService onDemandNewsFetchService;
 
     private NewsController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new NewsController(newsItemRepository, riskAgentService);
+        controller = new NewsController(newsItemRepository, riskAgentService, onDemandNewsFetchService);
     }
 
     @Test
