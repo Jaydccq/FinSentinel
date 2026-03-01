@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   ArrowRightCircle,
   Target,
+  Radio,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -29,6 +30,7 @@ import {
 } from '../api/okx'
 import { tradingApi } from '../api/trading'
 import EmptyState from '../components/EmptyState'
+import { useOkxPrices, type PriceSnapshot } from '../hooks/useOkxPrices'
 
 /* ─── Helpers ─── */
 
@@ -391,6 +393,22 @@ export default function CryptoTradingPage() {
   const accountTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const fundingTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  /* ─── Real-time prices (polling) ─── */
+
+  // Derive watched pairs from current positions so the hook only fetches what we hold
+  const watchedPairs = positions.length > 0
+    ? [...new Set(positions.map((p) => p.symbol))]
+    : ['BTC-USDT', 'ETH-USDT', 'SOL-USDT']
+
+  const { prices: livePrices } = useOkxPrices(watchedPairs)
+
+  /** Return the live price for a position if available, otherwise fall back to the static mark price. */
+  function resolveLivePrice(pos: OkxPositionInfo): { price: number; isLive: boolean } {
+    const snap: PriceSnapshot | undefined = livePrices.get(pos.symbol)
+    if (snap && snap.last > 0) return { price: snap.last, isLive: true }
+    return { price: pos.currentPrice, isLive: false }
+  }
+
   /* ─── Fetchers ─── */
 
   const fetchAccount = useCallback(async () => {
@@ -670,10 +688,15 @@ export default function CryptoTradingPage() {
               </thead>
               <tbody>
                 {filteredPositions.map((pos, idx) => {
+                  const { price: markPrice, isLive } = resolveLivePrice(pos)
+                  const livePnl = pos.side.toLowerCase() === 'short' || pos.side.toLowerCase() === 'sell'
+                    ? (pos.avgEntryPrice - markPrice) * pos.qty
+                    : (markPrice - pos.avgEntryPrice) * pos.qty
                   const pnlPct =
                     pos.avgEntryPrice > 0
-                      ? ((pos.currentPrice - pos.avgEntryPrice) / pos.avgEntryPrice) * 100
+                      ? ((markPrice - pos.avgEntryPrice) / pos.avgEntryPrice) * 100
                       : 0
+                  const displayPnl = isLive ? livePnl : pos.unrealizedPnL
                   const isExpanded = expandedPos === pos.symbol
 
                   return (
@@ -695,13 +718,19 @@ export default function CryptoTradingPage() {
                             <span className="px-3 py-2 text-right text-[var(--text-secondary)] font-data tabular-nums min-w-[90px]">
                               {usd(pos.avgEntryPrice)}
                             </span>
-                            <span className="px-3 py-2 text-right text-[var(--text-secondary)] font-data tabular-nums min-w-[90px]">
-                              {usd(pos.currentPrice)}
+                            <span className="px-3 py-2 text-right font-data tabular-nums min-w-[90px] flex items-center justify-end gap-1.5">
+                              <span className="text-[var(--text-secondary)]">{usd(markPrice)}</span>
+                              {isLive && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-400/25">
+                                  <Radio size={8} className="animate-pulse" />
+                                  Live
+                                </span>
+                              )}
                             </span>
                             <span
-                              className={`px-3 py-2 text-right font-data tabular-nums font-semibold min-w-[90px] ${pnlColor(pos.unrealizedPnL)}`}
+                              className={`px-3 py-2 text-right font-data tabular-nums font-semibold min-w-[90px] ${pnlColor(displayPnl)}`}
                             >
-                              {usd(pos.unrealizedPnL)}
+                              {usd(displayPnl)}
                             </span>
                             <span
                               className={`px-3 py-2 text-right font-data tabular-nums font-semibold min-w-[80px] ${pnlColor(pnlPct)}`}
