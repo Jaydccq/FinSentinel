@@ -19,15 +19,15 @@ function ensureCursorStyle() {
     style.id = CURSOR_STYLE_ID
     style.textContent = `
       @keyframes finsentinel-glow-pulse {
-        0%, 100% { opacity: 1; box-shadow: 0 0 4px 2px rgba(245,158,11,0.42); }
-        50%      { opacity: 0.3; box-shadow: 0 0 2px 1px rgba(245,158,11,0.2); }
+        0%, 100% { opacity: 1; box-shadow: 0 0 4px 2px rgba(59,130,246,0.42); }
+        50%      { opacity: 0.3; box-shadow: 0 0 2px 1px rgba(59,130,246,0.2); }
       }
       .fs-cursor {
         display: inline-block;
         width: 7px;
         height: 7px;
         border-radius: 50%;
-        background: #f59e0b;
+        background: #3b82f6;
         margin-left: 4px;
         vertical-align: middle;
         animation: finsentinel-glow-pulse 1.2s ease-in-out infinite;
@@ -208,37 +208,37 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-7.4rem)] min-h-[36rem] px-4 py-6 md:px-8 md:py-8">
-      <div className="h-full flex gap-4">
+    <div className="h-[calc(100vh-7.4rem)] min-h-[36rem] px-4 py-4 md:px-8 md:py-6">
+      <div className="h-full flex gap-3">
         {/* Sessions sidebar */}
         <AnimatePresence>
           {sidebarOpen && (
             <motion.aside
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 280, opacity: 1 }}
+              animate={{ width: 260, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="flex-shrink-0 h-full hidden md:flex flex-col glass-panel rounded-2xl overflow-hidden"
+              className="flex-shrink-0 h-full hidden md:flex flex-col glass-panel rounded overflow-hidden"
             >
-              <div className="px-4 py-3 border-b border-[color:var(--border-subtle)] flex items-center justify-between">
+              <div className="px-3 py-2.5 border-b border-[color:var(--border-subtle)] flex items-center justify-between">
                 <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-                  <History size={14} />
+                  <History size={13} />
                   <span className="text-xs uppercase tracking-[0.1em] font-semibold">Sessions</span>
                 </div>
                 <button
                   onClick={newChat}
-                  className="h-7 w-7 rounded-lg flex items-center justify-center text-amber-200 hover:bg-amber-400/15 transition-colors"
+                  className="h-6 w-6 rounded flex items-center justify-center text-blue-200 hover:bg-blue-400/15 transition-colors"
                   aria-label="New chat"
                 >
-                  <Plus size={14} />
+                  <Plus size={13} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
+              <div className="flex-1 overflow-y-auto px-1.5 py-1.5 space-y-0.5">
                 {sessionsLoading ? (
-                  <div className="px-2 py-4 space-y-2">
+                  <div className="px-2 py-3 space-y-1.5">
                     {Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="bg-slate-700/40 animate-pulse rounded-xl h-14" />
+                      <div key={i} className="bg-slate-700/40 animate-pulse rounded h-12" />
                     ))}
                   </div>
                 ) : sessions.length === 0 ? (
@@ -248,19 +248,19 @@ export default function ChatPage() {
                     <button
                       key={s.sessionId}
                       onClick={() => loadSession(s.sessionId)}
-                      className={`w-full text-left rounded-xl px-3 py-2.5 transition-all duration-150 ${
+                      className={`w-full text-left rounded px-2.5 py-2 transition-all duration-150 ${
                         sessionId === s.sessionId
-                          ? 'bg-amber-400/10 border border-amber-300/25'
+                          ? 'bg-blue-400/10 border border-blue-300/25'
                           : 'hover:bg-white/5 border border-transparent'
                       }`}
                     >
                       <div className="flex items-start gap-2">
-                        <MessageSquare size={13} className="text-[var(--text-muted)] mt-0.5 flex-shrink-0" />
+                        <MessageSquare size={12} className="text-[var(--text-muted)] mt-0.5 flex-shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm text-[var(--text-primary)] truncate leading-snug">
+                          <p className="text-xs text-[var(--text-primary)] truncate leading-snug">
                             {s.firstMessage}
                           </p>
-                          <p className="text-[11px] text-[var(--text-muted)] mt-1">
+                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
                             {s.messageCount} msgs · {timeAgo(s.lastMessageAt)}
                           </p>
                         </div>
@@ -274,34 +274,34 @@ export default function ChatPage() {
         </AnimatePresence>
 
         {/* Main chat area */}
-        <div className="flex-1 min-w-0 h-full grid grid-rows-[auto_1fr_auto] glass-panel rounded-3xl overflow-hidden">
-          <header className="px-5 py-4 md:px-6 border-b border-[color:var(--border-subtle)] bg-slate-900/25">
+        <div className="flex-1 min-w-0 h-full grid grid-rows-[auto_1fr_auto] glass-panel rounded overflow-hidden">
+          <header className="px-4 py-3 md:px-5 border-b border-[color:var(--border-subtle)] bg-slate-900/25">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                  className="hidden md:flex h-8 w-8 rounded-lg items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
+                  className="hidden md:flex h-7 w-7 rounded items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
                   aria-label={sidebarOpen ? 'Hide sessions' : 'Show sessions'}
                 >
-                  {sidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeft size={16} />}
+                  {sidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeft size={15} />}
                 </button>
                 <div>
-                  <h1 className="text-2xl md:text-3xl font-display text-[var(--text-primary)]">AI Risk Advisor</h1>
-                  <p className="text-sm text-[var(--text-secondary)] mt-0.5">Streaming analysis for portfolio risk and SEC-aware constraints</p>
+                  <h1 className="text-xl md:text-2xl font-semibold text-[var(--text-primary)]">AI Risk Advisor</h1>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">Streaming analysis for portfolio risk and SEC-aware constraints</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <span className="status-chip bg-cyan-500/10 border-cyan-400/25 text-cyan-100">
-                  <Sparkles size={12} />
+                  <Sparkles size={11} />
                   Agent online
                 </span>
                 {portfolios.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Briefcase size={13} className="text-[var(--text-muted)]" />
+                  <div className="flex items-center gap-1.5">
+                    <Briefcase size={12} className="text-[var(--text-muted)]" />
                     <select
                       value={selectedPortfolioId}
                       onChange={e => setSelectedPortfolioId(e.target.value)}
-                      className="bg-slate-800/60 border border-[color:var(--border-subtle)] rounded-lg text-xs text-[var(--text-secondary)] py-1.5 px-2.5 max-w-[180px] focus:outline-none focus:border-amber-400/40"
+                      className="bg-slate-800/60 border border-[color:var(--border-subtle)] rounded text-xs text-[var(--text-secondary)] py-1 px-2 max-w-[160px] focus:outline-none focus:border-blue-400/40"
                     >
                       <option value="">No portfolio context</option>
                       {portfolios.map(p => (
@@ -314,18 +314,18 @@ export default function ChatPage() {
             </div>
           </header>
 
-          <section className="overflow-y-auto px-4 py-5 md:px-6 md:py-6" aria-live="polite">
+          <section className="overflow-y-auto px-4 py-4 md:px-5" aria-live="polite">
             {messages.length === 0 && (
               <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 className="h-full flex flex-col items-center justify-center text-center px-4"
               >
-                <div className="h-16 w-16 rounded-2xl bg-amber-400/12 border border-amber-400/25 flex items-center justify-center mb-4">
-                  <Bot size={30} className="text-amber-200" aria-hidden="true" />
+                <div className="h-14 w-14 rounded bg-blue-400/12 border border-blue-400/25 flex items-center justify-center mb-3">
+                  <Bot size={26} className="text-blue-200" aria-hidden="true" />
                 </div>
                 <p className="text-base font-semibold text-[var(--text-primary)]">Ask FinSentinel anything about your portfolio risk.</p>
-                <p className="mt-1.5 text-sm text-[var(--text-secondary)] max-w-md">Try: concentration risk, macro event exposure, or compliance-sensitive rebalancing options.</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)] max-w-md">Try: concentration risk, macro event exposure, or compliance-sensitive rebalancing options.</p>
               </motion.div>
             )}
 
@@ -333,33 +333,33 @@ export default function ChatPage() {
               {messages.map((message, i) => (
                 <motion.div
                   key={`${message.timestamp}-${i}`}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`flex gap-3 mb-4 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className={`flex gap-2.5 mb-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   {message.role === 'assistant' && (
-                    <div className="h-8 w-8 rounded-xl bg-amber-400/20 border border-amber-300/25 text-amber-100 flex items-center justify-center flex-shrink-0 mt-1">
-                      <Bot size={14} aria-hidden="true" />
+                    <div className="h-7 w-7 rounded bg-blue-400/20 border border-blue-300/25 text-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Bot size={13} aria-hidden="true" />
                     </div>
                   )}
 
-                  <div className={`max-w-[85%] md:max-w-[70%] ${message.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+                  <div className={`max-w-[85%] md:max-w-[70%] ${message.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-0.5`}>
                     <div
-                      className={`rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+                      className={`rounded px-3 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
                         message.role === 'user'
-                          ? 'bg-gradient-to-br from-amber-300 to-amber-500 text-[#1d1302] rounded-br-md shadow-lg shadow-amber-900/20'
-                          : 'surface-panel text-[var(--text-primary)] rounded-bl-md'
+                          ? 'bg-blue-500/15 text-blue-100 rounded-br-none'
+                          : 'surface-panel text-[var(--text-primary)] rounded-bl-none'
                       }`}
                     >
                       {message.content}
                       {message.streaming && <span className="fs-cursor" aria-hidden="true" />}
                     </div>
-                    <p className="text-[11px] text-[var(--text-muted)]">{message.timestamp}</p>
+                    <p className="text-[10px] text-[var(--text-muted)]">{message.timestamp}</p>
                   </div>
 
                   {message.role === 'user' && (
-                    <div className="h-8 w-8 rounded-xl bg-slate-700/40 border border-[color:var(--border-subtle)] text-slate-100 flex items-center justify-center flex-shrink-0 mt-1">
-                      <User size={14} aria-hidden="true" />
+                    <div className="h-7 w-7 rounded bg-slate-700/40 border border-[color:var(--border-subtle)] text-slate-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <User size={13} aria-hidden="true" />
                     </div>
                   )}
                 </motion.div>
@@ -369,8 +369,8 @@ export default function ChatPage() {
             <div ref={bottomRef} />
           </section>
 
-          <footer className="px-4 py-4 md:px-6 border-t border-[color:var(--border-subtle)] bg-slate-900/25">
-            <div className="flex gap-3">
+          <footer className="px-4 py-3 md:px-5 border-t border-[color:var(--border-subtle)] bg-slate-900/25">
+            <div className="flex gap-2">
               <input
                 className="field-input"
                 placeholder="Ask about factor risk, scenario impact, sector concentration..."
@@ -382,10 +382,10 @@ export default function ChatPage() {
               <button
                 onClick={send}
                 disabled={streaming || !input.trim()}
-                className="btn-primary px-4"
+                className="btn-primary px-3"
                 aria-label="Send message"
               >
-                <Send size={16} />
+                <Send size={15} />
               </button>
             </div>
           </footer>

@@ -43,19 +43,20 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 space-y-6">
-      <section className="glass-panel rounded-3xl p-6 md:p-8">
+    <div className="px-4 py-4 md:px-6 md:py-4 space-y-4">
+      {/* Page Header */}
+      <section className="glass-panel rounded p-3 md:p-4">
         <div className="flex items-center gap-3 mb-1">
-          <SettingsIcon size={20} className="text-amber-400" />
+          <SettingsIcon size={18} className="text-blue-400" />
           <h1 className="page-title">Settings</h1>
         </div>
         <p className="page-subtitle">Manage your account and preferences.</p>
       </section>
 
       {/* Account Info */}
-      <section className="glass-panel rounded-2xl p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Account</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <section className="glass-panel rounded p-3 md:p-4 space-y-3">
+        <h2 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Account</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <p className="text-xs text-[var(--text-muted)] mb-1">Username</p>
             <p className="text-sm text-[var(--text-primary)] font-medium">{user?.username ?? '-'}</p>
@@ -68,8 +69,8 @@ export default function SettingsPage() {
       </section>
 
       {/* Watchlist */}
-      <section className="glass-panel rounded-2xl p-6 space-y-4">
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider">Watchlist</h2>
+      <section className="glass-panel rounded p-3 md:p-4 space-y-3">
+        <h2 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Watchlist</h2>
         <p className="text-xs text-[var(--text-muted)]">
           Track tickers you're interested in. Saved locally in your browser.
         </p>
@@ -83,26 +84,26 @@ export default function SettingsPage() {
             onKeyDown={e => { if (e.key === 'Enter') addTicker() }}
           />
           <button onClick={addTicker} className="btn-primary px-4 py-2 text-sm">
-            <Plus size={15} /> Add
+            <Plus size={14} /> Add
           </button>
         </div>
 
         {watchlist.length === 0 ? (
-          <p className="text-sm text-[var(--text-muted)] py-4 text-center">No tickers in your watchlist yet.</p>
+          <p className="text-sm text-[var(--text-muted)] py-3 text-center">No tickers in your watchlist yet.</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {watchlist.map(t => (
               <span
                 key={t}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-400/20 text-amber-100 text-sm font-medium"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-blue-500/10 border border-blue-400/20 text-blue-200 text-xs font-medium"
               >
                 {t}
                 <button
                   onClick={() => removeTicker(t)}
                   aria-label={`Remove ${t}`}
-                  className="h-4 w-4 rounded-full flex items-center justify-center hover:bg-amber-400/20 transition-colors"
+                  className="h-3.5 w-3.5 flex items-center justify-center hover:text-blue-100 transition-colors"
                 >
-                  <X size={12} />
+                  <X size={11} />
                 </button>
               </span>
             ))}

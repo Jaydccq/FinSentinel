@@ -60,7 +60,7 @@ export default function RegisterPage() {
       footer={(
         <p>
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-amber-200 hover:text-amber-100 transition-colors">
+          <Link to="/login" className="font-semibold text-blue-400 hover:text-blue-300 transition-colors">
             Sign in
           </Link>
         </p>
@@ -96,7 +96,7 @@ export default function RegisterPage() {
 
         {error && (
           <div
-            className="rounded-xl border border-red-300/30 bg-red-500/10 px-3.5 py-2.5 text-sm text-red-200 flex items-center gap-2"
+            className="rounded border border-red-300/30 bg-red-500/10 px-3.5 py-2.5 text-sm text-red-200 flex items-center gap-2"
             role="alert"
           >
             <AlertCircle size={15} aria-hidden="true" />

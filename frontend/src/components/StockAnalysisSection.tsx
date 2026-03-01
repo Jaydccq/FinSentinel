@@ -13,11 +13,11 @@ interface Props {
 }
 
 const REC_COLORS: Record<string, string> = {
-  STRONG_BUY: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
-  BUY: 'bg-green-500/20 text-green-300 border-green-400/30',
-  HOLD: 'bg-amber-500/20 text-amber-300 border-amber-400/30',
-  SELL: 'bg-orange-500/20 text-orange-300 border-orange-400/30',
-  STRONG_SELL: 'bg-red-500/20 text-red-300 border-red-400/30',
+  STRONG_BUY: 'bg-blue-500/15 text-blue-300 border-blue-400/30',
+  BUY: 'bg-blue-500/10 text-blue-400 border-blue-400/20',
+  HOLD: 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-strong)]',
+  SELL: 'bg-red-500/10 text-red-400 border-red-500/20',
+  STRONG_SELL: 'bg-red-500/15 text-red-300 border-red-400/30',
 }
 
 const REC_LABELS: Record<string, string> = {
@@ -29,10 +29,10 @@ const REC_LABELS: Record<string, string> = {
 }
 
 const RISK_COLORS: Record<string, string> = {
-  LOW: 'text-emerald-400',
-  MEDIUM: 'text-amber-400',
+  LOW: 'text-[var(--up)]',
+  MEDIUM: 'text-[var(--warn)]',
   HIGH: 'text-orange-400',
-  CRITICAL: 'text-red-400',
+  CRITICAL: 'text-[var(--down)]',
 }
 
 export default function StockAnalysisSection({ ticker }: Props) {
@@ -97,38 +97,38 @@ export default function StockAnalysisSection({ ticker }: Props) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.12 }}
-      className="bg-zinc-900 rounded-xl border border-zinc-800/50 overflow-hidden"
+      className="bg-[var(--bg-panel)] rounded border border-[var(--border-subtle)] overflow-hidden"
     >
       {/* Header with trigger button */}
-      <div className="flex items-center justify-between p-6">
+      <div className="flex items-center justify-between px-5 py-4">
         <div className="flex items-center gap-3">
-          <span className="w-[2px] h-5 bg-emerald-500 rounded-full inline-block" />
-          <Sparkles size={16} className="text-emerald-400" />
-          <h2 className="text-lg font-display text-zinc-200">AI Stock Analysis</h2>
+          <span className="w-[2px] h-4 bg-blue-500 inline-block" />
+          <Sparkles size={14} className="text-blue-400" />
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] tracking-wide uppercase">AI Stock Analysis</h2>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={runAnalysis}
             disabled={isRunning}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/15 text-emerald-300 font-medium text-sm border border-emerald-400/20 hover:bg-emerald-500/25 hover:border-emerald-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-blue-500/15 text-blue-300 font-medium text-xs border border-blue-400/20 hover:bg-blue-500/25 hover:border-blue-400/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
           >
             {isRunning ? (
               <>
-                <Loader2 size={14} className="animate-spin" />
+                <Loader2 size={12} className="animate-spin" />
                 Analyzing...
               </>
             ) : (
               <>
-                <Sparkles size={14} />
+                <Sparkles size={12} />
                 {narrative ? 'Re-analyze' : 'Run AI Analysis'}
               </>
             )}
           </button>
 
           {(narrative || error) && (
-            <button onClick={() => setIsOpen(!isOpen)} className="text-zinc-500 hover:text-zinc-300">
-              {isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            <button onClick={() => setIsOpen(!isOpen)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+              {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
           )}
         </div>
@@ -141,13 +141,13 @@ export default function StockAnalysisSection({ ticker }: Props) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.25 }}
             className="overflow-hidden"
           >
-            <div className="px-6 pb-6 space-y-6">
+            <div className="border-t border-[var(--border-subtle)] px-5 py-4 space-y-4">
               {/* Error state */}
               {error && (
-                <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
+                <div className="p-3 rounded bg-red-500/10 border border-red-500/20 text-[var(--down)] text-xs">
                   Analysis failed: {error}
                 </div>
               )}
@@ -156,62 +156,62 @@ export default function StockAnalysisSection({ ticker }: Props) {
               {displayNarrative && (
                 <div
                   ref={narrativeRef}
-                  className="max-h-[500px] overflow-y-auto pr-2 text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap font-mono"
-                  style={{ scrollbarWidth: 'thin', scrollbarColor: '#3f3f46 transparent' }}
+                  className="max-h-[480px] overflow-y-auto pr-2 text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap font-mono"
+                  style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border-strong) transparent' }}
                 >
                   {displayNarrative}
-                  {isRunning && <span className="inline-block w-2 h-4 bg-emerald-400/60 animate-pulse ml-0.5" />}
+                  {isRunning && <span className="inline-block w-2 h-3.5 bg-blue-400/60 animate-pulse ml-0.5" />}
                 </div>
               )}
 
               {/* Structured result card */}
               {result && (
                 <motion.div
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="space-y-4"
+                  className="space-y-3"
                 >
                   {/* Recommendation header */}
-                  <div className="flex items-center gap-4 flex-wrap">
-                    <span className={`px-3 py-1.5 rounded-lg text-sm font-bold border ${REC_COLORS[result.recommendation] ?? ''}`}>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className={`px-2.5 py-1 rounded text-xs font-bold border status-chip ${REC_COLORS[result.recommendation] ?? ''}`}>
                       {REC_LABELS[result.recommendation] ?? result.recommendation}
                     </span>
-                    <span className="text-zinc-400 text-sm">
-                      Confidence: <span className="text-zinc-200 font-semibold">{result.confidencePercent}%</span>
+                    <span className="text-[var(--text-muted)] text-xs">
+                      Confidence: <span className="text-[var(--text-primary)] font-semibold">{result.confidencePercent}%</span>
                     </span>
-                    <span className="text-zinc-400 text-sm">
-                      Value: <span className="text-zinc-200 font-semibold">{result.valueRating} ({result.valueScore}/12)</span>
+                    <span className="text-[var(--text-muted)] text-xs">
+                      Value: <span className="text-[var(--text-primary)] font-semibold">{result.valueRating} ({result.valueScore}/12)</span>
                     </span>
-                    <span className={`text-sm ${RISK_COLORS[result.riskLevel] ?? 'text-zinc-400'}`}>
-                      <ShieldAlert size={13} className="inline mr-1" />
+                    <span className={`text-xs ${RISK_COLORS[result.riskLevel] ?? 'text-[var(--text-muted)]'}`}>
+                      <ShieldAlert size={11} className="inline mr-1" />
                       {result.riskLevel} Risk
                     </span>
                   </div>
 
                   {/* Price zones grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-lg p-3">
-                      <p className="text-emerald-400/70 text-xs flex items-center gap-1"><TrendingUp size={11} />Buy Zone</p>
-                      <p className="text-emerald-300 font-semibold font-data tabular-nums mt-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded p-2.5">
+                      <p className="text-[var(--up)] text-[10px] flex items-center gap-1 opacity-70"><TrendingUp size={10} />Buy Zone</p>
+                      <p className="text-green-400 font-semibold font-mono text-xs tabular-nums mt-1">
                         ${result.buyZone.low.toFixed(2)} – ${result.buyZone.high.toFixed(2)}
                       </p>
                     </div>
-                    <div className="bg-amber-500/5 border border-amber-500/15 rounded-lg p-3">
-                      <p className="text-amber-400/70 text-xs flex items-center gap-1"><Target size={11} />Target Price</p>
-                      <p className="text-amber-300 font-semibold font-data tabular-nums mt-1">
+                    <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded p-2.5">
+                      <p className="text-blue-400 text-[10px] flex items-center gap-1 opacity-70"><Target size={10} />Target Price</p>
+                      <p className="text-blue-300 font-semibold font-mono text-xs tabular-nums mt-1">
                         ${result.targetPrice.toFixed(2)}
-                        <span className="text-xs ml-1 text-amber-400/60">(+{result.impliedUpside.toFixed(1)}%)</span>
+                        <span className="text-[10px] ml-1 text-blue-400/60">(+{result.impliedUpside.toFixed(1)}%)</span>
                       </p>
                     </div>
-                    <div className="bg-orange-500/5 border border-orange-500/15 rounded-lg p-3">
-                      <p className="text-orange-400/70 text-xs flex items-center gap-1"><TrendingDown size={11} />Sell Zone</p>
-                      <p className="text-orange-300 font-semibold font-data tabular-nums mt-1">
+                    <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded p-2.5">
+                      <p className="text-orange-400 text-[10px] flex items-center gap-1 opacity-70"><TrendingDown size={10} />Sell Zone</p>
+                      <p className="text-orange-300 font-semibold font-mono text-xs tabular-nums mt-1">
                         ${result.sellZone.low.toFixed(2)} – ${result.sellZone.high.toFixed(2)}
                       </p>
                     </div>
-                    <div className="bg-red-500/5 border border-red-500/15 rounded-lg p-3">
-                      <p className="text-red-400/70 text-xs flex items-center gap-1"><ShieldAlert size={11} />Stop Loss</p>
-                      <p className="text-red-300 font-semibold font-data tabular-nums mt-1">
+                    <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded p-2.5">
+                      <p className="text-[var(--down)] text-[10px] flex items-center gap-1 opacity-70"><ShieldAlert size={10} />Stop Loss</p>
+                      <p className="text-red-400 font-semibold font-mono text-xs tabular-nums mt-1">
                         ${result.stopLoss.toFixed(2)}
                       </p>
                     </div>
@@ -220,9 +220,9 @@ export default function StockAnalysisSection({ ticker }: Props) {
                   {/* Key Forces */}
                   {result.keyForces.length > 0 && (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-zinc-500 text-xs">Key Forces:</span>
+                      <span className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider">Key Forces:</span>
                       {result.keyForces.map((force, i) => (
-                        <span key={i} className="px-2 py-0.5 rounded text-xs bg-zinc-800 text-zinc-300 border border-zinc-700/50">
+                        <span key={i} className="px-2 py-0.5 rounded text-[10px] bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
                           {force}
                         </span>
                       ))}
@@ -231,37 +231,37 @@ export default function StockAnalysisSection({ ticker }: Props) {
 
                   {/* Stage trade action */}
                   {result.suggestedAction && result.suggestedAction.action !== 'HOLD' && (
-                    <div className="flex items-center gap-4 p-4 rounded-lg bg-zinc-800/50 border border-zinc-700/30">
+                    <div className="flex items-center gap-3 p-3 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">
                       <div className="flex-1">
-                        <p className="text-zinc-300 text-sm font-medium">
-                          Suggested: <span className={result.suggestedAction.action === 'BUY' ? 'text-emerald-400' : 'text-red-400'}>
+                        <p className="text-[var(--text-primary)] text-xs font-medium">
+                          Suggested: <span className={result.suggestedAction.action === 'BUY' ? 'text-[var(--up)]' : 'text-[var(--down)]'}>
                             {result.suggestedAction.action}
                           </span>
                           {' '}{ticker}
-                          {result.suggestedAction.shares && ` × ${result.suggestedAction.shares} shares`}
+                          {result.suggestedAction.shares && ` x ${result.suggestedAction.shares} shares`}
                           {result.suggestedAction.amount && ` $${result.suggestedAction.amount}`}
                         </p>
-                        <p className="text-zinc-500 text-xs mt-0.5">{result.suggestedAction.rationale}</p>
+                        <p className="text-[var(--text-muted)] text-[10px] mt-0.5">{result.suggestedAction.rationale}</p>
                       </div>
                       {staged ? (
-                        <span className="px-3 py-1.5 rounded-lg text-xs bg-emerald-500/15 text-emerald-300 border border-emerald-400/20">
+                        <span className="px-2.5 py-1 rounded text-[10px] status-chip bg-blue-500/15 text-blue-300 border border-blue-400/20">
                           Staged
                         </span>
                       ) : (
                         <button
                           onClick={handleStage}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-500/15 text-amber-300 border border-amber-400/20 hover:bg-amber-500/25 hover:border-amber-400/40 transition-all"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium bg-blue-500/15 text-blue-300 border border-blue-400/20 hover:bg-blue-500/25 hover:border-blue-400/40 transition-all"
                         >
-                          <ArrowRightCircle size={14} />
+                          <ArrowRightCircle size={12} />
                           Stage Trade
                         </button>
                       )}
-                      {stagingError && <span className="text-red-400 text-xs">{stagingError}</span>}
+                      {stagingError && <span className="text-[var(--down)] text-[10px]">{stagingError}</span>}
                     </div>
                   )}
 
                   {/* Disclaimer */}
-                  <p className="text-zinc-600 text-[10px] leading-tight">
+                  <p className="text-[var(--text-muted)] text-[10px] leading-tight opacity-60">
                     {result.disclaimer}
                   </p>
                 </motion.div>

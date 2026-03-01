@@ -75,7 +75,8 @@
       "Bash(PGPASSWORD=123456 psql:*)",
       "Bash(__NEW_LINE_b0ef5bd5c877b389__ echo:*)",
       "Bash(echo Login failed - no token:*)",
-      "Bash(__NEW_LINE_e44ab607a646a23e__ echo:*)"
+      "Bash(__NEW_LINE_e44ab607a646a23e__ echo:*)",
+      "Skill(commit-commands:commit)"
     ]
   },
   "hooks": {

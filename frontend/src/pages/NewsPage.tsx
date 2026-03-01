@@ -31,7 +31,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 const SOURCE_COLORS: Record<string, string> = {
   POLYGON: 'bg-blue-500/20 text-blue-100 border-blue-300/30',
-  RSS_CNBC: 'bg-amber-500/20 text-amber-100 border-amber-300/30',
+  RSS_CNBC: 'bg-blue-500/20 text-blue-100 border-blue-300/30',
   RSS_YAHOO: 'bg-violet-500/20 text-violet-100 border-violet-300/30',
   RSS_BBC: 'bg-rose-500/20 text-rose-100 border-rose-300/30',
   RSS_GUARDIAN: 'bg-sky-500/20 text-sky-100 border-sky-300/30',
@@ -39,12 +39,12 @@ const SOURCE_COLORS: Record<string, string> = {
   RSS_REUTERS_PROXY: 'bg-orange-500/20 text-orange-100 border-orange-300/30',
   X_INFLUENCER: 'bg-slate-500/20 text-slate-100 border-slate-300/30',
   RSS_SIGNALHUB: 'bg-indigo-500/20 text-indigo-100 border-indigo-300/30',
-  CRYPTO_6551: 'bg-emerald-500/20 text-emerald-100 border-emerald-300/30',
+  CRYPTO_6551: 'bg-green-500/20 text-green-100 border-green-300/30',
 }
 
 const SENTIMENT_STYLE: Record<string, string> = {
-  POSITIVE: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/25',
-  NEGATIVE: 'bg-red-500/15 text-red-300 border-red-400/25',
+  POSITIVE: 'bg-green-500/15 text-[var(--up)] border-green-400/25',
+  NEGATIVE: 'bg-red-500/15 text-[var(--down)] border-red-400/25',
   NEUTRAL: 'bg-slate-600/20 text-slate-300 border-slate-400/25',
 }
 
@@ -85,11 +85,11 @@ function EnrichedDot({ enriched }: { enriched: boolean }) {
     <span
       title={enriched ? 'Fully indexed for RAG' : 'Raw headline — not yet enriched'}
       className={`inline-flex items-center gap-1 text-[11px] ${
-        enriched ? 'text-emerald-300' : 'text-[var(--text-muted)]'
+        enriched ? 'text-[var(--up)]' : 'text-[var(--text-muted)]'
       }`}
     >
       {enriched ? (
-        <Zap size={10} className="text-emerald-400" />
+        <Zap size={10} className="text-[var(--up)]" />
       ) : (
         <span className="h-1.5 w-1.5 rounded-full bg-slate-600 inline-block" />
       )}
@@ -102,12 +102,12 @@ function NewsCard({ item }: { item: NewsItemResponse }) {
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="surface-panel rounded-2xl p-4 md:p-5"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="surface-panel rounded p-3 md:p-4"
     >
       <div className="flex items-start gap-3">
-        <div className="hidden sm:block text-right min-w-14">
+        <div className="hidden sm:block text-right min-w-12">
           <p className="text-xs text-[var(--text-muted)] font-data">{formatTime(item.publishedAt)}</p>
         </div>
 
@@ -118,16 +118,16 @@ function NewsCard({ item }: { item: NewsItemResponse }) {
             </span>
             <SentimentBadge sentiment={item.sentiment} />
             <EnrichedDot enriched={item.enriched} />
-            <h3 className="text-sm md:text-[15px] font-semibold text-[var(--text-primary)] leading-snug">{item.title}</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] leading-snug">{item.title}</h3>
           </div>
 
           {item.summary && (
-            <p className={`text-sm text-[var(--text-secondary)] mt-2 leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}>
+            <p className={`text-sm text-[var(--text-secondary)] mt-1.5 leading-relaxed ${expanded ? '' : 'line-clamp-2'}`}>
               {item.summary}
             </p>
           )}
 
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
             {item.tickers?.slice(0, 4).map(ticker => (
               <span key={ticker} className="status-chip bg-cyan-500/12 text-cyan-100 border-cyan-400/20 font-data">
                 ${ticker}
@@ -142,10 +142,10 @@ function NewsCard({ item }: { item: NewsItemResponse }) {
                 href={item.articleUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="h-7 w-7 rounded-lg inline-flex items-center justify-center text-[var(--text-muted)] hover:text-amber-100 hover:bg-amber-400/15 transition-colors"
+                className="h-6 w-6 rounded inline-flex items-center justify-center text-[var(--text-muted)] hover:text-blue-100 hover:bg-blue-400/15 transition-colors"
                 aria-label="Open article"
               >
-                <ExternalLink size={13} />
+                <ExternalLink size={12} />
               </a>
             )}
           </div>
@@ -281,18 +281,18 @@ export default function NewsPage() {
   }, [page, tickerActive, loadingMore])
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5">
-      <section className="space-y-5">
-        <div className="glass-panel rounded-3xl p-6 md:p-7">
+    <div className="px-4 py-4 md:px-8 md:py-6 grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-4">
+      <section className="space-y-4">
+        <div className="glass-panel rounded p-3 md:p-4">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div>
-              <p className="text-xs uppercase tracking-[0.13em] text-amber-200/80">Market Signal</p>
-              <h1 className="page-title mt-3">News Feed</h1>
+              <p className="text-xs uppercase tracking-[0.13em] text-blue-200/80">Market Signal</p>
+              <h1 className="page-title mt-2">News Feed</h1>
               <p className="page-subtitle">Live financial headlines prioritized by relevance and source diversity.</p>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="status-chip bg-emerald-500/12 border-emerald-300/25 text-emerald-100">
+              <span className="status-chip bg-green-500/12 border-green-300/25 text-[var(--up)]">
                 <Radio size={12} className="animate-pulse" />
                 Live stream
               </span>
@@ -304,16 +304,16 @@ export default function NewsPage() {
             </div>
           </div>
 
-          <div className="section-divider my-4" />
+          <div className="section-divider my-3" />
 
           {/* Ticker search */}
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3 mb-2.5">
             <span className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)] inline-flex items-center gap-1.5">
-              <Search size={12} /> Ticker
+              <Search size={11} /> Ticker
             </span>
-            <div className="relative flex-1 max-w-[200px]">
+            <div className="relative flex-1 max-w-[180px]">
               <input
-                className="field-input py-1.5 pr-8 text-xs font-data uppercase"
+                className="field-input py-1 pr-7 text-xs font-data uppercase"
                 placeholder="e.g. AAPL or BTC"
                 value={tickerSearch}
                 onChange={e => setTickerSearch(e.target.value.toUpperCase())}
@@ -326,14 +326,14 @@ export default function NewsPage() {
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                   aria-label="Clear ticker filter"
                 >
-                  <X size={13} />
+                  <X size={12} />
                 </button>
               )}
             </div>
             <button
               onClick={searchByTicker}
               disabled={!tickerSearch.trim()}
-              className="btn-ghost px-3 py-1.5 text-xs disabled:opacity-40"
+              className="btn-ghost px-2 py-1 text-xs disabled:opacity-40"
             >
               Filter
             </button>
@@ -345,9 +345,9 @@ export default function NewsPage() {
           </div>
 
           {/* Source filter */}
-          <div className="flex items-center gap-2 flex-wrap mb-3">
+          <div className="flex items-center gap-2 flex-wrap mb-2.5">
             <span className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)] inline-flex items-center gap-1.5">
-              <Filter size={12} /> Source
+              <Filter size={11} /> Source
             </span>
             {sources.map(source => (
               <button
@@ -355,7 +355,7 @@ export default function NewsPage() {
                 onClick={() => setSourceFilter(source)}
                 className={`status-chip border transition-colors ${
                   sourceFilter === source
-                    ? 'bg-amber-400/18 border-amber-300/30 text-amber-100'
+                    ? 'bg-blue-400/18 border-blue-300/30 text-blue-100'
                     : 'bg-slate-800/30 border-[color:var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
@@ -367,7 +367,7 @@ export default function NewsPage() {
           {/* Sentiment filter */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)] inline-flex items-center gap-1.5">
-              <Filter size={12} /> Sentiment
+              <Filter size={11} /> Sentiment
             </span>
             {['ALL', 'POSITIVE', 'NEGATIVE', 'NEUTRAL'].map(s => (
               <button
@@ -375,7 +375,7 @@ export default function NewsPage() {
                 onClick={() => setSentimentFilter(s)}
                 className={`status-chip border transition-colors ${
                   sentimentFilter === s
-                    ? 'bg-amber-400/18 border-amber-300/30 text-amber-100'
+                    ? 'bg-blue-400/18 border-blue-300/30 text-blue-100'
                     : 'bg-slate-800/30 border-[color:var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
@@ -394,7 +394,7 @@ export default function NewsPage() {
             description="Try adjusting your filters or check back later."
           />
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             <AnimatePresence initial={false}>
               {filteredItems.map(item => (
                 <NewsCard key={item.id} item={item} />
@@ -405,7 +405,7 @@ export default function NewsPage() {
               <button
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="btn-ghost w-full py-2.5 text-sm disabled:opacity-50"
+                className="btn-ghost w-full py-2 text-sm disabled:opacity-50"
               >
                 {loadingMore ? 'Loading\u2026' : 'Load more'}
               </button>
@@ -414,21 +414,21 @@ export default function NewsPage() {
         )}
       </section>
 
-      <aside className="space-y-4 xl:sticky xl:top-24 xl:h-fit">
-        <div className="surface-panel rounded-2xl p-4">
+      <aside className="space-y-3 xl:sticky xl:top-24 xl:h-fit">
+        <div className="surface-panel rounded p-3">
           <p className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)]">Today</p>
-          <p className="kpi-value mt-2">{stats?.todayCount ?? 0}</p>
+          <p className="kpi-value mt-1.5">{stats?.todayCount ?? 0}</p>
           <p className="text-xs text-[var(--text-secondary)]">headline items</p>
         </div>
 
-        <div className="surface-panel rounded-2xl p-4">
+        <div className="surface-panel rounded p-3">
           <p className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)]">Total</p>
-          <p className="kpi-value mt-2">{stats?.totalCount ?? 0}</p>
+          <p className="kpi-value mt-1.5">{stats?.totalCount ?? 0}</p>
         </div>
 
-        <div className="surface-panel rounded-2xl p-4">
-          <p className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)] mb-3">By Source</p>
-          <div className="space-y-2.5">
+        <div className="surface-panel rounded p-3">
+          <p className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)] mb-2.5">By Source</p>
+          <div className="space-y-2">
             {stats?.countBySource && Object.entries(stats.countBySource).length > 0 ? (
               Object.entries(stats.countBySource).map(([source, count]) => (
                 <div key={source} className="flex items-center justify-between">
@@ -444,8 +444,8 @@ export default function NewsPage() {
           </div>
         </div>
 
-        <div className="surface-panel rounded-2xl p-4 flex items-center gap-2.5 text-sm text-[var(--text-secondary)]">
-          <CircleDot size={14} className="text-emerald-300" />
+        <div className="surface-panel rounded p-3 flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+          <CircleDot size={13} className="text-[var(--up)]" />
           Stream connection active
         </div>
       </aside>

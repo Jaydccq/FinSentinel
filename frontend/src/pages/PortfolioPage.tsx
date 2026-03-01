@@ -10,9 +10,9 @@ import TickerSearchInput from '../components/TickerSearchInput'
 
 const SECTOR_COLORS: Record<string, string> = {
   Technology: 'bg-blue-500/15 text-blue-100 border-blue-300/30',
-  Healthcare: 'bg-emerald-500/15 text-emerald-100 border-emerald-300/30',
+  Healthcare: 'bg-green-500/15 text-green-100 border-green-300/30',
   Finance: 'bg-violet-500/15 text-violet-100 border-violet-300/30',
-  Energy: 'bg-amber-500/15 text-amber-100 border-amber-300/30',
+  Energy: 'bg-blue-500/15 text-blue-100 border-blue-300/30',
   'Real Estate': 'bg-rose-500/15 text-rose-100 border-rose-300/30',
   Consumer: 'bg-cyan-500/15 text-cyan-100 border-cyan-300/30',
   Industrials: 'bg-orange-500/15 text-orange-100 border-orange-300/30',
@@ -27,9 +27,9 @@ const PIE_COLORS = [
 ]
 
 const HHI_STYLE: Record<string, string> = {
-  'Well Diversified': 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30',
-  'Moderately Concentrated': 'bg-amber-500/15 text-amber-300 border-amber-400/30',
-  'Highly Concentrated': 'bg-red-500/15 text-red-300 border-red-400/30',
+  'Well Diversified': 'bg-green-500/15 text-[var(--up)] border-green-400/30',
+  'Moderately Concentrated': 'bg-yellow-500/15 text-[var(--warn)] border-yellow-400/30',
+  'Highly Concentrated': 'bg-red-500/15 text-[var(--down)] border-red-400/30',
 }
 
 function sectorClass(sector?: string | null) {
@@ -40,7 +40,7 @@ function sectorClass(sector?: string | null) {
 function SectorBadge({ sector }: { sector?: string | null }) {
   if (!sector) return <span className="text-[var(--text-muted)]">-</span>
   return (
-    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium border ${sectorClass(sector)}`}>
+    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium border ${sectorClass(sector)}`}>
       {sector}
     </span>
   )
@@ -63,17 +63,17 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={title}>
       <motion.div
         ref={dialogRef}
         initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.16, ease: 'easeOut' }}
-        className="glass-panel w-full max-w-md rounded-2xl p-5"
+        className="glass-panel w-full max-w-md rounded p-4"
       >
-        <h2 className="text-xl font-display text-[var(--text-primary)] mb-3">{title}</h2>
+        <h2 className="text-xl font-semibold text-[var(--text-primary)] mb-3">{title}</h2>
         {children}
-        <button onClick={onClose} className="btn-ghost mt-4 px-3 py-2 text-xs">Cancel</button>
+        <button onClick={onClose} className="btn-ghost mt-3 px-3 py-2 text-xs">Cancel</button>
       </motion.div>
     </div>
   )
@@ -184,14 +184,14 @@ export default function PortfolioPage() {
   }
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 space-y-6">
-      <section className="glass-panel rounded-3xl p-6 md:p-8 flex items-start justify-between gap-4 flex-wrap">
+    <div className="px-4 py-4 md:px-8 md:py-6 space-y-4">
+      <section className="glass-panel rounded p-3 md:p-4 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="page-title">Portfolio Studio</h1>
           <p className="page-subtitle">Create portfolios, manage holdings, and review sector exposure.</p>
         </div>
-        <button onClick={() => setShowCreatePortfolio(true)} className="btn-primary px-4 py-2.5 text-sm">
-          <Plus size={15} />
+        <button onClick={() => setShowCreatePortfolio(true)} className="btn-primary px-4 py-2 text-sm">
+          <Plus size={14} />
           New Portfolio
         </button>
       </section>
@@ -205,23 +205,23 @@ export default function PortfolioPage() {
           description="Create one to get started with risk analysis."
         />
       ) : (
-        <section className="space-y-4">
+        <section className="space-y-3">
           {portfolios.map(portfolio => (
             <motion.div
               key={portfolio.id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="surface-panel rounded-2xl overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="surface-panel rounded overflow-hidden"
             >
-              <div className="flex items-center justify-between gap-3 px-4 py-4 md:px-5 md:py-4">
+              <div className="flex items-center justify-between gap-3 px-3 py-3 md:px-4">
                 <div className="flex items-center gap-3 min-w-0">
                   <button
                     onClick={() => toggleExpand(portfolio.id)}
                     aria-label={expanded === portfolio.id ? 'Collapse holdings' : 'Expand holdings'}
-                    className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
+                    className="h-7 w-7 rounded flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
                   >
                     <ChevronDown
-                      size={17}
+                      size={15}
                       className="transition-transform duration-200"
                       style={{ transform: expanded === portfolio.id ? 'rotate(180deg)' : 'rotate(0deg)' }}
                     />
@@ -229,23 +229,23 @@ export default function PortfolioPage() {
 
                   <div className="min-w-0">
                     <p className="font-semibold text-[var(--text-primary)] truncate">{portfolio.name}</p>
-                    <p className="text-xs text-[var(--text-muted)] truncate mt-1">{portfolio.description || 'No description'}</p>
+                    <p className="text-xs text-[var(--text-muted)] truncate mt-0.5">{portfolio.description || 'No description'}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
-                  <span className="kpi-value text-base sm:text-lg text-emerald-200">
+                  <span className="kpi-value text-base sm:text-lg text-[var(--up)]">
                     ${Number(portfolio.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </span>
-                  <button onClick={() => setShowAddHolding(portfolio.id)} className="btn-ghost px-3 py-1.5 text-xs">
-                    <Plus size={13} /> Add Holding
+                  <button onClick={() => setShowAddHolding(portfolio.id)} className="btn-ghost px-2 py-1 text-xs">
+                    <Plus size={12} /> Add
                   </button>
                   <button
                     onClick={() => deletePortfolio(portfolio.id)}
                     aria-label="Delete portfolio"
-                    className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-red-200 hover:bg-red-500/15 transition-colors"
+                    className="h-7 w-7 rounded flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--down)] hover:bg-red-500/15 transition-colors"
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={13} />
                   </button>
                 </div>
               </div>
@@ -256,18 +256,18 @@ export default function PortfolioPage() {
                   const a = analytics[portfolio.id]
                   const pieData = Object.entries(a.sectorAllocation).map(([name, value]) => ({ name, value: Number(value) }))
                   return (
-                    <div className="px-5 py-4 border-b border-[color:var(--border-subtle)] space-y-4">
-                      <div className="flex flex-wrap items-start gap-6">
+                    <div className="px-4 py-3 border-b border-[color:var(--border-subtle)] space-y-3">
+                      <div className="flex flex-wrap items-start gap-5">
                         {pieData.length > 0 && (
-                          <div className="w-52 h-52">
+                          <div className="w-44 h-44">
                             <ResponsiveContainer width="100%" height="100%">
                               <PieChart>
                                 <Pie
                                   data={pieData}
                                   cx="50%"
                                   cy="50%"
-                                  innerRadius={40}
-                                  outerRadius={70}
+                                  innerRadius={36}
+                                  outerRadius={62}
                                   dataKey="value"
                                   stroke="none"
                                 >
@@ -277,23 +277,23 @@ export default function PortfolioPage() {
                                 </Pie>
                                 <Tooltip
                                   formatter={(v: number | undefined) => v != null ? `${v.toFixed(1)}%` : ''}
-                                  contentStyle={{ background: '#1e1e2e', border: '1px solid #333', borderRadius: '8px', fontSize: '12px' }}
+                                  contentStyle={{ background: '#111113', border: '1px solid #252528', borderRadius: '4px', fontSize: '12px' }}
                                 />
                               </PieChart>
                             </ResponsiveContainer>
                           </div>
                         )}
-                        <div className="flex-1 min-w-[200px] space-y-3">
+                        <div className="flex-1 min-w-[200px] space-y-2">
                           <div className="flex items-center gap-3 flex-wrap">
-                            <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold border ${HHI_STYLE[a.hhiClassification] ?? 'bg-slate-700 text-slate-300 border-slate-500/30'}`}>
+                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold border ${HHI_STYLE[a.hhiClassification] ?? 'bg-slate-700 text-slate-300 border-slate-500/30'}`}>
                               HHI: {a.hhiIndex.toFixed(0)} — {a.hhiClassification}
                             </span>
                           </div>
                           {pieData.length > 0 && (
                             <div className="flex flex-wrap gap-2">
                               {pieData.map((entry, i) => (
-                                <span key={entry.name} className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-                                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
+                                <span key={entry.name} className="flex items-center gap-1 text-xs text-[var(--text-secondary)]">
+                                  <span className="h-2 w-2 rounded-full" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
                                   {entry.name}: {entry.value.toFixed(1)}%
                                 </span>
                               ))}
@@ -302,7 +302,7 @@ export default function PortfolioPage() {
                           {a.concentrationWarnings.length > 0 && (
                             <div className="space-y-1">
                               {a.concentrationWarnings.map((w, i) => (
-                                <p key={i} className="text-xs text-amber-400/90 flex items-start gap-1.5">
+                                <p key={i} className="text-xs text-[var(--warn)] flex items-start gap-1.5">
                                   <span className="mt-0.5">&#9888;</span> {w}
                                 </p>
                               ))}
@@ -313,21 +313,21 @@ export default function PortfolioPage() {
                     </div>
                   )
                 })()}
-                  <table className="w-full text-sm min-w-[760px]">
+                  <table className="table-terminal w-full min-w-[760px]">
                     <thead>
                       <tr className="bg-slate-900/35 text-[var(--text-muted)] text-xs border-b border-[color:var(--border-subtle)]">
-                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-[0.08em]">Symbol</th>
-                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-[0.08em]">Company</th>
-                        <th className="px-4 py-3 text-right font-semibold uppercase tracking-[0.08em]">Qty</th>
-                        <th className="px-4 py-3 text-right font-semibold uppercase tracking-[0.08em]">Avg Cost</th>
-                        <th className="px-4 py-3 text-left font-semibold uppercase tracking-[0.08em]">Sector</th>
-                        <th className="px-4 py-3 text-right font-semibold uppercase tracking-[0.08em]">Action</th>
+                        <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Symbol</th>
+                        <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Company</th>
+                        <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Qty</th>
+                        <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Avg Cost</th>
+                        <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Sector</th>
+                        <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {portfolio.holdings.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-4 py-4 text-center text-[var(--text-muted)]">No holdings yet</td>
+                          <td colSpan={6} className="px-3 py-4 text-center text-[var(--text-muted)]">No holdings yet</td>
                         </tr>
                       ) : (
                         portfolio.holdings.map((holding, idx) => (
@@ -335,18 +335,18 @@ export default function PortfolioPage() {
                             key={holding.id}
                             className={`border-b border-[color:var(--border-subtle)] hover:bg-white/5 transition-colors ${idx % 2 === 1 ? 'bg-slate-900/15' : ''}`}
                           >
-                            <td className="px-4 py-3 font-data font-bold text-amber-100">{holding.symbol}</td>
-                            <td className="px-4 py-3 text-[var(--text-secondary)]">{holding.companyName || '-'}</td>
-                            <td className="px-4 py-3 text-right text-[var(--text-secondary)] font-data tabular-nums">{holding.quantity}</td>
-                            <td className="px-4 py-3 text-right text-[var(--text-secondary)] font-data tabular-nums">${Number(holding.averageCost).toFixed(2)}</td>
-                            <td className="px-4 py-3"><SectorBadge sector={holding.sector} /></td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-3 py-2 font-data font-bold text-blue-100">{holding.symbol}</td>
+                            <td className="px-3 py-2 text-[var(--text-secondary)]">{holding.companyName || '-'}</td>
+                            <td className="px-3 py-2 text-right text-[var(--text-secondary)] font-data tabular-nums">{holding.quantity}</td>
+                            <td className="px-3 py-2 text-right text-[var(--text-secondary)] font-data tabular-nums">${Number(holding.averageCost).toFixed(2)}</td>
+                            <td className="px-3 py-2"><SectorBadge sector={holding.sector} /></td>
+                            <td className="px-3 py-2 text-right">
                               <button
                                 onClick={() => deleteHolding(portfolio.id, holding.id)}
                                 aria-label={`Delete holding ${holding.symbol}`}
-                                className="h-7 w-7 rounded-md inline-flex items-center justify-center text-[var(--text-muted)] hover:text-red-200 hover:bg-red-500/15 transition-colors"
+                                className="h-6 w-6 rounded inline-flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--down)] hover:bg-red-500/15 transition-colors"
                               >
-                                <Trash2 size={13} />
+                                <Trash2 size={12} />
                               </button>
                             </td>
                           </tr>
@@ -366,7 +366,7 @@ export default function PortfolioPage() {
           <div className="space-y-3">
             <InputField id="port-name" label="Name" value={portForm.name} onChange={v => setPortForm(f => ({ ...f, name: v }))} />
             <InputField id="port-desc" label="Description (optional)" value={portForm.description} onChange={v => setPortForm(f => ({ ...f, description: v }))} />
-            <button onClick={createPortfolio} className="btn-primary w-full py-2.5 text-sm">Create</button>
+            <button onClick={createPortfolio} className="btn-primary w-full py-2 text-sm">Create</button>
           </div>
         </Modal>
       )}
@@ -393,7 +393,7 @@ export default function PortfolioPage() {
               <div>
                 <label className="field-label">Symbol</label>
                 <div className="flex items-center gap-2">
-                  <span className="field-input flex-1 py-2 text-amber-200 font-data font-bold">
+                  <span className="field-input flex-1 py-2 text-blue-200 font-data font-bold">
                     {holdForm.symbol}
                   </span>
                   <button
@@ -412,7 +412,7 @@ export default function PortfolioPage() {
             <button
               onClick={() => addHolding(showAddHolding)}
               disabled={!holdForm.symbol || !holdForm.quantity || !holdForm.averageCost}
-              className="btn-primary w-full py-2.5 text-sm disabled:opacity-40"
+              className="btn-primary w-full py-2 text-sm disabled:opacity-40"
             >
               Add Holding
             </button>

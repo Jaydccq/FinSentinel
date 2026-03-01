@@ -13,23 +13,23 @@ const STATUSES = ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED']
 const STATUS_STYLE: Record<string, { border: string; badge: string; label: string }> = {
   COMPLETED: {
     border: 'border-l-emerald-500',
-    badge: 'bg-emerald-500/15 text-emerald-400',
-    label: 'Completed',
+    badge:  'bg-emerald-500/15 text-emerald-400',
+    label:  'Completed',
   },
   PROCESSING: {
     border: 'border-l-blue-500',
-    badge: 'bg-blue-500/15 text-blue-400',
-    label: 'Processing',
+    badge:  'bg-blue-500/15 text-blue-400',
+    label:  'Processing',
   },
   PENDING: {
     border: 'border-l-yellow-500',
-    badge: 'bg-yellow-500/15 text-yellow-400',
-    label: 'Pending',
+    badge:  'bg-yellow-500/15 text-yellow-400',
+    label:  'Pending',
   },
   FAILED: {
     border: 'border-l-red-500',
-    badge: 'bg-red-500/15 text-red-400',
-    label: 'Failed',
+    badge:  'bg-red-500/15 text-red-400',
+    label:  'Failed',
   },
 }
 
@@ -38,7 +38,7 @@ const DOC_TYPE_ICON: Record<string, { icon: React.ReactNode; color: string }> = 
   RESEARCH:   { icon: <BarChart2 size={16} />, color: 'text-blue-400' },
   NEWS:       { icon: <Newspaper size={16} />, color: 'text-purple-400' },
   EARNINGS:   { icon: <FileText size={16} />, color: 'text-orange-400' },
-  OTHER:      { icon: <FolderOpen size={16} />, color: 'text-zinc-400' },
+  OTHER:      { icon: <FolderOpen size={16} />, color: 'text-[var(--text-secondary)]' },
 }
 
 function StatusIcon({ status }: { status: string }) {
@@ -49,9 +49,9 @@ function StatusIcon({ status }: { status: string }) {
 }
 
 function formatSize(bytes: number): string {
-  if (bytes < 1024)            return `${bytes} B`
-  if (bytes < 1024 * 1024)    return `${(bytes / 1024).toFixed(1)} KB`
-  return                              `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes < 1024)           return `${bytes} B`
+  if (bytes < 1024 * 1024)   return `${(bytes / 1024).toFixed(1)} KB`
+  return                             `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 function FilterChips({
@@ -72,8 +72,8 @@ function FilterChips({
         onClick={() => onSelect('')}
         className={`status-chip border transition-colors ${
           selected === ''
-            ? 'bg-amber-400/18 border-amber-300/30 text-amber-100'
-            : 'bg-slate-800/30 border-[color:var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+            ? 'bg-[var(--accent)]/15 border-[var(--accent)]/30 text-blue-100'
+            : 'bg-[var(--bg-elevated)] border-[color:var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
         }`}
       >
         All
@@ -84,8 +84,8 @@ function FilterChips({
           onClick={() => onSelect(opt)}
           className={`status-chip border transition-colors ${
             selected === opt
-              ? 'bg-amber-400/18 border-amber-300/30 text-amber-100'
-              : 'bg-slate-800/30 border-[color:var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+              ? 'bg-[var(--accent)]/15 border-[var(--accent)]/30 text-blue-100'
+              : 'bg-[var(--bg-elevated)] border-[color:var(--border-subtle)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           {opt}
@@ -96,20 +96,20 @@ function FilterChips({
 }
 
 export default function DocumentsPage() {
-  const [docs,         setDocs]         = useState<DocumentResponse[]>([])
-  const [loading,      setLoading]      = useState(true)
-  const [uploading,    setUploading]    = useState(false)
-  const [docType,      setDocType]      = useState('REGULATION')
-  const [sector,       setSector]       = useState('')
-  const [dragOver,     setDragOver]     = useState(false)
-  const [statusFilter, setStatusFilter] = useState('')
-  const [typeFilter,   setTypeFilter]   = useState('')
-  const [page,         setPage]         = useState(0)
-  const [pageSize,     setPageSize]     = useState(20)
-  const [totalPages,   setTotalPages]   = useState(0)
+  const [docs,          setDocs]          = useState<DocumentResponse[]>([])
+  const [loading,       setLoading]       = useState(true)
+  const [uploading,     setUploading]     = useState(false)
+  const [docType,       setDocType]       = useState('REGULATION')
+  const [sector,        setSector]        = useState('')
+  const [dragOver,      setDragOver]      = useState(false)
+  const [statusFilter,  setStatusFilter]  = useState('')
+  const [typeFilter,    setTypeFilter]    = useState('')
+  const [page,          setPage]          = useState(0)
+  const [pageSize,      setPageSize]      = useState(20)
+  const [totalPages,    setTotalPages]    = useState(0)
   const [totalElements, setTotalElements] = useState(0)
-  const fileRef = useRef<HTMLInputElement>(null)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const fileRef    = useRef<HTMLInputElement>(null)
+  const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null)
   const prevStatusRef = useRef<Record<string, string>>({})
 
   const refresh = useCallback(() => {
@@ -215,37 +215,37 @@ export default function DocumentsPage() {
   }
 
   const handleStatusFilter = (v: string) => { setStatusFilter(v); setPage(0) }
-  const handleTypeFilter = (v: string) => { setTypeFilter(v); setPage(0) }
+  const handleTypeFilter   = (v: string) => { setTypeFilter(v);   setPage(0) }
 
   return (
     <div className="p-10 space-y-10">
 
       {/* Page title */}
       <div>
-        <h1 className="text-3xl font-display text-stone-50">
+        <h1 className="text-3xl text-[var(--text-primary)]">
           Documents
         </h1>
-        <p className="text-zinc-500 text-sm mt-2">
+        <p className="text-[var(--text-muted)] text-sm mt-2">
           Upload regulatory filings, research reports, and news for RAG analysis
         </p>
       </div>
 
       {/* Upload area */}
-      <div className="bg-zinc-900 rounded-2xl border border-zinc-800/50 p-6 space-y-5">
-        <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider">
+      <div className="bg-[var(--bg-panel)] rounded border border-[var(--border-subtle)] p-6 space-y-5">
+        <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
           Upload Document
         </h2>
 
         <div className="flex gap-4 flex-wrap">
           <div>
-            <label htmlFor="doc-type" className="block text-xs text-zinc-500 mb-1.5 font-medium">
+            <label htmlFor="doc-type" className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">
               Document Type
             </label>
             <select
               id="doc-type"
-              className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-stone-50 text-sm
-                         focus:outline-none focus:ring-1 focus:ring-amber-500/20 focus:border-amber-500/40
-                         transition-all cursor-pointer"
+              className="bg-[var(--bg-elevated)] border border-[color:var(--border-subtle)] rounded px-3 py-2 text-[var(--text-primary)] text-sm
+                         focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)]/40
+                         transition-colors cursor-pointer"
               value={docType}
               onChange={e => setDocType(e.target.value)}
             >
@@ -254,14 +254,14 @@ export default function DocumentsPage() {
           </div>
 
           <div>
-            <label htmlFor="doc-sector" className="block text-xs text-zinc-500 mb-1.5 font-medium">
-              Sector <span className="text-zinc-600">(optional)</span>
+            <label htmlFor="doc-sector" className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">
+              Sector <span className="text-[var(--text-muted)] opacity-60">(optional)</span>
             </label>
             <input
               id="doc-sector"
-              className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-stone-50 text-sm w-44
-                         placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-amber-500/20
-                         focus:border-amber-500/40 transition-all"
+              className="bg-[var(--bg-elevated)] border border-[color:var(--border-subtle)] rounded px-3 py-2 text-[var(--text-primary)] text-sm w-44
+                         placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/20
+                         focus:border-[var(--accent)]/40 transition-colors"
               placeholder="e.g. Technology"
               value={sector}
               onChange={e => setSector(e.target.value)}
@@ -280,11 +280,11 @@ export default function DocumentsPage() {
           onClick={() => fileRef.current?.click()}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') fileRef.current?.click() }}
           className={`
-            relative border-2 border-dashed rounded-xl p-12 text-center cursor-pointer
-            transition-all duration-200
+            relative border-2 border-dashed rounded p-12 text-center cursor-pointer
+            transition-colors duration-200
             ${dragOver
-              ? 'border-amber-500 bg-amber-500/5 shadow-[0_0_24px_rgba(196,163,90,0.08)]'
-              : 'border-zinc-700/50 hover:border-zinc-600 hover:bg-zinc-800/20'
+              ? 'border-[var(--accent)] bg-[var(--accent)]/5'
+              : 'border-[color:var(--border-subtle)] hover:border-[color:var(--border-strong)] hover:bg-[var(--bg-elevated)]'
             }
           `}
         >
@@ -296,24 +296,24 @@ export default function DocumentsPage() {
             <Upload
               size={36}
               className={`mx-auto mb-3 transition-colors duration-200 ${
-                dragOver ? 'text-amber-400' : 'text-zinc-600'
+                dragOver ? 'text-[var(--accent)]' : 'text-[var(--text-muted)]'
               }`}
             />
           </motion.div>
 
           <p className={`text-sm font-medium transition-colors duration-200 ${
-            dragOver ? 'text-amber-300' : uploading ? 'text-amber-400' : 'text-zinc-400'
+            dragOver ? 'text-blue-300' : uploading ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'
           }`}>
             {uploading
-              ? 'Uploading…'
+              ? 'Uploading...'
               : dragOver
               ? 'Drop to upload'
               : 'Drop a file here or click to browse'}
           </p>
-          <p className="text-zinc-600 text-xs mt-1.5">PDF, DOCX, TXT, MD supported</p>
+          <p className="text-[var(--text-muted)] text-xs mt-1.5">PDF, DOCX, TXT, MD supported</p>
 
           <div className="mt-5 inline-flex">
-            <span className="px-4 py-1.5 rounded-lg text-xs font-semibold text-zinc-950 bg-amber-600">
+            <span className="px-4 py-1.5 rounded text-xs font-semibold text-white bg-[var(--accent)] hover:bg-blue-500 transition-colors">
               Browse Files
             </span>
           </div>
@@ -332,14 +332,14 @@ export default function DocumentsPage() {
       {/* Filter chips */}
       <div className="space-y-3">
         <FilterChips label="Status" options={STATUSES} selected={statusFilter} onSelect={handleStatusFilter} />
-        <FilterChips label="Type" options={DOC_TYPES} selected={typeFilter} onSelect={handleTypeFilter} />
+        <FilterChips label="Type"   options={DOC_TYPES} selected={typeFilter}   onSelect={handleTypeFilter} />
       </div>
 
       {/* Document list */}
       <div>
-        <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
+        <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-4">
           Uploaded Documents
-          <span className="ml-2 text-zinc-600 normal-case font-normal">({totalElements})</span>
+          <span className="ml-2 text-[var(--text-muted)] normal-case font-normal">({totalElements})</span>
         </h2>
 
         {loading ? (
@@ -363,11 +363,10 @@ export default function DocumentsPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
                   className={`
-                    bg-zinc-900 rounded-xl border border-zinc-800/50
+                    bg-[var(--bg-panel)] rounded border border-[color:var(--border-subtle)]
                     border-l-[3px] ${statusStyle.border}
                     px-5 py-3.5 flex items-center gap-4
-                    hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20
-                    hover:border-zinc-700/60 transition-all duration-200
+                    hover:border-[color:var(--border-strong)] transition-colors duration-200
                   `}
                 >
                   <span className={`flex-shrink-0 ${typeIcon.color}`} aria-hidden="true">
@@ -375,8 +374,8 @@ export default function DocumentsPage() {
                   </span>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-zinc-200 text-sm font-medium truncate">{d.fileName}</p>
-                    <p className="text-zinc-500 text-xs mt-0.5 truncate">
+                    <p className="text-[var(--text-primary)] text-sm font-medium truncate">{d.fileName}</p>
+                    <p className="text-[var(--text-muted)] text-xs mt-0.5 truncate">
                       {d.docType} · {formatSize(d.fileSize)} · {d.regionId}
                       {d.sector     ? ` · ${d.sector}` : ''}
                       {d.chunkCount != null ? ` · ${d.chunkCount} chunks` : ''}
@@ -384,7 +383,7 @@ export default function DocumentsPage() {
                   </div>
 
                   <div
-                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${statusStyle.badge}`}
+                    className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${statusStyle.badge}`}
                     aria-label={`Status: ${statusStyle.label}`}
                   >
                     <StatusIcon status={d.status} />
@@ -396,7 +395,7 @@ export default function DocumentsPage() {
                       <button
                         onClick={() => downloadDoc(d.id)}
                         aria-label={`Download ${d.fileName}`}
-                        className="h-7 w-7 rounded-md flex items-center justify-center text-[var(--text-muted)] hover:text-emerald-200 hover:bg-emerald-500/15 transition-colors"
+                        className="h-7 w-7 rounded flex items-center justify-center text-[var(--text-muted)] hover:text-emerald-200 hover:bg-emerald-500/15 transition-colors"
                       >
                         <Download size={14} />
                       </button>
@@ -404,7 +403,7 @@ export default function DocumentsPage() {
                     <button
                       onClick={() => deleteDoc(d.id)}
                       aria-label={`Delete ${d.fileName}`}
-                      className="h-7 w-7 rounded-md flex items-center justify-center text-[var(--text-muted)] hover:text-red-200 hover:bg-red-500/15 transition-colors"
+                      className="h-7 w-7 rounded flex items-center justify-center text-[var(--text-muted)] hover:text-red-200 hover:bg-red-500/15 transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>

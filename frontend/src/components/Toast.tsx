@@ -10,9 +10,11 @@ export default function Toast() {
         className: 'font-sans',
         style: {
           background: 'var(--bg-elevated)',
-          border: '1px solid var(--border-subtle)',
+          border: '1px solid var(--border-strong)',
           color: 'var(--text-primary)',
-          fontSize: '0.85rem',
+          fontSize: '0.8rem',
+          borderRadius: '4px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
         },
       }}
     />
