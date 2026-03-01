@@ -311,3 +311,17 @@ app:
       sandbox: true
       api-key: ${CRYPTO_API_KEY:}
       secret-key: ${CRYPTO_SECRET_KEY:}
+    okx:
+      enabled: ${APP_OKX_ENABLED:false}
+      api-key: ${OKX_API_KEY:}
+      secret-key: ${OKX_SECRET_KEY:}
+      passphrase: ${OKX_PASSPHRASE:}
+      base-url: ${OKX_BASE_URL:https://www.okx.com}
+      sandbox: ${OKX_SANDBOX:false}
+      websocket-enabled: ${OKX_WEBSOCKET_ENABLED:true}
+      websocket-url: ${OKX_WEBSOCKET_URL:wss://ws.okx.com:8443/ws/v5}
+      watch-pairs:
+        - BTC-USDT
+        - ETH-USDT
+        - SOL-USDT
+      rate-limit-per-second: 10
