@@ -19,6 +19,7 @@ import {
   Settings,
   TrendingUp,
   Bot,
+  Bitcoin,
 } from 'lucide-react'
 
 const NAV = [
@@ -29,6 +30,7 @@ const NAV = [
   { to: '/documents', label: 'Documents', icon: FileText },
   { to: '/reports', label: 'Reports', icon: FileDown },
   { to: '/trading', label: 'Trading', icon: TrendingUp },
+  { to: '/crypto', label: 'Crypto Trading', icon: Bitcoin },
   { to: '/news', label: 'News Feed', icon: Newspaper },
   { to: '/autonomy', label: 'Autonomy', icon: Bot },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -51,6 +53,7 @@ function routeMeta(pathname: string) {
     '/documents': { title: 'Documents', subtitle: 'Upload, parse, and manage financial source files' },
     '/reports': { title: 'Reports', subtitle: 'Generate and export investor-ready deliverables' },
     '/trading': { title: 'Trading Desk', subtitle: 'Stage, commit, and execute trades with git-like workflow' },
+    '/crypto': { title: 'Crypto Trading', subtitle: 'OKX account, positions, funding rates, and AI analysis' },
     '/news': { title: 'News Feed', subtitle: 'Live headlines that affect your holdings' },
     '/autonomy': { title: 'Agent Autonomy', subtitle: 'Scheduled tasks, heartbeat monitoring, and event timeline' },
     '/settings': { title: 'Settings', subtitle: 'Account preferences and watchlist management' },
@@ -74,62 +77,59 @@ export default function Layout() {
 
   const sidebarContent = (
     <>
-      <div className="px-5 py-5 border-b border-[color:var(--border-subtle)]">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-[#1d1302] flex items-center justify-center shadow-lg shadow-amber-600/25">
-            <Shield size={18} aria-hidden="true" />
-          </div>
+      {/* Logo */}
+      <div className="px-4 py-4 border-b border-[color:var(--border-subtle)]">
+        <div className="flex items-center gap-2.5">
+          <Shield size={18} className="text-blue-500 shrink-0" aria-hidden="true" />
           <div>
-            <p className="font-display text-2xl leading-none text-[var(--text-primary)]">FinSentinel</p>
-            <p className="mt-1 text-[11px] tracking-[0.11em] uppercase text-[var(--text-muted)]">Risk Intelligence</p>
+            <p className="font-semibold text-lg leading-none tracking-tight text-[var(--text-primary)]">FinSentinel</p>
+            <p className="mt-0.5 text-[10px] tracking-[0.1em] uppercase text-[var(--text-muted)]">Risk Intelligence</p>
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1.5" aria-label="Main navigation">
+      {/* Nav */}
+      <nav className="flex-1 px-2 py-3 space-y-0.5" aria-label="Main navigation">
         {NAV.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             onClick={() => setSidebarOpen(false)}
             className={({ isActive }) =>
-              `group flex items-center gap-3 rounded-xl px-3 py-2.5 border transition-all duration-200 ${
+              `group flex items-center gap-2.5 px-3 py-2 rounded text-sm transition-colors duration-150 border-l-2 ${
                 isActive
-                  ? 'border-amber-300/25 bg-amber-400/10 text-amber-100'
-                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 hover:border-[color:var(--border-subtle)]'
+                  ? 'border-blue-500 bg-blue-500/10 text-[var(--text-primary)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/4'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <span
-                  className={`h-8 w-8 rounded-lg flex items-center justify-center transition-colors ${
-                    isActive ? 'bg-amber-400/20 text-amber-200' : 'bg-slate-700/30 text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'
-                  }`}
-                >
-                  <Icon size={16} aria-hidden="true" />
-                </span>
-                <span className="text-sm font-medium">{label}</span>
+                <Icon
+                  size={15}
+                  aria-hidden="true"
+                  className={isActive ? 'text-blue-400' : 'text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'}
+                />
+                <span className="font-medium">{label}</span>
               </>
             )}
           </NavLink>
         ))}
       </nav>
 
-      <div className="px-3 pb-3">
-        <div className="surface-panel rounded-xl px-3 py-2.5 mb-2">
-          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
-            <UserCircle2 size={15} aria-hidden="true" />
-            <p className="text-xs font-medium truncate">{user?.username}</p>
-          </div>
+      {/* User section */}
+      <div className="px-2 pb-3 border-t border-[color:var(--border-subtle)] pt-2">
+        <div className="flex items-center gap-2 px-3 py-2 text-[var(--text-muted)]">
+          <UserCircle2 size={14} aria-hidden="true" />
+          <p className="text-xs font-medium truncate">{user?.username}</p>
         </div>
 
         <button
           onClick={handleLogout}
-          className="w-full btn-ghost px-3 py-2.5 text-sm"
+          className="w-full btn-ghost px-3 py-2 text-sm"
           aria-label="Log out"
         >
-          <LogOut size={15} aria-hidden="true" />
+          <LogOut size={14} aria-hidden="true" />
           Logout
         </button>
       </div>
@@ -138,12 +138,8 @@ export default function Layout() {
 
   return (
     <div className="app-shell text-[var(--text-primary)]">
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute -right-20 top-28 h-80 w-80 rounded-full bg-amber-400/10 blur-3xl" />
-      </div>
-
       <div className="relative z-10 flex min-h-screen">
+        {/* Mobile overlay */}
         <div
           className="fixed inset-0 z-40 bg-black/60 md:hidden"
           onClick={() => setSidebarOpen(false)}
@@ -151,9 +147,10 @@ export default function Layout() {
           style={{ display: sidebarOpen ? 'block' : 'none' }}
         />
 
+        {/* Sidebar */}
         <aside
           className={`
-            fixed inset-y-0 left-0 z-50 w-72 flex flex-col glass-panel border-r border-[color:var(--border-subtle)]
+            fixed inset-y-0 left-0 z-50 w-56 flex flex-col bg-[var(--bg-panel)] border-r border-[color:var(--border-subtle)]
             transform transition-transform duration-250 ease-out md:relative md:translate-x-0
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           `}
@@ -161,49 +158,52 @@ export default function Layout() {
         >
           <button
             onClick={() => setSidebarOpen(false)}
-            className="absolute top-3 right-3 h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/10 transition-colors md:hidden"
+            className="absolute top-3 right-3 h-7 w-7 rounded flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/10 transition-colors md:hidden"
             aria-label="Close menu"
           >
-            <X size={16} aria-hidden="true" />
+            <X size={15} aria-hidden="true" />
           </button>
           {sidebarContent}
         </aside>
 
-        <div className="flex-1 min-w-0">
-          <header className="sticky top-0 z-30 px-4 pt-4 md:px-8">
-            <div className="glass-panel rounded-2xl px-4 py-3 md:px-5 md:py-3.5 flex items-center gap-4">
+        {/* Content area */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          {/* Header */}
+          <header className="sticky top-0 z-30 border-b border-[color:var(--border-subtle)] bg-[var(--bg-panel)]">
+            <div className="flex items-center gap-3 px-4 py-2.5 md:px-6">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="h-9 w-9 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/10 transition-colors md:hidden"
+                className="h-8 w-8 rounded flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/10 transition-colors md:hidden"
                 aria-label="Open menu"
               >
-                <Menu size={18} aria-hidden="true" />
+                <Menu size={16} aria-hidden="true" />
               </button>
 
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.11em] text-[var(--text-muted)] mb-1">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.1em] text-[var(--text-muted)] mb-0.5">
                   <span>Workspace</span>
-                  <ChevronRight size={12} aria-hidden="true" />
+                  <ChevronRight size={11} aria-hidden="true" />
                   <span>{meta.title}</span>
                 </div>
-                <p className="text-sm text-[var(--text-secondary)] truncate">{meta.subtitle}</p>
+                <p className="text-xs text-[var(--text-secondary)] truncate">{meta.subtitle}</p>
               </div>
 
-              <div className="hidden sm:flex status-chip text-[var(--text-secondary)] bg-cyan-500/10 border-cyan-400/25">
-                <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
+              <div className="hidden sm:flex status-chip text-[var(--text-secondary)] bg-blue-500/10 border-blue-500/25">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-400" />
                 Live data
               </div>
             </div>
           </header>
 
-          <main className="px-4 pb-6 md:px-8 md:pb-10">
+          {/* Page content */}
+          <main className="px-4 pb-4 md:px-6 md:pb-6 flex-1">
             <AnimatePresence mode="wait">
               <motion.div
                 key={location.pathname}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15, ease: 'easeOut' }}
                 className="mx-auto max-w-[1500px]"
               >
                 <Outlet />

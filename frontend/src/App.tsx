@@ -18,6 +18,7 @@ const NewsPage = lazy(() => import('./pages/NewsPage'))
 const StockDetailPage = lazy(() => import('./pages/StockDetailPage'))
 const TradingPage = lazy(() => import('./pages/TradingPage'))
 const AutonomyPage = lazy(() => import('./pages/AutonomyPage'))
+const CryptoTradingPage = lazy(() => import('./pages/CryptoTradingPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 
 function LoadingFallback() {
@@ -45,6 +46,7 @@ export default function App() {
               <Route path="/documents" element={<Suspense fallback={<LoadingFallback />}><DocumentsPage /></Suspense>} />
               <Route path="/reports" element={<Suspense fallback={<LoadingFallback />}><ReportsPage /></Suspense>} />
               <Route path="/trading" element={<Suspense fallback={<LoadingFallback />}><TradingPage /></Suspense>} />
+              <Route path="/crypto" element={<Suspense fallback={<LoadingFallback />}><CryptoTradingPage /></Suspense>} />
               <Route path="/news" element={<Suspense fallback={<LoadingFallback />}><NewsPage /></Suspense>} />
               <Route path="/autonomy" element={<Suspense fallback={<LoadingFallback />}><AutonomyPage /></Suspense>} />
               <Route path="/stock/:ticker" element={<Suspense fallback={<LoadingFallback />}><StockDetailPage /></Suspense>} />
