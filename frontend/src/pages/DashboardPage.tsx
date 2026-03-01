@@ -3,7 +3,6 @@ import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import {
   TrendingUp,
-  TrendingDown,
   Briefcase,
   DollarSign,
   Layers3,
@@ -37,20 +36,20 @@ function saveWatchlist(tickers: string[]) {
   localStorage.setItem(LS_KEY, JSON.stringify(tickers))
 }
 
-const COLOR_META: Record<string, { icon: string; bar: string; text: string }> = {
-  amber: {
-    icon: 'text-amber-200 bg-amber-400/15',
-    bar: 'from-amber-300/80 to-amber-500/80',
-    text: 'text-amber-100',
+const COLOR_META: Record<string, { icon: string; border: string; text: string }> = {
+  blue: {
+    icon: 'text-blue-200 bg-blue-400/15',
+    border: 'border-status-info',
+    text: 'text-blue-100',
   },
   cyan: {
     icon: 'text-cyan-200 bg-cyan-400/15',
-    bar: 'from-cyan-300/80 to-cyan-500/80',
+    border: 'border-status-info',
     text: 'text-cyan-100',
   },
-  blue: {
+  indigo: {
     icon: 'text-blue-200 bg-blue-400/15',
-    bar: 'from-blue-300/80 to-blue-500/80',
+    border: 'border-status-info',
     text: 'text-blue-100',
   },
 }
@@ -72,9 +71,9 @@ function StatCard({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="surface-panel surface-panel-hover rounded-2xl p-5 md:p-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className={`surface-panel surface-panel-hover rounded p-3 md:p-4 border-l-2 ${meta.border}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -83,12 +82,10 @@ function StatCard({
           {sub && <p className="text-xs text-[var(--text-secondary)] mt-1.5">{sub}</p>}
         </div>
 
-        <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${meta.icon}`}>
-          <Icon size={18} aria-hidden="true" />
+        <div className={`h-8 w-8 rounded flex items-center justify-center ${meta.icon}`}>
+          <Icon size={16} aria-hidden="true" />
         </div>
       </div>
-
-      <div className={`mt-5 h-1.5 rounded-full bg-gradient-to-r ${meta.bar}`} />
     </motion.div>
   )
 }
@@ -177,22 +174,22 @@ export default function DashboardPage() {
   const totalHoldings = portfolios.reduce((sum, p) => sum + p.holdings.length, 0)
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 space-y-7">
-      <section className="glass-panel rounded-3xl p-6 md:p-8">
-        <p className="text-xs uppercase tracking-[0.13em] text-amber-200/80">Portfolio Intelligence</p>
-        <h1 className="page-title mt-3">Dashboard</h1>
+    <div className="px-4 py-4 md:px-8 md:py-6 space-y-4">
+      <section className="glass-panel rounded p-3 md:p-4">
+        <p className="text-xs uppercase tracking-[0.13em] text-blue-200/80">Portfolio Intelligence</p>
+        <h1 className="page-title mt-2">Dashboard</h1>
         <p className="page-subtitle max-w-2xl">Track value concentration, monitor top holdings, and react to market movement in one view.</p>
       </section>
 
       {loading ? (
         <StatCardsSkeleton />
       ) : (
-        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
+        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
           <StatCard
             label="Total AUM"
             value={`$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             icon={DollarSign}
-            color="amber"
+            color="blue"
           />
           <StatCard
             label="Portfolio Count"
@@ -204,15 +201,15 @@ export default function DashboardPage() {
             label="Holding Positions"
             value={String(totalHoldings)}
             icon={Layers3}
-            color="blue"
+            color="indigo"
           />
         </section>
       )}
 
-      <section className="surface-panel rounded-3xl p-5 md:p-6">
+      <section className="surface-panel rounded p-3 md:p-4">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
-            <h2 className="text-xl font-display text-[var(--text-primary)]">Your Portfolios</h2>
+            <h2 className="text-xl font-semibold text-[var(--text-primary)]">Your Portfolios</h2>
             <p className="text-sm text-[var(--text-secondary)] mt-0.5">Current market value and holding density</p>
           </div>
           <Link to="/portfolio" className="btn-ghost px-3 py-2 text-xs">Open Manager</Link>
@@ -225,29 +222,29 @@ export default function DashboardPage() {
             icon={<Briefcase size={28} />}
             title="No portfolios yet."
             action={
-              <Link to="/portfolio" className="inline-flex text-sm font-semibold text-amber-200 hover:text-amber-100 transition-colors">
+              <Link to="/portfolio" className="inline-flex text-sm font-semibold text-blue-200 hover:text-blue-100 transition-colors">
                 Create your first portfolio
               </Link>
             }
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {portfolios.map((portfolio, i) => (
               <motion.div
                 key={portfolio.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.05 }}
-                className="surface-panel surface-panel-hover rounded-2xl p-5"
+                className="surface-panel surface-panel-hover rounded p-3"
               >
                 <p className="text-base font-semibold text-[var(--text-primary)] truncate">{portfolio.name}</p>
                 <p className="text-xs text-[var(--text-muted)] mt-1 truncate">{portfolio.description || 'No description'}</p>
-                <p className="kpi-value mt-4 text-emerald-200">
+                <p className="kpi-value mt-3 text-[var(--up)]">
                   ${Number(portfolio.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                 </p>
-                <div className="mt-3 flex items-center justify-between text-xs text-[var(--text-secondary)]">
+                <div className="mt-2 flex items-center justify-between text-xs text-[var(--text-secondary)]">
                   <span>{portfolio.holdings.length} holdings</span>
-                  <Link to="/portfolio" className="inline-flex items-center gap-1 text-amber-200 hover:text-amber-100">
+                  <Link to="/portfolio" className="inline-flex items-center gap-1 text-blue-200 hover:text-blue-100">
                     Details <ArrowUpRight size={13} />
                   </Link>
                 </div>
@@ -257,10 +254,10 @@ export default function DashboardPage() {
         )}
       </section>
 
-      <section className="surface-panel rounded-3xl p-5 md:p-6">
+      <section className="surface-panel rounded p-3 md:p-4">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
-            <h2 className="text-xl font-display text-[var(--text-primary)]">Market Watchlist</h2>
+            <h2 className="text-xl font-semibold text-[var(--text-primary)]">Market Watchlist</h2>
             <p className="text-sm text-[var(--text-secondary)] mt-0.5">
               {editing ? 'Add or remove tickers from your watchlist' : 'Selected tickers with intraday direction'}
             </p>
@@ -312,7 +309,7 @@ export default function DashboardPage() {
             description="Click 'Edit Watchlist' to add tickers."
           />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2">
             {watchlist.map(ticker => {
               const quote = quotes[ticker]
               const isFailed = ticker in quotes && quote === null
@@ -324,29 +321,28 @@ export default function DashboardPage() {
                   {editing && (
                     <button
                       onClick={() => removeTicker(ticker)}
-                      className="absolute -top-1.5 -right-1.5 z-10 h-6 w-6 rounded-full bg-red-500/90 text-white flex items-center justify-center shadow-lg hover:bg-red-500 transition-colors"
+                      className="absolute -top-1.5 -right-1.5 z-10 h-5 w-5 rounded-full bg-red-500/90 text-white flex items-center justify-center shadow hover:bg-red-500 transition-colors"
                       aria-label={`Remove ${ticker}`}
                     >
-                      <X size={12} />
+                      <X size={10} />
                     </button>
                   )}
                   <Link
                     to={editing ? '#' : `/stock/${ticker}`}
                     onClick={e => editing && e.preventDefault()}
-                    className={`surface-panel rounded-2xl p-4 block ${editing ? 'ring-1 ring-amber-400/25' : 'surface-panel-hover'}`}
+                    className={`surface-panel rounded p-2.5 block ${editing ? 'ring-1 ring-blue-400/25' : 'surface-panel-hover'}`}
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <p className="font-data text-sm font-bold tracking-wide text-[var(--text-primary)]">{ticker}</p>
+                    <div className="flex items-center justify-between gap-1 flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <p className="font-data text-xs font-bold tracking-wide text-[var(--text-primary)]">{ticker}</p>
                         {ticker.includes('-') && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-300 font-medium">
-                            CRYPTO
+                          <span className="text-[9px] px-1 py-0.5 rounded bg-orange-500/15 text-orange-300 font-medium">
+                            C
                           </span>
                         )}
                       </div>
                       {change !== null && !editing && (
-                        <span className={`status-chip border-0 ${isUp ? 'bg-emerald-500/20 text-emerald-100' : 'bg-red-500/20 text-red-100'}`}>
-                          {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                        <span className={`status-chip border-0 text-[10px] px-1 py-0 ${isUp ? 'bg-green-500/20 text-[var(--up)]' : 'bg-red-500/20 text-[var(--down)]'}`}>
                           {isUp ? '+' : ''}{change.toFixed(2)}%
                         </span>
                       )}
@@ -355,11 +351,11 @@ export default function DashboardPage() {
                     {!editing && (
                       quote && change !== null ? (
                         <>
-                          <p className="kpi-value mt-3 text-lg md:text-xl">${quote.close.toFixed(2)}</p>
-                          <p className="text-[11px] text-[var(--text-muted)] mt-1">open ${quote.open.toFixed(2)}</p>
+                          <p className="kpi-value mt-2 text-sm">${quote.close.toFixed(2)}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">o ${quote.open.toFixed(2)}</p>
                         </>
                       ) : isFailed ? (
-                        <p className="text-sm text-yellow-200 mt-3">Market data unavailable</p>
+                        <p className="text-[11px] text-yellow-200 mt-2">N/A</p>
                       ) : null
                     )}
                   </Link>

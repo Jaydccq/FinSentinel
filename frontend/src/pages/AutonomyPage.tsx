@@ -108,17 +108,17 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   }, [onClose])
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={title}>
       <motion.div
         ref={dialogRef}
-        initial={{ scale: 0.96, opacity: 0 }}
+        initial={{ scale: 0.97, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.16, ease: 'easeOut' }}
-        className="glass-panel w-full max-w-md rounded-2xl p-5"
+        transition={{ duration: 0.14, ease: 'easeOut' }}
+        className="glass-panel w-full max-w-md rounded p-4"
       >
-        <h2 className="text-xl font-display text-[var(--text-primary)] mb-3">{title}</h2>
+        <h2 className="text-base font-semibold text-[var(--text-primary)] mb-3">{title}</h2>
         {children}
-        <button onClick={onClose} className="btn-ghost mt-4 px-3 py-2 text-xs">Cancel</button>
+        <button onClick={onClose} className="btn-ghost mt-3 px-3 py-1.5 text-xs">Cancel</button>
       </motion.div>
     </div>
   )
@@ -140,7 +140,7 @@ function InputField({
 
 function Badge({ text, className }: { text: string; className: string }) {
   return (
-    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium border ${className}`}>
+    <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium border ${className}`}>
       {text}
     </span>
   )
@@ -196,7 +196,6 @@ export default function AutonomyPage() {
     refreshSchedules()
     loadHeartbeat()
     loadEvents()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /* ---- Schedule CRUD ---- */
@@ -215,7 +214,7 @@ export default function AutonomyPage() {
   }
 
   const submitSchedule = async () => {
-    const payload: Record<string, any> = { ...form.payload }
+    const payload: Record<string, unknown> = { ...form.payload }
     if (form.taskType === 'MARKET_PULSE' && tickersInput.trim()) {
       payload.tickers = tickersInput.split(',').map(t => t.trim()).filter(Boolean)
     }
@@ -285,9 +284,9 @@ export default function AutonomyPage() {
   /* ================================================================ */
 
   return (
-    <div className="px-4 py-6 md:px-8 md:py-8 space-y-6">
+    <div className="px-4 py-4 md:px-6 md:py-4 space-y-4">
       {/* --- Page Header --- */}
-      <section className="glass-panel rounded-3xl p-6 md:p-8">
+      <section className="glass-panel rounded p-3 md:p-4">
         <h1 className="page-title">Agent Autonomy</h1>
         <p className="page-subtitle">Manage scheduled tasks, heartbeat monitoring, and audit events.</p>
       </section>
@@ -295,48 +294,48 @@ export default function AutonomyPage() {
       {/* ============================================================ */}
       {/*  Section 1: Scheduled Tasks                                   */}
       {/* ============================================================ */}
-      <section className="glass-panel rounded-2xl p-5 md:p-6">
-        <div className="flex items-center justify-between gap-4 mb-4">
-          <div className="flex items-center gap-2.5">
-            <CalendarClock size={18} className="text-blue-300" />
-            <h2 className="text-lg font-display text-[var(--text-primary)]">Scheduled Tasks</h2>
+      <section className="glass-panel rounded p-3 md:p-4">
+        <div className="flex items-center justify-between gap-4 mb-3">
+          <div className="flex items-center gap-2">
+            <CalendarClock size={16} className="text-blue-400" />
+            <h2 className="text-sm font-semibold text-[var(--text-primary)]">Scheduled Tasks</h2>
           </div>
-          <button onClick={openCreate} className="btn-primary px-3.5 py-2 text-sm">
-            <Plus size={14} /> New Schedule
+          <button onClick={openCreate} className="btn-primary px-3 py-1.5 text-xs">
+            <Plus size={13} /> New Schedule
           </button>
         </div>
 
         {schedulesLoading ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {[1, 2].map(i => (
-              <div key={i} className="surface-panel rounded-xl h-20 animate-pulse" />
+              <div key={i} className="surface-panel rounded h-16 animate-pulse" />
             ))}
           </div>
         ) : schedules.length === 0 ? (
           <EmptyState
-            icon={<CalendarClock size={28} />}
+            icon={<CalendarClock size={24} />}
             title="No scheduled tasks yet"
             description="Create one to automate portfolio reviews, market scans, or heartbeat checks."
           />
         ) : (
-          <div className="space-y-2.5">
+          <div className="space-y-1.5">
             {schedules.map(s => (
               <motion.div
                 key={s.id}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="surface-panel rounded-xl px-4 py-3 flex items-center justify-between gap-3 flex-wrap"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="surface-panel rounded px-3 py-2.5 flex items-center justify-between gap-3 flex-wrap"
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="min-w-0">
                     <p className="font-semibold text-[var(--text-primary)] truncate text-sm">{s.name}</p>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <Badge
                         text={s.taskType.replace(/_/g, ' ')}
                         className={TASK_TYPE_STYLE[s.taskType] ?? 'bg-slate-500/15 text-slate-200 border-slate-400/30'}
                       />
                       <span className="text-xs text-[var(--text-muted)] font-data">{describeCron(s.cronExpression)}</span>
-                      <span className={`text-xs font-medium ${s.enabled ? 'text-emerald-300' : 'text-amber-300'}`}>
+                      <span className={`text-xs font-medium ${s.enabled ? 'text-emerald-400' : 'text-[var(--text-muted)]'}`}>
                         {s.enabled ? 'Active' : 'Paused'}
                       </span>
                     </div>
@@ -348,27 +347,27 @@ export default function AutonomyPage() {
                   <span title="Next run">Next: {s.nextRunAt ? timeAgo(s.nextRunAt) : '-'}</span>
                 </div>
 
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <button
                     onClick={() => togglePause(s)}
                     aria-label={s.enabled ? 'Pause' : 'Resume'}
-                    className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
+                    className="h-7 w-7 rounded flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
                   >
-                    {s.enabled ? <Pause size={14} /> : <Play size={14} />}
+                    {s.enabled ? <Pause size={13} /> : <Play size={13} />}
                   </button>
                   <button
                     onClick={() => openEdit(s)}
                     aria-label="Edit"
-                    className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
+                    className="h-7 w-7 rounded flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
                   >
-                    <Pencil size={14} />
+                    <Pencil size={13} />
                   </button>
                   <button
                     onClick={() => deleteSchedule(s)}
                     aria-label="Delete"
-                    className="h-8 w-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-red-200 hover:bg-red-500/15 transition-colors"
+                    className="h-7 w-7 rounded flex items-center justify-center text-[var(--text-muted)] hover:text-red-300 hover:bg-red-500/10 transition-colors"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={13} />
                   </button>
                 </div>
               </motion.div>
@@ -380,25 +379,26 @@ export default function AutonomyPage() {
       {/* ============================================================ */}
       {/*  Section 2: Heartbeat Configuration                           */}
       {/* ============================================================ */}
-      <section className="glass-panel rounded-2xl p-5 md:p-6">
-        <div className="flex items-center gap-2.5 mb-4">
-          <Heart size={18} className="text-red-300" />
-          <h2 className="text-lg font-display text-[var(--text-primary)]">Heartbeat Configuration</h2>
+      <section className="glass-panel rounded p-3 md:p-4">
+        <div className="flex items-center gap-2 mb-3">
+          {/* Heart is a warning/health indicator — amber is appropriate here */}
+          <Heart size={16} className="text-amber-400" />
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Heartbeat Configuration</h2>
         </div>
 
         {hbLoading ? (
-          <div className="surface-panel rounded-xl h-32 animate-pulse" />
+          <div className="surface-panel rounded h-28 animate-pulse" />
         ) : (
-          <div className="surface-panel rounded-xl px-5 py-4 space-y-4">
+          <div className="surface-panel rounded px-4 py-3 space-y-3">
             {/* Enabled toggle */}
             <div className="flex items-center justify-between">
               <label className="text-sm text-[var(--text-secondary)]">Enabled</label>
               <button
                 onClick={() => setHbForm(f => ({ ...f, enabled: !f.enabled }))}
-                className={`relative w-11 h-6 rounded-full transition-colors ${hbForm.enabled ? 'bg-emerald-500/60' : 'bg-slate-600'}`}
+                className={`relative w-10 h-5 rounded transition-colors ${hbForm.enabled ? 'bg-blue-500/70' : 'bg-[var(--border-strong)]'}`}
                 aria-label="Toggle heartbeat"
               >
-                <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${hbForm.enabled ? 'translate-x-5' : ''}`} />
+                <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded bg-white transition-transform ${hbForm.enabled ? 'translate-x-5' : ''}`} />
               </button>
             </div>
 
@@ -412,7 +412,7 @@ export default function AutonomyPage() {
                 step={60}
                 value={hbForm.intervalSeconds ?? 300}
                 onChange={e => setHbForm(f => ({ ...f, intervalSeconds: Number(e.target.value) }))}
-                className="w-full accent-emerald-400"
+                className="w-full accent-blue-400"
               />
               <div className="flex justify-between text-xs text-[var(--text-muted)] mt-0.5">
                 <span>1 min</span>
@@ -420,16 +420,19 @@ export default function AutonomyPage() {
               </div>
             </div>
 
-            {/* Drawdown alert */}
+            {/* Drawdown alert — amber here is correct: it's a warning threshold */}
             <div>
-              <label htmlFor="hb-drawdown" className="field-label">Drawdown Alert Threshold (%)</label>
+              <label htmlFor="hb-drawdown" className="field-label">
+                Drawdown Alert Threshold (%)
+                <span className="ml-1.5 text-amber-400 text-xs font-normal">warning trigger</span>
+              </label>
               <input
                 id="hb-drawdown"
                 type="number"
                 min={0.1}
                 max={95}
                 step={0.1}
-                className="field-input w-32"
+                className="field-input w-28"
                 value={hbForm.drawdownAlertPct ?? 5}
                 onChange={e => setHbForm(f => ({ ...f, drawdownAlertPct: Number(e.target.value) }))}
               />
@@ -438,11 +441,11 @@ export default function AutonomyPage() {
             {/* Last beat */}
             {heartbeat?.lastBeatAt && (
               <p className="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
-                <Clock size={12} /> Last heartbeat: {timeAgo(heartbeat.lastBeatAt)}
+                <Clock size={11} /> Last heartbeat: {timeAgo(heartbeat.lastBeatAt)}
               </p>
             )}
 
-            <button onClick={saveHeartbeat} className="btn-primary px-4 py-2 text-sm">Save</button>
+            <button onClick={saveHeartbeat} className="btn-primary px-3.5 py-1.5 text-xs">Save</button>
           </div>
         )}
       </section>
@@ -450,55 +453,55 @@ export default function AutonomyPage() {
       {/* ============================================================ */}
       {/*  Section 3: Event Timeline                                    */}
       {/* ============================================================ */}
-      <section className="glass-panel rounded-2xl p-5 md:p-6">
-        <div className="flex items-center gap-2.5 mb-4">
-          <Activity size={18} className="text-amber-300" />
-          <h2 className="text-lg font-display text-[var(--text-primary)]">Event Timeline</h2>
+      <section className="glass-panel rounded p-3 md:p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Activity size={16} className="text-blue-400" />
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Event Timeline</h2>
         </div>
 
         {eventsLoading ? (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {[1, 2, 3].map(i => (
-              <div key={i} className="surface-panel rounded-xl h-14 animate-pulse" />
+              <div key={i} className="surface-panel rounded h-11 animate-pulse" />
             ))}
           </div>
         ) : events.length === 0 ? (
           <EmptyState
-            icon={<Activity size={28} />}
+            icon={<Activity size={24} />}
             title="No events yet"
             description="Agent events will appear here once tasks run."
           />
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {events.map(evt => (
               <motion.div
                 key={evt.id}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="surface-panel rounded-xl overflow-hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="surface-panel rounded overflow-hidden"
               >
                 <button
                   onClick={() => setExpandedEvent(expandedEvent === evt.id ? null : evt.id)}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-white/[0.03] transition-colors"
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-white/[0.03] transition-colors"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0 flex-wrap">
-                    <span className="text-xs text-[var(--text-muted)] font-data tabular-nums w-10 shrink-0">#{evt.seqNo}</span>
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                    <span className="text-xs text-[var(--text-muted)] font-data tabular-nums w-8 shrink-0">#{evt.seqNo}</span>
                     <Badge text={evt.eventType.replace(/_/g, ' ')} className={eventBadgeStyle(evt.eventType)} />
                     <span className="text-xs text-[var(--text-muted)]">{evt.aggregateType}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className="text-xs text-[var(--text-muted)]">{timeAgo(evt.createdAt)}</span>
                     <ChevronDown
-                      size={14}
-                      className="text-[var(--text-muted)] transition-transform duration-200"
+                      size={13}
+                      className="text-[var(--text-muted)] transition-transform duration-150"
                       style={{ transform: expandedEvent === evt.id ? 'rotate(180deg)' : 'rotate(0deg)' }}
                     />
                   </div>
                 </button>
 
                 {expandedEvent === evt.id && (
-                  <div className="border-t border-[color:var(--border-subtle)] px-4 py-3">
-                    <pre className="text-xs text-[var(--text-secondary)] font-data whitespace-pre-wrap break-all max-h-60 overflow-y-auto">
+                  <div className="border-t border-[color:var(--border-subtle)] px-3 py-2.5">
+                    <pre className="text-xs text-[var(--text-secondary)] font-data whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
                       {JSON.stringify(evt.payload, null, 2)}
                     </pre>
                   </div>
@@ -507,7 +510,7 @@ export default function AutonomyPage() {
             ))}
 
             {hasMoreEvents && (
-              <button onClick={loadMoreEvents} className="btn-ghost w-full py-2.5 text-sm mt-2">
+              <button onClick={loadMoreEvents} className="btn-ghost w-full py-2 text-xs mt-1">
                 Load More
               </button>
             )}
@@ -568,17 +571,17 @@ export default function AutonomyPage() {
               <label className="text-sm text-[var(--text-secondary)]">Enabled</label>
               <button
                 onClick={() => setForm(f => ({ ...f, enabled: !f.enabled }))}
-                className={`relative w-11 h-6 rounded-full transition-colors ${form.enabled ? 'bg-emerald-500/60' : 'bg-slate-600'}`}
+                className={`relative w-10 h-5 rounded transition-colors ${form.enabled ? 'bg-blue-500/70' : 'bg-[var(--border-strong)]'}`}
                 aria-label="Toggle enabled"
               >
-                <span className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${form.enabled ? 'translate-x-5' : ''}`} />
+                <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded bg-white transition-transform ${form.enabled ? 'translate-x-5' : ''}`} />
               </button>
             </div>
 
             <button
               onClick={submitSchedule}
               disabled={!form.name || !form.cronExpression}
-              className="btn-primary w-full py-2.5 text-sm disabled:opacity-40"
+              className="btn-primary w-full py-2 text-sm disabled:opacity-40"
             >
               {editingSchedule ? 'Update' : 'Create'}
             </button>

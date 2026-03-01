@@ -179,7 +179,7 @@ export const okxApi = {
             const data = line.slice(5).trim()
             if (eventName === 'done') {
               receivedDone = true
-              onDone(fullText, parseCryptoAnalysisResult(fullText))
+              onDone(fullText, parseCryptoAnalysisResult(fullText) ?? undefined)
             } else if (eventName === 'error') {
               receivedDone = true
               try { onError(JSON.parse(data).message) } catch { onError(data) }
@@ -200,7 +200,7 @@ export const okxApi = {
       // Fallback: if stream ended without a done/error event, still resolve
       if (!receivedDone) {
         if (fullText) {
-          onDone(fullText, parseCryptoAnalysisResult(fullText))
+          onDone(fullText, parseCryptoAnalysisResult(fullText) ?? undefined)
         } else {
           onError('Stream ended unexpectedly')
         }

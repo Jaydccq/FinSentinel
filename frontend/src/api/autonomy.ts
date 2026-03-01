@@ -4,7 +4,7 @@ export interface ScheduleRequest {
   name: string
   cronExpression: string
   taskType: string
-  payload?: Record<string, any>
+  payload?: Record<string, unknown>
   enabled?: boolean
 }
 
@@ -13,7 +13,7 @@ export interface ScheduleResponse {
   name: string
   cronExpression: string
   taskType: string
-  payload: Record<string, any>
+  payload: Record<string, unknown>
   enabled: boolean
   lastRunAt?: string
   nextRunAt?: string

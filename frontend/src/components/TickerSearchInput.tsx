@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Search, Bitcoin, TrendingUp, Layers } from 'lucide-react'
 import { marketApi, type TickerSearchResult } from '../api/market'
 
 const ASSET_ICON: Record<string, React.ReactNode> = {
-  CRYPTOCURRENCY: <Bitcoin size={14} className="text-orange-400" />,
-  ETF: <Layers size={14} className="text-blue-400" />,
-  EQUITY: <TrendingUp size={14} className="text-emerald-400" />,
+  CRYPTOCURRENCY: <Bitcoin size={13} className="text-orange-400" />,
+  ETF: <Layers size={13} className="text-blue-400" />,
+  EQUITY: <TrendingUp size={13} className="text-[var(--up)]" />,
 }
 
 const POPULAR_STOCKS = [
@@ -38,22 +38,25 @@ export default function TickerSearchInput({ onSelect, placeholder = 'Search stoc
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (query.length < 1) {
+  const doSearch = useCallback((q: string) => {
+    if (q.length < 1) {
       setResults([])
       return
     }
     setLoading(true)
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      marketApi.search(query, 8)
+      marketApi.search(q, 8)
         .then(r => setResults(r.filter(item => !excludeSymbols.includes(item.symbol))))
         .catch(() => setResults([]))
         .finally(() => setLoading(false))
     }, 300)
+  }, [excludeSymbols])
 
+  useEffect(() => {
+    doSearch(query) // eslint-disable-line react-hooks/set-state-in-effect -- debounced API search
     return () => clearTimeout(debounceRef.current)
-  }, [query, excludeSymbols])
+  }, [query, doSearch])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -80,7 +83,7 @@ export default function TickerSearchInput({ onSelect, placeholder = 'Search stoc
   return (
     <div ref={containerRef} className="relative w-full">
       <div className="relative">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+        <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
         <input
           className="field-input pl-9 pr-3 py-2 text-sm w-full"
           placeholder={placeholder}
@@ -91,58 +94,58 @@ export default function TickerSearchInput({ onSelect, placeholder = 'Search stoc
       </div>
 
       {open && (showPopular || results.length > 0 || loading) && (
-        <div className="absolute z-50 top-full mt-1 w-full bg-zinc-900 border border-zinc-700/50 rounded-xl shadow-2xl shadow-black/40 max-h-72 overflow-y-auto">
+        <div className="absolute z-50 top-full mt-1 w-full bg-[var(--bg-panel)] border border-[var(--border-strong)] rounded shadow-2xl shadow-black/60 max-h-72 overflow-y-auto">
           {loading && (
-            <div className="px-3 py-2 text-xs text-zinc-500">Searching...</div>
+            <div className="px-3 py-2 text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Searching...</div>
           )}
 
           {!loading && results.length > 0 && results.map(r => (
             <button
               key={r.symbol}
               onClick={() => handleSelect(r)}
-              className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-zinc-800/60 transition-colors text-left"
+              className="w-full flex items-center gap-3 px-3 py-2 hover:bg-blue-500/10 transition-colors text-left border-b border-[var(--border-subtle)] last:border-0"
             >
               <span className="flex-shrink-0">{ASSET_ICON[r.assetType] ?? ASSET_ICON.EQUITY}</span>
               <div className="flex-1 min-w-0">
-                <span className="text-sm font-data font-bold text-zinc-200">{r.symbol}</span>
-                <span className="text-xs text-zinc-500 ml-2 truncate">{r.name}</span>
+                <span className="text-xs font-mono font-bold text-[var(--text-primary)]">{r.symbol}</span>
+                <span className="text-[10px] text-[var(--text-muted)] ml-2 truncate">{r.name}</span>
               </div>
-              <span className="text-[10px] text-zinc-600 uppercase">{r.exchange}</span>
+              <span className="text-[10px] text-[var(--text-muted)] uppercase">{r.exchange}</span>
             </button>
           ))}
 
           {!loading && results.length === 0 && query.length >= 1 && (
-            <div className="px-3 py-2 text-xs text-zinc-500">No results found</div>
+            <div className="px-3 py-2 text-[10px] text-[var(--text-muted)]">No results found</div>
           )}
 
           {showPopular && (
             <>
-              <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-zinc-600 font-semibold">
+              <div className="px-3 pt-2.5 pb-1 text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-semibold border-b border-[var(--border-subtle)]">
                 Popular Stocks
               </div>
               {filteredPopularStocks.map(s => (
                 <button
                   key={s.symbol}
                   onClick={() => handleSelect({ ...s, assetType: 'EQUITY' })}
-                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-800/60 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-blue-500/10 transition-colors text-left border-b border-[var(--border-subtle)] last:border-0"
                 >
-                  <TrendingUp size={14} className="text-emerald-400 flex-shrink-0" />
-                  <span className="text-sm font-data font-bold text-zinc-200">{s.symbol}</span>
-                  <span className="text-xs text-zinc-500">{s.name}</span>
+                  <TrendingUp size={13} className="text-[var(--up)] flex-shrink-0" />
+                  <span className="text-xs font-mono font-bold text-[var(--text-primary)]">{s.symbol}</span>
+                  <span className="text-[10px] text-[var(--text-muted)]">{s.name}</span>
                 </button>
               ))}
-              <div className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wider text-zinc-600 font-semibold">
+              <div className="px-3 pt-2.5 pb-1 text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-semibold border-b border-[var(--border-subtle)]">
                 Popular Crypto
               </div>
               {filteredPopularCrypto.map(s => (
                 <button
                   key={s.symbol}
                   onClick={() => handleSelect({ ...s, assetType: 'CRYPTOCURRENCY' })}
-                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-zinc-800/60 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-blue-500/10 transition-colors text-left border-b border-[var(--border-subtle)] last:border-0"
                 >
-                  <Bitcoin size={14} className="text-orange-400 flex-shrink-0" />
-                  <span className="text-sm font-data font-bold text-zinc-200">{s.symbol}</span>
-                  <span className="text-xs text-zinc-500">{s.name}</span>
+                  <Bitcoin size={13} className="text-orange-400 flex-shrink-0" />
+                  <span className="text-xs font-mono font-bold text-[var(--text-primary)]">{s.symbol}</span>
+                  <span className="text-[10px] text-[var(--text-muted)]">{s.name}</span>
                 </button>
               ))}
             </>

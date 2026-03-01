@@ -6,7 +6,7 @@ export interface AgentEvent {
   aggregateType: string
   aggregateId?: string
   eventType: string
-  payload: Record<string, any>
+  payload: Record<string, unknown>
   createdAt: string
 }
 

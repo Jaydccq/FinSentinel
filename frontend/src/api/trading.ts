@@ -33,7 +33,7 @@ export interface TradeCommit {
   message: string
   timestamp: string
   operations: TradeOperation[]
-  results: any[]
+  results: Record<string, unknown>[]
 }
 
 export interface StagedOrders {

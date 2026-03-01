@@ -21,7 +21,6 @@ import {
 import { toast } from 'sonner'
 import {
   okxApi,
-  parseCryptoAnalysisResult,
   type OkxAccountInfo,
   type OkxPositionInfo,
   type OkxFundingRate,
@@ -179,9 +178,9 @@ function PositionAnalysisPanel({ instId }: { instId: string }) {
     )
   }, [instId])
 
-  // Auto-run on mount
+  // Auto-run on mount — runAnalysis fetches external data and updates state on response
   useEffect(() => {
-    runAnalysis()
+    runAnalysis() // eslint-disable-line react-hooks/set-state-in-effect -- fetches external API data
   }, [runAnalysis])
 
   const handleStage = async () => {
