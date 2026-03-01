@@ -72,32 +72,43 @@ public class AgentScheduleRegistry {
     }
 
     private void executeScheduleSafely(UUID scheduleId) {
-        transactionTemplate.executeWithoutResult(status -> {
-            var scheduleOpt = scheduleRepository.findById(scheduleId);
-            if (scheduleOpt.isEmpty()) {
-                cancel(scheduleId);
-                return;
-            }
-            AgentSchedule schedule = scheduleOpt.get();
-            if (!schedule.isEnabled()) {
-                cancel(scheduleId);
-                return;
-            }
+        var scheduleOpt = scheduleRepository.findById(scheduleId);
+        if (scheduleOpt.isEmpty()) {
+            cancel(scheduleId);
+            return;
+        }
+        AgentSchedule schedule = scheduleOpt.get();
+        if (!schedule.isEnabled()) {
+            cancel(scheduleId);
+            return;
+        }
 
-            try {
-                Map<String, Object> taskPayload = taskExecutor.execute(schedule);
-                LocalDateTime now = LocalDateTime.now();
-                schedule.setLastRunAt(now);
-                schedule.setNextRunAt(nextRunAt(schedule.getCronExpression(), now));
-                scheduleRepository.save(schedule);
+        try {
+            Map<String, Object> taskPayload = taskExecutor.execute(schedule);
+            LocalDateTime now = LocalDateTime.now();
+            final boolean[] statePersisted = {false};
+
+            transactionTemplate.executeWithoutResult(status ->
+                    scheduleRepository.findById(scheduleId).ifPresentOrElse(current -> {
+                        if (!current.isEnabled()) {
+                            cancel(scheduleId);
+                            return;
+                        }
+                        current.setLastRunAt(now);
+                        current.setNextRunAt(nextRunAt(current.getCronExpression(), now));
+                        scheduleRepository.save(current);
+                        statePersisted[0] = true;
+                    }, () -> cancel(scheduleId)));
+
+            if (statePersisted[0]) {
                 emit(schedule, AgentEventType.SCHEDULE_EXECUTED, taskPayload, null);
-            } catch (Exception e) {
-                log.warn("Schedule {} execution failed: {}", scheduleId, e.getMessage());
-                Map<String, Object> payload = new LinkedHashMap<>();
-                payload.put("error", e.getMessage());
-                emit(schedule, AgentEventType.SCHEDULE_FAILED, payload, null);
             }
-        });
+        } catch (Exception e) {
+            log.warn("Schedule {} execution failed: {}", scheduleId, e.getMessage());
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("error", e.getMessage());
+            emit(schedule, AgentEventType.SCHEDULE_FAILED, payload, null);
+        }
     }
 
     private LocalDateTime nextRunAt(String cron, LocalDateTime baseTime) {

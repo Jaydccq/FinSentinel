@@ -1,10 +1,12 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import { I18nProvider } from './context/I18nProvider'
 import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 import Toast from './components/Toast'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import { useI18n } from './hooks/useI18n'
 
 // Lazy page imports — filled in later tasks
 import { lazy, Suspense } from 'react'
@@ -22,40 +24,44 @@ const CryptoTradingPage = lazy(() => import('./pages/CryptoTradingPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 
 function LoadingFallback() {
+  const { t } = useI18n()
+
   return (
     <div className="flex items-center justify-center h-full text-gray-500">
-      Loading...
+      {t('common.loading')}
     </div>
   )
 }
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Toast />
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route element={<ProtectedRoute />}>
-            <Route element={<Layout />}>
-              <Route path="/dashboard" element={<Suspense fallback={<LoadingFallback />}><DashboardPage /></Suspense>} />
-              <Route path="/chat" element={<Suspense fallback={<LoadingFallback />}><ChatPage /></Suspense>} />
-              <Route path="/portfolio" element={<Suspense fallback={<LoadingFallback />}><PortfolioPage /></Suspense>} />
-              <Route path="/analysis" element={<Suspense fallback={<LoadingFallback />}><AnalysisPage /></Suspense>} />
-              <Route path="/documents" element={<Suspense fallback={<LoadingFallback />}><DocumentsPage /></Suspense>} />
-              <Route path="/reports" element={<Suspense fallback={<LoadingFallback />}><ReportsPage /></Suspense>} />
-              <Route path="/trading" element={<Suspense fallback={<LoadingFallback />}><TradingPage /></Suspense>} />
-              <Route path="/crypto" element={<Suspense fallback={<LoadingFallback />}><CryptoTradingPage /></Suspense>} />
-              <Route path="/news" element={<Suspense fallback={<LoadingFallback />}><NewsPage /></Suspense>} />
-              <Route path="/autonomy" element={<Suspense fallback={<LoadingFallback />}><AutonomyPage /></Suspense>} />
-              <Route path="/stock/:ticker" element={<Suspense fallback={<LoadingFallback />}><StockDetailPage /></Suspense>} />
-              <Route path="/settings" element={<Suspense fallback={<LoadingFallback />}><SettingsPage /></Suspense>} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+    <I18nProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Toast />
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route element={<ProtectedRoute />}>
+              <Route element={<Layout />}>
+                <Route path="/dashboard" element={<Suspense fallback={<LoadingFallback />}><DashboardPage /></Suspense>} />
+                <Route path="/chat" element={<Suspense fallback={<LoadingFallback />}><ChatPage /></Suspense>} />
+                <Route path="/portfolio" element={<Suspense fallback={<LoadingFallback />}><PortfolioPage /></Suspense>} />
+                <Route path="/analysis" element={<Suspense fallback={<LoadingFallback />}><AnalysisPage /></Suspense>} />
+                <Route path="/documents" element={<Suspense fallback={<LoadingFallback />}><DocumentsPage /></Suspense>} />
+                <Route path="/reports" element={<Suspense fallback={<LoadingFallback />}><ReportsPage /></Suspense>} />
+                <Route path="/trading" element={<Suspense fallback={<LoadingFallback />}><TradingPage /></Suspense>} />
+                <Route path="/crypto" element={<Suspense fallback={<LoadingFallback />}><CryptoTradingPage /></Suspense>} />
+                <Route path="/news" element={<Suspense fallback={<LoadingFallback />}><NewsPage /></Suspense>} />
+                <Route path="/autonomy" element={<Suspense fallback={<LoadingFallback />}><AutonomyPage /></Suspense>} />
+                <Route path="/stock/:ticker" element={<Suspense fallback={<LoadingFallback />}><StockDetailPage /></Suspense>} />
+                <Route path="/settings" element={<Suspense fallback={<LoadingFallback />}><SettingsPage /></Suspense>} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              </Route>
             </Route>
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </I18nProvider>
   )
 }

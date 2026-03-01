@@ -284,6 +284,15 @@ public class PaperTradingService {
         }
         try {
             TradeWallet wallet = getOrCreateWallet(userId);
+            String commitHash = String.valueOf(commitData.get("hash"));
+            boolean alreadyExecuted = wallet.getCommitHistory().stream()
+                    .anyMatch(entry -> commitHash.equals(entry.get("hash")));
+            if (alreadyExecuted) {
+                clearRedisPendingCommit(userId);
+                clearRedisStaging(userId);
+                log.warn("Commit {} already executed for user {}. Cleared stale pending state.", commitHash, userId);
+                return String.format("Commit %s already executed previously. Cleared stale pending state.", commitHash);
+            }
 
             // Create the appropriate engine based on wallet trading mode
             TradingEngine engine = engineFactory.createEngine(wallet.getTradingMode(), wallet.getCashBalance());
@@ -381,7 +390,6 @@ public class PaperTradingService {
                     .filter(r -> Boolean.TRUE.equals(r.get("success")))
                     .count();
             long failCount = results.size() - successCount;
-            String commitHash = String.valueOf(commitData.get("hash"));
             emitTradeEvent(userId, wallet.getId(), AgentEventType.TRADE_COMMIT_EXECUTED, Map.of(
                     "hash", commitHash,
                     "engine", engine.engineName(),
@@ -392,11 +400,12 @@ public class PaperTradingService {
 
             log.info("User {} executed commit {} via {}: {} operations",
                     userId, commitData.get("hash"), engine.engineName(), results.size());
-            return report.toString();
-        } finally {
-            // Ensure Redis state does not get stuck when execution fails unexpectedly.
-            clearRedisStaging(userId);
             clearRedisPendingCommit(userId);
+            clearRedisStaging(userId);
+            return report.toString();
+        } catch (RuntimeException e) {
+            log.error("Failed to execute pending commit for user {}. Pending commit retained for retry.", userId, e);
+            throw e;
         }
     }
 
@@ -639,8 +648,8 @@ public class PaperTradingService {
             if (json == null) return new ArrayList<>();
             return objectMapper.readValue(json, new TypeReference<List<TradeOperation>>() {});
         } catch (Exception e) {
-            log.warn("Failed to read staging from Redis for user {}", userId, e);
-            return new ArrayList<>();
+            log.error("Failed to read staging from Redis for user {}", userId, e);
+            throw new IllegalStateException("Failed to read staged operations from state store. Please retry.", e);
         }
     }
 
@@ -650,6 +659,7 @@ public class PaperTradingService {
             redisTemplate.opsForValue().set(STAGING_KEY_PREFIX + userId, json, STATE_TTL);
         } catch (Exception e) {
             log.error("Failed to save staging to Redis for user {}", userId, e);
+            throw new IllegalStateException("Failed to persist staged operations. Please retry.", e);
         }
     }
 
@@ -663,8 +673,8 @@ public class PaperTradingService {
             if (json == null) return null;
             return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
-            log.warn("Failed to read pending commit from Redis for user {}", userId, e);
-            return null;
+            log.error("Failed to read pending commit from Redis for user {}", userId, e);
+            throw new IllegalStateException("Failed to read pending commit from state store. Please retry.", e);
         }
     }
 
@@ -674,6 +684,7 @@ public class PaperTradingService {
             redisTemplate.opsForValue().set(PENDING_KEY_PREFIX + userId, json, STATE_TTL);
         } catch (Exception e) {
             log.error("Failed to save pending commit to Redis for user {}", userId, e);
+            throw new IllegalStateException("Failed to persist pending commit. Please retry.", e);
         }
     }
 

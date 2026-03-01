@@ -7,6 +7,7 @@ import com.example.finsentinel.model.User;
 import com.example.finsentinel.repository.UserRepository;
 import com.example.finsentinel.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -55,7 +56,21 @@ public class AuthService {
                 .displayName(request.displayName())
                 .build();
 
-        userRepository.save(user);
+        try {
+            userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            String rootMessage = e.getMostSpecificCause() != null
+                    ? e.getMostSpecificCause().getMessage()
+                    : e.getMessage();
+            String normalized = rootMessage == null ? "" : rootMessage.toLowerCase();
+            if (normalized.contains("username")) {
+                throw new IllegalArgumentException("Username already exists");
+            }
+            if (normalized.contains("email")) {
+                throw new IllegalArgumentException("Email already exists");
+            }
+            throw new IllegalArgumentException("User already exists");
+        }
 
         String token = jwtTokenProvider.generateToken(user.getUsername(), user.getId());
 

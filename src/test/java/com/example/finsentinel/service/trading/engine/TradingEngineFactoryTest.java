@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockitoExtension.class)
 class TradingEngineFactoryTest {
@@ -34,14 +35,14 @@ class TradingEngineFactoryTest {
     }
 
     @Test
-    void liveMode_alpacaDisabled_fallsToPaper() {
+    void liveMode_withoutConfiguredBroker_throws() {
         TradingProperties props = new TradingProperties();
         props.getAlpaca().setEnabled(false);
         TradingEngineFactory factory = new TradingEngineFactory(props, marketDataService, Optional.empty());
 
-        TradingEngine engine = factory.createEngine(TradingMode.LIVE, new BigDecimal("0"));
-
-        assertThat(engine.engineName()).isEqualTo("paper");
+        assertThatThrownBy(() -> factory.createEngine(TradingMode.LIVE, new BigDecimal("0")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("no live broker is configured");
     }
 
     @Test

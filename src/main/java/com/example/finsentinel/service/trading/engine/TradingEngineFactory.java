@@ -20,7 +20,7 @@ import java.util.Optional;
  *   <li>Alpaca (US equities) — if enabled and API key present</li>
  *   <li>OKX (direct API) — if bean present (gated by {@code app.trading.okx.enabled})</li>
  *   <li>Crypto (XChange) — if enabled and API key present</li>
- *   <li>Paper fallback — when no broker is configured</li>
+ *   <li>Fail fast — throws when no live broker is configured</li>
  * </ol>
  *
  * <p>This class belongs to the service/trading layer in FinSentinel.
@@ -57,12 +57,12 @@ public class TradingEngineFactory {
      */
     public TradingEngine createEngine(TradingMode mode, BigDecimal initialCash) {
         if (mode == TradingMode.LIVE) {
-            return createLiveEngine(initialCash);
+            return createLiveEngine();
         }
         return new PaperTradingEngine(marketDataService, initialCash);
     }
 
-    private TradingEngine createLiveEngine(BigDecimal fallbackCash) {
+    private TradingEngine createLiveEngine() {
         // Try Alpaca first (US equities)
         var alpaca = tradingProperties.getAlpaca();
         if (alpaca.isEnabled() && alpaca.getApiKey() != null && !alpaca.getApiKey().isBlank()) {
@@ -88,8 +88,8 @@ public class TradingEngineFactory {
                     crypto.getExchange(), crypto.getApiKey(), crypto.getSecretKey(), crypto.isSandbox());
         }
 
-        // Fallback to paper
-        log.warn("LIVE mode requested but no broker configured. Falling back to paper engine.");
-        return new PaperTradingEngine(marketDataService, fallbackCash);
+        throw new IllegalStateException(
+                "LIVE trading mode requested, but no live broker is configured. " +
+                        "Configure Alpaca/OKX/Crypto broker credentials or switch to PAPER mode.");
     }
 }

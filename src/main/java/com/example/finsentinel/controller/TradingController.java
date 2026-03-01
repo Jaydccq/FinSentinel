@@ -252,7 +252,7 @@ public class TradingController {
     private BigDecimal toBigDecimal(Object value) {
         if (value == null) return BigDecimal.ZERO;
         if (value instanceof BigDecimal bd) return bd;
-        if (value instanceof Number n) return BigDecimal.valueOf(n.doubleValue());
+        if (value instanceof Number n) return new BigDecimal(n.toString());
         return new BigDecimal(value.toString());
     }
 }

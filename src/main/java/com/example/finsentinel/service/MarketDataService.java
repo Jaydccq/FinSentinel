@@ -80,10 +80,10 @@ public class MarketDataService {
         MarketQuote quote = provider().getQuote(ticker);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("ticker", quote.ticker());
-        result.put("close", quote.close().doubleValue());
-        result.put("open", quote.open().doubleValue());
-        result.put("high", quote.high().doubleValue());
-        result.put("low", quote.low().doubleValue());
+        result.put("close", quote.close());
+        result.put("open", quote.open());
+        result.put("high", quote.high());
+        result.put("low", quote.low());
         result.put("volume", quote.volume());
         result.put("timestamp", quote.timestamp());
 
@@ -300,10 +300,10 @@ public class MarketDataService {
         var arrayNode = objectMapper.createArrayNode();
         for (MarketBar bar : bars) {
             var node = objectMapper.createObjectNode();
-            node.put("o", bar.open().doubleValue());
-            node.put("h", bar.high().doubleValue());
-            node.put("l", bar.low().doubleValue());
-            node.put("c", bar.close().doubleValue());
+            node.put("o", bar.open());
+            node.put("h", bar.high());
+            node.put("l", bar.low());
+            node.put("c", bar.close());
             node.put("v", bar.volume());
             node.put("t", bar.timestamp());
             arrayNode.add(node);

@@ -42,6 +42,7 @@ public class ChatService {
 
     /** Maximum characters allowed in a single streamed response (~50KB). */
     private static final int MAX_STREAM_CHARS = 50_000;
+    private static final StreamTruncatedException STREAM_TRUNCATED = new StreamTruncatedException();
 
     /**
 
@@ -63,8 +64,8 @@ public class ChatService {
         riskAgentService.assessStream(augmentedMessage, portfolioId, userId)
                 .doOnNext(chunk -> {
                     try {
-                        fullResponse.append(chunk);
-                        if (fullResponse.length() > MAX_STREAM_CHARS) {
+                        int projectedLength = fullResponse.length() + chunk.length();
+                        if (projectedLength > MAX_STREAM_CHARS) {
                             log.warn("Stream output exceeded {} chars for session {}, truncating",
                                     MAX_STREAM_CHARS, session);
                             emitter.send(SseEmitter.event()
@@ -74,13 +75,15 @@ public class ChatService {
                                             "sessionId", session.toString())));
                             emitter.send(SseEmitter.event().name("done").data("[DONE]"));
                             emitter.complete();
-                            return;
+                            throw STREAM_TRUNCATED;
                         }
+                        fullResponse.append(chunk);
                         emitter.send(SseEmitter.event()
                                 .name("message")
                                 .data(Map.of("content", chunk, "sessionId", session.toString())));
                     } catch (IOException e) {
                         emitter.completeWithError(e);
+                        throw new RuntimeException(e);
                     }
                 })
                 .doOnComplete(() -> {
@@ -92,6 +95,9 @@ public class ChatService {
                     emitter.complete();
                 })
                 .doOnError(error -> {
+                    if (isStreamTruncated(error)) {
+                        return;
+                    }
                     log.error("Stream error for session {}", session, error);
                     emitEvent(userId, session, AgentEventType.CHAT_STREAM_ERROR,
                             Map.of("errorType", error.getClass().getSimpleName()), null);
@@ -117,8 +123,8 @@ public class ChatService {
         stockAnalysisService.analyzeStream(analysisPrompt)
                 .doOnNext(chunk -> {
                     try {
-                        fullResponse.append(chunk);
-                        if (fullResponse.length() > MAX_STREAM_CHARS) {
+                        int projectedLength = fullResponse.length() + chunk.length();
+                        if (projectedLength > MAX_STREAM_CHARS) {
                             log.warn("Analysis stream exceeded {} chars, truncating", MAX_STREAM_CHARS);
                             emitter.send(SseEmitter.event()
                                     .name("message")
@@ -127,13 +133,15 @@ public class ChatService {
                                             "sessionId", session.toString())));
                             emitter.send(SseEmitter.event().name("done").data("[DONE]"));
                             emitter.complete();
-                            return;
+                            throw STREAM_TRUNCATED;
                         }
+                        fullResponse.append(chunk);
                         emitter.send(SseEmitter.event()
                                 .name("message")
                                 .data(Map.of("content", chunk, "sessionId", session.toString())));
                     } catch (IOException e) {
                         emitter.completeWithError(e);
+                        throw new RuntimeException(e);
                     }
                 })
                 .doOnComplete(() -> {
@@ -144,6 +152,9 @@ public class ChatService {
                     emitter.complete();
                 })
                 .doOnError(error -> {
+                    if (isStreamTruncated(error)) {
+                        return;
+                    }
                     log.error("Analysis stream error", error);
                     try {
                         emitter.send(SseEmitter.event().name("error")
@@ -153,6 +164,22 @@ public class ChatService {
                     emitter.completeWithError(error);
                 })
                 .subscribe();
+    }
+
+    private boolean isStreamTruncated(Throwable error) {
+        if (error == null) {
+            return false;
+        }
+        if (error instanceof StreamTruncatedException) {
+            return true;
+        }
+        return error.getCause() instanceof StreamTruncatedException;
+    }
+
+    private static final class StreamTruncatedException extends RuntimeException {
+        private StreamTruncatedException() {
+            super("Stream truncated after reaching maximum output length");
+        }
     }
 
     /**

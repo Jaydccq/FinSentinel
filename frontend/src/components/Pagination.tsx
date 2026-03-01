@@ -24,7 +24,7 @@ export default function Pagination({
 
   return (
     <div className="flex items-center justify-between gap-4 flex-wrap py-2.5">
-      <p className="text-[10px] text-[var(--text-muted)]">
+      <p className="text-xs text-[var(--text-muted)]">
         Showing <span className="text-[var(--text-secondary)] font-medium">{from}–{to}</span> of{' '}
         <span className="text-[var(--text-secondary)] font-medium">{totalElements}</span> documents
       </p>
@@ -33,7 +33,7 @@ export default function Pagination({
         <select
           value={pageSize}
           onChange={e => onPageSizeChange(Number(e.target.value))}
-          className="bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded px-2 py-1 text-[10px] text-[var(--text-secondary)] cursor-pointer"
+          className="bg-[var(--bg-elevated)] border border-[var(--border-strong)] rounded px-2 py-1 text-xs text-[var(--text-secondary)] cursor-pointer"
         >
           {[10, 20, 50].map(s => (
             <option key={s} value={s}>{s} / page</option>
@@ -52,7 +52,7 @@ export default function Pagination({
           <button
             key={p}
             onClick={() => onPageChange(p)}
-            className={`h-6 min-w-[24px] px-1 rounded text-[10px] font-mono font-medium transition-colors ${
+            className={`h-6 min-w-[24px] px-1 rounded text-xs font-mono font-medium transition-colors ${
               p === page
                 ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]'

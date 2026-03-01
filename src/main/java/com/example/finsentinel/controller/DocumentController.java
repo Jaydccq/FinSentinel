@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -135,7 +136,9 @@ public class DocumentController {
         headers.setContentDisposition(ContentDisposition.attachment()
                 .filename(document.getOriginalFileName())
                 .build());
-        headers.setContentType(MediaType.APPLICATION_PDF);
+        MediaType mediaType = MediaTypeFactory.getMediaType(document.getOriginalFileName())
+                .orElse(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentType(mediaType);
 
         return ResponseEntity.ok()
                 .headers(headers)

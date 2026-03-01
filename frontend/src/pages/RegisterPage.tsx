@@ -1,39 +1,41 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { User, Mail, Lock, AlertCircle } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../hooks/useAuth'
+import { useI18n } from '../hooks/useI18n'
 import { register as apiRegister } from '../api/auth'
 import AuthShell from '../components/AuthShell'
 
-const FIELD_CONFIG = {
-  username: {
-    type: 'text' as const,
-    icon: User,
-    label: 'Username',
-    autoComplete: 'username',
-  },
-  email: {
-    type: 'email' as const,
-    icon: Mail,
-    label: 'Email Address',
-    autoComplete: 'email',
-  },
-  password: {
-    type: 'password' as const,
-    icon: Lock,
-    label: 'Password',
-    autoComplete: 'new-password',
-  },
-} as const
-
-type FormKey = keyof typeof FIELD_CONFIG
-
 export default function RegisterPage() {
   const { login } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [form, setForm] = useState({ username: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const FIELD_CONFIG = {
+    username: {
+      type: 'text' as const,
+      icon: User,
+      label: t('register.username'),
+      autoComplete: 'username',
+    },
+    email: {
+      type: 'email' as const,
+      icon: Mail,
+      label: t('register.email'),
+      autoComplete: 'email',
+    },
+    password: {
+      type: 'password' as const,
+      icon: Lock,
+      label: t('register.password'),
+      autoComplete: 'new-password',
+    },
+  } as const
+
+  type FormKey = keyof typeof FIELD_CONFIG
 
   const set = (k: FormKey) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(f => ({ ...f, [k]: e.target.value }))
@@ -47,7 +49,7 @@ export default function RegisterPage() {
       login(res)
       navigate('/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed.')
+      setError(err instanceof Error ? err.message : t('register.failed'))
     } finally {
       setLoading(false)
     }
@@ -55,13 +57,13 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      heading="Create Account"
-      subheading="Set up your workspace and start monitoring portfolio risk."
+      heading={t('register.heading')}
+      subheading={t('register.subheading')}
       footer={(
         <p>
-          Already have an account?{' '}
+          {t('register.haveAccount')}{' '}
           <Link to="/login" className="font-semibold text-blue-400 hover:text-blue-300 transition-colors">
-            Sign in
+            {t('register.signIn')}
           </Link>
         </p>
       )}
@@ -91,7 +93,7 @@ export default function RegisterPage() {
         })}
 
         <p className="text-xs text-white/40">
-          Password: min 8 chars, must include uppercase, lowercase, and a digit.
+          {t('register.passwordHint')}
         </p>
 
         {error && (
@@ -105,7 +107,7 @@ export default function RegisterPage() {
         )}
 
         <button type="submit" disabled={loading} className="btn-primary w-full py-2.5 text-sm">
-          {loading ? 'Creating account...' : 'Create Account'}
+          {loading ? t('register.submitting') : t('register.submit')}
         </button>
       </form>
     </AuthShell>

@@ -64,10 +64,10 @@ class MarketDataServiceTest {
         Map<String, Object> result = service.getQuote("AAPL");
 
         assertThat(result).containsEntry("ticker", "AAPL");
-        assertThat(result).containsEntry("close", 153.5);
-        assertThat(result).containsEntry("open", 150.0);
-        assertThat(result).containsEntry("high", 155.0);
-        assertThat(result).containsEntry("low", 149.0);
+        assertThat(result).containsEntry("close", BigDecimal.valueOf(153.5));
+        assertThat(result).containsEntry("open", BigDecimal.valueOf(150.0));
+        assertThat(result).containsEntry("high", BigDecimal.valueOf(155.0));
+        assertThat(result).containsEntry("low", BigDecimal.valueOf(149.0));
         assertThat(result).containsEntry("volume", 50000000L);
         verify(valueOps).set(eq("market:quote:AAPL"), anyString(), eq(Duration.ofMinutes(5)));
     }

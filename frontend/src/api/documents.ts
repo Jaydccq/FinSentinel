@@ -44,12 +44,12 @@ export const documentsApi = {
 
     const res = await fetch(`${BASE}/documents`, {
       method: 'POST',
+      credentials: 'include',
       headers: { ...authHeaders() },
       body: form,
     })
     if (res.status === 401) {
       localStorage.removeItem('auth_user')
-      localStorage.removeItem('jwt_token')
       window.location.href = '/login'
       throw new Error('Session expired')
     }
@@ -59,11 +59,11 @@ export const documentsApi = {
 
   download: async (id: string): Promise<void> => {
     const res = await fetch(`${BASE}/documents/${id}/download`, {
+      credentials: 'include',
       headers: { ...authHeaders() },
     })
     if (res.status === 401) {
       localStorage.removeItem('auth_user')
-      localStorage.removeItem('jwt_token')
       window.location.href = '/login'
       throw new Error('Session expired')
     }

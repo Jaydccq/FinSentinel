@@ -59,6 +59,7 @@ export const newsApi = {
     async function connect() {
       try {
         const res = await fetch(`${BASE}/news/stream`, {
+          credentials: 'include',
           headers: {
             Accept: 'text/event-stream',
             ...authHeaders(),

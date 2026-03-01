@@ -8,13 +8,8 @@ export class ApiError extends Error {
 
 const BASE = '/api'
 
-function getToken(): string | null {
-  return localStorage.getItem('jwt_token')
-}
-
 function authHeaders(): Record<string, string> {
-  const token = getToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
+  return {}
 }
 
 export async function apiFetch<T>(
@@ -23,6 +18,7 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...authHeaders(),
@@ -32,7 +28,6 @@ export async function apiFetch<T>(
   if (!res.ok) {
     if (res.status === 401) {
       localStorage.removeItem('auth_user')
-      localStorage.removeItem('jwt_token')
       window.location.href = '/login'
       throw new ApiError(401, 'Session expired')
     }

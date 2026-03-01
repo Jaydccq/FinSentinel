@@ -71,6 +71,7 @@ export const analysisApi = {
     try {
       const res = await fetch(`${BASE}/analysis/stream/${encodeURIComponent(ticker)}`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',

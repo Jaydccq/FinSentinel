@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { User, Lock, AlertCircle } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../hooks/useAuth'
+import { useI18n } from '../hooks/useI18n'
 import { login as apiLogin } from '../api/auth'
 import AuthShell from '../components/AuthShell'
 
 export default function LoginPage() {
   const { login } = useAuth()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -22,7 +24,7 @@ export default function LoginPage() {
       login(res)
       navigate('/dashboard')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Invalid username or password')
+      setError(err instanceof Error ? err.message : t('login.invalid'))
     } finally {
       setLoading(false)
     }
@@ -30,20 +32,20 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      heading="Sign In"
-      subheading="Continue to your command center and track exposure in real time."
+      heading={t('login.heading')}
+      subheading={t('login.subheading')}
       footer={(
         <p>
-          Don&apos;t have an account?{' '}
+          {t('login.noAccount')}{' '}
           <Link to="/register" className="font-semibold text-blue-400 hover:text-blue-300 transition-colors">
-            Create one
+            {t('login.createOne')}
           </Link>
         </p>
       )}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="login-username" className="field-label">Username</label>
+          <label htmlFor="login-username" className="field-label">{t('login.username')}</label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none">
               <User size={15} aria-hidden="true" />
@@ -61,7 +63,7 @@ export default function LoginPage() {
         </div>
 
         <div>
-          <label htmlFor="login-password" className="field-label">Password</label>
+          <label htmlFor="login-password" className="field-label">{t('login.password')}</label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none">
               <Lock size={15} aria-hidden="true" />
@@ -89,7 +91,7 @@ export default function LoginPage() {
         )}
 
         <button type="submit" disabled={loading} className="btn-primary w-full py-2.5 text-sm">
-          {loading ? 'Signing in...' : 'Sign In'}
+          {loading ? t('login.submitting') : t('login.submit')}
         </button>
       </form>
     </AuthShell>

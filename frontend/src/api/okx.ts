@@ -146,6 +146,7 @@ export const okxApi = {
     try {
       const res = await fetch(`${BASE}/okx/analysis/stream/${encodeURIComponent(instId)}`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
@@ -219,6 +220,7 @@ export const okxApi = {
     try {
       const res = await fetch(`${BASE}/okx/analysis/health-check`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',

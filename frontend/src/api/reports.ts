@@ -2,11 +2,11 @@ import { BASE, authHeaders } from './client'
 
 export async function downloadPdf(reportId: string): Promise<void> {
   const res = await fetch(`${BASE}/reports/${reportId}/pdf`, {
+    credentials: 'include',
     headers: { ...authHeaders() },
   })
   if (res.status === 401) {
     localStorage.removeItem('auth_user')
-    localStorage.removeItem('jwt_token')
     window.location.href = '/login'
     throw new Error('Session expired')
   }
