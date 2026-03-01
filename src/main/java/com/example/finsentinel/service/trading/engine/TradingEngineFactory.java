@@ -3,11 +3,13 @@ package com.example.finsentinel.service.trading.engine;
 import com.example.finsentinel.config.TradingProperties;
 import com.example.finsentinel.model.enums.TradingMode;
 import com.example.finsentinel.service.MarketDataService;
-import lombok.RequiredArgsConstructor;
+import com.example.finsentinel.service.okx.OkxApiClient;
+import com.example.finsentinel.service.okx.OkxTradingEngine;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 /**
  * Factory that creates the correct {@link TradingEngine} implementation based on
@@ -16,6 +18,7 @@ import java.math.BigDecimal;
  * <p>Selection priority for LIVE mode:
  * <ol>
  *   <li>Alpaca (US equities) — if enabled and API key present</li>
+ *   <li>OKX (direct API) — if bean present (gated by {@code app.trading.okx.enabled})</li>
  *   <li>Crypto (XChange) — if enabled and API key present</li>
  *   <li>Paper fallback — when no broker is configured</li>
  * </ol>
@@ -23,12 +26,27 @@ import java.math.BigDecimal;
  * <p>This class belongs to the service/trading layer in FinSentinel.
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class TradingEngineFactory {
 
     private final TradingProperties tradingProperties;
     private final MarketDataService marketDataService;
+    private final OkxApiClient okxApiClient;
+
+    /**
+     * Constructor with optional OKX dependency.
+     *
+     * <p>{@link OkxApiClient} is {@code @ConditionalOnProperty}-gated, so it may not
+     * exist in the application context. Spring autowires {@link Optional#empty()} when
+     * the bean is absent, avoiding startup failures.
+     */
+    public TradingEngineFactory(TradingProperties tradingProperties,
+                                MarketDataService marketDataService,
+                                Optional<OkxApiClient> okxApiClient) {
+        this.tradingProperties = tradingProperties;
+        this.marketDataService = marketDataService;
+        this.okxApiClient = okxApiClient.orElse(null);
+    }
 
     /**
      * Creates a trading engine for the given mode and initial cash balance.
@@ -45,7 +63,7 @@ public class TradingEngineFactory {
     }
 
     private TradingEngine createLiveEngine(BigDecimal fallbackCash) {
-        // Try Alpaca first
+        // Try Alpaca first (US equities)
         var alpaca = tradingProperties.getAlpaca();
         if (alpaca.isEnabled() && alpaca.getApiKey() != null && !alpaca.getApiKey().isBlank()) {
             String baseUrl = alpaca.isPaper()
@@ -55,7 +73,13 @@ public class TradingEngineFactory {
             return new AlpacaTradingEngine(alpaca.getApiKey(), alpaca.getSecretKey(), baseUrl);
         }
 
-        // Then try crypto
+        // Try OKX (direct API — higher priority than generic CCXT)
+        if (okxApiClient != null) {
+            log.info("Creating OKX trading engine");
+            return new OkxTradingEngine(okxApiClient);
+        }
+
+        // Then try generic crypto (XChange/CCXT)
         var crypto = tradingProperties.getCrypto();
         if (crypto.isEnabled() && crypto.getApiKey() != null && !crypto.getApiKey().isBlank()) {
             log.info("Creating crypto trading engine (exchange={}, sandbox={})",
