@@ -12,6 +12,32 @@ interface HistoryBar {
   t: number; o: number; h: number; l: number; c: number; v: number
 }
 
+const SOURCE_LABELS: Record<string, string> = {
+  POLYGON: 'Polygon',
+  RSS_CNBC: 'CNBC',
+  RSS_YAHOO: 'Yahoo Finance',
+  RSS_BBC: 'BBC',
+  RSS_GUARDIAN: 'Guardian',
+  RSS_NPR: 'NPR',
+  RSS_REUTERS_PROXY: 'Reuters',
+  X_INFLUENCER: 'X / Twitter',
+  RSS_SIGNALHUB: 'SignalHub',
+  CRYPTO_6551: 'Crypto 6551',
+}
+
+const SOURCE_COLORS: Record<string, string> = {
+  POLYGON: 'bg-blue-500/20 text-blue-100 border-blue-300/30',
+  RSS_CNBC: 'bg-amber-500/20 text-amber-100 border-amber-300/30',
+  RSS_YAHOO: 'bg-violet-500/20 text-violet-100 border-violet-300/30',
+  RSS_BBC: 'bg-rose-500/20 text-rose-100 border-rose-300/30',
+  RSS_GUARDIAN: 'bg-sky-500/20 text-sky-100 border-sky-300/30',
+  RSS_NPR: 'bg-teal-500/20 text-teal-100 border-teal-300/30',
+  RSS_REUTERS_PROXY: 'bg-orange-500/20 text-orange-100 border-orange-300/30',
+  X_INFLUENCER: 'bg-slate-500/20 text-slate-100 border-slate-300/30',
+  RSS_SIGNALHUB: 'bg-indigo-500/20 text-indigo-100 border-indigo-300/30',
+  CRYPTO_6551: 'bg-emerald-500/20 text-emerald-100 border-emerald-300/30',
+}
+
 export default function StockDetailPage() {
   const { ticker } = useParams<{ ticker: string }>()
   const isCrypto = ticker?.includes('-')
@@ -330,7 +356,18 @@ export default function StockDetailPage() {
                     {item.title}
                   </p>
                   <div className="flex items-center gap-2 mt-1 text-xs text-zinc-500">
-                    <span className="px-1.5 py-0.5 bg-zinc-700/40 rounded text-zinc-400">{item.source}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-xs ${SOURCE_COLORS[item.source] ?? 'bg-zinc-700/40 text-zinc-400'}`}>
+                      {SOURCE_LABELS[item.source] ?? item.source}
+                    </span>
+                    {item.sentiment && (
+                      <span className={`px-1.5 py-0.5 rounded text-xs ${
+                        item.sentiment.toUpperCase() === 'POSITIVE' ? 'bg-emerald-500/15 text-emerald-300' :
+                        item.sentiment.toUpperCase() === 'NEGATIVE' ? 'bg-red-500/15 text-red-300' :
+                        'bg-slate-600/20 text-slate-300'
+                      }`}>
+                        {item.sentiment.charAt(0).toUpperCase() + item.sentiment.slice(1).toLowerCase()}
+                      </span>
+                    )}
                     <span>{new Date(item.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                     {item.author && <span>by {item.author}</span>}
                   </div>

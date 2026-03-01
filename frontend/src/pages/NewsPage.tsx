@@ -20,12 +20,26 @@ const SOURCE_LABELS: Record<string, string> = {
   POLYGON: 'Polygon',
   RSS_CNBC: 'CNBC',
   RSS_YAHOO: 'Yahoo Finance',
+  RSS_BBC: 'BBC',
+  RSS_GUARDIAN: 'Guardian',
+  RSS_NPR: 'NPR',
+  RSS_REUTERS_PROXY: 'Reuters',
+  X_INFLUENCER: 'X / Twitter',
+  RSS_SIGNALHUB: 'SignalHub',
+  CRYPTO_6551: 'Crypto 6551',
 }
 
 const SOURCE_COLORS: Record<string, string> = {
   POLYGON: 'bg-blue-500/20 text-blue-100 border-blue-300/30',
   RSS_CNBC: 'bg-amber-500/20 text-amber-100 border-amber-300/30',
   RSS_YAHOO: 'bg-violet-500/20 text-violet-100 border-violet-300/30',
+  RSS_BBC: 'bg-rose-500/20 text-rose-100 border-rose-300/30',
+  RSS_GUARDIAN: 'bg-sky-500/20 text-sky-100 border-sky-300/30',
+  RSS_NPR: 'bg-teal-500/20 text-teal-100 border-teal-300/30',
+  RSS_REUTERS_PROXY: 'bg-orange-500/20 text-orange-100 border-orange-300/30',
+  X_INFLUENCER: 'bg-slate-500/20 text-slate-100 border-slate-300/30',
+  RSS_SIGNALHUB: 'bg-indigo-500/20 text-indigo-100 border-indigo-300/30',
+  CRYPTO_6551: 'bg-emerald-500/20 text-emerald-100 border-emerald-300/30',
 }
 
 const SENTIMENT_STYLE: Record<string, string> = {
@@ -160,6 +174,7 @@ export default function NewsPage() {
   const [liveCount, setLiveCount] = useState(0)
   const [sourceFilter, setSourceFilter] = useState<string>('ALL')
   const [sentimentFilter, setSentimentFilter] = useState<string>('ALL')
+  const [loadingMore, setLoadingMore] = useState(false)
   const [tickerSearch, setTickerSearch] = useState('')
   const [tickerActive, setTickerActive] = useState('')
   const tickerActiveRef = useRef(tickerActive)
@@ -200,8 +215,9 @@ export default function NewsPage() {
 
   // Fetch by ticker when ticker filter is activated
   const searchByTicker = useCallback(() => {
-    const ticker = tickerSearch.trim().toUpperCase()
-    if (!ticker) return
+    const raw = tickerSearch.trim().toUpperCase()
+    if (!raw) return
+    const ticker = raw.includes('-') ? raw.split('-')[0] : raw
     setLoading(true)
     setTickerActive(ticker)
     newsApi.byTicker(ticker, 0, 50)
@@ -247,17 +263,22 @@ export default function NewsPage() {
   }, [items])
 
   const loadMore = useCallback(() => {
+    if (loadingMore) return
+    setLoadingMore(true)
     const nextPage = page + 1
     const fetcher = tickerActive
       ? newsApi.byTicker(tickerActive, nextPage, 50)
       : newsApi.list(nextPage, 50)
 
-    fetcher.then(pageData => {
-      setItems(prev => [...prev, ...pageData.content])
-      setPage(nextPage)
-      setTotalPages(pageData.totalPages)
-    })
-  }, [page, tickerActive])
+    fetcher
+      .then(pageData => {
+        setItems(prev => [...prev, ...pageData.content])
+        setPage(nextPage)
+        setTotalPages(pageData.totalPages)
+      })
+      .catch(() => toast.error('Failed to load more news.'))
+      .finally(() => setLoadingMore(false))
+  }, [page, tickerActive, loadingMore])
 
   return (
     <div className="px-4 py-6 md:px-8 md:py-8 grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-5">
@@ -293,11 +314,11 @@ export default function NewsPage() {
             <div className="relative flex-1 max-w-[200px]">
               <input
                 className="field-input py-1.5 pr-8 text-xs font-data uppercase"
-                placeholder="e.g. AAPL"
+                placeholder="e.g. AAPL or BTC"
                 value={tickerSearch}
                 onChange={e => setTickerSearch(e.target.value.toUpperCase())}
                 onKeyDown={e => e.key === 'Enter' && searchByTicker()}
-                maxLength={5}
+                maxLength={10}
               />
               {tickerActive && (
                 <button
@@ -381,8 +402,12 @@ export default function NewsPage() {
             </AnimatePresence>
 
             {page + 1 < totalPages && (
-              <button onClick={loadMore} className="btn-ghost w-full py-2.5 text-sm">
-                Load more
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="btn-ghost w-full py-2.5 text-sm disabled:opacity-50"
+              >
+                {loadingMore ? 'Loading\u2026' : 'Load more'}
               </button>
             )}
           </div>

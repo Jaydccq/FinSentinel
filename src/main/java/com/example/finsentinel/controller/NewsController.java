@@ -8,6 +8,7 @@ import com.example.finsentinel.model.NewsItem;
 import com.example.finsentinel.model.enums.NewsSource;
 import com.example.finsentinel.repository.NewsItemRepository;
 import com.example.finsentinel.service.news.NewsItemCreatedEvent;
+import com.example.finsentinel.service.news.OnDemandNewsFetchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -34,6 +35,7 @@ public class NewsController {
 
     private final NewsItemRepository newsItemRepository;
     private final RiskAgentService riskAgentService;
+    private final OnDemandNewsFetchService onDemandNewsFetchService;
     private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
 
     @GetMapping
@@ -56,17 +58,24 @@ public class NewsController {
             @RequestParam(defaultValue = "20") int size) {
 
         String normalized = ticker.toUpperCase().trim();
-        if (!normalized.matches("^[A-Z]{1,5}(\\.[A-Z]{1,2})?$")) {
+        if (!normalized.matches("^[A-Z0-9]{1,10}([.\\-][A-Z0-9]{1,5})?$")) {
             return Page.empty(PageRequest.of(page, size));
         }
-        return newsItemRepository.findByTickerContaining(normalized, PageRequest.of(page, size))
-                .map(this::toResponse);
+
+        String searchTicker = normalized.contains("-") ? normalized.split("-")[0] : normalized;
+        PageRequest pageRequest = PageRequest.of(page, size);
+
+        Page<NewsItem> results = newsItemRepository.findByTickerContaining(searchTicker, pageRequest);
+        if (results.isEmpty() && page == 0) {
+            results = onDemandNewsFetchService.fetchAndSave(searchTicker, pageRequest);
+        }
+        return results.map(this::toResponse);
     }
 
     @GetMapping("/summary/{ticker}")
     public ResponseEntity<NewsSummaryResponse> summarizeNews(@PathVariable String ticker) {
         String normalized = ticker.toUpperCase().trim();
-        if (!normalized.matches("^[A-Z]{1,10}([/\\\\\\-.][A-Z]{1,5})?$")) {
+        if (!normalized.matches("^[A-Z0-9]{1,10}([/\\\\\\-.][A-Z0-9]{1,5})?$")) {
             return ResponseEntity.badRequest().build();
         }
 
@@ -77,6 +86,12 @@ public class NewsController {
         Page<NewsItem> newsPage = newsItemRepository.findByTickerContaining(
                 searchTicker, PageRequest.of(0, 15));
         List<NewsItem> items = newsPage.getContent();
+
+        if (items.isEmpty()) {
+            Page<NewsItem> freshPage = onDemandNewsFetchService.fetchAndSave(
+                    searchTicker, PageRequest.of(0, 15));
+            items = freshPage.getContent();
+        }
 
         if (items.isEmpty()) {
             return ResponseEntity.ok(new NewsSummaryResponse(

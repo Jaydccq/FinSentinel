@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Bot, User, Sparkles, History, Plus, MessageSquare, PanelLeftClose, PanelLeft } from 'lucide-react'
+import { Send, Bot, User, Sparkles, History, Plus, MessageSquare, PanelLeftClose, PanelLeft, Briefcase } from 'lucide-react'
 import { toast } from 'sonner'
 import { chatApi, type ChatSessionSummary } from '../api/chat'
+import { portfolioApi, type PortfolioResponse } from '../api/portfolio'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -66,6 +67,8 @@ export default function ChatPage() {
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sessionsLoading, setSessionsLoading] = useState(true)
+  const [portfolios, setPortfolios] = useState<PortfolioResponse[]>([])
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { ensureCursorStyle() }, [])
@@ -90,6 +93,10 @@ export default function ChatPage() {
   }, [])
 
   useEffect(() => { loadSessions() }, [loadSessions])
+
+  useEffect(() => {
+    portfolioApi.list().then(setPortfolios).catch(() => {})
+  }, [])
 
   // Restore session on mount if sessionId exists
   useEffect(() => {
@@ -144,7 +151,7 @@ export default function ChatPage() {
     try {
     await chatApi.stream(
       userMessage,
-      undefined,
+      selectedPortfolioId || undefined,
       sessionId,
       (chunk, sid) => {
         setSessionId(prev => prev ?? sid)
@@ -283,10 +290,27 @@ export default function ChatPage() {
                   <p className="text-sm text-[var(--text-secondary)] mt-0.5">Streaming analysis for portfolio risk and SEC-aware constraints</p>
                 </div>
               </div>
-              <span className="status-chip bg-cyan-500/10 border-cyan-400/25 text-cyan-100">
-                <Sparkles size={12} />
-                Agent online
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="status-chip bg-cyan-500/10 border-cyan-400/25 text-cyan-100">
+                  <Sparkles size={12} />
+                  Agent online
+                </span>
+                {portfolios.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Briefcase size={13} className="text-[var(--text-muted)]" />
+                    <select
+                      value={selectedPortfolioId}
+                      onChange={e => setSelectedPortfolioId(e.target.value)}
+                      className="bg-slate-800/60 border border-[color:var(--border-subtle)] rounded-lg text-xs text-[var(--text-secondary)] py-1.5 px-2.5 max-w-[180px] focus:outline-none focus:border-amber-400/40"
+                    >
+                      <option value="">No portfolio context</option>
+                      {portfolios.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
             </div>
           </header>
 
