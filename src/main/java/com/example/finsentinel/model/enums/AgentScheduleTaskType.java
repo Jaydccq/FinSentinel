@@ -7,5 +7,6 @@ public enum AgentScheduleTaskType {
     PORTFOLIO_REVIEW,
     MARKET_PULSE,
     BRAIN_REVIEW,
-    HEARTBEAT_WAKEUP
+    HEARTBEAT_WAKEUP,
+    CRYPTO_HEALTH_CHECK
 }

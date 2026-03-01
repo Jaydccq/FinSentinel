@@ -24,5 +24,11 @@ public enum AgentEventType {
     SCHEDULE_FAILED,
 
     HEARTBEAT_TICK,
-    HEARTBEAT_ALERT
+    HEARTBEAT_ALERT,
+
+    // OKX Crypto Events
+    OKX_POSITION_OPENED,
+    OKX_POSITION_CLOSED,
+    OKX_RISK_ALERT,
+    OKX_HEALTH_CHECK_RUN
 }

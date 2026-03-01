@@ -34,6 +34,7 @@ public class AgentScheduledTaskExecutor {
             case MARKET_PULSE -> runMarketPulse(schedule);
             case BRAIN_REVIEW -> runBrainReview(schedule);
             case HEARTBEAT_WAKEUP -> heartbeatService.runHeartbeatOnce(schedule.getUserId(), "schedule");
+            case CRYPTO_HEALTH_CHECK -> runCryptoHealthCheck(schedule);
         };
     }
 
@@ -64,6 +65,14 @@ public class AgentScheduledTaskExecutor {
         payload.put("emotion", emotion);
         payload.put("strategyLength", strategy != null ? strategy.length() : 0);
         payload.put("strategyPreview", truncate(strategy, 220));
+        return payload;
+    }
+
+    private Map<String, Object> runCryptoHealthCheck(AgentSchedule schedule) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("task", "CRYPTO_HEALTH_CHECK");
+        payload.put("status", "pending_implementation");
+        payload.put("message", "OKX analysis service integration pending");
         return payload;
     }
 
