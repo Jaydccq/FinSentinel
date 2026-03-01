@@ -1,6 +1,7 @@
 package com.example.finsentinel.service;
 
 import com.example.finsentinel.agent.RiskAgentService;
+import com.example.finsentinel.agent.StockAnalysisService;
 import com.example.finsentinel.dto.risk.ComplianceNote;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.ChatMessage;
@@ -39,6 +40,7 @@ class ChatServiceTest {
     @Mock private PortfolioRepository portfolioRepository;
     @Mock private AgentEventService agentEventService;
     @Mock private ChatContextCompactionService chatContextCompactionService;
+    @Mock private StockAnalysisService stockAnalysisService;
 
     private ChatService service;
 
@@ -50,7 +52,7 @@ class ChatServiceTest {
     @BeforeEach
     void setUp() {
         service = new ChatService(riskAgentService, chatMessageRepository, portfolioRepository,
-                agentEventService, chatContextCompactionService);
+                agentEventService, chatContextCompactionService, stockAnalysisService);
         lenient().when(chatContextCompactionService.augmentPrompt(any(), any(), any()))
                 .thenAnswer(inv -> inv.getArgument(2));
     }
@@ -166,5 +168,21 @@ class ChatServiceTest {
         assertThat(history).hasSize(2);
         assertThat(history.get(0).getRole()).isEqualTo("user");
         assertThat(history.get(1).getRole()).isEqualTo("assistant");
+    }
+
+    @Test
+    void streamAnalysis_truncatesWhenExceedingMaxChars() throws Exception {
+        String hugeChunk = "x".repeat(60_000);
+        when(stockAnalysisService.analyzeStream(any()))
+                .thenReturn(Flux.just(hugeChunk));
+
+        SseEmitter emitter = mock(SseEmitter.class);
+        service.streamAnalysis("Analyze AAPL", userId, emitter);
+
+        // Allow async subscriber to execute
+        Thread.sleep(200);
+
+        // Verify emitter was completed (not left hanging)
+        verify(emitter, atLeastOnce()).complete();
     }
 }

@@ -1,6 +1,7 @@
 package com.example.finsentinel.service;
 
 import com.example.finsentinel.agent.RiskAgentService;
+import com.example.finsentinel.agent.StockAnalysisService;
 import com.example.finsentinel.dto.chat.ChatSessionSummary;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.ChatMessage;
@@ -37,6 +38,10 @@ public class ChatService {
     private final PortfolioRepository portfolioRepository;
     private final AgentEventService agentEventService;
     private final ChatContextCompactionService chatContextCompactionService;
+    private final StockAnalysisService stockAnalysisService;
+
+    /** Maximum characters allowed in a single streamed response (~50KB). */
+    private static final int MAX_STREAM_CHARS = 50_000;
 
     /**
 
@@ -59,6 +64,18 @@ public class ChatService {
                 .doOnNext(chunk -> {
                     try {
                         fullResponse.append(chunk);
+                        if (fullResponse.length() > MAX_STREAM_CHARS) {
+                            log.warn("Stream output exceeded {} chars for session {}, truncating",
+                                    MAX_STREAM_CHARS, session);
+                            emitter.send(SseEmitter.event()
+                                    .name("message")
+                                    .data(Map.of("content",
+                                            "\n\n[Analysis truncated — output exceeded maximum length. Please try again.]",
+                                            "sessionId", session.toString())));
+                            emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                            emitter.complete();
+                            return;
+                        }
                         emitter.send(SseEmitter.event()
                                 .name("message")
                                 .data(Map.of("content", chunk, "sessionId", session.toString())));
@@ -81,6 +98,56 @@ public class ChatService {
                     try {
                         emitter.send(SseEmitter.event().name("error")
                                 .data(Map.of("message", "An error occurred while processing your request. Please try again.")));
+                    } catch (IOException ignored) {
+                    }
+                    emitter.completeWithError(error);
+                })
+                .subscribe();
+    }
+
+    /**
+     * Stream a stock analysis via SSE. Uses the dedicated StockAnalysisService
+     * (lightweight ChatClient, no risk-assessment prompt, no dual-schema conflict).
+     * Does NOT augment with conversation history or persist messages.
+     */
+    public void streamAnalysis(String analysisPrompt, UUID userId, SseEmitter emitter) {
+        UUID session = UUID.randomUUID();
+        StringBuilder fullResponse = new StringBuilder();
+
+        stockAnalysisService.analyzeStream(analysisPrompt)
+                .doOnNext(chunk -> {
+                    try {
+                        fullResponse.append(chunk);
+                        if (fullResponse.length() > MAX_STREAM_CHARS) {
+                            log.warn("Analysis stream exceeded {} chars, truncating", MAX_STREAM_CHARS);
+                            emitter.send(SseEmitter.event()
+                                    .name("message")
+                                    .data(Map.of("content",
+                                            "\n\n[Analysis truncated — output exceeded maximum length.]",
+                                            "sessionId", session.toString())));
+                            emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                            emitter.complete();
+                            return;
+                        }
+                        emitter.send(SseEmitter.event()
+                                .name("message")
+                                .data(Map.of("content", chunk, "sessionId", session.toString())));
+                    } catch (IOException e) {
+                        emitter.completeWithError(e);
+                    }
+                })
+                .doOnComplete(() -> {
+                    try {
+                        emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                    } catch (IOException ignored) {
+                    }
+                    emitter.complete();
+                })
+                .doOnError(error -> {
+                    log.error("Analysis stream error", error);
+                    try {
+                        emitter.send(SseEmitter.event().name("error")
+                                .data(Map.of("message", "Analysis failed. Please try again.")));
                     } catch (IOException ignored) {
                     }
                     emitter.completeWithError(error);

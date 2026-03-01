@@ -37,8 +37,8 @@ class AnalysisControllerTest {
         SseEmitter emitter = controller.streamAnalysis("AAPL", userDetails);
 
         assertThat(emitter).isNotNull();
-        verify(chatService).streamChat(
-                contains("AAPL"), isNull(), isNull(), eq(user.getId()), any(SseEmitter.class));
+        verify(chatService).streamAnalysis(
+                contains("AAPL"), eq(user.getId()), any(SseEmitter.class));
     }
 
     @Test
@@ -60,8 +60,8 @@ class AnalysisControllerTest {
         SseEmitter emitter = controller.streamAnalysis("BTC-USD", userDetails);
 
         assertThat(emitter).isNotNull();
-        verify(chatService).streamChat(
-                contains("BTC-USD"), isNull(), isNull(), eq(user.getId()), any(SseEmitter.class));
+        verify(chatService).streamAnalysis(
+                contains("BTC-USD"), eq(user.getId()), any(SseEmitter.class));
     }
 
     @Test

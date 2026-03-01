@@ -40,7 +40,7 @@ public class AnalysisController {
 
         String prompt = loadAnalysisPrompt(ticker);
         SseEmitter emitter = new SseEmitter(180_000L);
-        chatService.streamChat(prompt, null, null, user.getId(), emitter);
+        chatService.streamAnalysis(prompt, user.getId(), emitter);
         return emitter;
     }
 

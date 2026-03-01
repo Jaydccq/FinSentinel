@@ -105,4 +105,24 @@ public class AgentConfig {
                 .defaultAdvisors(questionAnswerAdvisor, userContextAdvisor, complianceGuardrailAdvisor)
                 .build();
     }
+
+    /**
+     * Lightweight ChatClient for stock analysis — uses only market-data tools,
+     * no advisors, no risk-assessment prompt. Prevents dual-schema conflicts.
+     */
+    @Bean
+    public ChatClient stockAnalysisChatClient(
+            ChatModel chatModel,
+            StockMarketTool stockMarketTool,
+            TechnicalIndicatorTool technicalIndicatorTool,
+            NewsAnalysisTool newsAnalysisTool,
+            OwnershipTool ownershipTool,
+            ShortInterestTool shortInterestTool) {
+
+        return ChatClient.builder(chatModel)
+                .defaultSystem("You are FinSentinel, an AI stock analyst. Follow the user's analysis instructions precisely. Output exactly one JSON block when instructed. Never output RiskReport schema.")
+                .defaultTools(stockMarketTool, technicalIndicatorTool, newsAnalysisTool,
+                        ownershipTool, shortInterestTool)
+                .build();
+    }
 }
