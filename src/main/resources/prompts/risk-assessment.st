@@ -16,7 +16,6 @@ Perform a comprehensive investment risk assessment for the following query:
 9. **Multi-Lens Check**: Apply at least 3 investment philosophy lenses relevant to the query
 10. **Anti-Bias**: Run Pre-Mortem if recommending any action — list 3 failure scenarios
 11. Synthesize all gathered evidence into a unified risk assessment
-12. Validate compliance before finalizing the output
 
 ## [E] Expectations — Quality Requirements
 - Ground every risk factor in specific data points retrieved from tools
@@ -24,7 +23,6 @@ Perform a comprehensive investment risk assessment for the following query:
 - Provide actionable advice that is specific to the queried assets, not generic boilerplate
 
 ## [N] Narrowing — Query-Specific Constraints
-- Compliance Region: {complianceRegion}
 - Output your analysis as a structured RiskReport conforming to the schema defined in your system instructions
 - Do not include any information not supported by tool-retrieved data
 - If any tool call fails or returns empty results, note it in one sentence in the summary. Do not write multiple paragraphs about missing data.

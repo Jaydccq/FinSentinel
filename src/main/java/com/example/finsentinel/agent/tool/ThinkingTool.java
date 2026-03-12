@@ -79,7 +79,7 @@ public class ThinkingTool {
                     Decision: %s
 
                     You may now execute the planned steps. Use the appropriate tools \
-                    (getStockQuote, checkCompliance, etc.) to carry out your plan.""",
+                    (getStockQuote, getRecentNews, etc.) to carry out your plan.""",
                     decision);
         } catch (Exception e) {
             log.error("Failed to record investment plan", e);

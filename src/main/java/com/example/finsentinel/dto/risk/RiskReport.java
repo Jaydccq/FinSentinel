@@ -12,15 +12,13 @@ import java.util.List;
  * @param summary short executive summary
  * @param factors list of detailed risk factors
  * @param actionableAdvice mitigation recommendations
- * @param complianceNote compliance metadata
  */
-@JsonPropertyOrder({"riskScore", "riskLevel", "summary", "factors", "actionableAdvice", "complianceNote"})
+@JsonPropertyOrder({"riskScore", "riskLevel", "summary", "factors", "actionableAdvice"})
 public record RiskReport(
         int riskScore,
         String riskLevel,
         String summary,
         List<RiskFactor> factors,
-        List<String> actionableAdvice,
-        ComplianceNote complianceNote
+        List<String> actionableAdvice
 ) {
 }

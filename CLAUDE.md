@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-FinSentinel is an AI-powered investment risk assessment agent built with Spring Boot 4.0 and Spring AI 2.0. It uses an **AI Agent pattern** — the LLM orchestrates tool calls for real-time market data, technical analysis, RAG retrieval, trading operations, and compliance checks, then synthesizes structured risk reports.
+FinSentinel is an AI-powered investment risk assessment agent built with Spring Boot 4.0 and Spring AI 2.0. It uses an **AI Agent pattern** — the LLM orchestrates tool calls for real-time market data, technical analysis, RAG retrieval, and trading operations, then synthesizes structured risk reports.
 
 The LLM is Google Gemini 3 Flash Preview accessed via OpenRouter's OpenAI-compatible API. Financial calculations (RSI, MACD, Bollinger, etc.) use the Ta4j Java library — never the LLM.
 
@@ -35,10 +35,9 @@ Gradle 9.3.0, Java 21, Spring AI BOM managed via `spring-ai-bom:2.0.0-M2` (miles
 ### Core Agent Flow
 
 ```
-User query → Persona prompt (RISEN framework) → ChatClient with up to 19 tool beans
-  → Parallel tool execution (market data, technicals, portfolio, news, compliance)
+User query → Persona prompt (RISEN framework) → ChatClient with tool beans
+  → Parallel tool execution (market data, technicals, portfolio, news)
   → RAG retrieval (pgvector with metadata filters)
-  → Compliance guardrails advisor
   → Structured RiskReport output → SSE stream to frontend
 ```
 
@@ -65,7 +64,7 @@ service/rag/        → RAG retrieval (pgvector cosine similarity) + document ch
 service/storage/    → Tiered storage: RustFS (hot) → Google Drive (cold) via HybridStorageService
 stream/             → Redis Streams: vectorize (doc→embeddings) + news-enrich (article→RAG)
 agent/tool/         → up to 19 Spring AI @Tool classes (32 stateless + user-context tools)
-agent/advisor/      → RAG retrieval advisor, compliance guardrails, user context injection
+agent/advisor/      → RAG retrieval advisor, user context injection
 controller/         → REST endpoints + SSE streaming + GlobalExceptionHandler
 ```
 
@@ -190,7 +189,6 @@ React 18 + TypeScript + Vite + Tailwind CSS 4.1. SSE client for streaming AI res
 - `@ConfigurationProperties` for all external config (never raw `@Value`)
 - Database JSON columns use `@JdbcTypeCode(SqlTypes.JSON)` with `jsonb` column type
 - Financial precision: `BigDecimal` with `precision=15, scale=2` (or `scale=6` for quantities)
-- Compliance region is `US` (SEC). Every AI output must include a regulatory disclaimer.
 - Shared utilities go in `util/` package (e.g., `SectorMapper.fromTicker()`, `NumberUtils.toBigDecimal()`)
 - Scrapers must: (1) dedup via `existsByOriginalFileName()`, (2) call `VectorizeStreamProducer.send(docId)` after save
 - News fetchers must: (1) dedup via `existsBySourceAndSourceId()`, (2) return `RawNewsItem` records

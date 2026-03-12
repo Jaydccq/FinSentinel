@@ -68,7 +68,6 @@ public class PdfReportGenerator {
                 addSummary(doc, bold, regular, report.summary());
                 addRiskFactorsTable(doc, bold, regular, report.factors());
                 addActionableAdvice(doc, bold, regular, report.actionableAdvice());
-                addComplianceDisclaimer(doc, oblique, report);
             }
 
             return baos.toByteArray();
@@ -231,35 +230,6 @@ public class PdfReportGenerator {
                     .setFont(regular).setFontSize(10).setMarginBottom(3));
         }
         doc.add(new Paragraph("").setMarginBottom(14));
-    }
-
-    /**
-     * Executes add compliance disclaimer.
-     *
-     * <p>This method belongs to {@link PdfReportGenerator} and encapsulates the
-     * add compliance disclaimer workflow.
-     * @param doc doc (Document)
-     * @param oblique oblique (PdfFont)
-     * @param report report (RiskReport)
-     */
-
-    private void addComplianceDisclaimer(Document doc, PdfFont oblique, RiskReport report) {
-        String disclaimer = (report.complianceNote() != null && report.complianceNote().disclaimer() != null)
-                ? report.complianceNote().disclaimer()
-                : "This report is for informational purposes only and does not constitute investment advice.";
-        String framework = (report.complianceNote() != null && report.complianceNote().regulatoryFramework() != null)
-                ? report.complianceNote().regulatoryFramework()
-                : "SEC";
-
-        doc.add(new Paragraph("Compliance & Regulatory Notice (" + framework + ")")
-                .setFont(oblique).setFontSize(9)
-                .setFontColor(ColorConstants.GRAY)
-                .setBorderTop(new com.itextpdf.layout.borders.SolidBorder(ColorConstants.LIGHT_GRAY, 1))
-                .setMarginTop(10).setMarginBottom(4));
-
-        doc.add(new Paragraph(disclaimer)
-                .setFont(oblique).setFontSize(8)
-                .setFontColor(ColorConstants.GRAY));
     }
 
     /**

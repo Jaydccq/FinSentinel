@@ -42,7 +42,6 @@ class McpToolConfigTest {
                 mock(OwnershipTool.class),
                 mock(ShortInterestTool.class),
                 mock(NewsAnalysisTool.class),
-                mock(ComplianceCheckTool.class),
                 cryptoProvider,
                 twitterProvider);
     }
@@ -52,7 +51,7 @@ class McpToolConfigTest {
         ToolCallback[] callbacks = provider.getToolCallbacks();
         assertThat(callbacks)
                 .describedAs("Phase 1 should expose at least one tool per registered class")
-                .hasSizeGreaterThanOrEqualTo(10);
+                .hasSizeGreaterThanOrEqualTo(9);
     }
 
     @Test
@@ -84,6 +83,5 @@ class McpToolConfigTest {
         assertThat(toolNames).anyMatch(n -> n.contains("ownership") || n.contains("insider"));
         assertThat(toolNames).anyMatch(n -> n.contains("short") || n.contains("interest"));
         assertThat(toolNames).anyMatch(n -> n.contains("news") || n.contains("sentiment"));
-        assertThat(toolNames).anyMatch(n -> n.contains("compliance"));
     }
 }

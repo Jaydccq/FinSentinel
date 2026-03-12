@@ -36,12 +36,7 @@ class PdfReportGeneratorTest {
                         new RiskFactor("Market Risk", 75, "High beta exposure"),
                         new RiskFactor("Concentration Risk", 80, "Tech sector >60%")
                 ),
-                List.of("Diversify into defensive sectors", "Reduce AAPL position by 20%"),
-                new ComplianceNote(
-                        "This report is for informational purposes only. Not financial advice.",
-                        "SEC",
-                        true
-                )
+                List.of("Diversify into defensive sectors", "Reduce AAPL position by 20%")
         );
     }
 
@@ -59,8 +54,7 @@ class PdfReportGeneratorTest {
 
     @Test
     void generate_withNullFactors_doesNotThrow() {
-        RiskReport report = new RiskReport(50, "MEDIUM", "Summary", null, null,
-                new ComplianceNote("Disclaimer", "SEC", true));
+        RiskReport report = new RiskReport(50, "MEDIUM", "Summary", null, null);
 
         byte[] pdf = generator.generate(report, "Test Portfolio", LocalDateTime.now());
         assertThat(pdf).isNotNull();
@@ -69,8 +63,8 @@ class PdfReportGeneratorTest {
 
 
     @Test
-    void generate_withNullComplianceNote_doesNotThrow() {
-        RiskReport report = new RiskReport(50, "LOW", "Summary", List.of(), List.of(), null);
+    void generate_withEmptyReport_doesNotThrow() {
+        RiskReport report = new RiskReport(50, "LOW", "Summary", List.of(), List.of());
 
         byte[] pdf = generator.generate(report, "Test Portfolio", LocalDateTime.now());
         assertThat(pdf).isNotNull();

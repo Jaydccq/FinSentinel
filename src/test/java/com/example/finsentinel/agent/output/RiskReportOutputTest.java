@@ -23,7 +23,7 @@ class RiskReportOutputTest {
         assertThat(format).contains("riskScore");
         assertThat(format).contains("riskLevel");
         assertThat(format).contains("factors");
-        assertThat(format).contains("complianceNote");
+        assertThat(format).contains("actionableAdvice");
     }
 
 
@@ -43,12 +43,7 @@ class RiskReportOutputTest {
                 "actionableAdvice": [
                     "Consider diversifying into defensive sectors",
                     "Set stop-loss orders at 10% below current price"
-                ],
-                "complianceNote": {
-                    "disclaimer": "This is AI-generated analysis. Not investment advice.",
-                    "regulatoryFramework": "SEC",
-                    "isCompliant": true
-                }
+                ]
             }
             """;
 
@@ -59,7 +54,5 @@ class RiskReportOutputTest {
         assertThat(report.factors()).hasSize(2);
         assertThat(report.factors().get(0).category()).isEqualTo("MARKET");
         assertThat(report.actionableAdvice()).hasSize(2);
-        assertThat(report.complianceNote().isCompliant()).isTrue();
-        assertThat(report.complianceNote().regulatoryFramework()).isEqualTo("SEC");
     }
 }

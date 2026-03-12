@@ -9,8 +9,6 @@ import {
   ChevronDown,
   ArrowUp,
   ArrowDown,
-  CheckCircle,
-  XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
@@ -436,29 +434,6 @@ export default function ReportsPage() {
                           </div>
                         )}
 
-                        {/* Compliance Note */}
-                        {r.complianceNote && (
-                          <div className="bg-[var(--bg-elevated)] border border-[color:var(--border-subtle)] rounded p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              {r.complianceNote.isCompliant ? (
-                                <CheckCircle size={14} className="text-emerald-400" />
-                              ) : (
-                                <XCircle size={14} className="text-red-400" />
-                              )}
-                              <span className={`text-xs font-semibold ${
-                                r.complianceNote.isCompliant ? 'text-emerald-400' : 'text-red-400'
-                              }`}>
-                                {r.complianceNote.isCompliant ? 'Compliant' : 'Non-Compliant'}
-                              </span>
-                              <span className="text-[11px] text-[var(--text-muted)]">
-                                ({r.complianceNote.regulatoryFramework})
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-                              {r.complianceNote.disclaimer}
-                            </p>
-                          </div>
-                        )}
                       </div>
                     </motion.div>
                   )}

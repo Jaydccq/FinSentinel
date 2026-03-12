@@ -51,11 +51,6 @@ public class RiskReportEntity {
     @Column(columnDefinition = "jsonb")
     private String adviceJson;
 
-    @Column(columnDefinition = "TEXT")
-    private String disclaimer;
-
-    private String regulatoryFramework;
-
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

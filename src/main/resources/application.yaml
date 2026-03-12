@@ -284,20 +284,6 @@ app:
     max-results: ${TWITTER_6551_MAX_RESULTS:100}
     cache-ttl-minutes: ${TWITTER_6551_CACHE_TTL:10}
 
-  compliance:
-    region: US
-    disclaimer: "This is AI-generated analysis for informational purposes only. It does not constitute investment advice. Past performance does not guarantee future results. Consult a licensed financial advisor before making investment decisions."
-    forbidden-phrases:
-      - "you should buy"
-      - "I recommend buying"
-      - "guaranteed returns"
-      - "risk-free"
-      - "you must invest"
-      - "buy now"
-      - "sure thing"
-      - "can't lose"
-      - "100% safe"
-
   trading:
     default-mode: PAPER
     alpaca:

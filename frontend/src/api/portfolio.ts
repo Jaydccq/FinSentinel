@@ -7,7 +7,6 @@ export interface RiskReportSummary {
   summary: string
   factors: Array<{ category: string; score: number; description: string }>
   actionableAdvice: string[]
-  complianceNote: { disclaimer: string; regulatoryFramework: string; isCompliant: boolean } | null
   createdAt: string
 }
 

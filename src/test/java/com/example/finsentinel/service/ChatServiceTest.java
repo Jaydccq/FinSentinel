@@ -2,7 +2,6 @@ package com.example.finsentinel.service;
 
 import com.example.finsentinel.agent.RiskAgentService;
 import com.example.finsentinel.agent.StockAnalysisService;
-import com.example.finsentinel.dto.risk.ComplianceNote;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.ChatMessage;
 import com.example.finsentinel.repository.PortfolioRepository;
@@ -109,8 +108,7 @@ class ChatServiceTest {
     void assess_shouldReturnRiskReportAndPersistMessages() {
         when(portfolioRepository.existsByIdAndUserId(portfolioId, userId)).thenReturn(true);
         RiskReport report = new RiskReport(
-                65, "HIGH", "Test risk", List.of(), List.of(),
-                new ComplianceNote("Disclaimer", "SEC", true));
+                65, "HIGH", "Test risk", List.of(), List.of());
         when(riskAgentService.assess("Analyze AAPL", portfolioId, userId)).thenReturn(report);
         when(chatMessageRepository.save(any(ChatMessage.class)))
                 .thenAnswer(inv -> inv.getArgument(0));

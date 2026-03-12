@@ -7,19 +7,12 @@ export interface RiskFactor {
   description: string
 }
 
-export interface ComplianceNote {
-  disclaimer: string
-  regulatoryFramework: string
-  isCompliant: boolean
-}
-
 export interface RiskReport {
   riskScore: number
   riskLevel: string
   summary: string
   factors: RiskFactor[]
   actionableAdvice: string[]
-  complianceNote: ComplianceNote
 }
 
 export interface ChatMessage {

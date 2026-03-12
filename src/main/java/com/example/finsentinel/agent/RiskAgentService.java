@@ -1,7 +1,5 @@
 package com.example.finsentinel.agent;
 
-import com.example.finsentinel.config.ComplianceProperties;
-import com.example.finsentinel.dto.risk.ComplianceNote;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.RiskReportEntity;
 import com.example.finsentinel.model.enums.RiskLevel;
@@ -31,7 +29,6 @@ public class RiskAgentService {
 
     private final ChatClient riskAgentChatClient;
     private final ChatModel chatModel;
-    private final ComplianceProperties complianceProperties;
     private final RiskReportRepository riskReportRepository;
     private final PortfolioRepository portfolioRepository;
     private final ObjectMapper objectMapper;
@@ -60,14 +57,10 @@ public class RiskAgentService {
         // Get raw response — tools execute ONCE here
         String rawResponse = riskAgentChatClient.prompt()
                 .advisors(advisor -> advisor.param("userId", userId))
-                .system(sp -> sp
-                        .param("complianceRegion", complianceProperties.getRegion())
-                        .param("disclaimer", complianceProperties.getDisclaimer()))
                 .user(u -> u
                         .text(riskAssessmentPrompt)
                         .param("userQuery", userMessage)
-                        .param("portfolioContext", portfolioContext)
-                        .param("complianceRegion", complianceProperties.getRegion()))
+                        .param("portfolioContext", portfolioContext))
                 .call()
                 .content();
 
@@ -115,7 +108,7 @@ public class RiskAgentService {
         try {
             String fixed = ChatClient.create(chatModel).prompt()
                     .user("The following text should be a valid JSON object conforming to the RiskReport schema " +
-                          "(riskScore, riskLevel, summary, factors, actionableAdvice, complianceNote). " +
+                          "(riskScore, riskLevel, summary, factors, actionableAdvice). " +
                           "Extract and return ONLY the valid JSON, fixing any formatting issues:\n\n" + rawResponse)
                     .call()
                     .content();
@@ -132,9 +125,7 @@ public class RiskAgentService {
         return new RiskReport(1, "LOW",
                 "Risk assessment completed but output could not be parsed. Please try again.",
                 java.util.List.of(),
-                java.util.List.of("Retry your query for a structured risk report."),
-                new ComplianceNote(
-                        complianceProperties.getDisclaimer(), getExpectedFramework(), false));
+                java.util.List.of("Retry your query for a structured risk report."));
     }
 
     /**
@@ -149,14 +140,10 @@ public class RiskAgentService {
 
         return riskAgentChatClient.prompt()
                 .advisors(advisor -> advisor.param("userId", userId))
-                .system(sp -> sp
-                        .param("complianceRegion", complianceProperties.getRegion())
-                        .param("disclaimer", complianceProperties.getDisclaimer()))
                 .user(u -> u
                         .text(riskAssessmentPrompt)
                         .param("userQuery", userMessage)
-                        .param("portfolioContext", portfolioContext)
-                        .param("complianceRegion", complianceProperties.getRegion()))
+                        .param("portfolioContext", portfolioContext))
                 .stream()
                 .content();
     }
@@ -208,8 +195,6 @@ public class RiskAgentService {
                     .summary(report.summary())
                     .factorsJson(objectMapper.writeValueAsString(report.factors()))
                     .adviceJson(objectMapper.writeValueAsString(report.actionableAdvice()))
-                    .disclaimer(report.complianceNote() != null ? report.complianceNote().disclaimer() : complianceProperties.getDisclaimer())
-                    .regulatoryFramework(report.complianceNote() != null ? report.complianceNote().regulatoryFramework() : getExpectedFramework())
                     .build();
             riskReportRepository.save(entity);
             log.info("Persisted risk report for portfolio {}", portfolioId);
@@ -218,15 +203,6 @@ public class RiskAgentService {
             // computed successfully and returned, but history won't be available.
             throw new RuntimeException("Failed to persist risk report for portfolio " + portfolioId, e);
         }
-    }
-
-    private String getExpectedFramework() {
-        return switch (complianceProperties.getRegion()) {
-            case "US" -> "SEC";
-            case "UK" -> "FCA";
-            case "EU" -> "ESMA";
-            default -> "SEC";
-        };
     }
 
     /**
