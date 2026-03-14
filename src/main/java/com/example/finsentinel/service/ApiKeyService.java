@@ -4,10 +4,14 @@ import com.example.finsentinel.config.EncryptionProperties;
 import com.example.finsentinel.dto.apikey.ApiKeyStatusResponse;
 import com.example.finsentinel.model.ApiKeyEntry;
 import com.example.finsentinel.repository.ApiKeyRepository;
+import com.example.finsentinel.security.UserPrincipal;
 import com.example.finsentinel.util.AesEncryptionUtil;
 import com.example.finsentinel.util.AesEncryptionUtil.EncryptedPayload;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +30,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ApiKeyService {
 
     private final ApiKeyRepository apiKeyRepository;
@@ -161,6 +166,32 @@ public class ApiKeyService {
     public String getEffectiveKey(UUID userId, String keyName, String envFallback) {
         return getDecryptedKey(userId, keyName)
                 .orElse(envFallback != null ? envFallback : "");
+    }
+
+    /**
+     * Returns the effective API key for the current authenticated user.
+     *
+     * <p>Inspects {@link SecurityContextHolder} for an authenticated
+     * {@link UserPrincipal} and delegates to
+     * {@link #getEffectiveKey(UUID, String, String)}. Falls back to
+     * {@code envFallback} when no security context is available (e.g.,
+     * during scheduled tasks or MCP calls without user context).
+     *
+     * @param keyName     the key identifier (should match a {@link KnownKey} name)
+     * @param envFallback the environment-variable fallback value
+     * @return the effective key value (user DB key if present, else env fallback)
+     */
+    @Transactional(readOnly = true)
+    public String getEffectiveKeyForCurrentUser(String keyName, String envFallback) {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.getPrincipal() instanceof UserPrincipal principal) {
+                return getEffectiveKey(principal.getUserId(), keyName, envFallback);
+            }
+        } catch (Exception e) {
+            log.debug("No security context available, using env fallback for {}", keyName);
+        }
+        return envFallback != null ? envFallback : "";
     }
 
     /**

@@ -4,9 +4,11 @@ import com.example.finsentinel.config.PolygonProperties;
 import com.example.finsentinel.dto.research.AnalystConsensus;
 import com.example.finsentinel.dto.research.CompanyProfile;
 import com.example.finsentinel.dto.research.FinancialMetrics;
+import com.example.finsentinel.service.ApiKeyService;
 import tools.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
@@ -36,6 +38,7 @@ public class CompanyResearchService {
     private final RestClient restClient;
     private final PolygonProperties polygonProperties;
     private final StringRedisTemplate redisTemplate;
+    private final ObjectProvider<ApiKeyService> apiKeyServiceProvider;
 
     private static final MathContext MC = new MathContext(15, RoundingMode.HALF_UP);
     private static final int SCALE = 2;
@@ -190,6 +193,21 @@ public class CompanyResearchService {
     // ──────────────────────────── Private Helpers ────────────────────────────
 
     /**
+     * Returns the effective Polygon API key for the current user,
+     * falling back to the configured environment property.
+     */
+    private String apiKey() {
+        ApiKeyService apiKeyService = apiKeyServiceProvider.getIfAvailable();
+        if (apiKeyService != null) {
+            return apiKeyService.getEffectiveKeyForCurrentUser(
+                    ApiKeyService.KnownKey.POLYGON_API_KEY.name(),
+                    polygonProperties.getApiKey()
+            );
+        }
+        return polygonProperties.getApiKey();
+    }
+
+    /**
      * Fetches the current closing price for a ticker from Polygon.io previous-close endpoint.
      * Kept here because it is used by {@code getAnalystConsensus()} which is computed logic,
      * not a provider-level concern.
@@ -209,7 +227,7 @@ public class CompanyResearchService {
             JsonNode response = restClient.get()
                     .uri(polygonProperties.getBaseUrl() +
                                     "/v2/aggs/ticker/{ticker}/prev?apiKey={apiKey}",
-                            ticker, polygonProperties.getApiKey())
+                            ticker, apiKey())
                     .retrieve()
                     .body(JsonNode.class);
 

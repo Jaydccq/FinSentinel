@@ -1,6 +1,7 @@
 package com.example.finsentinel.service.research;
 
 import com.example.finsentinel.config.PolygonProperties;
+import com.example.finsentinel.service.ApiKeyService;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.web.client.RestClient;
@@ -29,6 +31,7 @@ class PolygonResearchProviderTest {
     @Mock private PolygonProperties polygonProperties;
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private ValueOperations<String, String> valueOps;
+    @Mock private ObjectProvider<ApiKeyService> apiKeyServiceProvider;
 
     private final ObjectMapper objectMapper = JsonMapper.builder().build();
 
@@ -36,7 +39,8 @@ class PolygonResearchProviderTest {
 
     @BeforeEach
     void setUp() {
-        provider = new PolygonResearchProvider(restClient, polygonProperties, redisTemplate, objectMapper);
+        provider = new PolygonResearchProvider(restClient, polygonProperties, redisTemplate,
+                objectMapper, apiKeyServiceProvider);
     }
 
     @Test

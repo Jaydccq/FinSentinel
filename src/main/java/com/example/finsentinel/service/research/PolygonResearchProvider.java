@@ -3,11 +3,13 @@ package com.example.finsentinel.service.research;
 import com.example.finsentinel.config.PolygonProperties;
 import com.example.finsentinel.dto.research.CompanyProfile;
 import com.example.finsentinel.dto.research.FinancialMetrics;
+import com.example.finsentinel.service.ApiKeyService;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -40,6 +42,7 @@ public class PolygonResearchProvider implements ResearchDataProvider {
     private final PolygonProperties polygonProperties;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final ObjectProvider<ApiKeyService> apiKeyServiceProvider;
 
     private static final Duration PROFILE_TTL = Duration.ofHours(24);
     private static final Duration FINANCIALS_TTL = Duration.ofHours(6);
@@ -49,6 +52,21 @@ public class PolygonResearchProvider implements ResearchDataProvider {
     @Override
     public String getName() {
         return "polygon";
+    }
+
+    /**
+     * Returns the effective Polygon API key for the current user,
+     * falling back to the configured environment property.
+     */
+    private String apiKey() {
+        ApiKeyService apiKeyService = apiKeyServiceProvider.getIfAvailable();
+        if (apiKeyService != null) {
+            return apiKeyService.getEffectiveKeyForCurrentUser(
+                    ApiKeyService.KnownKey.POLYGON_API_KEY.name(),
+                    polygonProperties.getApiKey()
+            );
+        }
+        return polygonProperties.getApiKey();
     }
 
     // ──────────────────────────── Company Profile ────────────────────────────
@@ -75,7 +93,7 @@ public class PolygonResearchProvider implements ResearchDataProvider {
             JsonNode response = restClient.get()
                     .uri(polygonProperties.getBaseUrl() +
                                     "/v3/reference/tickers/{ticker}?apiKey={apiKey}",
-                            ticker, polygonProperties.getApiKey())
+                            ticker, apiKey())
                     .retrieve()
                     .body(JsonNode.class);
 
@@ -134,7 +152,7 @@ public class PolygonResearchProvider implements ResearchDataProvider {
             JsonNode response = restClient.get()
                     .uri(polygonProperties.getBaseUrl() +
                                     "/vX/reference/financials?ticker={ticker}&limit={limit}&apiKey={apiKey}",
-                            ticker, periods, polygonProperties.getApiKey())
+                            ticker, periods, apiKey())
                     .retrieve()
                     .body(JsonNode.class);
 
@@ -194,7 +212,7 @@ public class PolygonResearchProvider implements ResearchDataProvider {
             JsonNode response = restClient.get()
                     .uri(polygonProperties.getBaseUrl() +
                                     "/v2/aggs/ticker/{ticker}/prev?apiKey={apiKey}",
-                            ticker, polygonProperties.getApiKey())
+                            ticker, apiKey())
                     .retrieve()
                     .body(JsonNode.class);
 
