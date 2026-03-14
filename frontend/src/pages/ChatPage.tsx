@@ -287,7 +287,7 @@ export default function ChatPage() {
                 </button>
                 <div>
                   <h1 className="text-xl md:text-2xl font-semibold text-[var(--text-primary)]">AI Risk Advisor</h1>
-                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">Streaming analysis for portfolio risk and SEC-aware constraints</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">Streaming analysis powered by multi-tool AI agent</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -325,7 +325,7 @@ export default function ChatPage() {
                   <Bot size={26} className="text-blue-200" aria-hidden="true" />
                 </div>
                 <p className="text-base font-semibold text-[var(--text-primary)]">Ask FinSentinel anything about your portfolio risk.</p>
-                <p className="mt-1 text-sm text-[var(--text-secondary)] max-w-md">Try: concentration risk, macro event exposure, or compliance-sensitive rebalancing options.</p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)] max-w-md">Try: concentration risk, macro event exposure, or sector rotation strategies.</p>
               </motion.div>
             )}
 

@@ -1,5 +1,4 @@
-import { BASE, authHeaders } from './client'
-import { apiFetch } from './client'
+import { BASE, apiFetch } from './client'
 
 export interface RiskFactor {
   category: string
@@ -67,7 +66,6 @@ export const chatApi = {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
-          ...authHeaders(),
         },
         body: JSON.stringify({ message, sessionId }),
       })

@@ -16,12 +16,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
-/**
- * Implements AI agent logic for risk agent service workflows.
- *
- * <p>This class is part of the agent layer in FinSentinel.
- */
-
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -159,15 +153,6 @@ public class RiskAgentService {
                 .content();
     }
 
-    /**
-     * Executes persist report.
-     *
-     * <p>This method belongs to {@link RiskAgentService} and encapsulates the
-     * persist report workflow.
-     * @param report report (RiskReport)
-     * @param portfolioId portfolio id (UUID)
-     */
-
     private void persistReport(RiskReport report, UUID portfolioId) {
         var portfolio = portfolioRepository.findById(portfolioId).orElse(null);
         if (portfolio == null) {
@@ -175,19 +160,19 @@ public class RiskAgentService {
             return;
         }
 
+        RiskLevel level;
+        String rawLevel = report.riskLevel();
         try {
-            RiskLevel level;
-            try {
-                String rawLevel = report.riskLevel();
-                if (rawLevel == null || rawLevel.isBlank()) {
-                    throw new IllegalArgumentException("Missing risk level");
-                }
-                level = RiskLevel.valueOf(rawLevel.toUpperCase().trim());
-            } catch (IllegalArgumentException | NullPointerException e) {
-                log.warn("Unknown risk level '{}' from LLM, defaulting to MEDIUM", report.riskLevel());
-                level = RiskLevel.MEDIUM;
+            if (rawLevel == null || rawLevel.isBlank()) {
+                throw new IllegalArgumentException("Missing risk level");
             }
+            level = RiskLevel.valueOf(rawLevel.toUpperCase().trim());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            log.warn("Unknown risk level '{}' from LLM, defaulting to MEDIUM", rawLevel);
+            level = RiskLevel.MEDIUM;
+        }
 
+        try {
             RiskReportEntity entity = RiskReportEntity.builder()
                     .portfolio(portfolio)
                     .riskScore(report.riskScore())
@@ -199,21 +184,9 @@ public class RiskAgentService {
             riskReportRepository.save(entity);
             log.info("Persisted risk report for portfolio {}", portfolioId);
         } catch (Exception e) {
-            // Rethrow so the caller knows persistence failed — the report was already
-            // computed successfully and returned, but history won't be available.
             throw new RuntimeException("Failed to persist risk report for portfolio " + portfolioId, e);
         }
     }
-
-    /**
-     * Executes truncate.
-     *
-     * <p>This method belongs to {@link RiskAgentService} and encapsulates the
-     * truncate workflow.
-     * @param text text (String)
-     * @param maxLen max len (int)
-     * @return the truncate result (String)
-     */
 
     private String truncate(String text, int maxLen) {
 

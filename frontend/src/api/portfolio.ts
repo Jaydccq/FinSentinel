@@ -1,11 +1,12 @@
 import { apiFetch } from './client'
+import type { RiskFactor } from './chat'
 
 export interface RiskReportSummary {
   id: string
   riskScore: number
   riskLevel: string
   summary: string
-  factors: Array<{ category: string; score: number; description: string }>
+  factors: RiskFactor[]
   actionableAdvice: string[]
   createdAt: string
 }

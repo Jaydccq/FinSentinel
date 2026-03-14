@@ -100,7 +100,7 @@ export default function AnalysisPage() {
       <section className="glass-panel rounded p-3 md:p-4">
         <p className="text-xs uppercase tracking-[0.13em] text-blue-200/80">AI Assessment</p>
         <h1 className="page-title mt-2">Risk Analysis</h1>
-        <p className="page-subtitle max-w-2xl">Generate a structured risk report with score decomposition, recommendations, and compliance context.</p>
+        <p className="page-subtitle max-w-2xl">Generate a structured risk report with score decomposition and actionable recommendations.</p>
       </section>
 
       <section className="surface-panel rounded p-3 md:p-4 space-y-4">
