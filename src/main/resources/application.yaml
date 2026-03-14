@@ -118,6 +118,9 @@ app:
       unemployment-series-id: ${OPENBB_BUSINESS_UNEMPLOYMENT_SERIES_ID:UNRATE}
       fed-funds-series-id: ${OPENBB_BUSINESS_FED_FUNDS_SERIES_ID:FEDFUNDS}
 
+  research:
+    default-provider: ${APP_RESEARCH_PROVIDER:polygon}
+
   yahoo-finance:
     enabled: ${APP_YAHOO_FINANCE_ENABLED:true}
     base-url: https://query1.finance.yahoo.com
