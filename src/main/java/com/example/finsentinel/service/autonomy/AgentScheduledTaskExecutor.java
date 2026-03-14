@@ -2,13 +2,20 @@ package com.example.finsentinel.service.autonomy;
 
 import com.example.finsentinel.config.NewsProperties;
 import com.example.finsentinel.model.AgentSchedule;
+import com.example.finsentinel.model.enums.AgentEventAggregateType;
+import com.example.finsentinel.model.enums.AgentEventType;
 import com.example.finsentinel.model.enums.AgentScheduleTaskType;
 import com.example.finsentinel.service.MarketDataService;
+import com.example.finsentinel.service.event.AgentEventService;
+import com.example.finsentinel.service.okx.OkxAnalysisService;
 import com.example.finsentinel.service.trading.AgentBrainService;
 import com.example.finsentinel.service.trading.PaperTradingService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,14 +25,20 @@ import java.util.stream.Collectors;
  * Executes autonomous task payloads triggered by cron schedules.
  */
 @Component
+@Slf4j
 @RequiredArgsConstructor
 public class AgentScheduledTaskExecutor {
+
+    private static final Duration HEALTH_CHECK_TIMEOUT = Duration.ofSeconds(90);
+    private static final int HEALTH_CHECK_PREVIEW_LENGTH = 500;
 
     private final PaperTradingService paperTradingService;
     private final AgentBrainService agentBrainService;
     private final MarketDataService marketDataService;
     private final AgentHeartbeatService heartbeatService;
+    private final AgentEventService agentEventService;
     private final NewsProperties newsProperties;
+    private final ObjectProvider<OkxAnalysisService> okxAnalysisServiceProvider;
 
     public Map<String, Object> execute(AgentSchedule schedule) {
         AgentScheduleTaskType taskType = schedule.getTaskType();
@@ -71,8 +84,43 @@ public class AgentScheduledTaskExecutor {
     private Map<String, Object> runCryptoHealthCheck(AgentSchedule schedule) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("task", "CRYPTO_HEALTH_CHECK");
-        payload.put("status", "pending_implementation");
-        payload.put("message", "OKX analysis service integration pending");
+
+        OkxAnalysisService analysisService = okxAnalysisServiceProvider.getIfAvailable();
+        if (analysisService == null) {
+            payload.put("status", "skipped");
+            payload.put("message", "OKX integration is not enabled");
+            return payload;
+        }
+
+        try {
+            String result = analysisService.streamHealthCheck(schedule.getUserId())
+                    .collectList()
+                    .map(chunks -> String.join("", chunks))
+                    .block(HEALTH_CHECK_TIMEOUT);
+
+            int resultLength = result != null ? result.length() : 0;
+            payload.put("status", "ok");
+            payload.put("resultLength", resultLength);
+            payload.put("preview", truncate(result, HEALTH_CHECK_PREVIEW_LENGTH));
+        } catch (Exception e) {
+            log.warn("Crypto health check failed for user {}: {}", schedule.getUserId(), e.getMessage());
+            payload.put("status", "error");
+            payload.put("message", e.getMessage());
+        }
+
+        try {
+            agentEventService.append(
+                    schedule.getUserId(),
+                    AgentEventAggregateType.SYSTEM,
+                    schedule.getId(),
+                    AgentEventType.OKX_HEALTH_CHECK_RUN,
+                    payload,
+                    null
+            );
+        } catch (Exception e) {
+            log.warn("Failed to persist health check event for user {}: {}", schedule.getUserId(), e.getMessage());
+        }
+
         return payload;
     }
 
