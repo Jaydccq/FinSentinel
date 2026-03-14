@@ -122,11 +122,16 @@ app:
       fed-funds-series-id: ${OPENBB_BUSINESS_FED_FUNDS_SERIES_ID:FEDFUNDS}
 
   research:
-    default-provider: ${APP_RESEARCH_PROVIDER:polygon}
+    default-provider: ${APP_RESEARCH_PROVIDER:yfinance}
 
   yahoo-finance:
     enabled: ${APP_YAHOO_FINANCE_ENABLED:true}
     base-url: https://query1.finance.yahoo.com
+
+  fmp:
+    enabled: ${APP_FMP_ENABLED:false}
+    api-key: ${FMP_API_KEY:}
+    base-url: https://financialmodelingprep.com/api/v3
 
   jwt:
     secret: ${JWT_SECRET}
