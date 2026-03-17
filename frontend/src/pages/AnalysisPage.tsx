@@ -100,7 +100,7 @@ export default function AnalysisPage() {
       <section className="glass-panel rounded p-3 md:p-4">
         <p className="text-xs uppercase tracking-[0.13em] text-blue-200/80">AI Assessment</p>
         <h1 className="page-title mt-2">Risk Analysis</h1>
-        <p className="page-subtitle max-w-2xl">Generate a structured risk report with score decomposition, recommendations, and compliance context.</p>
+        <p className="page-subtitle max-w-2xl">Generate a structured risk report with score decomposition and actionable recommendations.</p>
       </section>
 
       <section className="surface-panel rounded p-3 md:p-4 space-y-4">
@@ -243,17 +243,6 @@ export default function AnalysisPage() {
             </div>
           )}
 
-          {report.complianceNote && (
-            <div className="rounded border border-blue-300/25 bg-blue-400/8 px-4 py-3 flex gap-3" role="note" aria-label="Compliance notice">
-              <ShieldAlert size={16} className="text-blue-200 flex-shrink-0 mt-0.5" aria-hidden="true" />
-              <div>
-                <p className="text-xs uppercase tracking-[0.11em] text-blue-100/90 font-semibold">
-                  {report.complianceNote.regulatoryFramework} Compliance Notice
-                </p>
-                <p className="text-xs text-blue-50/70 leading-relaxed mt-1">{report.complianceNote.disclaimer}</p>
-              </div>
-            </div>
-          )}
         </motion.section>
       )}
     </div>

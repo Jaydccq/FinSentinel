@@ -248,7 +248,6 @@ public class PortfolioController {
                             dto.summary(),
                             dto.factors(),
                             dto.actionableAdvice(),
-                            dto.complianceNote(),
                             entity.getCreatedAt()
                     );
                 })

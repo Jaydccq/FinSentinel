@@ -13,7 +13,6 @@ import java.util.UUID;
  * @param summary summary text
  * @param factors risk factors
  * @param actionableAdvice recommended actions
- * @param complianceNote compliance metadata
  * @param createdAt report creation timestamp
  */
 public record RiskReportSummary(
@@ -23,7 +22,6 @@ public record RiskReportSummary(
         String summary,
         List<RiskFactor> factors,
         List<String> actionableAdvice,
-        ComplianceNote complianceNote,
         LocalDateTime createdAt
 ) {
 }

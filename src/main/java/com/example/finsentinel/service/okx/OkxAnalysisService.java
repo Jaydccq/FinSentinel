@@ -123,7 +123,13 @@ public class OkxAnalysisService {
         healthPrompt.append("## OKX Portfolio Health Check\n\n");
 
         OkxResponse<OkxPosition> positionsResponse = okxApiClient.getPositions();
-        if (!positionsResponse.isSuccess() || positionsResponse.data().isEmpty()) {
+        if (!positionsResponse.isSuccess()) {
+            healthPrompt.append("⚠ OKX API error (code=").append(positionsResponse.code())
+                    .append("): ").append(positionsResponse.msg()).append("\n")
+                    .append("Cannot retrieve positions — the exchange may be unavailable, ")
+                    .append("or API credentials may be invalid. ")
+                    .append("Do NOT assume the portfolio is empty. Report this error to the user.\n");
+        } else if (positionsResponse.data().isEmpty()) {
             healthPrompt.append("No open OKX positions found. ")
                     .append("Provide general crypto market health assessment ")
                     .append("and recommendations for portfolio construction.\n");

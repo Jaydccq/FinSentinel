@@ -1,6 +1,5 @@
 package com.example.finsentinel.agent;
 
-import com.example.finsentinel.agent.advisor.ComplianceGuardrailAdvisor;
 import com.example.finsentinel.agent.advisor.UserContextAdvisor;
 import com.example.finsentinel.agent.tool.*;
 import com.example.finsentinel.config.PersonaProperties;
@@ -36,7 +35,6 @@ public class AgentConfig {
      * @param newsAnalysisTool news analysis tool (NewsAnalysisTool)
      * @param technicalIndicatorTool technical indicator tool (TechnicalIndicatorTool)
      * @param portfolioAnalysisTool portfolio analysis tool (PortfolioAnalysisTool)
-     * @param complianceCheckTool compliance check tool (ComplianceCheckTool)
      * @param tradingTool trading tool (TradingTool)
      * @param brainTool brain tool (BrainTool)
      * @param companyResearchTool company research tool (CompanyResearchTool)
@@ -53,7 +51,6 @@ public class AgentConfig {
      * @param twitterToolProvider optional twitter tool (TwitterTool)
      * @param questionAnswerAdvisor question answer advisor (QuestionAnswerAdvisor)
      * @param userContextAdvisor user context advisor (UserContextAdvisor)
-     * @param complianceGuardrailAdvisor compliance guardrail advisor (ComplianceGuardrailAdvisor)
      * @return the risk agent chat client result (ChatClient)
      */
 
@@ -65,7 +62,6 @@ public class AgentConfig {
             NewsAnalysisTool newsAnalysisTool,
             TechnicalIndicatorTool technicalIndicatorTool,
             PortfolioAnalysisTool portfolioAnalysisTool,
-            ComplianceCheckTool complianceCheckTool,
             TradingTool tradingTool,
             BrainTool brainTool,
             CompanyResearchTool companyResearchTool,
@@ -81,15 +77,14 @@ public class AgentConfig {
             ObjectProvider<CryptoNewsTool> cryptoNewsToolProvider,
             ObjectProvider<TwitterTool> twitterToolProvider,
             QuestionAnswerAdvisor questionAnswerAdvisor,
-            UserContextAdvisor userContextAdvisor,
-            ComplianceGuardrailAdvisor complianceGuardrailAdvisor) {
+            UserContextAdvisor userContextAdvisor) {
 
         String personaPath = personaProperties.getPersonasDir() + personaProperties.getPersona() + ".st";
         Resource systemPrompt = resourceLoader.getResource(personaPath);
 
         var tools = new java.util.ArrayList<Object>(java.util.List.of(
                 stockMarketTool, newsAnalysisTool, technicalIndicatorTool,
-                portfolioAnalysisTool, complianceCheckTool, tradingTool, brainTool,
+                portfolioAnalysisTool, tradingTool, brainTool,
                 companyResearchTool, equityScreenerTool, quantAnalysisTool,
                 thinkingTool, userProfileTool, confirmationTool, autonomyTool,
                 marketCalendarTool, ownershipTool, shortInterestTool));
@@ -102,7 +97,7 @@ public class AgentConfig {
         return ChatClient.builder(chatModel)
                 .defaultSystem(systemPrompt)
                 .defaultTools(tools.toArray())
-                .defaultAdvisors(questionAnswerAdvisor, userContextAdvisor, complianceGuardrailAdvisor)
+                .defaultAdvisors(questionAnswerAdvisor, userContextAdvisor)
                 .build();
     }
 

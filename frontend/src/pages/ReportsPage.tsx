@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   FileDown,
@@ -9,8 +9,6 @@ import {
   ChevronDown,
   ArrowUp,
   ArrowDown,
-  CheckCircle,
-  XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
@@ -245,15 +243,23 @@ export default function ReportsPage() {
     }
   }
 
-  // For factor comparison, sort reports chronologically
-  const sortedByDate = [...reports].sort(
-    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+  const sortedByDate = useMemo(
+    () => [...reports].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    [reports],
   )
 
-  const getPreviousReport = (reportId: string): RiskReportSummary | null => {
-    const idx = sortedByDate.findIndex(r => r.id === reportId)
-    return idx > 0 ? sortedByDate[idx - 1] : null
-  }
+  const previousReportMap = useMemo(() => {
+    const map = new Map<string, RiskReportSummary>()
+    for (let i = 1; i < sortedByDate.length; i++) {
+      map.set(sortedByDate[i].id, sortedByDate[i - 1])
+    }
+    return map
+  }, [sortedByDate])
+
+  const getPreviousReport = useCallback(
+    (reportId: string): RiskReportSummary | null => previousReportMap.get(reportId) ?? null,
+    [previousReportMap],
+  )
 
   return (
     <div className="p-10 space-y-10">
@@ -436,29 +442,6 @@ export default function ReportsPage() {
                           </div>
                         )}
 
-                        {/* Compliance Note */}
-                        {r.complianceNote && (
-                          <div className="bg-[var(--bg-elevated)] border border-[color:var(--border-subtle)] rounded p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              {r.complianceNote.isCompliant ? (
-                                <CheckCircle size={14} className="text-emerald-400" />
-                              ) : (
-                                <XCircle size={14} className="text-red-400" />
-                              )}
-                              <span className={`text-xs font-semibold ${
-                                r.complianceNote.isCompliant ? 'text-emerald-400' : 'text-red-400'
-                              }`}>
-                                {r.complianceNote.isCompliant ? 'Compliant' : 'Non-Compliant'}
-                              </span>
-                              <span className="text-[11px] text-[var(--text-muted)]">
-                                ({r.complianceNote.regulatoryFramework})
-                              </span>
-                            </div>
-                            <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-                              {r.complianceNote.disclaimer}
-                            </p>
-                          </div>
-                        )}
                       </div>
                     </motion.div>
                   )}

@@ -35,15 +35,13 @@ public class McpToolConfig {
             OwnershipTool ownershipTool,
             ShortInterestTool shortInterestTool,
             NewsAnalysisTool newsAnalysisTool,
-            ComplianceCheckTool complianceCheckTool,
             ObjectProvider<CryptoNewsTool> cryptoNewsToolProvider,
             ObjectProvider<TwitterTool> twitterToolProvider) {
 
         var tools = new java.util.ArrayList<Object>(java.util.List.of(
                 stockMarketTool, technicalIndicatorTool, companyResearchTool,
                 equityScreenerTool, quantAnalysisTool, marketCalendarTool,
-                ownershipTool, shortInterestTool, newsAnalysisTool,
-                complianceCheckTool));
+                ownershipTool, shortInterestTool, newsAnalysisTool));
 
         CryptoNewsTool cryptoNewsTool = cryptoNewsToolProvider.getIfAvailable();
         if (cryptoNewsTool != null) tools.add(cryptoNewsTool);

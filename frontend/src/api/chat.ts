@@ -1,16 +1,9 @@
-import { BASE, authHeaders } from './client'
-import { apiFetch } from './client'
+import { BASE, apiFetch } from './client'
 
 export interface RiskFactor {
   category: string
   score: number
   description: string
-}
-
-export interface ComplianceNote {
-  disclaimer: string
-  regulatoryFramework: string
-  isCompliant: boolean
 }
 
 export interface RiskReport {
@@ -19,7 +12,6 @@ export interface RiskReport {
   summary: string
   factors: RiskFactor[]
   actionableAdvice: string[]
-  complianceNote: ComplianceNote
 }
 
 export interface ChatMessage {
@@ -74,7 +66,6 @@ export const chatApi = {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
-          ...authHeaders(),
         },
         body: JSON.stringify({ message, sessionId }),
       })

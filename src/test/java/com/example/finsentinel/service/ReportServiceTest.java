@@ -49,7 +49,7 @@ class ReportServiceTest {
 
         RiskReport dto = new RiskReport(72, "HIGH", "Summary",
                 List.of(new RiskFactor("Market", 70, "desc")),
-                List.of("Rebalance"), new ComplianceNote("Disclaimer", "SEC", true));
+                List.of("Rebalance"));
 
         when(reportRepository.findByIdAndPortfolioUserId(reportId, userId)).thenReturn(Optional.of(entity));
         when(reportMapper.toDto(entity)).thenReturn(dto);

@@ -70,4 +70,4 @@ After your narrative, end with EXACTLY ONE ```json``` block containing:
 }
 ```
 
-IMPORTANT: Output EXACTLY ONE json block. Never output multiple json blocks. Never output RiskReport schema fields (riskScore, factors, complianceNote) — those belong to a different endpoint.
+IMPORTANT: Output EXACTLY ONE json block. Never output multiple json blocks. Never output RiskReport schema fields (riskScore, factors) — those belong to a different endpoint.

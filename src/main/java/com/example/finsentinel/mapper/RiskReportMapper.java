@@ -1,6 +1,5 @@
 package com.example.finsentinel.mapper;
 
-import com.example.finsentinel.dto.risk.ComplianceNote;
 import com.example.finsentinel.dto.risk.RiskFactor;
 import com.example.finsentinel.dto.risk.RiskReport;
 import com.example.finsentinel.model.RiskReportEntity;
@@ -46,8 +45,6 @@ public abstract class RiskReportMapper {
     @Mapping(target = "riskLevel", source = "riskLevel", qualifiedByName = "stringToRiskLevel")
     @Mapping(target = "factorsJson", source = "factors", qualifiedByName = "factorsToJson")
     @Mapping(target = "adviceJson", source = "actionableAdvice", qualifiedByName = "adviceToJson")
-    @Mapping(target = "disclaimer", source = "complianceNote.disclaimer")
-    @Mapping(target = "regulatoryFramework", source = "complianceNote.regulatoryFramework")
     public abstract RiskReportEntity toEntity(RiskReport report);
 
     /**
@@ -56,17 +53,7 @@ public abstract class RiskReportMapper {
     @Mapping(target = "riskLevel", source = "riskLevel", qualifiedByName = "riskLevelToString")
     @Mapping(target = "factors", source = "factorsJson", qualifiedByName = "jsonToFactors")
     @Mapping(target = "actionableAdvice", source = "adviceJson", qualifiedByName = "jsonToAdvice")
-    @Mapping(target = "summary", source = "summary")
-    @Mapping(target = "complianceNote", source = ".", qualifiedByName = "entityToComplianceNote")
     public abstract RiskReport toDto(RiskReportEntity entity);
-
-    /**
-     * Executes string to risk level.
-     *
-     * <p>This method is defined in {@link RiskReportMapper}.
-     * @param riskLevel risk level (String)
-     * @return the string to risk level result (RiskLevel)
-     */
 
     @Named("stringToRiskLevel")
     protected RiskLevel stringToRiskLevel(String riskLevel) {
@@ -79,26 +66,10 @@ public abstract class RiskReportMapper {
         }
     }
 
-    /**
-     * Executes risk level to string.
-     *
-     * <p>This method is defined in {@link RiskReportMapper}.
-     * @param riskLevel risk level (RiskLevel)
-     * @return the risk level to string result (String)
-     */
-
     @Named("riskLevelToString")
     protected String riskLevelToString(RiskLevel riskLevel) {
         return riskLevel != null ? riskLevel.name() : RiskLevel.LOW.name();
     }
-
-    /**
-     * Executes factors to json.
-     *
-     * <p>This method is defined in {@link RiskReportMapper}.
-     * @param factors factors (List<RiskFactor>)
-     * @return the factors to json result (String)
-     */
 
     @Named("factorsToJson")
     protected String factorsToJson(List<RiskFactor> factors) {
@@ -110,14 +81,6 @@ public abstract class RiskReportMapper {
             return "[]";
         }
     }
-
-    /**
-     * Executes json to factors.
-     *
-     * <p>This method is defined in {@link RiskReportMapper}.
-     * @param json json (String)
-     * @return the json to factors result (List<RiskFactor>)
-     */
 
     @Named("jsonToFactors")
     protected List<RiskFactor> jsonToFactors(String json) {
@@ -131,14 +94,6 @@ public abstract class RiskReportMapper {
         }
     }
 
-    /**
-     * Executes advice to json.
-     *
-     * <p>This method is defined in {@link RiskReportMapper}.
-     * @param advice advice (List<String>)
-     * @return the advice to json result (String)
-     */
-
     @Named("adviceToJson")
     protected String adviceToJson(List<String> advice) {
         if (advice == null) return "[]";
@@ -150,14 +105,6 @@ public abstract class RiskReportMapper {
         }
     }
 
-    /**
-     * Executes json to advice.
-     *
-     * <p>This method is defined in {@link RiskReportMapper}.
-     * @param json json (String)
-     * @return the json to advice result (List<String>)
-     */
-
     @Named("jsonToAdvice")
     protected List<String> jsonToAdvice(String json) {
         if (json == null || json.isBlank()) return Collections.emptyList();
@@ -168,23 +115,5 @@ public abstract class RiskReportMapper {
 
             return Collections.emptyList();
         }
-    }
-
-    /**
-     * Executes entity to compliance note.
-     *
-     * <p>This method is defined in {@link RiskReportMapper}.
-     * @param entity entity (RiskReportEntity)
-     * @return the entity to compliance note result (ComplianceNote)
-     */
-
-    @Named("entityToComplianceNote")
-    protected ComplianceNote entityToComplianceNote(RiskReportEntity entity) {
-
-        return new ComplianceNote(
-                entity.getDisclaimer(),
-                entity.getRegulatoryFramework(),
-                true
-        );
     }
 }

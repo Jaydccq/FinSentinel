@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, TrendingUp, TrendingDown, ExternalLink, Sparkles } from 'lucide-react'
-import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-} from 'recharts'
+import { ArrowLeft, TrendingUp, TrendingDown, ExternalLink, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
+import type { Time } from 'lightweight-charts'
+import CandlestickChart from '../components/CandlestickChart'
 import { marketApi, type QuoteData } from '../api/market'
 import { newsApi, type NewsSummary, type NewsItemResponse } from '../api/news'
+import { researchApi, type CompanyProfile, type FinancialMetrics } from '../api/research'
 import StockAnalysisSection from '../components/StockAnalysisSection'
 
 interface HistoryBar {
@@ -39,6 +39,34 @@ const SOURCE_COLORS: Record<string, string> = {
   CRYPTO_6551:       'bg-emerald-500/20 text-emerald-100 border-emerald-300/30',
 }
 
+const TIME_RANGES = [
+  { label: '1W', days: 7 },
+  { label: '1M', days: 30 },
+  { label: '3M', days: 90 },
+  { label: '6M', days: 180 },
+  { label: '1Y', days: 365 },
+]
+
+function formatLargeNumber(n: number | null | undefined): string {
+  if (n == null) return '--'
+  const abs = Math.abs(n)
+  if (abs >= 1e12) return `$${(n / 1e12).toFixed(2)}T`
+  if (abs >= 1e9) return `$${(n / 1e9).toFixed(2)}B`
+  if (abs >= 1e6) return `$${(n / 1e6).toFixed(2)}M`
+  if (abs >= 1e3) return `$${(n / 1e3).toFixed(1)}K`
+  return `$${n.toFixed(2)}`
+}
+
+function formatPercent(n: number | null | undefined): string {
+  if (n == null) return '--'
+  return `${n.toFixed(2)}%`
+}
+
+function formatRatio(n: number | null | undefined): string {
+  if (n == null) return '--'
+  return n.toFixed(2)
+}
+
 export default function StockDetailPage() {
   const { ticker } = useParams<{ ticker: string }>()
   const isCrypto = ticker?.includes('-')
@@ -52,6 +80,10 @@ export default function StockDetailPage() {
   const [loading, setLoading] = useState(true)
   const [summary, setSummary] = useState<NewsSummary | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(true)
+  const [activeRange, setActiveRange] = useState('1M')
+  const [profile, setProfile] = useState<CompanyProfile | null>(null)
+  const [financials, setFinancials] = useState<FinancialMetrics[]>([])
+  const [descExpanded, setDescExpanded] = useState(false)
 
   const loadTickerData = useCallback((t: string, crypto: boolean) => {
     const requestVersion = ++requestVersionRef.current
@@ -66,19 +98,35 @@ export default function StockDetailPage() {
     setHasMoreNews(true)
     setSummary(null)
     setSummaryLoading(true)
+    setActiveRange('1M')
+    setProfile(null)
+    setFinancials([])
 
-    Promise.all([
+    const fetchList: [
+      Promise<QuoteData | null>,
+      Promise<HistoryBar[]>,
+      Promise<{ content: NewsItemResponse[]; totalPages: number; totalElements: number; number: number }>,
+      Promise<NewsSummary | null>,
+      Promise<CompanyProfile | null>,
+      Promise<FinancialMetrics[]>,
+    ] = [
       marketApi.quote(t).catch(() => null),
       marketApi.history(t, 30).catch(() => []),
       newsApi.byTicker(crypto ? t.split('-')[0] : t, 0, 10).catch(() => ({ content: [], totalPages: 0, totalElements: 0, number: 0 })),
       newsApi.summary(t).catch(() => null),
-    ]).then(([q, h, n, s]) => {
+      crypto ? Promise.resolve(null) : researchApi.profile(t).catch(() => null),
+      crypto ? Promise.resolve([]) : researchApi.financials(t, 4).catch(() => []),
+    ]
+
+    Promise.all(fetchList).then(([q, h, n, s, p, f]) => {
       if (cancelled || requestVersion !== requestVersionRef.current) return
       setQuote(q)
       setHistory(h)
       setNews(n.content)
       setHasMoreNews(n.totalPages > 1)
       setSummary(s)
+      setProfile(p)
+      setFinancials(f)
     }).finally(() => {
       if (cancelled || requestVersion !== requestVersionRef.current) return
       setLoading(false)
@@ -92,6 +140,12 @@ export default function StockDetailPage() {
     if (!ticker) return
     return loadTickerData(ticker, !!isCrypto) // eslint-disable-line react-hooks/set-state-in-effect -- resets state on ticker change
   }, [ticker, isCrypto, loadTickerData])
+
+  const handleRangeChange = (label: string, days: number) => {
+    if (!ticker || label === activeRange) return
+    setActiveRange(label)
+    marketApi.history(ticker, days).then(h => setHistory(h)).catch(() => {})
+  }
 
   const loadMoreNews = () => {
     if (!ticker || loadingMore) return
@@ -118,9 +172,19 @@ export default function StockDetailPage() {
     : null
   const isUp = change !== null && change >= 0
 
-  const chartData = history.map(bar => ({
-    date: new Date(bar.t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+  // Candlestick data
+  const candleData = history.map(bar => ({
+    time: (bar.t / 1000) as Time,
+    open: bar.o,
+    high: bar.h,
+    low: bar.l,
     close: bar.c,
+  }))
+
+  const volumeData = history.map(bar => ({
+    time: (bar.t / 1000) as Time,
+    value: bar.v,
+    color: bar.c >= bar.o ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)',
   }))
 
   return (
@@ -256,52 +320,135 @@ export default function StockDetailPage() {
         transition={{ delay: 0.05 }}
         className="bg-[var(--bg-panel)] rounded p-6 border border-[var(--border-subtle)]"
       >
-        <div className="flex items-center gap-3 mb-5">
-          <span className="w-[2px] h-5 bg-[var(--accent)] inline-block" />
-          <h2 className="text-lg text-[var(--text-secondary)]">30-Day Price</h2>
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <span className="w-[2px] h-5 bg-[var(--accent)] inline-block" />
+            <h2 className="text-lg text-[var(--text-secondary)]">Price Chart</h2>
+          </div>
+
+          {/* Time range selector */}
+          <div className="flex items-center gap-1">
+            {TIME_RANGES.map(r => (
+              <button
+                key={r.label}
+                onClick={() => handleRangeChange(r.label, r.days)}
+                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                  activeRange === r.label
+                    ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] border border-transparent hover:border-[var(--border-subtle)]'
+                }`}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {chartData.length === 0 ? (
+        {candleData.length === 0 ? (
           <p className="text-[var(--text-muted)] text-sm">No historical data available.</p>
         ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorClose" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.25} />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
-              <XAxis dataKey="date" tick={{ fill: '#52525b', fontSize: 12 }} tickLine={false} axisLine={false} />
-              <YAxis
-                domain={['auto', 'auto']}
-                tick={{ fill: '#52525b', fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(v: number) => `$${v}`}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--bg-elevated)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 4,
-                }}
-                labelStyle={{ color: 'var(--text-secondary)' }}
-                itemStyle={{ color: 'var(--accent)' }}
-                formatter={(value: number | undefined) => value != null ? [`$${value.toFixed(2)}`, 'Close'] : ['', 'Close']}
-              />
-              <Area
-                type="monotone"
-                dataKey="close"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                fill="url(#colorClose)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <CandlestickChart data={candleData} volumeData={volumeData} height={400} />
         )}
       </motion.div>
+
+      {/* Company Fundamentals (stocks only) */}
+      {!isCrypto && profile && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.07 }}
+          className="bg-[var(--bg-panel)] rounded p-6 border border-[var(--border-subtle)]"
+        >
+          <div className="flex items-center gap-3 mb-5">
+            <span className="w-[2px] h-5 bg-emerald-500 inline-block" />
+            <h2 className="text-lg text-[var(--text-secondary)]">Company Fundamentals</h2>
+          </div>
+
+          {/* Company header */}
+          <div className="flex items-center gap-3 flex-wrap mb-5">
+            <h3 className="text-[var(--text-primary)] font-semibold text-base">{profile.name}</h3>
+            {profile.sector && (
+              <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-400/20">
+                {profile.sector}
+              </span>
+            )}
+            {profile.industry && (
+              <span className="text-xs text-[var(--text-muted)]">{profile.industry}</span>
+            )}
+            {profile.exchange && (
+              <span className="text-xs px-2 py-0.5 rounded bg-[var(--bg-elevated)] text-[var(--text-secondary)]">
+                {profile.exchange}
+              </span>
+            )}
+          </div>
+
+          {/* Key stats grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            {[
+              { label: 'Market Cap', value: formatLargeNumber(profile.marketCap) },
+              { label: 'P/E Ratio', value: financials[0]?.peRatio != null ? formatRatio(financials[0].peRatio) : '--' },
+              { label: 'EPS', value: financials[0]?.eps != null ? `$${financials[0].eps.toFixed(2)}` : '--' },
+              { label: 'Gross Margin', value: formatPercent(financials[0]?.grossMargin) },
+              { label: 'Net Margin', value: formatPercent(financials[0]?.netMargin) },
+              { label: 'Revenue Growth', value: formatPercent(financials[0]?.revenueGrowth) },
+              { label: 'Current Ratio', value: formatRatio(financials[0]?.currentRatio) },
+              { label: 'D/E Ratio', value: formatRatio(financials[0]?.debtToEquity) },
+            ].map(item => (
+              <div key={item.label} className="bg-[var(--bg-elevated)] rounded p-3">
+                <p className="text-[var(--text-muted)] text-xs">{item.label}</p>
+                <p className="text-[var(--text-primary)] font-semibold font-data tabular-nums mt-0.5 text-sm">{item.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Company description */}
+          {profile.description && (
+            <div className="mb-5">
+              <p className={`text-sm text-[var(--text-secondary)] leading-relaxed ${!descExpanded ? 'line-clamp-3' : ''}`}>
+                {profile.description}
+              </p>
+              <button
+                onClick={() => setDescExpanded(!descExpanded)}
+                className="mt-1 inline-flex items-center gap-1 text-xs text-[var(--accent)] hover:text-blue-400 transition-colors"
+              >
+                {descExpanded ? (
+                  <>Show less <ChevronUp size={12} /></>
+                ) : (
+                  <>Show more <ChevronDown size={12} /></>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Financials table */}
+          {financials.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--border-subtle)]">
+                    <th className="text-left py-2 pr-4 text-[var(--text-muted)] text-xs font-medium">Period</th>
+                    <th className="text-right py-2 px-4 text-[var(--text-muted)] text-xs font-medium">Revenue</th>
+                    <th className="text-right py-2 px-4 text-[var(--text-muted)] text-xs font-medium">Net Income</th>
+                    <th className="text-right py-2 px-4 text-[var(--text-muted)] text-xs font-medium">Gross Margin</th>
+                    <th className="text-right py-2 pl-4 text-[var(--text-muted)] text-xs font-medium">Net Margin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {financials.map(fm => (
+                    <tr key={fm.fiscalPeriod} className="border-b border-[var(--border-subtle)]/50">
+                      <td className="py-2 pr-4 text-[var(--text-primary)] font-data">{fm.fiscalPeriod}</td>
+                      <td className="py-2 px-4 text-right text-[var(--text-secondary)] font-data tabular-nums">{formatLargeNumber(fm.revenue)}</td>
+                      <td className="py-2 px-4 text-right text-[var(--text-secondary)] font-data tabular-nums">{formatLargeNumber(fm.netIncome)}</td>
+                      <td className="py-2 px-4 text-right text-[var(--text-secondary)] font-data tabular-nums">{formatPercent(fm.grossMargin)}</td>
+                      <td className="py-2 pl-4 text-right text-[var(--text-secondary)] font-data tabular-nums">{formatPercent(fm.netMargin)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </motion.div>
+      )}
 
       {/* AI Stock Analysis */}
       <StockAnalysisSection

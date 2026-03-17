@@ -256,25 +256,136 @@ public class OkxTradingTool {
         }
     }
 
-    // ── 5. Analyze Position (Placeholder) ───────────────────────────────
+    // ── 5. Analyze Position ────────────────────────────────────────────
 
-    @Tool(description = "Analyze an OKX position for risk and opportunity assessment. " +
-            "Currently a placeholder -- full analysis will use the crypto-analysis prompt template " +
-            "with real-time funding rates, technical indicators, and liquidation risk calculations.")
+    @Tool(description = "Analyze an OKX position by gathering position details, current funding rate, " +
+            "and live ticker data in a single call. Returns a consolidated snapshot with key risk " +
+            "metrics: leverage, liquidation distance, funding cost, and price context. " +
+            "Use this to quickly assess a position before making trading recommendations.")
     public String analyzeOkxPosition(
             @ToolParam(description = "Instrument ID to analyze, e.g. 'BTC-USDT-SWAP'") String instId) {
-        instId = instId.toUpperCase().trim();
-        return String.format(
-                "Position analysis for %s is not yet implemented in this tool.\n\n" +
-                "To analyze this position, please use the dedicated crypto-analysis prompt template " +
-                "which provides comprehensive risk assessment including:\n" +
-                "  - Funding rate cost projection\n" +
-                "  - Liquidation distance and margin health\n" +
-                "  - Technical indicator signals (RSI, MACD, Bollinger)\n" +
-                "  - Correlation with BTC and market regime\n" +
-                "  - Position sizing recommendations\n\n" +
-                "This tool will be enhanced in a future update to provide inline analysis.",
-                instId);
+        final String id = instId.toUpperCase().trim();
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("=== Position Analysis: %s ===\n\n", id));
+
+        // 1. Position data
+        try {
+            OkxResponse<OkxPosition> posResponse = okxApiClient.getPositions();
+            if (posResponse.isSuccess()) {
+                List<OkxPosition> matching = posResponse.data().stream()
+                        .filter(p -> id.equals(p.instId()))
+                        .toList();
+
+                if (matching.isEmpty()) {
+                    sb.append("No open position found for ").append(id).append(".\n");
+                } else {
+                    if (matching.size() > 1) {
+                        sb.append(String.format("Found %d position legs (hedge mode):\n\n", matching.size()));
+                    }
+                    for (int legIdx = 0; legIdx < matching.size(); legIdx++) {
+                        OkxPosition position = matching.get(legIdx);
+                        String side = position.posSide() != null && !position.posSide().isEmpty()
+                                ? position.posSide()
+                                : (position.pos() != null && position.pos().startsWith("-") ? "short" : "long");
+
+                        if (matching.size() > 1) {
+                            sb.append(String.format("--- Position Leg %d (%s) ---\n", legIdx + 1, side));
+                        } else {
+                            sb.append("--- Position ---\n");
+                        }
+                        sb.append(String.format("Side:             %s\n", side));
+                        sb.append(String.format("Size:             %s\n", formatAmount(position.pos())));
+                        sb.append(String.format("Entry Price:      %s\n", formatPrice(position.avgPx())));
+                        sb.append(String.format("Mark Price:       %s\n", formatPrice(position.markPx())));
+                        sb.append(String.format("Unrealized PnL:   %s\n", formatPnl(position.upl())));
+                        sb.append(String.format("Leverage:         %sx\n", position.lever() != null ? position.lever() : "?"));
+                        sb.append(String.format("Margin Mode:      %s\n", position.mgnMode() != null ? position.mgnMode() : "?"));
+
+                        String liqPx = position.liqPx() != null && !position.liqPx().isEmpty()
+                                ? position.liqPx() : null;
+                        sb.append(String.format("Liquidation Px:   %s\n", liqPx != null ? formatPrice(liqPx) : "N/A"));
+
+                        // Liquidation distance
+                        if (liqPx != null && position.markPx() != null) {
+                            try {
+                                BigDecimal mark = new BigDecimal(position.markPx());
+                                BigDecimal liq = new BigDecimal(liqPx);
+                                if (mark.compareTo(BigDecimal.ZERO) > 0) {
+                                    BigDecimal distPct = mark.subtract(liq).abs()
+                                            .divide(mark, 6, RoundingMode.HALF_UP)
+                                            .multiply(BigDecimal.valueOf(100));
+                                    sb.append(String.format("Liq Distance:     %s%%\n", distPct.setScale(2, RoundingMode.HALF_UP)));
+                                    if (distPct.compareTo(BigDecimal.valueOf(5)) < 0) {
+                                        sb.append("⚠ WARNING: Liquidation distance < 5%! Consider reducing leverage or position size.\n");
+                                    }
+                                }
+                            } catch (NumberFormatException ignored) {}
+                        }
+                        if (legIdx < matching.size() - 1) sb.append("\n");
+                    }
+                }
+            }
+        } catch (Exception e) {
+            sb.append("Could not fetch position data: ").append(e.getMessage()).append("\n");
+        }
+
+        // 2. Funding rate (only for perpetual swaps)
+        if (id.contains("-SWAP")) {
+            sb.append("\n--- Funding Rate ---\n");
+            try {
+                OkxResponse<OkxFundingRate> frResponse = okxApiClient.getFundingRate(id);
+                if (frResponse.isSuccess() && !frResponse.data().isEmpty()) {
+                    OkxFundingRate rate = frResponse.data().getFirst();
+                    BigDecimal currentRate = parseRate(rate.fundingRate());
+                    BigDecimal nextRate = parseRate(rate.nextFundingRate());
+                    sb.append(String.format("Current Rate:     %s%%\n", formatPercent(currentRate)));
+                    sb.append(String.format("Next Rate:        %s%%\n", formatPercent(nextRate)));
+                    if (currentRate != null) {
+                        BigDecimal dailyCost = currentRate.multiply(BigDecimal.valueOf(3));
+                        sb.append(String.format("Est. Daily Cost:  %s%%\n", formatPercent(dailyCost)));
+                        sb.append(currentRate.compareTo(BigDecimal.ZERO) > 0
+                                ? "Direction: Longs pay shorts.\n"
+                                : "Direction: Shorts pay longs.\n");
+                    }
+                } else {
+                    sb.append("Funding rate unavailable.\n");
+                }
+            } catch (Exception e) {
+                sb.append("Could not fetch funding rate: ").append(e.getMessage()).append("\n");
+            }
+        }
+
+        // 3. Live ticker
+        sb.append("\n--- Live Ticker ---\n");
+        try {
+            OkxResponse<OkxTicker> tickerResponse = okxApiClient.getTicker(id);
+            if (tickerResponse.isSuccess() && !tickerResponse.data().isEmpty()) {
+                OkxTicker ticker = tickerResponse.data().getFirst();
+                sb.append(String.format("Last Price:       %s\n", formatPrice(ticker.last())));
+                sb.append(String.format("Bid / Ask:        %s / %s\n", formatPrice(ticker.bidPx()), formatPrice(ticker.askPx())));
+                sb.append(String.format("24h Volume:       %s\n", formatAmount(ticker.vol24h())));
+
+                if (ticker.open24h() != null && ticker.last() != null) {
+                    try {
+                        BigDecimal open = new BigDecimal(ticker.open24h());
+                        BigDecimal last = new BigDecimal(ticker.last());
+                        if (open.compareTo(BigDecimal.ZERO) > 0) {
+                            BigDecimal changePct = last.subtract(open)
+                                    .divide(open, 6, RoundingMode.HALF_UP)
+                                    .multiply(BigDecimal.valueOf(100));
+                            sb.append(String.format("24h Change:       %s%%\n",
+                                    changePct.setScale(2, RoundingMode.HALF_UP)));
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+            } else {
+                sb.append("Ticker unavailable.\n");
+            }
+        } catch (Exception e) {
+            sb.append("Could not fetch ticker: ").append(e.getMessage()).append("\n");
+        }
+
+        return sb.toString();
     }
 
     // ── 6. Set Leverage ─────────────────────────────────────────────────

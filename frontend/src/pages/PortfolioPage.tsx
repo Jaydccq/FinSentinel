@@ -3,10 +3,13 @@ import { motion } from 'framer-motion'
 import { Plus, Trash2, ChevronDown } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { toast } from 'sonner'
+import { Link } from 'react-router-dom'
 import { portfolioApi, type PortfolioResponse, type PortfolioAnalytics } from '../api/portfolio'
+import { marketApi } from '../api/market'
 import { PortfolioListSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import TickerSearchInput from '../components/TickerSearchInput'
+import Sparkline from '../components/Sparkline'
 
 const SECTOR_COLORS: Record<string, string> = {
   Technology: 'bg-blue-500/15 text-blue-100 border-blue-300/30',
@@ -115,6 +118,8 @@ export default function PortfolioPage() {
   const [holdForm, setHoldForm] = useState({ symbol: '', companyName: '', quantity: '', averageCost: '', sector: '' })
   const [loading, setLoading] = useState(true)
   const [analytics, setAnalytics] = useState<Record<string, PortfolioAnalytics>>({})
+  const [holdingQuotes, setHoldingQuotes] = useState<Record<string, Record<string, { close: number }>>>({})
+  const [holdingHistory, setHoldingHistory] = useState<Record<string, Record<string, number[]>>>({})
 
   const refresh = () => portfolioApi.list().then(setPortfolios).finally(() => setLoading(false))
   useEffect(() => { refresh() }, [])
@@ -170,6 +175,32 @@ export default function PortfolioPage() {
       portfolioApi.getAnalytics(id)
         .then(data => setAnalytics(prev => ({ ...prev, [id]: data })))
         .catch(() => toast.error('Failed to load analytics.'))
+    }
+
+    const portfolio = portfolios.find(p => p.id === id)
+    if (portfolio && !holdingQuotes[id]) {
+      const symbols = portfolio.holdings.map(h => h.symbol)
+      if (symbols.length > 0) {
+        marketApi.batchQuotes(symbols)
+          .then(quotes => {
+            const mapped: Record<string, { close: number }> = {}
+            for (const [sym, q] of Object.entries(quotes)) {
+              if (q && typeof q.close === 'number') mapped[sym] = { close: q.close }
+            }
+            setHoldingQuotes(prev => ({ ...prev, [id]: mapped }))
+          })
+          .catch(() => {})
+
+        Promise.all(symbols.map(s =>
+          marketApi.history(s, 7)
+            .then(bars => ({ symbol: s, closes: bars.map(b => b.c) }))
+            .catch(() => ({ symbol: s, closes: [] as number[] }))
+        )).then(results => {
+          const histMap: Record<string, number[]> = {}
+          results.forEach(r => { histMap[r.symbol] = r.closes })
+          setHoldingHistory(prev => ({ ...prev, [id]: histMap }))
+        })
+      }
     }
   }
 
@@ -313,13 +344,17 @@ export default function PortfolioPage() {
                     </div>
                   )
                 })()}
-                  <table className="table-terminal w-full min-w-[760px]">
+                  <table className="table-terminal w-full min-w-[960px]">
                     <thead>
                       <tr className="bg-slate-900/35 text-[var(--text-muted)] text-xs border-b border-[color:var(--border-subtle)]">
                         <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Symbol</th>
                         <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Company</th>
                         <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Qty</th>
                         <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Avg Cost</th>
+                        <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Price</th>
+                        <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">P/L</th>
+                        <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">P/L %</th>
+                        <th className="px-3 py-2 text-center font-semibold uppercase tracking-[0.08em]">7D</th>
                         <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Sector</th>
                         <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Action</th>
                       </tr>
@@ -327,30 +362,59 @@ export default function PortfolioPage() {
                     <tbody>
                       {portfolio.holdings.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-3 py-4 text-center text-[var(--text-muted)]">No holdings yet</td>
+                          <td colSpan={10} className="px-3 py-4 text-center text-[var(--text-muted)]">No holdings yet</td>
                         </tr>
                       ) : (
-                        portfolio.holdings.map((holding, idx) => (
-                          <tr
-                            key={holding.id}
-                            className={`border-b border-[color:var(--border-subtle)] hover:bg-white/5 transition-colors ${idx % 2 === 1 ? 'bg-slate-900/15' : ''}`}
-                          >
-                            <td className="px-3 py-2 font-data font-bold text-blue-100">{holding.symbol}</td>
-                            <td className="px-3 py-2 text-[var(--text-secondary)]">{holding.companyName || '-'}</td>
-                            <td className="px-3 py-2 text-right text-[var(--text-secondary)] font-data tabular-nums">{holding.quantity}</td>
-                            <td className="px-3 py-2 text-right text-[var(--text-secondary)] font-data tabular-nums">${Number(holding.averageCost).toFixed(2)}</td>
-                            <td className="px-3 py-2"><SectorBadge sector={holding.sector} /></td>
-                            <td className="px-3 py-2 text-right">
-                              <button
-                                onClick={() => deleteHolding(portfolio.id, holding.id)}
-                                aria-label={`Delete holding ${holding.symbol}`}
-                                className="h-6 w-6 rounded inline-flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--down)] hover:bg-red-500/15 transition-colors"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                        portfolio.holdings.map((holding, idx) => {
+                          const quote = holdingQuotes[portfolio.id]?.[holding.symbol]
+                          const closes = holdingHistory[portfolio.id]?.[holding.symbol]
+                          const currentPrice = quote?.close
+                          const avgCost = Number(holding.averageCost)
+                          const qty = Number(holding.quantity)
+                          const pl = currentPrice != null ? (currentPrice - avgCost) * qty : null
+                          const plPct = currentPrice != null && avgCost !== 0 ? ((currentPrice - avgCost) / avgCost) * 100 : null
+                          const plColor = pl != null ? (pl >= 0 ? 'text-[var(--up)]' : 'text-[var(--down)]') : ''
+
+                          return (
+                            <tr
+                              key={holding.id}
+                              className={`border-b border-[color:var(--border-subtle)] hover:bg-white/5 transition-colors ${idx % 2 === 1 ? 'bg-slate-900/15' : ''}`}
+                            >
+                              <td className="px-3 py-2">
+                                <Link to={`/stock/${holding.symbol}`} className="font-data font-bold text-blue-100 hover:text-blue-300 transition-colors">
+                                  {holding.symbol}
+                                </Link>
+                              </td>
+                              <td className="px-3 py-2 text-[var(--text-secondary)]">{holding.companyName || '-'}</td>
+                              <td className="px-3 py-2 text-right text-[var(--text-secondary)] font-data tabular-nums">{holding.quantity}</td>
+                              <td className="px-3 py-2 text-right text-[var(--text-secondary)] font-data tabular-nums">${avgCost.toFixed(2)}</td>
+                              <td className="px-3 py-2 text-right font-data tabular-nums text-[var(--text-primary)]">
+                                {currentPrice != null ? `$${currentPrice.toFixed(2)}` : <span className="text-[var(--text-muted)]">&mdash;</span>}
+                              </td>
+                              <td className={`px-3 py-2 text-right font-data tabular-nums ${plColor}`}>
+                                {pl != null ? `${pl >= 0 ? '+' : ''}$${pl.toFixed(2)}` : <span className="text-[var(--text-muted)]">&mdash;</span>}
+                              </td>
+                              <td className={`px-3 py-2 text-right font-data tabular-nums ${plColor}`}>
+                                {plPct != null ? `${plPct >= 0 ? '+' : ''}${plPct.toFixed(2)}%` : <span className="text-[var(--text-muted)]">&mdash;</span>}
+                              </td>
+                              <td className="px-3 py-2 flex justify-center">
+                                {closes && closes.length > 1
+                                  ? <Sparkline data={closes} isUp={closes[closes.length - 1] >= closes[0]} />
+                                  : <span className="text-[var(--text-muted)]">&mdash;</span>}
+                              </td>
+                              <td className="px-3 py-2"><SectorBadge sector={holding.sector} /></td>
+                              <td className="px-3 py-2 text-right">
+                                <button
+                                  onClick={() => deleteHolding(portfolio.id, holding.id)}
+                                  aria-label={`Delete holding ${holding.symbol}`}
+                                  className="h-6 w-6 rounded inline-flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--down)] hover:bg-red-500/15 transition-colors"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })
                       )}
                     </tbody>
                   </table>
