@@ -33,7 +33,10 @@ import java.util.UUID;
  * LLM-provided parameters -- to prevent cross-user operations.
  *
  * <p>This class is part of the agent layer in FinSentinel.
+ *
+ * @deprecated Use {@link com.example.finsentinel.agent.tool.UnifiedTradingTool} instead.
  */
+@Deprecated(forRemoval = true)
 @Component
 @Slf4j
 @RequiredArgsConstructor

@@ -24,7 +24,10 @@ import java.util.Optional;
  * </ol>
  *
  * <p>This class belongs to the service/trading layer in FinSentinel.
+ *
+ * @deprecated Use {@link com.example.finsentinel.service.trading.uta.BrokerRegistry} instead.
  */
+@Deprecated(forRemoval = true)
 @Component
 @Slf4j
 public class TradingEngineFactory {

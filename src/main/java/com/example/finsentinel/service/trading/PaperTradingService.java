@@ -44,7 +44,10 @@ import tools.jackson.databind.json.JsonMapper;
  * commit history, providing a full audit trail of what was traded, why, and what happened.
  *
  * <p>This class is part of the service layer in FinSentinel.
+ *
+ * @deprecated Use {@link com.example.finsentinel.service.trading.uta.UnifiedTradingService} instead.
  */
+@Deprecated(forRemoval = true)
 @Service
 @RequiredArgsConstructor
 @Slf4j
