@@ -7,7 +7,6 @@ import {
   TrendingUp,
   TrendingDown,
   ChevronDown,
-  Send,
   Clock,
   Package,
   RefreshCw,
@@ -18,7 +17,7 @@ import {
   Target,
   Radio,
 } from 'lucide-react'
-import { toast } from 'sonner'
+import { Link } from 'react-router-dom'
 import {
   okxApi,
   type OkxAccountInfo,
@@ -27,7 +26,7 @@ import {
   type OkxOrder,
   type CryptoAnalysisResult,
 } from '../api/okx'
-import { tradingApi } from '../api/trading'
+import { tradingApiV2 } from '../api/trading'
 import EmptyState from '../components/EmptyState'
 import { useOkxPrices, type PriceSnapshot } from '../hooks/useOkxPrices'
 
@@ -186,10 +185,10 @@ function PositionAnalysisPanel({ instId }: { instId: string }) {
   const handleStage = async () => {
     if (!result?.suggestedAction || result.suggestedAction.action === 'HOLD') return
     try {
-      await tradingApi.stage({
+      await tradingApiV2.stage({
         action: result.suggestedAction.action,
-        ticker: instId,
-        shares: result.suggestedAction.size ?? undefined,
+        symbol: instId,
+        qty: result.suggestedAction.size != null ? String(result.suggestedAction.size) : undefined,
       })
       setStaged(true)
     } catch (e) {
@@ -372,11 +371,7 @@ export default function CryptoTradingPage() {
   // Expanded analysis row
   const [expandedPos, setExpandedPos] = useState<string | null>(null)
 
-  // Quick trade form
-  const [tradeInst, setTradeInst] = useState('BTC-USDT')
-  const [tradeSide, setTradeSide] = useState<'BUY' | 'SELL'>('BUY')
-  const [tradeSize, setTradeSize] = useState('')
-  const [staging, setStaging] = useState(false)
+  // Quick trade form removed — use unified Trading page instead
 
   // Health check
   const [healthRunning, setHealthRunning] = useState(false)
@@ -483,27 +478,6 @@ export default function CryptoTradingPage() {
 
   /* ─── Actions ─── */
 
-  const stageOrder = async () => {
-    if (!tradeInst.trim() || !tradeSize.trim()) {
-      toast.error('Instrument pair and size are required.')
-      return
-    }
-    setStaging(true)
-    try {
-      await tradingApi.stage({
-        action: tradeSide,
-        ticker: tradeInst.toUpperCase(),
-        shares: Number(tradeSize),
-      })
-      toast.success(`Staged ${tradeSide} ${tradeSize} ${tradeInst.toUpperCase()}`)
-      setTradeSize('')
-    } catch {
-      toast.error('Failed to stage order.')
-    } finally {
-      setStaging(false)
-    }
-  }
-
   const runHealthCheck = () => {
     setHealthRunning(true)
     setHealthNarrative('')
@@ -546,8 +520,8 @@ export default function CryptoTradingPage() {
     return (
       <div className="px-4 py-4 md:px-8 md:py-6 space-y-4">
         <section className="glass-panel rounded p-3 md:p-4">
-          <h1 className="page-title">Crypto Trading</h1>
-          <p className="page-subtitle">OKX account, positions, funding rates, and AI analysis.</p>
+          <h1 className="page-title">Crypto Analytics</h1>
+          <p className="page-subtitle">OKX account, positions, funding rates, and AI analysis. For trading, use the <Link to="/trading" className="text-blue-400 hover:text-blue-300 underline underline-offset-2">Trading Desk</Link>.</p>
         </section>
         <CryptoSkeleton />
       </div>
@@ -559,8 +533,8 @@ export default function CryptoTradingPage() {
       {/* ─── Header ─── */}
       <section className="glass-panel rounded p-3 md:p-4 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="page-title">Crypto Trading</h1>
-          <p className="page-subtitle">OKX account, positions, funding rates, and AI analysis.</p>
+          <h1 className="page-title">Crypto Analytics</h1>
+          <p className="page-subtitle">OKX account, positions, funding rates, and AI analysis. For trading, use the <Link to="/trading" className="text-blue-400 hover:text-blue-300 underline underline-offset-2">Trading Desk</Link>.</p>
         </div>
         <button
           onClick={syncAll}
@@ -765,86 +739,28 @@ export default function CryptoTradingPage() {
         )}
       </motion.section>
 
-      {/* ─── Section 3: Quick Trade + Funding Rates ─── */}
+      {/* ─── Section 3: Trade Link + Funding Rates ─── */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Quick Trade Form */}
+        {/* Unified Trading Redirect */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.18 }}
-          className="surface-panel rounded p-3 md:p-4"
+          className="surface-panel rounded p-3 md:p-4 flex flex-col items-center justify-center text-center gap-3"
         >
-          <h2 className="text-base font-semibold text-[var(--text-primary)] mb-3">Quick Trade</h2>
-          <div className="space-y-3">
-            {/* Instrument Pair */}
-            <div>
-              <label htmlFor="crypto-inst" className="field-label">
-                Instrument Pair
-              </label>
-              <input
-                id="crypto-inst"
-                type="text"
-                className="field-input uppercase"
-                placeholder="BTC-USDT"
-                value={tradeInst}
-                onChange={(e) => setTradeInst(e.target.value.toUpperCase())}
-              />
-            </div>
-
-            {/* Side Toggle */}
-            <div>
-              <label className="field-label">Side</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setTradeSide('BUY')}
-                  className={`flex-1 py-2 rounded text-sm font-bold border transition-colors ${
-                    tradeSide === 'BUY'
-                      ? 'bg-green-500/20 border-green-400/40 text-[var(--up)]'
-                      : 'bg-transparent border-[color:var(--border-subtle)] text-[var(--text-muted)] hover:border-[color:var(--border-strong)]'
-                  }`}
-                >
-                  BUY
-                </button>
-                <button
-                  onClick={() => setTradeSide('SELL')}
-                  className={`flex-1 py-2 rounded text-sm font-bold border transition-colors ${
-                    tradeSide === 'SELL'
-                      ? 'bg-red-500/20 border-red-400/40 text-[var(--down)]'
-                      : 'bg-transparent border-[color:var(--border-subtle)] text-[var(--text-muted)] hover:border-[color:var(--border-strong)]'
-                  }`}
-                >
-                  SELL
-                </button>
-              </div>
-            </div>
-
-            {/* Size */}
-            <div>
-              <label htmlFor="crypto-size" className="field-label">
-                Size
-              </label>
-              <input
-                id="crypto-size"
-                type="number"
-                className="field-input"
-                placeholder="0.01"
-                min={0}
-                step="any"
-                value={tradeSize}
-                onChange={(e) => setTradeSize(e.target.value)}
-              />
-            </div>
-
-            {/* Stage button */}
-            <button
-              onClick={stageOrder}
-              disabled={staging || !tradeInst.trim() || !tradeSize.trim()}
-              className="btn-primary w-full py-2 text-sm disabled:opacity-40"
-            >
-              <Send size={14} />
-              {staging ? 'Staging...' : 'Stage Order'}
-            </button>
-          </div>
+          <Wallet size={28} className="text-blue-400" />
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">Unified Trading</h2>
+          <p className="text-sm text-[var(--text-muted)] max-w-xs">
+            Crypto trading is now handled through the unified Trading Desk. Stage, commit, and execute
+            orders for stocks and crypto in one place.
+          </p>
+          <Link
+            to="/trading"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded text-sm font-medium bg-blue-500/15 text-blue-300 border border-blue-400/20 hover:bg-blue-500/25 hover:border-blue-400/40 transition-all"
+          >
+            <ArrowRightCircle size={14} />
+            Go to Trading Desk
+          </Link>
         </motion.div>
 
         {/* Funding Rates */}
