@@ -17,11 +17,12 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
-  tradingApi,
-  type WalletStatus,
-  type StagedOrders,
-  type TradeCommit,
-  type TradeOperation,
+  tradingApiV2,
+  type V2WalletStatus,
+  type V2StagedOrders,
+  type V2TradeCommit,
+  type V2TradeOperation,
+  type AssetSearchResult,
 } from '../api/trading'
 import { okxApi, type OkxAccountInfo, type OkxPositionInfo } from '../api/okx'
 import EmptyState from '../components/EmptyState'
@@ -109,16 +110,23 @@ export default function TradingPage() {
   // Tab state
   const [activeTab, setActiveTab] = useState<TradingTab>('paper')
 
-  const [wallet, setWallet] = useState<WalletStatus | null>(null)
-  const [staged, setStaged] = useState<StagedOrders | null>(null)
-  const [history, setHistory] = useState<TradeCommit[]>([])
+  const [wallet, setWallet] = useState<V2WalletStatus | null>(null)
+  const [staged, setStaged] = useState<V2StagedOrders | null>(null)
+  const [history, setHistory] = useState<V2TradeCommit[]>([])
   const [loading, setLoading] = useState(true)
 
   // Order form
   const [action, setAction] = useState<'BUY' | 'SELL'>('BUY')
-  const [ticker, setTicker] = useState('')
-  const [shares, setShares] = useState('')
+  const [symbol, setSymbol] = useState('')
+  const [qty, setQty] = useState('')
+  const [amount, setAmount] = useState('')
+  const [orderMode, setOrderMode] = useState<'qty' | 'amount'>('qty')
   const [staging, setStaging] = useState(false)
+
+  // Asset search
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<AssetSearchResult[]>([])
+  const [searching, setSearching] = useState(false)
 
   // Commit form
   const [commitMsg, setCommitMsg] = useState('')
@@ -146,7 +154,7 @@ export default function TradingPage() {
 
   const fetchWallet = useCallback(async () => {
     try {
-      const data = await tradingApi.wallet()
+      const data = await tradingApiV2.wallet()
       setWallet(data)
     } catch {
       // silent on auto-refresh
@@ -155,7 +163,7 @@ export default function TradingPage() {
 
   const fetchStaged = useCallback(async () => {
     try {
-      const data = await tradingApi.staged()
+      const data = await tradingApiV2.staged()
       setStaged(data)
     } catch {
       setStaged({ operations: [], count: 0 })
@@ -164,7 +172,7 @@ export default function TradingPage() {
 
   const fetchHistory = useCallback(async () => {
     try {
-      const data = await tradingApi.history(10)
+      const data = await tradingApiV2.history(10)
       setHistory(data)
     } catch {
       setHistory([])
@@ -214,16 +222,31 @@ export default function TradingPage() {
   /* ─── Actions ─── */
 
   const stageOrder = async () => {
-    if (!ticker.trim() || !shares.trim()) {
-      toast.error('Ticker and shares are required.')
+    const sym = symbol.trim().toUpperCase()
+    if (!sym) {
+      toast.error('Symbol is required.')
+      return
+    }
+    if (orderMode === 'qty' && !qty.trim()) {
+      toast.error('Quantity is required.')
+      return
+    }
+    if (orderMode === 'amount' && !amount.trim()) {
+      toast.error('Dollar amount is required.')
       return
     }
     setStaging(true)
     try {
-      await tradingApi.stage({ action, ticker: ticker.toUpperCase(), shares: Number(shares) })
-      toast.success(`Staged ${action} ${shares} ${ticker.toUpperCase()}`)
-      setTicker('')
-      setShares('')
+      await tradingApiV2.stage({
+        action,
+        symbol: sym,
+        ...(orderMode === 'qty' ? { qty: qty.trim() } : { amount: amount.trim() }),
+      })
+      const label = orderMode === 'qty' ? `${qty} units` : `$${amount}`
+      toast.success(`Staged ${action} ${label} of ${sym}`)
+      setSymbol('')
+      setQty('')
+      setAmount('')
       await fetchStaged()
     } catch {
       toast.error('Failed to stage order.')
@@ -239,8 +262,8 @@ export default function TradingPage() {
     }
     setCommitting(true)
     try {
-      await tradingApi.commit(commitMsg)
-      const result = await tradingApi.execute()
+      await tradingApiV2.commit(commitMsg)
+      const result = await tradingApiV2.execute()
       toast.success(
         `Executed ${result.operations.length} operation${result.operations.length !== 1 ? 's' : ''} — ${truncHash(result.hash)}`,
       )
@@ -260,10 +283,10 @@ export default function TradingPage() {
     }
     setOkxStaging(true)
     try {
-      await tradingApi.stage({
+      await tradingApiV2.stage({
         action: okxAction,
-        ticker: okxInstId.toUpperCase(),
-        shares: Number(okxQty),
+        symbol: okxInstId.toUpperCase(),
+        qty: okxQty.trim(),
       })
       toast.success(`Staged ${okxAction} ${okxQty} ${okxInstId.toUpperCase()}`)
       setOkxInstId('')
@@ -275,6 +298,24 @@ export default function TradingPage() {
       setOkxStaging(false)
     }
   }
+
+  // Asset search handler
+  const handleSearch = useCallback(async (query: string) => {
+    setSearchQuery(query)
+    if (query.trim().length < 2) {
+      setSearchResults([])
+      return
+    }
+    setSearching(true)
+    try {
+      const results = await tradingApiV2.search(query.trim())
+      setSearchResults(results)
+    } catch {
+      setSearchResults([])
+    } finally {
+      setSearching(false)
+    }
+  }, [])
 
   /* ─── Render ─── */
 
@@ -291,7 +332,7 @@ export default function TradingPage() {
   }
 
   const positions = wallet?.positions ?? []
-  const stagedOps: TradeOperation[] = staged?.operations ?? []
+  const stagedOps: V2TradeOperation[] = staged?.operations ?? []
   const isPaper = wallet?.tradingMode?.toUpperCase() !== 'LIVE'
 
   return (
@@ -392,6 +433,58 @@ export default function TradingPage() {
             ))}
           </section>
 
+          {/* ─── Asset Search ─── */}
+          <motion.section
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.08 }}
+            className="surface-panel rounded p-3 md:p-4"
+          >
+            <h2 className="text-base font-semibold text-[var(--text-primary)] mb-2">Asset Search</h2>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                className="field-input flex-1"
+                placeholder="Search stocks, crypto, derivatives..."
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
+              />
+              {searching && (
+                <span className="flex items-center text-xs text-[var(--text-muted)]">
+                  <RefreshCw size={12} className="animate-spin mr-1" />
+                  Searching...
+                </span>
+              )}
+            </div>
+            {searchResults.length > 0 && (
+              <div className="mt-2 max-h-[180px] overflow-y-auto divide-y divide-[color:var(--border-subtle)] border border-[color:var(--border-subtle)] rounded">
+                {searchResults.map((asset) => (
+                  <button
+                    key={asset.symbol}
+                    onClick={() => {
+                      setSymbol(asset.symbol)
+                      setSearchQuery('')
+                      setSearchResults([])
+                    }}
+                    className="w-full flex items-center justify-between gap-3 px-3 py-2 hover:bg-white/5 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-data font-bold text-blue-100 text-sm">{asset.symbol}</span>
+                      {asset.name && (
+                        <span className="text-xs text-[var(--text-muted)] truncate">{asset.name}</span>
+                      )}
+                    </div>
+                    {asset.securityType && (
+                      <span className="flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-700/50 text-[var(--text-secondary)] border border-[color:var(--border-subtle)]">
+                        {asset.securityType}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </motion.section>
+
           {/* ─── Section 2: Positions + Order Form ─── */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Positions Table */}
@@ -417,8 +510,8 @@ export default function TradingPage() {
                   <table className="table-terminal w-full min-w-[540px]">
                     <thead>
                       <tr className="bg-slate-900/35 text-[var(--text-muted)] text-xs border-b border-[color:var(--border-subtle)]">
-                        <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Ticker</th>
-                        <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Shares</th>
+                        <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Symbol</th>
+                        <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Qty</th>
                         <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Avg Cost</th>
                         <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Current</th>
                         <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">P&L</th>
@@ -428,14 +521,14 @@ export default function TradingPage() {
                     <tbody>
                       {positions.map((pos, idx) => (
                         <tr
-                          key={pos.ticker}
+                          key={pos.symbol}
                           className={`border-b border-[color:var(--border-subtle)] hover:bg-white/5 transition-colors ${
                             idx % 2 === 1 ? 'bg-slate-900/15' : ''
                           }`}
                         >
-                          <td className="px-3 py-2 font-data font-bold text-blue-100">{pos.ticker}</td>
+                          <td className="px-3 py-2 font-data font-bold text-blue-100">{pos.symbol}</td>
                           <td className="px-3 py-2 text-right text-[var(--text-secondary)] font-data tabular-nums">
-                            {pos.shares}
+                            {pos.qty}
                           </td>
                           <td className="px-3 py-2 text-right text-[var(--text-secondary)] font-data tabular-nums">
                             {usd(pos.avgCost)}
@@ -493,37 +586,76 @@ export default function TradingPage() {
                   </div>
                 </div>
 
-                {/* Ticker */}
+                {/* Symbol */}
                 <div>
-                  <label htmlFor="order-ticker" className="field-label">Ticker</label>
+                  <label htmlFor="order-symbol" className="field-label">Symbol</label>
                   <input
-                    id="order-ticker"
+                    id="order-symbol"
                     type="text"
                     className="field-input uppercase"
-                    placeholder="AAPL"
-                    value={ticker}
-                    onChange={(e) => setTicker(e.target.value.toUpperCase())}
+                    placeholder="AAPL, BTC-USDT-SWAP, BTC/USD"
+                    value={symbol}
+                    onChange={(e) => setSymbol(e.target.value.toUpperCase())}
                   />
+                  <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                    Stocks, crypto pairs, or derivatives (e.g. AAPL, BTC-USDT, ETH-USDT-SWAP)
+                  </p>
                 </div>
 
-                {/* Shares */}
+                {/* Qty / Amount Toggle */}
                 <div>
-                  <label htmlFor="order-shares" className="field-label">Shares</label>
-                  <input
-                    id="order-shares"
-                    type="number"
-                    className="field-input"
-                    placeholder="100"
-                    min={1}
-                    value={shares}
-                    onChange={(e) => setShares(e.target.value)}
-                  />
+                  <label className="field-label">Order By</label>
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      onClick={() => setOrderMode('qty')}
+                      className={`flex-1 py-1.5 rounded text-xs font-semibold border transition-colors ${
+                        orderMode === 'qty'
+                          ? 'bg-blue-500/20 border-blue-400/40 text-blue-300'
+                          : 'bg-transparent border-[color:var(--border-subtle)] text-[var(--text-muted)] hover:border-[color:var(--border-strong)]'
+                      }`}
+                    >
+                      Quantity
+                    </button>
+                    <button
+                      onClick={() => setOrderMode('amount')}
+                      className={`flex-1 py-1.5 rounded text-xs font-semibold border transition-colors ${
+                        orderMode === 'amount'
+                          ? 'bg-blue-500/20 border-blue-400/40 text-blue-300'
+                          : 'bg-transparent border-[color:var(--border-subtle)] text-[var(--text-muted)] hover:border-[color:var(--border-strong)]'
+                      }`}
+                    >
+                      $ Amount
+                    </button>
+                  </div>
+                  {orderMode === 'qty' ? (
+                    <input
+                      id="order-qty"
+                      type="number"
+                      className="field-input"
+                      placeholder="100"
+                      min={0}
+                      step="any"
+                      value={qty}
+                      onChange={(e) => setQty(e.target.value)}
+                    />
+                  ) : (
+                    <input
+                      id="order-amount"
+                      type="number"
+                      className="field-input"
+                      placeholder="1000.00"
+                      min={0}
+                      step="any"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                    />
+                  )}
                 </div>
 
                 {/* Stage button */}
                 <button
                   onClick={stageOrder}
-                  disabled={staging || !ticker.trim() || !shares.trim()}
+                  disabled={staging || !symbol.trim() || (orderMode === 'qty' ? !qty.trim() : !amount.trim())}
                   className="btn-primary w-full py-2 text-sm disabled:opacity-40"
                 >
                   <Send size={14} />
@@ -577,14 +709,14 @@ export default function TradingPage() {
                       <div className="space-y-1.5">
                         {stagedOps.map((op, idx) => (
                           <div
-                            key={`${op.ticker}-${op.action}-${idx}`}
+                            key={`${op.symbol}-${op.action}-${idx}`}
                             className="flex items-center justify-between gap-3 px-3 py-2 rounded bg-slate-900/30 border border-[color:var(--border-subtle)]"
                           >
                             <div className="flex items-center gap-3">
                               <ActionBadge action={op.action} />
-                              <span className="font-data font-bold text-blue-100 text-sm">{op.ticker}</span>
+                              <span className="font-data font-bold text-blue-100 text-sm">{op.symbol}</span>
                               <span className="text-sm text-[var(--text-secondary)] tabular-nums">
-                                {op.shares != null ? `${op.shares} shares` : op.amount != null ? usd(op.amount) : ''}
+                                {op.qty != null ? `${op.qty} units` : op.amount != null ? `$${op.amount}` : ''}
                               </span>
                             </div>
                           </div>
@@ -713,18 +845,18 @@ export default function TradingPage() {
                                       >
                                         <ActionBadge action={op.action} />
                                         <span className="font-data text-sm font-bold text-blue-100">
-                                          {op.ticker}
+                                          {op.symbol}
                                         </span>
                                         <span className="text-sm text-[var(--text-secondary)] tabular-nums">
-                                          {op.shares != null
-                                            ? `${op.shares} shares`
+                                          {op.qty != null
+                                            ? `${op.qty} units`
                                             : op.amount != null
-                                              ? usd(op.amount)
+                                              ? `$${op.amount}`
                                               : ''}
                                         </span>
                                         {op.price != null && (
                                           <span className="text-xs text-[var(--text-muted)] ml-auto tabular-nums">
-                                            @ {usd(op.price)}
+                                            @ ${op.price}
                                           </span>
                                         )}
                                       </div>
@@ -1005,14 +1137,14 @@ export default function TradingPage() {
                           <div className="space-y-1.5">
                             {stagedOps.map((op, idx) => (
                               <div
-                                key={`okx-${op.ticker}-${op.action}-${idx}`}
+                                key={`okx-${op.symbol}-${op.action}-${idx}`}
                                 className="flex items-center justify-between gap-3 px-3 py-2 rounded bg-slate-900/30 border border-[color:var(--border-subtle)]"
                               >
                                 <div className="flex items-center gap-3">
                                   <ActionBadge action={op.action} />
-                                  <span className="font-data font-bold text-blue-100 text-sm">{op.ticker}</span>
+                                  <span className="font-data font-bold text-blue-100 text-sm">{op.symbol}</span>
                                   <span className="text-sm text-[var(--text-secondary)] tabular-nums">
-                                    {op.shares != null ? `${op.shares} shares` : op.amount != null ? usd(op.amount) : ''}
+                                    {op.qty != null ? `${op.qty} units` : op.amount != null ? `$${op.amount}` : ''}
                                   </span>
                                 </div>
                               </div>
