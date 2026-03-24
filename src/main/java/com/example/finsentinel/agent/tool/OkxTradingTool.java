@@ -27,7 +27,11 @@ import java.util.List;
  * unless OKX integration is explicitly enabled.
  *
  * <p>This class is part of the agent layer in FinSentinel.
+ *
+ * @deprecated Use {@link com.example.finsentinel.agent.tool.UnifiedTradingTool} for trading
+ *     and {@link com.example.finsentinel.agent.tool.CryptoAnalyticsTool} for analytics.
  */
+@Deprecated(forRemoval = true)
 @Component
 @Slf4j
 @RequiredArgsConstructor

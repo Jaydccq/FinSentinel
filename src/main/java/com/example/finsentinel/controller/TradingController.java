@@ -8,6 +8,9 @@ import com.example.finsentinel.security.UserPrincipal;
 import com.example.finsentinel.service.trading.PaperTradingService;
 import com.example.finsentinel.service.trading.engine.MarketClock;
 import com.example.finsentinel.service.trading.engine.TradingEngine;
+import com.example.finsentinel.service.trading.uta.Contract;
+import com.example.finsentinel.service.trading.uta.UnifiedTradeOperation;
+import com.example.finsentinel.service.trading.uta.UnifiedTradingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +28,10 @@ import java.util.UUID;
  * <p>Delegates to {@link PaperTradingService} for the git-like three-phase
  * trading workflow (stage, commit, execute) and query operations.
  *
+ * <p>v2 endpoints under {@code /api/trading/v2/} delegate to the new
+ * {@link UnifiedTradingService} which supports Contract-based asset identification
+ * and multi-broker routing via the UTA system.
+ *
  * <p>This class belongs to the controller layer in FinSentinel.
  */
 @RestController
@@ -33,6 +40,7 @@ import java.util.UUID;
 public class TradingController {
 
     private final PaperTradingService paperTradingService;
+    private final UnifiedTradingService unifiedTradingService;
 
     // ───────────────────────── Phase 1: Stage ─────────────────────────────
 
@@ -245,6 +253,140 @@ public class TradingController {
         return ResponseEntity.ok(new TradingResponse(
                 "Trading mode switched to " + request.mode().name()
         ));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  v2 endpoints — Unified Trading Account (UTA)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Stages a unified trade operation using Contract-based asset identification.
+     *
+     * @param request   the v2 stage request with action, symbol, qty/amount/price
+     * @param principal the authenticated user
+     * @return confirmation message with staging area count
+     */
+    @PostMapping("/v2/stage")
+    public ResponseEntity<TradingResponse> v2Stage(
+            @Valid @RequestBody UnifiedStageRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        Contract contract = Contract.fromString(request.symbol());
+        UnifiedTradeOperation operation = new UnifiedTradeOperation(
+                request.action(),
+                contract,
+                request.qty() != null ? new BigDecimal(request.qty()) : null,
+                request.amount() != null ? new BigDecimal(request.amount()) : null,
+                request.price() != null ? new BigDecimal(request.price()) : null
+        );
+
+        String result = unifiedTradingService.stage(principal.getUserId(), operation);
+        return ResponseEntity.ok(new TradingResponse(result));
+    }
+
+    /**
+     * Commits staged unified trade operations with a rationale message.
+     *
+     * @param request   the commit request containing the rationale message
+     * @param principal the authenticated user
+     * @return confirmation with commit hash and operation count
+     */
+    @PostMapping("/v2/commit")
+    public ResponseEntity<TradingResponse> v2Commit(
+            @Valid @RequestBody CommitRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        String result = unifiedTradingService.commit(principal.getUserId(), request.message());
+        return ResponseEntity.ok(new TradingResponse(result));
+    }
+
+    /**
+     * Executes the pending commit via the unified broker registry.
+     *
+     * @param principal the authenticated user
+     * @return execution report with results for each operation
+     */
+    @PostMapping("/v2/execute")
+    public ResponseEntity<TradingResponse> v2Execute(
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        String result = unifiedTradingService.execute(principal.getUserId());
+        return ResponseEntity.ok(new TradingResponse(result));
+    }
+
+    /**
+     * Returns the unified wallet status including cash, positions, brokers, and return percentage.
+     *
+     * @param principal the authenticated user
+     * @return formatted wallet status
+     */
+    @GetMapping("/v2/wallet")
+    public ResponseEntity<TradingResponse> v2GetWallet(
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        String result = unifiedTradingService.getWalletStatus(principal.getUserId());
+        return ResponseEntity.ok(new TradingResponse(result));
+    }
+
+    /**
+     * Returns the trade commit history via the unified service.
+     *
+     * @param limit     maximum number of commits to return (default 10, max 50)
+     * @param principal the authenticated user
+     * @return formatted commit log
+     */
+    @GetMapping("/v2/history")
+    public ResponseEntity<TradingResponse> v2GetHistory(
+            @RequestParam(defaultValue = "10") int limit,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        int clampedLimit = Math.min(Math.max(limit, 1), 50);
+        String result = unifiedTradingService.getCommitLog(principal.getUserId(), clampedLimit);
+        return ResponseEntity.ok(new TradingResponse(result));
+    }
+
+    /**
+     * Returns the currently staged unified trade operations.
+     *
+     * @param principal the authenticated user
+     * @return list of staged operations as formatted text
+     */
+    @GetMapping("/v2/staged")
+    public ResponseEntity<TradingResponse> v2GetStaged(
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        List<UnifiedTradeOperation> staged = unifiedTradingService.getStagingArea(principal.getUserId());
+        if (staged.isEmpty()) {
+            return ResponseEntity.ok(new TradingResponse("No staged orders."));
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Staged Orders (UTA) ===\n");
+        for (int i = 0; i < staged.size(); i++) {
+            UnifiedTradeOperation op = staged.get(i);
+            sb.append(String.format("  %d. %s %s", i + 1, op.action(), op.contract().displayName()));
+            if (op.qty() != null) sb.append(String.format(" (qty: %s)", op.qty().toPlainString()));
+            if (op.notional() != null) sb.append(String.format(" ($%s)", op.notional().toPlainString()));
+            if (op.price() != null) sb.append(String.format(" @ %s", op.price().toPlainString()));
+            sb.append("\n");
+        }
+        sb.append(String.format("\n%d order%s staged.", staged.size(), staged.size() == 1 ? "" : "s"));
+        return ResponseEntity.ok(new TradingResponse(sb.toString()));
+    }
+
+    /**
+     * Searches all available brokers for tradable contracts matching the query.
+     *
+     * @param q         the search query (ticker, name, etc.)
+     * @param principal the authenticated user
+     * @return aggregated search results across brokers
+     */
+    @GetMapping("/v2/search")
+    public ResponseEntity<TradingResponse> v2SearchAssets(
+            @RequestParam String q,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        String result = unifiedTradingService.searchAssets(principal.getUserId(), q);
+        return ResponseEntity.ok(new TradingResponse(result));
     }
 
     // ───────────────────────── Internal helpers ───────────────────────────
