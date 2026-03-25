@@ -113,6 +113,20 @@ class ContractTest {
     }
 
     @Test
+    void fromString_parsesOkxDatedFutureWithExpiry() {
+        Contract future = Contract.fromString("BTC-USD-250328");
+        assertThat(future.secType()).isEqualTo(SecurityType.FUTURE);
+        assertThat(future.symbol()).isEqualTo("BTC");
+        assertThat(future.currency()).isEqualTo("USD");
+        assertThat(future.expiry()).isNotNull();
+        assertThat(future.expiry().getYear()).isEqualTo(2025);
+        assertThat(future.expiry().getMonthValue()).isEqualTo(3);
+        assertThat(future.expiry().getDayOfMonth()).isEqualTo(28);
+        // Engine symbol should reconstruct the dated format
+        assertThat(future.toEngineSymbol()).isEqualTo("BTC-USD-250328");
+    }
+
+    @Test
     void equality_basedOnCanonicalFields() {
         Contract a = Contract.stock("AAPL");
         Contract b = Contract.stock("AAPL");

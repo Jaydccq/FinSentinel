@@ -1,7 +1,6 @@
 package com.example.finsentinel.agent.tool;
 
 import com.example.finsentinel.service.okx.OkxApiClient;
-import com.example.finsentinel.service.okx.OkxTradingEngine;
 import com.example.finsentinel.service.okx.dto.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
@@ -33,7 +32,6 @@ import java.util.List;
 public class CryptoAnalyticsTool {
 
     private final OkxApiClient okxApiClient;
-    private final OkxTradingEngine okxEngine;
 
     private static final DateTimeFormatter TS_FMT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z")
@@ -41,7 +39,6 @@ public class CryptoAnalyticsTool {
 
     public CryptoAnalyticsTool(OkxApiClient okxApiClient) {
         this.okxApiClient = okxApiClient;
-        this.okxEngine = new OkxTradingEngine(okxApiClient);
     }
 
     // -- 1. Funding Rate -------------------------------------------------------
@@ -233,8 +230,8 @@ public class CryptoAnalyticsTool {
 
     @Tool(description = "Set leverage for a crypto instrument. " +
             "Valid range: 1-125. Margin modes: 'cross' (shared margin) or 'isolated' (per-position). " +
-            "WARNING: This changes margin requirements and liquidation prices. " +
-            "Always confirm with the user before changing leverage.")
+            "CRITICAL: This is a LIVE money mutation that changes liquidation prices and margin requirements. " +
+            "You MUST call getConfirm BEFORE calling this tool. Do NOT set leverage without explicit user approval.")
     public String setLeverage(
             @ToolParam(description = "Instrument ID, e.g. 'BTC-USDT-SWAP'") String instId,
             @ToolParam(description = "Leverage multiplier, e.g. 5 for 5x") int leverage,

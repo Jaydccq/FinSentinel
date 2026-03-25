@@ -58,16 +58,25 @@ public record Contract(
     /**
      * Converts this contract to the native symbol format expected by the target engine.
      * <ul>
-     *   <li>STOCK / OPTION / FUTURE / FOREX &rarr; plain symbol (e.g. "AAPL")</li>
+     *   <li>STOCK / OPTION / FOREX &rarr; plain symbol (e.g. "AAPL")</li>
      *   <li>PERP &rarr; OKX format "BTC-USDT-SWAP"</li>
      *   <li>CRYPTO &rarr; CCXT format "BTC/USD"</li>
+     *   <li>FUTURE &rarr; OKX dated format "BTC-USD-250328"</li>
      * </ul>
      */
     public String toEngineSymbol() {
         return switch (secType) {
             case PERP -> symbol + "-" + currency + "-SWAP";
             case CRYPTO -> symbol + "/" + currency;
-            case STOCK, OPTION, FUTURE, FOREX -> symbol;
+            case FUTURE -> {
+                if (expiry != null) {
+                    String datePart = String.format("%02d%02d%02d",
+                            expiry.getYear() % 100, expiry.getMonthValue(), expiry.getDayOfMonth());
+                    yield symbol + "-" + currency + "-" + datePart;
+                }
+                yield symbol;
+            }
+            case STOCK, OPTION, FOREX -> symbol;
         };
     }
 
@@ -100,8 +109,19 @@ public record Contract(
         // Matches [A-Z]+-[A-Z]+-\d{6} → FUTURE (e.g. "BTC-USD-250328")
         if (OKX_FUTURE_PATTERN.matcher(trimmed).matches()) {
             String[] parts = trimmed.split("-", 3);
+            LocalDate expiry = null;
+            try {
+                // Parse YYMMDD format (e.g. "250328" → 2025-03-28)
+                String dateStr = parts[2];
+                int year = 2000 + Integer.parseInt(dateStr.substring(0, 2));
+                int month = Integer.parseInt(dateStr.substring(2, 4));
+                int day = Integer.parseInt(dateStr.substring(4, 6));
+                expiry = LocalDate.of(year, month, day);
+            } catch (Exception ignored) {
+                // If date parsing fails, leave expiry null — still create the contract
+            }
             return new Contract(parts[0], SecurityType.FUTURE, "OKX", parts[1],
-                    null, null, null, null);
+                    expiry, null, null, null);
         }
 
         // Contains "/" → check if FOREX (both sides fiat) or CRYPTO spot

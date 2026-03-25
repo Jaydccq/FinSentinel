@@ -198,3 +198,36 @@ React 18 + TypeScript + Vite + Tailwind CSS 4.1. SSE client for streaming AI res
 - Integration tests require running infrastructure; unit tests use Mockito standalone
 - Redis Streams use consumer groups: `vectorize-group`, `news-enrich-group`
 - `@ConditionalOnProperty` gates optional subsystems (MCP, OpenBB, X scraper, Google Drive)
+
+## gstack
+
+Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
+
+Available skills:
+- `/office-hours` — structured office hours sessions
+- `/plan-ceo-review` — prepare plans for CEO review
+- `/plan-eng-review` — prepare plans for engineering review
+- `/plan-design-review` — prepare plans for design review
+- `/design-consultation` — design consultation sessions
+- `/review` — code review
+- `/ship` — ship code to production
+- `/land-and-deploy` — land and deploy changes
+- `/canary` — canary deployment
+- `/benchmark` — performance benchmarking
+- `/browse` — headless browser for QA testing and web browsing
+- `/qa` — quality assurance testing
+- `/qa-only` — QA testing only (no implementation)
+- `/design-review` — design review sessions
+- `/setup-browser-cookies` — configure browser cookies for testing
+- `/setup-deploy` — configure deployment settings
+- `/retro` — retrospective sessions
+- `/investigate` — investigate issues and incidents
+- `/document-release` — document a release
+- `/codex` — Codex integration
+- `/cso` — chief strategy officer planning
+- `/autoplan` — automatic planning
+- `/careful` — careful mode for risky operations
+- `/freeze` — freeze deployments
+- `/guard` — guard against regressions
+- `/unfreeze` — unfreeze deployments
+- `/gstack-upgrade` — upgrade gstack

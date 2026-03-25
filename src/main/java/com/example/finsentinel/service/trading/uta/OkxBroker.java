@@ -36,7 +36,10 @@ public class OkxBroker implements IBroker {
 
     @Override
     public Set<SecurityType> supportedSecurityTypes() {
-        return EnumSet.of(SecurityType.CRYPTO, SecurityType.PERP);
+        // OKX only handles perpetual swaps via UTA routing.
+        // Crypto spot uses CCXT slash format (BTC/USDT) which OKX rejects —
+        // spot orders should route to CcxtBroker instead.
+        return EnumSet.of(SecurityType.PERP);
     }
 
     @Override
