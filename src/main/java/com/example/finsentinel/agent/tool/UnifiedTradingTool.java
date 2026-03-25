@@ -107,7 +107,7 @@ public class UnifiedTradingTool {
     public String executeTrade() {
         try {
             UUID userId = getUserId();
-            return tradingService.execute(userId);
+            return tradingService.execute(userId).report();
         } catch (IllegalArgumentException e) {
             log.error("Invalid execute request: {}", e.getMessage());
             return "Error executing trade: " + e.getMessage();

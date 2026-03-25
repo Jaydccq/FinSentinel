@@ -121,14 +121,15 @@ public class UnifiedTradingService {
         validateOperation(op);
         TradeWallet wallet = getOrCreateWallet(userId);
 
-        List<UnifiedTradeOperation> staging = getRedisStaging(userId);
-        if (staging.size() >= MAX_STAGING_SIZE) {
+        // Atomic append via Lua script — prevents lost-update race conditions
+        int appendResult = atomicAppendToStaging(userId, op);
+        if (appendResult == -1) {
             return String.format("Error: Staging area is full (%d operations). Commit or clear before adding more.",
                     MAX_STAGING_SIZE);
         }
-        staging.add(op);
-        saveRedisStaging(userId, staging);
 
+        // Read back count for the response (Lua returns 1 on success, not the count)
+        List<UnifiedTradeOperation> staging = getRedisStaging(userId);
         int count = staging.size();
         String detail = formatOperationSummary(op);
         emitTradeEvent(userId, wallet.getId(), AgentEventType.TRADE_OPERATION_STAGED, Map.of(
@@ -225,14 +226,14 @@ public class UnifiedTradingService {
      * orders are placed directly without wallet state sync.
      *
      * @param userId the user's UUID
-     * @return formatted execution report
+     * @return execution result containing report text and structured data
      */
     @Transactional
-    public String execute(UUID userId) {
+    public ExecuteResult execute(UUID userId) {
         // Atomic get-and-delete prevents double execution by concurrent requests
         Map<String, Object> commitData = getAndDeleteRedisPendingCommit(userId);
         if (commitData == null) {
-            return "Error: No pending commit. Stage orders and commit first.";
+            return new ExecuteResult("Error: No pending commit. Stage orders and commit first.", null, List.of());
         }
         try {
             TradeWallet wallet = getOrCreateWallet(userId);
@@ -242,7 +243,9 @@ public class UnifiedTradingService {
             if (alreadyExecuted) {
                 clearRedisStaging(userId);
                 log.warn("Commit {} already executed for user {}. Cleared stale pending state.", commitHash, userId);
-                return String.format("Commit %s already executed previously. Cleared stale pending state.", commitHash);
+                return new ExecuteResult(
+                        String.format("Commit %s already executed previously. Cleared stale pending state.", commitHash),
+                        commitData, List.of());
             }
 
             @SuppressWarnings("unchecked")
@@ -369,7 +372,7 @@ public class UnifiedTradingService {
             log.info("User {} executed commit {} via {}: {} operations",
                     userId, commitData.get("hash"), brokerName, results.size());
             clearRedisStaging(userId);
-            return report.toString();
+            return new ExecuteResult(report.toString(), commitData, results);
         } catch (RuntimeException e) {
             // Re-store the pending commit so the user can retry
             saveRedisPendingCommit(userId, commitData);
@@ -569,7 +572,205 @@ public class UnifiedTradingService {
         return sb.toString();
     }
 
+    // ───────────────── Structured responses (v2 REST API) ─────────────────────
+
+    /**
+     * Returns a structured wallet status for the v2 REST API.
+     * Unlike {@link #getWalletStatus(UUID)} which returns formatted text for the AI tool,
+     * this returns a DTO matching the frontend's V2WalletStatus interface.
+     */
+    @Transactional(readOnly = true)
+    public com.example.finsentinel.dto.trading.V2WalletResponse getWalletStatusStructured(UUID userId) {
+        TradeWallet wallet = getOrCreateWallet(userId);
+
+        List<com.example.finsentinel.dto.trading.V2WalletResponse.V2PositionResponse> positionDtos = new ArrayList<>();
+        BigDecimal totalPositionValue = BigDecimal.ZERO;
+
+        for (Map<String, Object> pos : wallet.getPositions()) {
+            String ticker = (String) pos.get("ticker");
+            BigDecimal shares = NumberUtils.toBigDecimal(pos.get("shares"));
+            BigDecimal avgCost = NumberUtils.toBigDecimal(pos.get("avgCost"));
+            BigDecimal currentPrice;
+            try {
+                Map<String, Object> quote = marketDataService.getQuote(ticker);
+                Object closePrice = quote.get("close");
+                currentPrice = closePrice != null ? NumberUtils.toBigDecimal(closePrice) : avgCost;
+            } catch (Exception e) {
+                currentPrice = pos.containsKey("currentPrice")
+                        ? NumberUtils.toBigDecimal(pos.get("currentPrice")) : avgCost;
+            }
+
+            BigDecimal marketValue = shares.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal costBasis = shares.multiply(avgCost).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal unrealizedPnl = marketValue.subtract(costBasis);
+            BigDecimal pnlPercent = costBasis.compareTo(BigDecimal.ZERO) > 0
+                    ? unrealizedPnl.divide(costBasis, 4, RoundingMode.HALF_UP).multiply(new BigDecimal("100"))
+                    : BigDecimal.ZERO;
+            totalPositionValue = totalPositionValue.add(marketValue);
+
+            String secType = pos.containsKey("secType") ? (String) pos.get("secType") : "STOCK";
+            positionDtos.add(new com.example.finsentinel.dto.trading.V2WalletResponse.V2PositionResponse(
+                    ticker, shares, avgCost, currentPrice, marketValue, unrealizedPnl, pnlPercent, secType));
+        }
+
+        BigDecimal totalValue = wallet.getCashBalance().add(totalPositionValue);
+        BigDecimal returnPercent = wallet.getInitialCapital().compareTo(BigDecimal.ZERO) > 0
+                ? totalValue.subtract(wallet.getInitialCapital())
+                    .divide(wallet.getInitialCapital(), 4, RoundingMode.HALF_UP)
+                    .multiply(new BigDecimal("100"))
+                : BigDecimal.ZERO;
+
+        return new com.example.finsentinel.dto.trading.V2WalletResponse(
+                wallet.getCashBalance(), wallet.getInitialCapital(),
+                totalValue, returnPercent, wallet.getTradingMode().name(), positionDtos);
+    }
+
+    /**
+     * Returns the commit history as structured DTOs for the v2 REST API.
+     */
+    @Transactional(readOnly = true)
+    public List<com.example.finsentinel.dto.trading.V2CommitResponse> getCommitLogStructured(UUID userId, int limit) {
+        TradeWallet wallet = getOrCreateWallet(userId);
+        List<Map<String, Object>> history = wallet.getCommitHistory();
+        if (history.isEmpty()) return List.of();
+
+        limit = Math.min(Math.max(limit, 1), history.size());
+        List<Map<String, Object>> recent = history.subList(history.size() - limit, history.size());
+
+        List<com.example.finsentinel.dto.trading.V2CommitResponse> result = new ArrayList<>();
+        for (int i = recent.size() - 1; i >= 0; i--) {
+            Map<String, Object> entry = recent.get(i);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> ops = (List<Map<String, Object>>) entry.get("operations");
+            List<com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse> opDtos =
+                    ops != null ? ops.stream().map(op -> new com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse(
+                            (String) op.get("action"),
+                            (String) op.get("ticker"),
+                            op.get("shares") != null ? op.get("shares").toString() : null,
+                            op.get("amount") != null ? op.get("amount").toString() : null,
+                            op.get("price") != null ? op.get("price").toString() : null
+                    )).toList() : List.of();
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> results = (List<Map<String, Object>>) entry.get("results");
+
+            result.add(new com.example.finsentinel.dto.trading.V2CommitResponse(
+                    (String) entry.get("hash"),
+                    (String) entry.get("parentHash"),
+                    (String) entry.get("message"),
+                    (String) entry.get("timestamp"),
+                    opDtos,
+                    results != null ? results : List.of()
+            ));
+        }
+        return result;
+    }
+
+    /**
+     * Returns staged operations as a structured DTO for the v2 REST API.
+     */
+    public com.example.finsentinel.dto.trading.V2StagedResponse getStagedStructured(UUID userId) {
+        List<UnifiedTradeOperation> staged = getRedisStaging(userId);
+        List<com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse> opDtos = staged.stream()
+                .map(op -> new com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse(
+                        op.action(),
+                        op.engineSymbol(),
+                        op.qty() != null ? op.qty().toPlainString() : null,
+                        op.notional() != null ? op.notional().toPlainString() : null,
+                        op.price() != null ? op.price().toPlainString() : null
+                )).toList();
+        return new com.example.finsentinel.dto.trading.V2StagedResponse(opDtos, staged.size());
+    }
+
+    /**
+     * Searches assets and returns structured DTOs for the v2 REST API.
+     */
+    public List<com.example.finsentinel.dto.trading.V2SearchResponse> searchAssetsStructured(UUID userId, String query) {
+        TradeWallet wallet = getOrCreateWallet(userId);
+        List<IBroker> brokers = brokerRegistry.listAvailableBrokers(
+                wallet.getTradingMode(), wallet.getCashBalance());
+
+        List<com.example.finsentinel.dto.trading.V2SearchResponse> results = new ArrayList<>();
+        for (IBroker broker : brokers) {
+            try {
+                List<Contract> contracts = broker.searchContracts(query);
+                for (Contract c : contracts) {
+                    results.add(new com.example.finsentinel.dto.trading.V2SearchResponse(
+                            c.toEngineSymbol(), c.displayName(), c.secType().name(), c.exchange()));
+                }
+            } catch (Exception e) {
+                log.warn("Search failed for broker {}: {}", broker.brokerId(), e.getMessage());
+            }
+        }
+        return results;
+    }
+
+    /**
+     * Builds a V2CommitResponse from the pending commit data after execution.
+     * Used by the v2 execute endpoint to return structured execution results.
+     */
+    public com.example.finsentinel.dto.trading.V2CommitResponse buildExecuteResponse(
+            Map<String, Object> commitData, List<Map<String, Object>> results) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> ops = (List<Map<String, Object>>) commitData.get("operations");
+        List<com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse> opDtos =
+                ops != null ? ops.stream().map(op -> new com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse(
+                        (String) op.get("action"),
+                        (String) op.get("ticker"),
+                        op.get("shares") != null ? op.get("shares").toString() : null,
+                        op.get("amount") != null ? op.get("amount").toString() : null,
+                        op.get("price") != null ? op.get("price").toString() : null
+                )).toList() : List.of();
+
+        return new com.example.finsentinel.dto.trading.V2CommitResponse(
+                (String) commitData.get("hash"),
+                null,
+                (String) commitData.get("message"),
+                (String) commitData.get("timestamp"),
+                opDtos,
+                results
+        );
+    }
+
     // ───────────────────────── Redis state helpers ────────────────────────────
+
+    /**
+     * Lua script for atomic append to the JSON array stored in the staging key.
+     * Reads the existing array, appends the new element, writes back, and sets TTL.
+     * Returns the new array length. This prevents lost-update races when two
+     * concurrent calls both try to append to the staging area.
+     */
+    private static final String STAGING_APPEND_LUA = """
+            local key = KEYS[1]
+            local newElement = ARGV[1]
+            local ttlSeconds = tonumber(ARGV[2])
+            local maxSize = tonumber(ARGV[3])
+            local current = redis.call('GET', key)
+            local arr
+            if current == false or current == nil then
+                arr = '[]'
+            else
+                arr = current
+            end
+            -- Check size before append (count commas + 1 for non-empty, or 0 for [])
+            if arr ~= '[]' then
+                local count = 1
+                for _ in arr:gmatch(',') do count = count + 1 end
+                if count >= maxSize then
+                    return -1
+                end
+            end
+            -- Insert new element before the closing bracket
+            local result
+            if arr == '[]' then
+                result = '[' .. newElement .. ']'
+            else
+                result = arr:sub(1, -2) .. ',' .. newElement .. ']'
+            end
+            redis.call('SET', key, result, 'EX', ttlSeconds)
+            return 1
+            """;
 
     private List<UnifiedTradeOperation> getRedisStaging(UUID userId) {
         try {
@@ -579,6 +780,28 @@ public class UnifiedTradingService {
         } catch (Exception e) {
             log.error("Failed to read staging from Redis for user {}", userId, e);
             throw new IllegalStateException("Failed to read staged operations from state store. Please retry.", e);
+        }
+    }
+
+    /**
+     * Atomically appends an operation to the staging area using a Lua script.
+     * Returns the staging size after append, or -1 if full.
+     */
+    private int atomicAppendToStaging(UUID userId, UnifiedTradeOperation op) {
+        try {
+            String opJson = objectMapper.writeValueAsString(op);
+            var script = new org.springframework.data.redis.core.script.DefaultRedisScript<Long>();
+            script.setScriptText(STAGING_APPEND_LUA);
+            script.setResultType(Long.class);
+            Long result = redisTemplate.execute(script,
+                    List.of(STAGING_KEY_PREFIX + userId),
+                    opJson,
+                    String.valueOf(STATE_TTL.toSeconds()),
+                    String.valueOf(MAX_STAGING_SIZE));
+            return result != null ? result.intValue() : -1;
+        } catch (Exception e) {
+            log.error("Failed to atomically append to staging for user {}", userId, e);
+            throw new IllegalStateException("Failed to persist staged operations. Please retry.", e);
         }
     }
 

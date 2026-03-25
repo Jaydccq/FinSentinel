@@ -132,12 +132,14 @@ class UnifiedTradingToolTest {
 
     @Test
     void executeTrade_delegatesToService() {
-        String expectedResult = "=== Execution Report ===\nBroker: Paper Trading\n";
-        when(tradingService.execute(TEST_USER_ID)).thenReturn(expectedResult);
+        String expectedReport = "=== Execution Report ===\nBroker: Paper Trading\n";
+        var executeResult = new com.example.finsentinel.service.trading.uta.ExecuteResult(
+                expectedReport, java.util.Map.of(), java.util.List.of());
+        when(tradingService.execute(TEST_USER_ID)).thenReturn(executeResult);
 
         String result = tool.executeTrade();
 
-        assertThat(result).isEqualTo(expectedResult);
+        assertThat(result).isEqualTo(expectedReport);
         verify(tradingService).execute(TEST_USER_ID);
     }
 
