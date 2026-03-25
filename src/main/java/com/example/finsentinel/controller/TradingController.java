@@ -272,13 +272,19 @@ public class TradingController {
             @AuthenticationPrincipal UserPrincipal principal) {
 
         Contract contract = Contract.fromString(request.symbol());
+        BigDecimal qty;
+        BigDecimal amount;
+        BigDecimal price;
+        try {
+            qty = request.qty() != null && !request.qty().isBlank() ? new BigDecimal(request.qty()) : null;
+            amount = request.amount() != null && !request.amount().isBlank() ? new BigDecimal(request.amount()) : null;
+            price = request.price() != null && !request.price().isBlank() ? new BigDecimal(request.price()) : null;
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest()
+                    .body(new TradingResponse("Invalid numeric value: " + e.getMessage()));
+        }
         UnifiedTradeOperation operation = new UnifiedTradeOperation(
-                request.action(),
-                contract,
-                request.qty() != null ? new BigDecimal(request.qty()) : null,
-                request.amount() != null ? new BigDecimal(request.amount()) : null,
-                request.price() != null ? new BigDecimal(request.price()) : null
-        );
+                request.action(), contract, qty, amount, price);
 
         String result = unifiedTradingService.stage(principal.getUserId(), operation);
         return ResponseEntity.ok(new TradingResponse(result));

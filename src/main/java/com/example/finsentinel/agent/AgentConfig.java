@@ -35,7 +35,6 @@ public class AgentConfig {
      * @param newsAnalysisTool news analysis tool (NewsAnalysisTool)
      * @param technicalIndicatorTool technical indicator tool (TechnicalIndicatorTool)
      * @param portfolioAnalysisTool portfolio analysis tool (PortfolioAnalysisTool)
-     * @param tradingTool trading tool (TradingTool) — @deprecated, kept for backward compat
      * @param unifiedTradingTool unified trading tool (UnifiedTradingTool) — replaces TradingTool
      * @param brainTool brain tool (BrainTool)
      * @param companyResearchTool company research tool (CompanyResearchTool)
@@ -50,7 +49,6 @@ public class AgentConfig {
      * @param shortInterestTool short interest tool (ShortInterestTool)
      * @param cryptoNewsToolProvider optional crypto news tool (CryptoNewsTool)
      * @param twitterToolProvider optional twitter tool (TwitterTool)
-     * @param okxTradingToolProvider optional OKX trading tool — @deprecated, kept for backward compat
      * @param cryptoAnalyticsToolProvider optional crypto analytics tool (CryptoAnalyticsTool)
      * @param questionAnswerAdvisor question answer advisor (QuestionAnswerAdvisor)
      * @param userContextAdvisor user context advisor (UserContextAdvisor)
@@ -65,7 +63,6 @@ public class AgentConfig {
             NewsAnalysisTool newsAnalysisTool,
             TechnicalIndicatorTool technicalIndicatorTool,
             PortfolioAnalysisTool portfolioAnalysisTool,
-            TradingTool tradingTool, // @Deprecated — kept for backward compatibility during UTA transition
             UnifiedTradingTool unifiedTradingTool,
             BrainTool brainTool,
             CompanyResearchTool companyResearchTool,
@@ -80,7 +77,6 @@ public class AgentConfig {
             ShortInterestTool shortInterestTool,
             ObjectProvider<CryptoNewsTool> cryptoNewsToolProvider,
             ObjectProvider<TwitterTool> twitterToolProvider,
-            ObjectProvider<OkxTradingTool> okxTradingToolProvider, // @Deprecated — kept for backward compat
             ObjectProvider<CryptoAnalyticsTool> cryptoAnalyticsToolProvider,
             QuestionAnswerAdvisor questionAnswerAdvisor,
             UserContextAdvisor userContextAdvisor) {
@@ -91,7 +87,6 @@ public class AgentConfig {
         var tools = new java.util.ArrayList<Object>(java.util.List.of(
                 stockMarketTool, newsAnalysisTool, technicalIndicatorTool,
                 portfolioAnalysisTool,
-                tradingTool, // @Deprecated — remove after UTA migration complete
                 unifiedTradingTool,
                 brainTool,
                 companyResearchTool, equityScreenerTool, quantAnalysisTool,
@@ -102,10 +97,6 @@ public class AgentConfig {
         if (cryptoNewsTool != null) tools.add(cryptoNewsTool);
         TwitterTool twitterTool = twitterToolProvider.getIfAvailable();
         if (twitterTool != null) tools.add(twitterTool);
-
-        // @Deprecated — OkxTradingTool kept for backward compat; remove after UTA migration complete
-        OkxTradingTool okxTradingTool = okxTradingToolProvider.getIfAvailable();
-        if (okxTradingTool != null) tools.add(okxTradingTool);
 
         // CryptoAnalyticsTool — OKX-specific analytics (funding rates, composite positions, leverage)
         CryptoAnalyticsTool cryptoAnalyticsTool = cryptoAnalyticsToolProvider.getIfAvailable();

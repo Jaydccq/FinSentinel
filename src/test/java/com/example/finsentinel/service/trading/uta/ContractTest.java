@@ -3,6 +3,7 @@ package com.example.finsentinel.service.trading.uta;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ContractTest {
 
@@ -87,6 +88,28 @@ class ContractTest {
 
         assertThat(Contract.cryptoPerp("BTC", "USDT", "OKX").displayName())
                 .isEqualTo("BTC-USDT Perp @OKX");
+    }
+
+    @Test
+    void fromString_rejectsBlankInput() {
+        assertThatThrownBy(() -> Contract.fromString(""))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("blank");
+        assertThatThrownBy(() -> Contract.fromString("   "))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("blank");
+    }
+
+    @Test
+    void fromString_detectsForexPairs() {
+        // Both sides are fiat currencies → FOREX, not CRYPTO
+        assertThat(Contract.fromString("EUR-USD").secType()).isEqualTo(SecurityType.FOREX);
+        assertThat(Contract.fromString("GBP/JPY").secType()).isEqualTo(SecurityType.FOREX);
+        assertThat(Contract.fromString("USD-CAD").secType()).isEqualTo(SecurityType.FOREX);
+
+        // One side is crypto → still CRYPTO
+        assertThat(Contract.fromString("BTC-USD").secType()).isEqualTo(SecurityType.CRYPTO);
+        assertThat(Contract.fromString("ETH/USDT").secType()).isEqualTo(SecurityType.CRYPTO);
     }
 
     @Test

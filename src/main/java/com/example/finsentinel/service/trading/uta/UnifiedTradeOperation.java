@@ -30,9 +30,10 @@ public record UnifiedTradeOperation(
     }
 
     /**
-     * Convenience: extract ticker for display/logging.
+     * Returns the engine-native symbol format (e.g., "AAPL", "BTC-USDT-SWAP", "BTC/USD").
+     * Used for display, logging, and event payloads.
      */
-    public String ticker() {
+    public String engineSymbol() {
         return contract.toEngineSymbol();
     }
 }

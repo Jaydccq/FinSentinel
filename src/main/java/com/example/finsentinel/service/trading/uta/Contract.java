@@ -3,6 +3,7 @@ package com.example.finsentinel.service.trading.uta;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -23,6 +24,12 @@ public record Contract(
     private static final Pattern OKX_FUTURE_PATTERN = Pattern.compile("[A-Z]+-[A-Z]+-\\d{6}");
     private static final Pattern CRYPTO_PAIR_PATTERN = Pattern.compile("[A-Z]+/[A-Z]+");
     private static final Pattern CRYPTO_DASH_PATTERN = Pattern.compile("[A-Z]+-[A-Z]+");
+
+    /** Major fiat currencies — if both sides of a dash/slash pair are fiat, it's FOREX, not CRYPTO. */
+    private static final Set<String> FIAT_CURRENCIES = Set.of(
+            "USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD",
+            "SEK", "NOK", "DKK", "SGD", "HKD", "CNY", "CNH",
+            "KRW", "INR", "MXN", "BRL", "ZAR", "TRY", "PLN");
 
     public Contract {
         Objects.requireNonNull(symbol, "symbol must not be null");
@@ -77,6 +84,9 @@ public record Contract(
     public static Contract fromString(String input) {
         Objects.requireNonNull(input, "input must not be null");
         String trimmed = input.trim().toUpperCase();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Symbol must not be blank");
+        }
 
         // Ends with "-SWAP" → PERP (e.g. "BTC-USDT-SWAP")
         if (trimmed.endsWith("-SWAP")) {
@@ -94,15 +104,23 @@ public record Contract(
                     null, null, null, null);
         }
 
-        // Contains "/" → CRYPTO spot (e.g. "BTC/USD")
+        // Contains "/" → check if FOREX (both sides fiat) or CRYPTO spot
         if (CRYPTO_PAIR_PATTERN.matcher(trimmed).matches()) {
             String[] parts = trimmed.split("/", 2);
+            if (FIAT_CURRENCIES.contains(parts[0]) && FIAT_CURRENCIES.contains(parts[1])) {
+                return new Contract(parts[0], SecurityType.FOREX, "SMART", parts[1],
+                        null, null, null, null);
+            }
             return cryptoSpot(parts[0], parts[1], "SMART");
         }
 
-        // Matches [A-Z]+-[A-Z]+ (no SWAP suffix) → CRYPTO spot (e.g. "ETH-USDT")
+        // Matches [A-Z]+-[A-Z]+ (no SWAP suffix) → check FOREX vs CRYPTO
         if (CRYPTO_DASH_PATTERN.matcher(trimmed).matches()) {
             String[] parts = trimmed.split("-", 2);
+            if (FIAT_CURRENCIES.contains(parts[0]) && FIAT_CURRENCIES.contains(parts[1])) {
+                return new Contract(parts[0], SecurityType.FOREX, "SMART", parts[1],
+                        null, null, null, null);
+            }
             return cryptoSpot(parts[0], parts[1], "SMART");
         }
 

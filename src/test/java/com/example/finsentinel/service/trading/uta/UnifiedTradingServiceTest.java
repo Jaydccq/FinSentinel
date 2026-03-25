@@ -35,6 +35,7 @@ class UnifiedTradingServiceTest {
     @Mock BrokerRegistry brokerRegistry;
     @Mock TradeWalletRepository walletRepository;
     @Mock UserRepository userRepository;
+    @Mock com.example.finsentinel.service.MarketDataService marketDataService;
     @Mock StringRedisTemplate redisTemplate;
     @Mock ValueOperations<String, String> valueOps;
     @Mock AgentEventService agentEventService;
@@ -57,7 +58,8 @@ class UnifiedTradingServiceTest {
         lenient().when(walletRepository.findByUserId(USER_ID)).thenReturn(Optional.of(wallet));
 
         service = new UnifiedTradingService(
-                brokerRegistry, walletRepository, userRepository, redisTemplate, agentEventService);
+                brokerRegistry, walletRepository, userRepository, marketDataService,
+                redisTemplate, agentEventService);
     }
 
     // ───────────────────────── Stage tests ──────────────────────────────────
@@ -65,7 +67,7 @@ class UnifiedTradingServiceTest {
     @Test
     void stage_acceptsStockContract() {
         // Staging area is initially empty
-        when(valueOps.get("trading:staging:" + USER_ID)).thenReturn(null);
+        when(valueOps.get("uta:staging:" + USER_ID)).thenReturn(null);
 
         Contract stockContract = Contract.stock("AAPL");
         UnifiedTradeOperation op = new UnifiedTradeOperation(
@@ -78,12 +80,12 @@ class UnifiedTradingServiceTest {
         assertThat(result).contains("1 operation staged");
 
         // Verify Redis write
-        verify(valueOps).set(eq("trading:staging:" + USER_ID), anyString(), eq(Duration.ofMinutes(30)));
+        verify(valueOps).set(eq("uta:staging:" + USER_ID), anyString(), eq(Duration.ofMinutes(30)));
     }
 
     @Test
     void stage_acceptsCryptoContract() {
-        when(valueOps.get("trading:staging:" + USER_ID)).thenReturn(null);
+        when(valueOps.get("uta:staging:" + USER_ID)).thenReturn(null);
 
         Contract perpContract = Contract.cryptoPerp("BTC", "USDT", "OKX");
         UnifiedTradeOperation op = new UnifiedTradeOperation(
@@ -95,7 +97,7 @@ class UnifiedTradingServiceTest {
         assertThat(result).contains("BTC");
         assertThat(result).contains("1 operation staged");
 
-        verify(valueOps).set(eq("trading:staging:" + USER_ID), anyString(), eq(Duration.ofMinutes(30)));
+        verify(valueOps).set(eq("uta:staging:" + USER_ID), anyString(), eq(Duration.ofMinutes(30)));
     }
 
     @Test
@@ -127,7 +129,7 @@ class UnifiedTradingServiceTest {
         // Simulate staged operations in Redis
         String stagedJson = """
                 [{"action":"BUY","contract":{"symbol":"AAPL","secType":"STOCK","exchange":"SMART","currency":"USD","expiry":null,"strike":null,"right":null,"multiplier":null},"qty":10,"notional":null,"price":null}]""";
-        when(valueOps.get("trading:staging:" + USER_ID)).thenReturn(stagedJson);
+        when(valueOps.get("uta:staging:" + USER_ID)).thenReturn(stagedJson);
 
         String result = service.commit(USER_ID, "Going long on AAPL — strong earnings");
 
@@ -138,13 +140,13 @@ class UnifiedTradingServiceTest {
 
         // Verify pending commit was saved to Redis
         ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
-        verify(valueOps).set(eq("trading:pending:" + USER_ID), jsonCaptor.capture(), eq(Duration.ofMinutes(30)));
+        verify(valueOps).set(eq("uta:pending:" + USER_ID), jsonCaptor.capture(), eq(Duration.ofMinutes(30)));
 
         String pendingJson = jsonCaptor.getValue();
         assertThat(pendingJson).contains("\"hash\"");
         assertThat(pendingJson).contains("Going long on AAPL");
 
         // Verify staging was cleared after commit
-        verify(redisTemplate).delete("trading:staging:" + USER_ID);
+        verify(redisTemplate).delete("uta:staging:" + USER_ID);
     }
 }
