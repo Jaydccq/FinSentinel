@@ -7,6 +7,7 @@ import com.example.finsentinel.model.enums.AgentEventType;
 import com.example.finsentinel.model.enums.TradingMode;
 import com.example.finsentinel.repository.TradeWalletRepository;
 import com.example.finsentinel.repository.UserRepository;
+import com.example.finsentinel.service.MarketDataService;
 import com.example.finsentinel.service.event.AgentEventService;
 import com.example.finsentinel.service.trading.engine.OrderRequest;
 import com.example.finsentinel.service.trading.engine.OrderResult;
@@ -52,13 +53,14 @@ public class UnifiedTradingService {
     private final BrokerRegistry brokerRegistry;
     private final TradeWalletRepository walletRepository;
     private final UserRepository userRepository;
+    private final MarketDataService marketDataService;
     private final StringRedisTemplate redisTemplate;
     private final AgentEventService agentEventService;
 
     private static final ObjectMapper objectMapper = JsonMapper.builder().build();
 
-    private static final String STAGING_KEY_PREFIX = "trading:staging:";
-    private static final String PENDING_KEY_PREFIX = "trading:pending:";
+    private static final String STAGING_KEY_PREFIX = "uta:staging:";
+    private static final String PENDING_KEY_PREFIX = "uta:pending:";
     private static final Duration STATE_TTL = Duration.ofMinutes(30);
 
     private static final int MAX_COMMIT_HISTORY = 100;
@@ -126,7 +128,7 @@ public class UnifiedTradingService {
         String detail = formatOperationSummary(op);
         emitTradeEvent(userId, wallet.getId(), AgentEventType.TRADE_OPERATION_STAGED, Map.of(
                 "action", op.action().toUpperCase().trim(),
-                "ticker", op.ticker(),
+                "ticker", op.engineSymbol(),
                 "contract", op.contract().displayName(),
                 "stagedCount", count
         ), null);
@@ -248,6 +250,18 @@ public class UnifiedTradingService {
             // We track the broker display name for the report header
             String brokerName = "unknown";
 
+            // In PAPER mode, create one PaperBroker for the entire commit to avoid
+            // re-instantiating the engine per operation and preserve cash/position state.
+            IBroker sharedPaperBroker = null;
+            if (wallet.getTradingMode() == TradingMode.PAPER) {
+                sharedPaperBroker = brokerRegistry.resolve(
+                        Contract.stock("_INIT"), TradingMode.PAPER, wallet.getCashBalance());
+                if (sharedPaperBroker instanceof PaperBroker pb) {
+                    pb.engine().setCash(wallet.getCashBalance());
+                    pb.engine().setPositions(wallet.getPositions());
+                }
+            }
+
             for (Map<String, Object> op : operations) {
                 String action = (String) op.get("action");
                 String ticker = (String) op.get("ticker");
@@ -259,16 +273,11 @@ public class UnifiedTradingService {
                     // Reconstruct Contract from the persisted operation map
                     Contract contract = reconstructContract(op);
 
-                    // Resolve broker for this specific contract
-                    IBroker broker = brokerRegistry.resolve(
-                            contract, wallet.getTradingMode(), wallet.getCashBalance());
+                    // In PAPER mode, reuse the shared broker; in LIVE mode, resolve per-contract
+                    IBroker broker = (sharedPaperBroker != null)
+                            ? sharedPaperBroker
+                            : brokerRegistry.resolve(contract, wallet.getTradingMode(), wallet.getCashBalance());
                     brokerName = broker.displayName();
-
-                    // For PaperBroker: restore engine state from wallet before execution
-                    if (broker instanceof PaperBroker paperBroker) {
-                        paperBroker.engine().setCash(wallet.getCashBalance());
-                        paperBroker.engine().setPositions(wallet.getPositions());
-                    }
 
                     OrderRequest orderRequest = toOrderRequest(op, contract);
                     OrderResult orderResult = broker.placeOrder(contract, orderRequest);
@@ -397,13 +406,24 @@ public class UnifiedTradingService {
         if (wallet.getPositions().isEmpty()) {
             sb.append("  (no open positions)\n");
         } else {
+            boolean walletDirty = false;
             for (Map<String, Object> pos : wallet.getPositions()) {
                 String ticker = (String) pos.get("ticker");
                 BigDecimal shares = NumberUtils.toBigDecimal(pos.get("shares"));
                 BigDecimal avgCost = NumberUtils.toBigDecimal(pos.get("avgCost"));
-                BigDecimal currentPrice = pos.containsKey("currentPrice")
-                        ? NumberUtils.toBigDecimal(pos.get("currentPrice"))
-                        : avgCost;
+                BigDecimal currentPrice;
+                try {
+                    Map<String, Object> quote = marketDataService.getQuote(ticker);
+                    Object closePrice = quote.get("close");
+                    currentPrice = closePrice != null
+                            ? NumberUtils.toBigDecimal(closePrice) : avgCost;
+                    pos.put("currentPrice", currentPrice);
+                    walletDirty = true;
+                } catch (Exception e) {
+                    currentPrice = pos.containsKey("currentPrice")
+                            ? NumberUtils.toBigDecimal(pos.get("currentPrice"))
+                            : avgCost;
+                }
 
                 BigDecimal posValue = shares.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
                 BigDecimal costBasis = shares.multiply(avgCost).setScale(2, RoundingMode.HALF_UP);
@@ -419,6 +439,9 @@ public class UnifiedTradingService {
                         currentPrice.toPlainString(), posValue.toPlainString(),
                         pnl.signum() >= 0 ? "+" : "-",
                         pnl.abs().toPlainString(), pnlPct.doubleValue()));
+            }
+            if (walletDirty) {
+                walletRepository.save(wallet);
             }
         }
 
@@ -630,7 +653,7 @@ public class UnifiedTradingService {
     private Map<String, Object> operationToMap(UnifiedTradeOperation op) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("action", op.action().toUpperCase().trim());
-        map.put("ticker", op.ticker());
+        map.put("ticker", op.engineSymbol());
         // Persist contract fields for reconstruction during execute
         map.put("contractSymbol", op.contract().symbol());
         map.put("contractSecType", op.contract().secType().name());
