@@ -226,9 +226,12 @@ public class UnifiedTradingTool {
             TradingMode mode = wallet.map(w -> w.getTradingMode()).orElse(TradingMode.PAPER);
             BigDecimal cash = wallet.map(w -> w.getCashBalance()).orElse(new BigDecimal("100000"));
 
-            // Resolve a stock contract to get market clock (stocks have meaningful hours)
-            Contract stockContract = Contract.stock("SPY");
-            IBroker broker = brokerRegistry.resolve(stockContract, mode, cash);
+            // Pick the first available broker rather than hardcoding STOCK
+            List<IBroker> brokers = brokerRegistry.listAvailableBrokers(mode, cash);
+            if (brokers.isEmpty()) {
+                return "No brokers available. Configure broker credentials or switch to PAPER mode.";
+            }
+            IBroker broker = brokers.getFirst();
             MarketClock clock = broker.getMarketClock();
 
             StringBuilder sb = new StringBuilder();
@@ -258,8 +261,11 @@ public class UnifiedTradingTool {
             TradingMode mode = wallet.map(w -> w.getTradingMode()).orElse(TradingMode.PAPER);
             BigDecimal cash = wallet.map(w -> w.getCashBalance()).orElse(new BigDecimal("100000"));
 
-            Contract stockContract = Contract.stock("SPY");
-            IBroker broker = brokerRegistry.resolve(stockContract, mode, cash);
+            List<IBroker> brokers = brokerRegistry.listAvailableBrokers(mode, cash);
+            if (brokers.isEmpty()) {
+                return "No brokers available. Configure broker credentials or switch to PAPER mode.";
+            }
+            IBroker broker = brokers.getFirst();
             var orders = broker.syncOrders();
 
             if (orders.isEmpty()) {
@@ -319,7 +325,7 @@ public class UnifiedTradingTool {
         try {
             return new BigDecimal(value);
         } catch (NumberFormatException e) {
-            return null;
+            throw new IllegalArgumentException("Invalid numeric value: '" + value + "'");
         }
     }
 }

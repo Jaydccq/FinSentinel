@@ -64,6 +64,7 @@ public class UnifiedTradingService {
     private static final Duration STATE_TTL = Duration.ofMinutes(30);
 
     private static final int MAX_COMMIT_HISTORY = 100;
+    private static final int MAX_STAGING_SIZE = 50;
     private static final DateTimeFormatter TIMESTAMP_FMT = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
     // ─────────────────────────── Wallet lifecycle ────────────────────────────
@@ -121,6 +122,10 @@ public class UnifiedTradingService {
         TradeWallet wallet = getOrCreateWallet(userId);
 
         List<UnifiedTradeOperation> staging = getRedisStaging(userId);
+        if (staging.size() >= MAX_STAGING_SIZE) {
+            return String.format("Error: Staging area is full (%d operations). Commit or clear before adding more.",
+                    MAX_STAGING_SIZE);
+        }
         staging.add(op);
         saveRedisStaging(userId, staging);
 
@@ -224,7 +229,8 @@ public class UnifiedTradingService {
      */
     @Transactional
     public String execute(UUID userId) {
-        Map<String, Object> commitData = getRedisPendingCommit(userId);
+        // Atomic get-and-delete prevents double execution by concurrent requests
+        Map<String, Object> commitData = getAndDeleteRedisPendingCommit(userId);
         if (commitData == null) {
             return "Error: No pending commit. Stage orders and commit first.";
         }
@@ -234,7 +240,6 @@ public class UnifiedTradingService {
             boolean alreadyExecuted = wallet.getCommitHistory().stream()
                     .anyMatch(entry -> commitHash.equals(entry.get("hash")));
             if (alreadyExecuted) {
-                clearRedisPendingCommit(userId);
                 clearRedisStaging(userId);
                 log.warn("Commit {} already executed for user {}. Cleared stale pending state.", commitHash, userId);
                 return String.format("Commit %s already executed previously. Cleared stale pending state.", commitHash);
@@ -291,27 +296,23 @@ public class UnifiedTradingService {
                     result.put("success", orderResult.success());
                     result.put("broker", broker.brokerId());
                     if (orderResult.success()) {
-                        result.put("filledPrice", orderResult.filledPrice());
-                        result.put("shares", orderResult.filledQty());
+                        BigDecimal filledQty = orderResult.filledQty() != null
+                                ? orderResult.filledQty() : BigDecimal.ZERO;
+                        BigDecimal filledPrice = orderResult.filledPrice() != null
+                                ? orderResult.filledPrice() : BigDecimal.ZERO;
+                        result.put("filledPrice", filledPrice);
+                        result.put("shares", filledQty);
+                        BigDecimal total = filledQty.multiply(filledPrice)
+                                .setScale(2, RoundingMode.HALF_UP);
                         if ("sell".equalsIgnoreCase(orderRequest.side())) {
-                            BigDecimal proceeds = orderResult.filledQty()
-                                    .multiply(orderResult.filledPrice())
-                                    .setScale(2, RoundingMode.HALF_UP);
-                            result.put("proceeds", proceeds);
-                            report.append(String.format("  %s %s shares of %s @ $%s = $%s [%s]\n",
-                                    action, orderResult.filledQty().toPlainString(), ticker,
-                                    orderResult.filledPrice().toPlainString(), proceeds.toPlainString(),
-                                    broker.brokerId()));
+                            result.put("proceeds", total);
                         } else {
-                            BigDecimal cost = orderResult.filledQty()
-                                    .multiply(orderResult.filledPrice())
-                                    .setScale(2, RoundingMode.HALF_UP);
-                            result.put("cost", cost);
-                            report.append(String.format("  %s %s shares of %s @ $%s = $%s [%s]\n",
-                                    action, orderResult.filledQty().toPlainString(), ticker,
-                                    orderResult.filledPrice().toPlainString(), cost.toPlainString(),
-                                    broker.brokerId()));
+                            result.put("cost", total);
                         }
+                        report.append(String.format("  %s %s shares of %s @ $%s = $%s [%s]\n",
+                                action, filledQty.toPlainString(), ticker,
+                                filledPrice.toPlainString(), total.toPlainString(),
+                                broker.brokerId()));
                     } else {
                         result.put("error", orderResult.error());
                         report.append(String.format("  FAILED %s %s: %s\n", action, ticker, orderResult.error()));
@@ -367,11 +368,12 @@ public class UnifiedTradingService {
 
             log.info("User {} executed commit {} via {}: {} operations",
                     userId, commitData.get("hash"), brokerName, results.size());
-            clearRedisPendingCommit(userId);
             clearRedisStaging(userId);
             return report.toString();
         } catch (RuntimeException e) {
-            log.error("Failed to execute pending commit for user {}. Pending commit retained for retry.", userId, e);
+            // Re-store the pending commit so the user can retry
+            saveRedisPendingCommit(userId, commitData);
+            log.error("Failed to execute pending commit for user {}. Pending commit restored for retry.", userId, e);
             throw e;
         }
     }
@@ -385,7 +387,7 @@ public class UnifiedTradingService {
      * @param userId the user's UUID
      * @return formatted wallet status string
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public String getWalletStatus(UUID userId) {
         TradeWallet wallet = getOrCreateWallet(userId);
 
@@ -406,7 +408,6 @@ public class UnifiedTradingService {
         if (wallet.getPositions().isEmpty()) {
             sb.append("  (no open positions)\n");
         } else {
-            boolean walletDirty = false;
             for (Map<String, Object> pos : wallet.getPositions()) {
                 String ticker = (String) pos.get("ticker");
                 BigDecimal shares = NumberUtils.toBigDecimal(pos.get("shares"));
@@ -417,8 +418,6 @@ public class UnifiedTradingService {
                     Object closePrice = quote.get("close");
                     currentPrice = closePrice != null
                             ? NumberUtils.toBigDecimal(closePrice) : avgCost;
-                    pos.put("currentPrice", currentPrice);
-                    walletDirty = true;
                 } catch (Exception e) {
                     currentPrice = pos.containsKey("currentPrice")
                             ? NumberUtils.toBigDecimal(pos.get("currentPrice"))
@@ -439,9 +438,6 @@ public class UnifiedTradingService {
                         currentPrice.toPlainString(), posValue.toPlainString(),
                         pnl.signum() >= 0 ? "+" : "-",
                         pnl.abs().toPlainString(), pnlPct.doubleValue()));
-            }
-            if (walletDirty) {
-                walletRepository.save(wallet);
             }
         }
 
@@ -607,6 +603,22 @@ public class UnifiedTradingService {
             return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
         } catch (Exception e) {
             log.error("Failed to read pending commit from Redis for user {}", userId, e);
+            throw new IllegalStateException("Failed to read pending commit from state store. Please retry.", e);
+        }
+    }
+
+    /**
+     * Atomically reads and deletes the pending commit from Redis.
+     * Prevents double-execution by concurrent requests — only the first caller
+     * gets the commit data; subsequent callers see null.
+     */
+    private Map<String, Object> getAndDeleteRedisPendingCommit(UUID userId) {
+        try {
+            String json = redisTemplate.opsForValue().getAndDelete(PENDING_KEY_PREFIX + userId);
+            if (json == null) return null;
+            return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            log.error("Failed to read/delete pending commit from Redis for user {}", userId, e);
             throw new IllegalStateException("Failed to read pending commit from state store. Please retry.", e);
         }
     }

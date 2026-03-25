@@ -1,6 +1,7 @@
 -- V8: Add UTA contract fields to existing wallet position entries
 -- Existing positions are assumed to be STOCK type on SMART exchange with USD currency
 -- JSONB is flexible — no schema change needed, just enrich existing data
+-- COALESCE handles per-element defaults: positions that already have secType keep their value
 
 UPDATE trade_wallets
 SET positions = (
@@ -15,8 +16,4 @@ SET positions = (
 )
 WHERE positions IS NOT NULL
   AND positions::text != '[]'
-  AND jsonb_array_length(positions::jsonb) > 0
-  AND NOT EXISTS (
-    SELECT 1 FROM jsonb_array_elements(positions::jsonb) AS p
-    WHERE p ? 'secType'
-  );
+  AND jsonb_array_length(positions::jsonb) > 0;

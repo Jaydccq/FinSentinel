@@ -24,9 +24,9 @@ import java.util.Optional;
  * a priority-ordered list of brokers (Alpaca > OKX > CCXT) and selects the
  * first that can handle the given {@link Contract}.
  *
- * <p>Not a singleton cache — brokers are created per-call so each user/wallet
- * can have its own engine instance (especially important for PaperTradingEngine
- * which holds per-user state).
+ * <p>Live brokers are cached (they don't hold per-user state). Paper brokers are
+ * created per-call since each user needs their own engine instance with their
+ * own cash/position state.
  */
 @Component
 @Slf4j
@@ -35,6 +35,9 @@ public class BrokerRegistry {
     private final TradingProperties tradingProperties;
     private final MarketDataService marketDataService;
     private final OkxApiClient okxApiClient;
+
+    /** Cached live brokers — built once, reused for all calls. */
+    private volatile List<IBroker> cachedLiveBrokers;
 
     /**
      * Constructor with optional OKX dependency.
@@ -71,7 +74,7 @@ public class BrokerRegistry {
             return new PaperBroker(new PaperTradingEngine(marketDataService, initialCash));
         }
 
-        List<IBroker> liveBrokers = buildLiveBrokers();
+        List<IBroker> liveBrokers = getLiveBrokers();
         return liveBrokers.stream()
                 .filter(broker -> broker.canHandle(contract))
                 .findFirst()
@@ -92,7 +95,22 @@ public class BrokerRegistry {
         if (mode == TradingMode.PAPER) {
             return List.of(new PaperBroker(new PaperTradingEngine(marketDataService, initialCash)));
         }
-        return buildLiveBrokers();
+        return getLiveBrokers();
+    }
+
+    /**
+     * Returns the cached list of live brokers, building it on first access.
+     * Live brokers don't hold per-user state so they can be safely shared.
+     */
+    private List<IBroker> getLiveBrokers() {
+        if (cachedLiveBrokers == null) {
+            synchronized (this) {
+                if (cachedLiveBrokers == null) {
+                    cachedLiveBrokers = buildLiveBrokers();
+                }
+            }
+        }
+        return cachedLiveBrokers;
     }
 
     /**
@@ -113,7 +131,7 @@ public class BrokerRegistry {
                     new AlpacaTradingEngine(alpaca.getApiKey(), alpaca.getSecretKey(), baseUrl)));
         }
 
-        // 2. OKX (crypto derivatives) — if bean present
+        // 2. OKX (crypto perpetuals only) — if bean present
         if (okxApiClient != null) {
             log.info("Live broker available: OKX");
             brokers.add(new OkxBroker(new OkxTradingEngine(okxApiClient)));

@@ -46,8 +46,14 @@ public class PaperBroker implements IBroker {
 
     @Override
     public OrderResult placeOrder(Contract contract, OrderRequest request) {
+        // Paper engine uses MarketDataService which expects simple tickers (Polygon.io).
+        // For crypto assets, use "X:BTCUSD" format which Polygon supports;
+        // for stocks/options/futures/forex, use the plain symbol.
+        String paperSymbol = contract.secType().isCrypto()
+                ? "X:" + contract.symbol() + contract.currency()
+                : contract.symbol();
         var nativeRequest = new OrderRequest(
-                contract.toEngineSymbol(), request.side(), request.type(),
+                paperSymbol, request.side(), request.type(),
                 request.qty(), request.notional(), request.price(),
                 request.stopPrice(), request.timeInForce(), request.reduceOnly());
         return engine.placeOrder(nativeRequest);

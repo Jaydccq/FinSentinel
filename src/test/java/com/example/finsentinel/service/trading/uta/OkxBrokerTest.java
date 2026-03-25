@@ -53,20 +53,21 @@ class OkxBrokerTest {
     }
 
     @Test
-    void supportedSecurityTypes_containsCryptoAndPerp() {
+    void supportedSecurityTypes_containsPerpOnly() {
         OkxBroker broker = new OkxBroker(engine);
 
         assertThat(broker.supportedSecurityTypes())
-                .containsExactlyInAnyOrder(SecurityType.CRYPTO, SecurityType.PERP);
+                .containsExactly(SecurityType.PERP);
     }
 
     @Test
-    void canHandle_returnsFalseForStock() {
+    void canHandle_returnsTrueOnlyForPerp() {
         OkxBroker broker = new OkxBroker(engine);
 
         assertThat(broker.canHandle(Contract.stock("AAPL"))).isFalse();
         assertThat(broker.canHandle(Contract.cryptoPerp("BTC", "USDT", "OKX"))).isTrue();
-        assertThat(broker.canHandle(Contract.cryptoSpot("ETH", "USD", "BINANCE"))).isTrue();
+        // OKX does not handle generic crypto spot — routes to CcxtBroker instead
+        assertThat(broker.canHandle(Contract.cryptoSpot("ETH", "USD", "BINANCE"))).isFalse();
     }
 
     @Test
