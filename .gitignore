@@ -63,3 +63,13 @@ CLAUDE.md
 docs/
 work-log/
 work-logs/
+
+### Node.js / TypeScript ###
+node_modules/
+dist/
+.turbo/
+.next/
+.env*.local
+
+### pnpm ###
+.pnpm-store/
