@@ -66,13 +66,9 @@ class UnifiedTradingServiceTest {
 
     @Test
     void stage_acceptsStockContract() {
-        // Lua script returns 1 (success), then read-back returns the staged array
-        lenient().when(redisTemplate.execute(
+        when(redisTemplate.execute(
                 any(org.springframework.data.redis.core.script.DefaultRedisScript.class),
                 any(java.util.List.class), anyString(), anyString(), anyString())).thenReturn(1L);
-        String stagedJson = """
-                [{"action":"BUY","contract":{"symbol":"AAPL","secType":"STOCK","exchange":"SMART","currency":"USD","expiry":null,"strike":null,"right":null,"multiplier":null},"qty":10,"notional":null,"price":null}]""";
-        when(valueOps.get("uta:staging:" + USER_ID)).thenReturn(stagedJson);
 
         Contract stockContract = Contract.stock("AAPL");
         UnifiedTradeOperation op = new UnifiedTradeOperation(
@@ -87,12 +83,9 @@ class UnifiedTradingServiceTest {
 
     @Test
     void stage_acceptsCryptoContract() {
-        lenient().when(redisTemplate.execute(
+        when(redisTemplate.execute(
                 any(org.springframework.data.redis.core.script.DefaultRedisScript.class),
                 any(java.util.List.class), anyString(), anyString(), anyString())).thenReturn(1L);
-        String stagedJson = """
-                [{"action":"BUY","contract":{"symbol":"BTC","secType":"PERP","exchange":"OKX","currency":"USDT","expiry":null,"strike":null,"right":null,"multiplier":null},"qty":0.5,"notional":null,"price":null}]""";
-        when(valueOps.get("uta:staging:" + USER_ID)).thenReturn(stagedJson);
 
         Contract perpContract = Contract.cryptoPerp("BTC", "USDT", "OKX");
         UnifiedTradeOperation op = new UnifiedTradeOperation(

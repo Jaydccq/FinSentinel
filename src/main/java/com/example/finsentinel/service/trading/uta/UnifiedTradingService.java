@@ -121,16 +121,11 @@ public class UnifiedTradingService {
         validateOperation(op);
         TradeWallet wallet = getOrCreateWallet(userId);
 
-        // Atomic append via Lua script — prevents lost-update race conditions
-        int appendResult = atomicAppendToStaging(userId, op);
-        if (appendResult == -1) {
+        int count = atomicAppendToStaging(userId, op);
+        if (count == -1) {
             return String.format("Error: Staging area is full (%d operations). Commit or clear before adding more.",
                     MAX_STAGING_SIZE);
         }
-
-        // Read back count for the response (Lua returns 1 on success, not the count)
-        List<UnifiedTradeOperation> staging = getRedisStaging(userId);
-        int count = staging.size();
         String detail = formatOperationSummary(op);
         emitTradeEvent(userId, wallet.getId(), AgentEventType.TRADE_OPERATION_STAGED, Map.of(
                 "action", op.action().toUpperCase().trim(),
@@ -206,7 +201,6 @@ public class UnifiedTradingService {
                 "messageLength", message.length()
         ), "trade-commit-created:" + hash);
 
-        // Clear staging after successful commit
         clearRedisStaging(userId);
 
         int opCount = staged.size();
@@ -329,12 +323,10 @@ public class UnifiedTradingService {
                 results.add(result);
             }
 
-            // Insert header with broker info after collecting broker name
             report.insert("=== Execution Report ===\n".length(),
                     String.format("Broker: %s\nCommit: %s -- %s\n\n",
                             brokerName, commitData.get("hash"), commitData.get("message")));
 
-            // Record commit in history
             String parentHash = wallet.getCommitHistory().isEmpty()
                     ? null
                     : (String) wallet.getCommitHistory().getLast().get("hash");
@@ -346,7 +338,6 @@ public class UnifiedTradingService {
 
             List<Map<String, Object>> history = new ArrayList<>(wallet.getCommitHistory());
             history.add(historyEntry);
-            // Cap at MAX_COMMIT_HISTORY entries
             if (history.size() > MAX_COMMIT_HISTORY) {
                 history = new ArrayList<>(history.subList(history.size() - MAX_COMMIT_HISTORY, history.size()));
             }
@@ -383,13 +374,39 @@ public class UnifiedTradingService {
 
     // ───────────────────────── Query methods ─────────────────────────────────
 
-    /**
-     * Returns a formatted summary of the wallet's current state including
-     * cash balance, positions with P/L, trading mode, and broker info.
-     *
-     * @param userId the user's UUID
-     * @return formatted wallet status string
-     */
+    record EnrichedPosition(String ticker, BigDecimal shares, BigDecimal avgCost,
+                            BigDecimal currentPrice, BigDecimal marketValue, BigDecimal costBasis,
+                            BigDecimal unrealizedPnl, BigDecimal pnlPercent, String secType) {}
+
+    private List<EnrichedPosition> enrichPositions(List<Map<String, Object>> positions) {
+        List<EnrichedPosition> result = new ArrayList<>();
+        for (Map<String, Object> pos : positions) {
+            String ticker = (String) pos.get("ticker");
+            BigDecimal shares = NumberUtils.toBigDecimal(pos.get("shares"));
+            BigDecimal avgCost = NumberUtils.toBigDecimal(pos.get("avgCost"));
+            BigDecimal currentPrice;
+            try {
+                Map<String, Object> quote = marketDataService.getQuote(ticker);
+                Object closePrice = quote.get("close");
+                currentPrice = closePrice != null ? NumberUtils.toBigDecimal(closePrice) : avgCost;
+            } catch (Exception e) {
+                currentPrice = pos.containsKey("currentPrice")
+                        ? NumberUtils.toBigDecimal(pos.get("currentPrice")) : avgCost;
+            }
+
+            BigDecimal marketValue = shares.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal costBasis = shares.multiply(avgCost).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal unrealizedPnl = marketValue.subtract(costBasis);
+            BigDecimal pnlPercent = costBasis.compareTo(BigDecimal.ZERO) > 0
+                    ? unrealizedPnl.divide(costBasis, 4, RoundingMode.HALF_UP).multiply(new BigDecimal("100"))
+                    : BigDecimal.ZERO;
+            String secType = pos.containsKey("secType") ? (String) pos.get("secType") : "STOCK";
+            result.add(new EnrichedPosition(ticker, shares, avgCost, currentPrice,
+                    marketValue, costBasis, unrealizedPnl, pnlPercent, secType));
+        }
+        return result;
+    }
+
     @Transactional(readOnly = true)
     public String getWalletStatus(UUID userId) {
         TradeWallet wallet = getOrCreateWallet(userId);
@@ -406,41 +423,19 @@ public class UnifiedTradingService {
                 brokers.stream().map(IBroker::displayName).toList()));
         sb.append("\n--- Positions ---\n");
 
+        List<EnrichedPosition> enriched = enrichPositions(wallet.getPositions());
         BigDecimal totalPositionValue = BigDecimal.ZERO;
 
-        if (wallet.getPositions().isEmpty()) {
+        if (enriched.isEmpty()) {
             sb.append("  (no open positions)\n");
         } else {
-            for (Map<String, Object> pos : wallet.getPositions()) {
-                String ticker = (String) pos.get("ticker");
-                BigDecimal shares = NumberUtils.toBigDecimal(pos.get("shares"));
-                BigDecimal avgCost = NumberUtils.toBigDecimal(pos.get("avgCost"));
-                BigDecimal currentPrice;
-                try {
-                    Map<String, Object> quote = marketDataService.getQuote(ticker);
-                    Object closePrice = quote.get("close");
-                    currentPrice = closePrice != null
-                            ? NumberUtils.toBigDecimal(closePrice) : avgCost;
-                } catch (Exception e) {
-                    currentPrice = pos.containsKey("currentPrice")
-                            ? NumberUtils.toBigDecimal(pos.get("currentPrice"))
-                            : avgCost;
-                }
-
-                BigDecimal posValue = shares.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
-                BigDecimal costBasis = shares.multiply(avgCost).setScale(2, RoundingMode.HALF_UP);
-                BigDecimal pnl = posValue.subtract(costBasis);
-                BigDecimal pnlPct = costBasis.compareTo(BigDecimal.ZERO) > 0
-                        ? pnl.divide(costBasis, 4, RoundingMode.HALF_UP).multiply(new BigDecimal("100"))
-                        : BigDecimal.ZERO;
-
-                totalPositionValue = totalPositionValue.add(posValue);
-
+            for (EnrichedPosition ep : enriched) {
+                totalPositionValue = totalPositionValue.add(ep.marketValue());
                 sb.append(String.format("  %s: %s shares @ avg $%s | Current: $%s | Value: $%s | P&L: %s$%s (%.2f%%)\n",
-                        ticker, shares.toPlainString(), avgCost.toPlainString(),
-                        currentPrice.toPlainString(), posValue.toPlainString(),
-                        pnl.signum() >= 0 ? "+" : "-",
-                        pnl.abs().toPlainString(), pnlPct.doubleValue()));
+                        ep.ticker(), ep.shares().toPlainString(), ep.avgCost().toPlainString(),
+                        ep.currentPrice().toPlainString(), ep.marketValue().toPlainString(),
+                        ep.unrealizedPnl().signum() >= 0 ? "+" : "-",
+                        ep.unrealizedPnl().abs().toPlainString(), ep.pnlPercent().doubleValue()));
             }
         }
 
@@ -583,35 +578,16 @@ public class UnifiedTradingService {
     public com.example.finsentinel.dto.trading.V2WalletResponse getWalletStatusStructured(UUID userId) {
         TradeWallet wallet = getOrCreateWallet(userId);
 
-        List<com.example.finsentinel.dto.trading.V2WalletResponse.V2PositionResponse> positionDtos = new ArrayList<>();
-        BigDecimal totalPositionValue = BigDecimal.ZERO;
+        List<EnrichedPosition> enriched = enrichPositions(wallet.getPositions());
+        BigDecimal totalPositionValue = enriched.stream()
+                .map(EnrichedPosition::marketValue)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        for (Map<String, Object> pos : wallet.getPositions()) {
-            String ticker = (String) pos.get("ticker");
-            BigDecimal shares = NumberUtils.toBigDecimal(pos.get("shares"));
-            BigDecimal avgCost = NumberUtils.toBigDecimal(pos.get("avgCost"));
-            BigDecimal currentPrice;
-            try {
-                Map<String, Object> quote = marketDataService.getQuote(ticker);
-                Object closePrice = quote.get("close");
-                currentPrice = closePrice != null ? NumberUtils.toBigDecimal(closePrice) : avgCost;
-            } catch (Exception e) {
-                currentPrice = pos.containsKey("currentPrice")
-                        ? NumberUtils.toBigDecimal(pos.get("currentPrice")) : avgCost;
-            }
-
-            BigDecimal marketValue = shares.multiply(currentPrice).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal costBasis = shares.multiply(avgCost).setScale(2, RoundingMode.HALF_UP);
-            BigDecimal unrealizedPnl = marketValue.subtract(costBasis);
-            BigDecimal pnlPercent = costBasis.compareTo(BigDecimal.ZERO) > 0
-                    ? unrealizedPnl.divide(costBasis, 4, RoundingMode.HALF_UP).multiply(new BigDecimal("100"))
-                    : BigDecimal.ZERO;
-            totalPositionValue = totalPositionValue.add(marketValue);
-
-            String secType = pos.containsKey("secType") ? (String) pos.get("secType") : "STOCK";
-            positionDtos.add(new com.example.finsentinel.dto.trading.V2WalletResponse.V2PositionResponse(
-                    ticker, shares, avgCost, currentPrice, marketValue, unrealizedPnl, pnlPercent, secType));
-        }
+        List<com.example.finsentinel.dto.trading.V2WalletResponse.V2PositionResponse> positionDtos = enriched.stream()
+                .map(ep -> new com.example.finsentinel.dto.trading.V2WalletResponse.V2PositionResponse(
+                        ep.ticker(), ep.shares(), ep.avgCost(), ep.currentPrice(),
+                        ep.marketValue(), ep.unrealizedPnl(), ep.pnlPercent(), ep.secType()))
+                .toList();
 
         BigDecimal totalValue = wallet.getCashBalance().add(totalPositionValue);
         BigDecimal returnPercent = wallet.getInitialCapital().compareTo(BigDecimal.ZERO) > 0
@@ -643,14 +619,7 @@ public class UnifiedTradingService {
 
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> ops = (List<Map<String, Object>>) entry.get("operations");
-            List<com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse> opDtos =
-                    ops != null ? ops.stream().map(op -> new com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse(
-                            (String) op.get("action"),
-                            (String) op.get("ticker"),
-                            op.get("shares") != null ? op.get("shares").toString() : null,
-                            op.get("amount") != null ? op.get("amount").toString() : null,
-                            op.get("price") != null ? op.get("price").toString() : null
-                    )).toList() : List.of();
+            List<com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse> opDtos = mapOpsToDto(ops);
 
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> results = (List<Map<String, Object>>) entry.get("results");
@@ -714,33 +683,32 @@ public class UnifiedTradingService {
             Map<String, Object> commitData, List<Map<String, Object>> results) {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> ops = (List<Map<String, Object>>) commitData.get("operations");
-        List<com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse> opDtos =
-                ops != null ? ops.stream().map(op -> new com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse(
-                        (String) op.get("action"),
-                        (String) op.get("ticker"),
-                        op.get("shares") != null ? op.get("shares").toString() : null,
-                        op.get("amount") != null ? op.get("amount").toString() : null,
-                        op.get("price") != null ? op.get("price").toString() : null
-                )).toList() : List.of();
 
         return new com.example.finsentinel.dto.trading.V2CommitResponse(
                 (String) commitData.get("hash"),
                 null,
                 (String) commitData.get("message"),
                 (String) commitData.get("timestamp"),
-                opDtos,
+                mapOpsToDto(ops),
                 results
         );
     }
 
+    @SuppressWarnings("unchecked")
+    private List<com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse> mapOpsToDto(
+            List<Map<String, Object>> ops) {
+        if (ops == null) return List.of();
+        return ops.stream().map(op -> new com.example.finsentinel.dto.trading.V2CommitResponse.V2OperationResponse(
+                (String) op.get("action"),
+                (String) op.get("ticker"),
+                op.get("shares") != null ? op.get("shares").toString() : null,
+                op.get("amount") != null ? op.get("amount").toString() : null,
+                op.get("price") != null ? op.get("price").toString() : null
+        )).toList();
+    }
+
     // ───────────────────────── Redis state helpers ────────────────────────────
 
-    /**
-     * Lua script for atomic append to the JSON array stored in the staging key.
-     * Reads the existing array, appends the new element, writes back, and sets TTL.
-     * Returns the new array length. This prevents lost-update races when two
-     * concurrent calls both try to append to the staging area.
-     */
     private static final String STAGING_APPEND_LUA = """
             local key = KEYS[1]
             local newElement = ARGV[1]
@@ -749,28 +717,24 @@ public class UnifiedTradingService {
             local current = redis.call('GET', key)
             local arr
             if current == false or current == nil then
-                arr = '[]'
+                arr = {}
             else
-                arr = current
+                arr = cjson.decode(current)
             end
-            -- Check size before append (count commas + 1 for non-empty, or 0 for [])
-            if arr ~= '[]' then
-                local count = 1
-                for _ in arr:gmatch(',') do count = count + 1 end
-                if count >= maxSize then
-                    return -1
-                end
+            if #arr >= maxSize then
+                return -1
             end
-            -- Insert new element before the closing bracket
-            local result
-            if arr == '[]' then
-                result = '[' .. newElement .. ']'
-            else
-                result = arr:sub(1, -2) .. ',' .. newElement .. ']'
-            end
-            redis.call('SET', key, result, 'EX', ttlSeconds)
-            return 1
+            arr[#arr + 1] = cjson.decode(newElement)
+            redis.call('SET', key, cjson.encode(arr), 'EX', ttlSeconds)
+            return #arr
             """;
+
+    private static final org.springframework.data.redis.core.script.DefaultRedisScript<Long> STAGING_APPEND_SCRIPT;
+    static {
+        STAGING_APPEND_SCRIPT = new org.springframework.data.redis.core.script.DefaultRedisScript<>();
+        STAGING_APPEND_SCRIPT.setScriptText(STAGING_APPEND_LUA);
+        STAGING_APPEND_SCRIPT.setResultType(Long.class);
+    }
 
     private List<UnifiedTradeOperation> getRedisStaging(UUID userId) {
         try {
@@ -783,17 +747,10 @@ public class UnifiedTradingService {
         }
     }
 
-    /**
-     * Atomically appends an operation to the staging area using a Lua script.
-     * Returns the staging size after append, or -1 if full.
-     */
     private int atomicAppendToStaging(UUID userId, UnifiedTradeOperation op) {
         try {
             String opJson = objectMapper.writeValueAsString(op);
-            var script = new org.springframework.data.redis.core.script.DefaultRedisScript<Long>();
-            script.setScriptText(STAGING_APPEND_LUA);
-            script.setResultType(Long.class);
-            Long result = redisTemplate.execute(script,
+            Long result = redisTemplate.execute(STAGING_APPEND_SCRIPT,
                     List.of(STAGING_KEY_PREFIX + userId),
                     opJson,
                     String.valueOf(STATE_TTL.toSeconds()),

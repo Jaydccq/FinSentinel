@@ -17,6 +17,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.finsentinel.util.NumberUtils;
+
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
@@ -143,10 +145,10 @@ public class TradingController {
 
         BigDecimal positionValue = wallet.getPositions().stream()
                 .map(pos -> {
-                    BigDecimal shares = toBigDecimal(pos.get("shares"));
+                    BigDecimal shares = NumberUtils.toBigDecimal(pos.get("shares"));
                     BigDecimal price = pos.containsKey("currentPrice")
-                            ? toBigDecimal(pos.get("currentPrice"))
-                            : toBigDecimal(pos.get("avgCost"));
+                            ? NumberUtils.toBigDecimal(pos.get("currentPrice"))
+                            : NumberUtils.toBigDecimal(pos.get("avgCost"));
                     return shares.multiply(price).setScale(2, RoundingMode.HALF_UP);
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -316,7 +318,8 @@ public class TradingController {
 
         var result = unifiedTradingService.execute(principal.getUserId());
         if (result.commitData() == null) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(
+                    new V2CommitResponse(null, null, result.report(), null, List.of(), List.of()));
         }
         return ResponseEntity.ok(
                 unifiedTradingService.buildExecuteResponse(result.commitData(), result.operationResults()));
@@ -373,12 +376,4 @@ public class TradingController {
                 unifiedTradingService.searchAssetsStructured(principal.getUserId(), q));
     }
 
-    // ───────────────────────── Internal helpers ───────────────────────────
-
-    private BigDecimal toBigDecimal(Object value) {
-        if (value == null) return BigDecimal.ZERO;
-        if (value instanceof BigDecimal bd) return bd;
-        if (value instanceof Number n) return new BigDecimal(n.toString());
-        return new BigDecimal(value.toString());
-    }
 }
