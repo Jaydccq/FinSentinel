@@ -73,3 +73,6 @@ dist/
 
 ### pnpm ###
 .pnpm-store/
+
+### TypeScript build artifacts ###
+*.tsbuildinfo
