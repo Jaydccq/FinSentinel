@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import request from 'supertest';
-import { AppModule } from '../src/app.module';
+import { HealthController } from '../src/health/health.controller';
 import { describe, it, beforeAll, afterAll, expect } from 'vitest';
 
 describe('HealthController (e2e)', () => {
@@ -9,7 +10,20 @@ describe('HealthController (e2e)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+          // Provide dummy env for e2e tests — no real infra needed
+          load: [
+            () => ({
+              database: { url: 'postgresql://test:test@localhost:5432/test' },
+              redis: { url: 'redis://localhost:6379' },
+              jwt: { secret: 'a'.repeat(32), expiration: 86400000 },
+            }),
+          ],
+        }),
+      ],
+      controllers: [HealthController],
     }).compile();
 
     app = moduleFixture.createNestApplication();
