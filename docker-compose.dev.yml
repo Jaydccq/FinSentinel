@@ -1,0 +1,41 @@
+# Docker Compose for local TypeScript development
+# Provides PostgreSQL + pgvector and Redis only (no Java backend, no RustFS)
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# NOTE: Credentials match docker-compose.yml so both stacks can share the same DB.
+#       Do NOT run both compose files simultaneously — they bind the same host ports.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-finsentinel}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-finsentinel}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata_dev:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  pgdata_dev:
+  redisdata_dev:
