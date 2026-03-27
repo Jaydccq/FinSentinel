@@ -1,0 +1,82 @@
+{
+  "description": "Golden output baseline for TechnicalIndicatorTool — exact numeric values from Ta4j with 30 SAMPLE_BARS",
+  "sampleBars": "30 bars from TechnicalIndicatorToolTest.java (AAPL-like prices 170-188, Jan-Feb 2024)",
+  "generatedBy": "GoldenOutputExtractor.java → ./gradlew test --tests GoldenOutputExtractor",
+  "indicators": {
+    "RSI_14": {
+      "value": 93.42,
+      "signal": "OVERBOUGHT",
+      "last5": [91.4, 91.9, 92.5, 93.0, 93.4]
+    },
+    "MACD_8_12_9": {
+      "macdLine": 1.0368,
+      "signalLine": 1.0236,
+      "histogram": 0.0132,
+      "signal": "BULLISH"
+    },
+    "BOLLINGER_20_2": {
+      "upper": 189.66,
+      "middle": 182.85,
+      "lower": 176.04,
+      "currentPrice": 188.00,
+      "percentB": 0.88,
+      "bandWidth": 7.45,
+      "volatility": "MODERATE",
+      "signal": "NEAR UPPER BAND"
+    },
+    "EMA_9": {
+      "value": 185.96,
+      "currentPrice": 188.00,
+      "priceDiffPct": 1.10,
+      "trend": "RISING",
+      "last5": [183.91, 184.43, 184.94, 185.45, 185.96]
+    },
+    "SMA_20": {
+      "value": 182.85,
+      "currentPrice": 188.00,
+      "priceDiffPct": 2.82,
+      "position": "ABOVE SMA"
+    },
+    "ATR_14": {
+      "value": 2.6150,
+      "atrPct": 1.39,
+      "currentPrice": 188.00,
+      "volatility": "LOW VOLATILITY",
+      "trend": "STABLE",
+      "last5": [2.6546, 2.6436, 2.6333, 2.6238, 2.6150]
+    },
+    "STOCHASTIC_14_3": {
+      "percentK": 90.00,
+      "percentD": 90.16,
+      "zone": "OVERBOUGHT",
+      "crossover": "%K below %D (bearish momentum)"
+    },
+    "ADX_14": {
+      "adx": 74.20,
+      "plusDI": 19.62,
+      "minusDI": 1.08,
+      "trendStrength": "VERY STRONG TREND",
+      "trendDirection": "BULLISH",
+      "diCrossover": "No crossover"
+    },
+    "OBV": {
+      "value": 1273000000,
+      "obvTrend": "RISING",
+      "priceTrend": "RISING",
+      "signal": "CONFIRMED UPTREND",
+      "last5": [1058000000, 1111000000, 1168000000, 1219000000, 1273000000]
+    }
+  },
+  "tolerancePct": 0.01,
+  "notes": [
+    "All values computed by Ta4j library (org.ta4j:ta4j-core) via TechnicalIndicatorTool.java",
+    "RSI last5 values are formatted at %.1f precision in the tool output",
+    "MACD values are formatted at %.4f precision",
+    "Bollinger %B and bandWidth are formatted at %.2f precision",
+    "EMA/SMA last5 values are formatted at $%.2f precision",
+    "ATR values are formatted at $%.4f precision",
+    "Stochastic %K/%D are formatted at %.2f precision",
+    "ADX/DI values are formatted at %.2f precision",
+    "OBV values are formatted at %.0f (integer) precision"
+  ]
+}
