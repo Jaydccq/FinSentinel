@@ -1,0 +1,37 @@
+{
+  "name": "@finsentinel/api",
+  "version": "0.0.1",
+  "private": true,
+  "description": "FinSentinel NestJS API",
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.17",
+    "@nestjs/core": "^11.1.17",
+    "@nestjs/platform-express": "^11.1.17",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.16",
+    "@nestjs/testing": "^11.1.17",
+    "@swc/cli": "^0.7.0",
+    "@swc/core": "^1.11.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.8.0",
+    "supertest": "^7.0.0",
+    "@types/supertest": "^6.0.0",
+    "unplugin-swc": "^1.5.9",
+    "vitest": "^4.1.2"
+  }
+}
