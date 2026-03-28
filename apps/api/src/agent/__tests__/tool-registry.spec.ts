@@ -46,12 +46,11 @@ describe('ToolRegistry', () => {
       const tools = registry.buildTools('user-1');
       const keys = Object.keys(tools);
 
-      // Market data tools
+      // Market data tools (from createStockMarketTools)
       expect(keys).toContain('getStockQuote');
       expect(keys).toContain('getHistoricalPrices');
-      expect(keys).toContain('searchAssets');
 
-      // Technical indicator tools
+      // Technical indicator tools (from createTechnicalIndicatorTools)
       expect(keys).toContain('calculateRSI');
       expect(keys).toContain('calculateMACD');
       expect(keys).toContain('calculateBollingerBands');
@@ -61,6 +60,15 @@ describe('ToolRegistry', () => {
       expect(keys).toContain('calculateStochastic');
       expect(keys).toContain('calculateADX');
       expect(keys).toContain('calculateOBV');
+
+      // Thinking tools (from createThinkingTools — always included)
+      expect(keys).toContain('analyzeMarket');
+      expect(keys).toContain('planInvestmentAction');
+      expect(keys).toContain('calculate');
+      expect(keys).toContain('reportWarning');
+
+      // Confirmation tool (from createConfirmationTools — always included)
+      expect(keys).toContain('getConfirm');
     });
 
     it('tools have correct structure (description, inputSchema, execute)', () => {
@@ -94,17 +102,19 @@ describe('ToolRegistry', () => {
       const tools = registry.buildStockAnalysisTools();
       const keys = Object.keys(tools);
 
-      // Must include market data + technical indicators (the available ones)
+      // Must include market data + technical indicators
       expect(keys).toContain('getStockQuote');
       expect(keys).toContain('getHistoricalPrices');
       expect(keys).toContain('calculateRSI');
       expect(keys).toContain('calculateMACD');
       expect(keys).toContain('calculateBollingerBands');
 
-      // Must NOT include user-scoped tools
+      // Must NOT include user-scoped tools or thinking/confirmation tools
       expect(keys).not.toContain('analyzePortfolio');
       expect(keys).not.toContain('stageOrder');
       expect(keys).not.toContain('commitTrade');
+      expect(keys).not.toContain('analyzeMarket');
+      expect(keys).not.toContain('getConfirm');
     });
 
     it('tools have correct structure', () => {
