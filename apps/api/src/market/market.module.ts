@@ -5,6 +5,7 @@ import { polygonConfig } from '../config/polygon.config';
 import { PolygonMarketDataProvider } from './providers/polygon.provider';
 import { MarketDataProviderRegistry } from './market-data-provider.registry';
 import { MarketDataService } from './market-data.service';
+import { TechnicalIndicatorsService } from './technical-indicators.service';
 
 @Module({
   imports: [CommonModule],
@@ -23,7 +24,8 @@ import { MarketDataService } from './market-data.service';
     },
     MarketDataProviderRegistry,
     MarketDataService,
+    TechnicalIndicatorsService,
   ],
-  exports: [MarketDataService, MarketDataProviderRegistry],
+  exports: [MarketDataService, MarketDataProviderRegistry, TechnicalIndicatorsService],
 })
 export class MarketModule {}

@@ -1,0 +1,129 @@
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
+import { streamText, stepCountIs } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { ToolRegistry } from './tool-registry';
+import { getPersonaPrompt } from './personas';
+import { aiConfig } from '../config/ai.config';
+import { personaConfig } from '../config/persona.config';
+
+/**
+ * Primary AI agent service. Orchestrates LLM calls with tools, persona
+ * injection, and streaming. Produces SSE events in the FinSentinel format
+ * so the existing frontend works without changes.
+ *
+ * Maps to Java's AgentConfig + RiskAgentService + UserContextAdvisor.
+ */
+@Injectable()
+export class AgentService {
+  private readonly logger = new Logger(AgentService.name);
+
+  constructor(
+    private readonly toolRegistry: ToolRegistry,
+    @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
+    @Inject(personaConfig.KEY) private readonly persona: ConfigType<typeof personaConfig>,
+  ) {}
+
+  /**
+   * Stream a chat response as SSE events matching the Java format:
+   *   event: message\ndata: {"content":"chunk","sessionId":"uuid"}\n\n
+   *   event: done\ndata: [DONE]\n\n
+   *   event: error\ndata: {"error":"message"}\n\n
+   */
+  async streamChat(
+    message: string,
+    userId: string,
+    messages: Array<{ role: string; content: string }>,
+    sessionId: string,
+    portfolioId?: string,
+  ): Promise<ReadableStream<Uint8Array>> {
+    // 1. Load user profile (stub — actual UserInvestmentProfileService built in Phase 6)
+    const profileSummary = await this.loadProfileSummary(userId);
+
+    // 2. Compose system prompt: profile + persona
+    const personaPrompt = getPersonaPrompt(this.persona.active);
+    const systemPrompt = profileSummary
+      ? `${profileSummary}\n\n${personaPrompt}`
+      : personaPrompt;
+
+    // 3. Build tools for this request
+    const tools = this.toolRegistry.buildTools(userId, portfolioId);
+
+    // 4. Stream from LLM
+    const result = streamText({
+      model: this.getModel(),
+      system: systemPrompt,
+      messages: messages.map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
+      tools,
+      stopWhen: stepCountIs(10),
+      onError: ({ error }) => {
+        this.logger.error('streamText error', error);
+      },
+    });
+
+    // 5. Transform into FinSentinel SSE format
+    return this.toFinSentinelSSE(result.textStream, sessionId);
+  }
+
+  // ── Internal ──────────────────────────────────────────────────────────────
+
+  /**
+   * Stub profile loader. Returns null for now.
+   * Will be replaced by UserInvestmentProfileService in Phase 6.
+   */
+  private async loadProfileSummary(_userId: string): Promise<string | null> {
+    return null;
+  }
+
+  /** Build the OpenRouter-compatible model instance. */
+  private getModel() {
+    const openrouter = createOpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: this.aiCfg.openrouterApiKey,
+    });
+    return openrouter(this.aiCfg.model);
+  }
+
+  /**
+   * Transform the AI SDK textStream into FinSentinel SSE format:
+   *   event: message\ndata: {"content":"...","sessionId":"..."}\n\n
+   *   event: done\ndata: [DONE]\n\n
+   *   event: error\ndata: {"error":"..."}\n\n
+   */
+  private toFinSentinelSSE(
+    textStream: AsyncIterable<string>,
+    sessionId: string,
+  ): ReadableStream<Uint8Array> {
+    const encoder = new TextEncoder();
+    const logger = this.logger;
+
+    return new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          for await (const chunk of textStream) {
+            const data = JSON.stringify({ content: chunk, sessionId });
+            controller.enqueue(
+              encoder.encode(`event: message\ndata: ${data}\n\n`),
+            );
+          }
+          controller.enqueue(
+            encoder.encode('event: done\ndata: [DONE]\n\n'),
+          );
+        } catch (err) {
+          const errorMessage =
+            err instanceof Error ? err.message : 'Unknown streaming error';
+          logger.error('SSE stream error', err);
+          const data = JSON.stringify({ error: errorMessage });
+          controller.enqueue(
+            encoder.encode(`event: error\ndata: ${data}\n\n`),
+          );
+        } finally {
+          controller.close();
+        }
+      },
+    });
+  }
+}
