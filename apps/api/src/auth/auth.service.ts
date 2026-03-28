@@ -4,10 +4,8 @@ import {
   ConflictException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
 import { hash, compare } from 'bcryptjs';
-import { users } from '@finsentinel/db';
-import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { users, eq } from '@finsentinel/db';
 import type {
   RegisterRequest,
   LoginRequest,
@@ -21,7 +19,8 @@ const BCRYPT_ROUNDS = 10;
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
-    @Inject('DRIZZLE_DB') private readonly db: NodePgDatabase,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    @Inject('DRIZZLE_DB') private readonly db: any,
   ) {}
 
   async register(request: RegisterRequest): Promise<AuthResponse> {
