@@ -8,3 +8,5 @@ export { StorageTier } from './storage-tier';
 export { AgentEventType } from './agent-event-type';
 export { AgentEventAggregateType } from './agent-event-aggregate-type';
 export { AgentScheduleTaskType } from './agent-schedule-task-type';
+export { SecurityType, isCrypto } from './security-type';
+export { BrokerCapability } from './broker-capability';
