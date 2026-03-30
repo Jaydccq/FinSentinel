@@ -7,9 +7,10 @@ import { MarketModule } from './market/market.module';
 import { AgentModule } from './agent/agent.module';
 import { TradingModule } from './trading/trading.module';
 import { EventsModule } from './events/events.module';
+import { PortfolioModule } from './portfolio/portfolio.module';
 
 @Module({
-  imports: [AppConfigModule, AuthModule, CommonModule, MarketModule, AgentModule, TradingModule, EventsModule],
+  imports: [AppConfigModule, AuthModule, CommonModule, MarketModule, AgentModule, TradingModule, EventsModule, PortfolioModule],
   controllers: [HealthController],
 })
 export class AppModule {}
