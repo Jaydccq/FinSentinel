@@ -8,9 +8,20 @@ import { AgentModule } from './agent/agent.module';
 import { TradingModule } from './trading/trading.module';
 import { EventsModule } from './events/events.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
-  imports: [AppConfigModule, AuthModule, CommonModule, MarketModule, AgentModule, TradingModule, EventsModule, PortfolioModule],
+  imports: [
+    AppConfigModule,
+    AuthModule,
+    CommonModule,
+    MarketModule,
+    AgentModule,
+    TradingModule,
+    EventsModule,
+    PortfolioModule,
+    ChatModule,
+  ],
   controllers: [HealthController],
 })
 export class AppModule {}

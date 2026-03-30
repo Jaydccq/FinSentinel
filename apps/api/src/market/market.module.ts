@@ -1,14 +1,20 @@
 import { Module } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { CommonModule } from '../common/common.module';
+import { AuthModule } from '../auth/auth.module';
 import { polygonConfig } from '../config/polygon.config';
 import { PolygonMarketDataProvider } from './providers/polygon.provider';
 import { MarketDataProviderRegistry } from './market-data-provider.registry';
 import { MarketDataService } from './market-data.service';
 import { TechnicalIndicatorsService } from './technical-indicators.service';
+import { MarketDataController } from './market-data.controller';
 
+/**
+ * Market module — Phase 3 data providers + Phase 12 controller.
+ */
 @Module({
-  imports: [CommonModule],
+  imports: [CommonModule, AuthModule],
+  controllers: [MarketDataController],
   providers: [
     // Build providers list and inject as a single token
     {
