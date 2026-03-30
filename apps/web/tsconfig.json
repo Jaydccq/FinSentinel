@@ -12,6 +12,7 @@
         "name": "next"
       }
     ],
+    "noUncheckedIndexedAccess": false,
     "paths": {
       "@/*": ["./src/*"]
     }
