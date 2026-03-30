@@ -1,19 +1,20 @@
 import { Module } from '@nestjs/common';
+import { MarketModule } from '../market/market.module';
+import { BrokerRegistry } from './broker-registry.service';
 
 /**
- * Trading module — skeleton for Phase 5.
+ * Trading module — Phase 5.
  *
- * Will be populated with:
- * - BrokerRegistry (Phase 5.3)
- * - UnifiedTradingService (Phase 5.4)
- * - Paper/Alpaca/OKX broker adapters
+ * Provides:
+ * - BrokerRegistry (Phase 5.3) — resolves IBroker by Contract + TradingMode
+ * - UnifiedTradingService (Phase 5.4 — TODO)
  *
- * Note: PaperTradingEngine is NOT an Injectable. It is a plain class
- * instantiated by BrokerRegistry at runtime.
+ * Note: PaperTradingEngine and PaperBroker are NOT Injectables.
+ * They are plain classes instantiated by BrokerRegistry at runtime.
  */
 @Module({
-  imports: [],
-  providers: [],
-  exports: [],
+  imports: [MarketModule],
+  providers: [BrokerRegistry],
+  exports: [BrokerRegistry],
 })
 export class TradingModule {}
