@@ -9,6 +9,10 @@ import { TradingModule } from './trading/trading.module';
 import { EventsModule } from './events/events.module';
 import { PortfolioModule } from './portfolio/portfolio.module';
 import { ChatModule } from './chat/chat.module';
+import { NewsModule } from './news/news.module';
+import { RagModule } from './rag/rag.module';
+import { AutonomyModule } from './autonomy/autonomy.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
@@ -21,6 +25,10 @@ import { ChatModule } from './chat/chat.module';
     EventsModule,
     PortfolioModule,
     ChatModule,
+    NewsModule,
+    RagModule,
+    AutonomyModule,
+    StorageModule,
   ],
   controllers: [HealthController],
 })
