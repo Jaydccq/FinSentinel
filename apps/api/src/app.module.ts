@@ -5,9 +5,10 @@ import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
 import { MarketModule } from './market/market.module';
 import { AgentModule } from './agent/agent.module';
+import { TradingModule } from './trading/trading.module';
 
 @Module({
-  imports: [AppConfigModule, AuthModule, CommonModule, MarketModule, AgentModule],
+  imports: [AppConfigModule, AuthModule, CommonModule, MarketModule, AgentModule, TradingModule],
   controllers: [HealthController],
 })
 export class AppModule {}
