@@ -63,6 +63,7 @@ export const envSchema = z.object({
   // ── Optional: 6551.io Twitter ─────────────────────────────────────
   APP_TWITTER_6551_ENABLED: envBoolean.default(false),
   TWITTER_6551_TOKEN: z.string().optional(),
+  TWITTER_6551_BASE_URL: z.string().url().default('https://api.6551.io'),
 
   // ── Optional: OKX Exchange ────────────────────────────────────────
   APP_OKX_ENABLED: envBoolean.default(false),
