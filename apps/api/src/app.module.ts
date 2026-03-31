@@ -13,6 +13,7 @@ import { NewsModule } from './news/news.module';
 import { RagModule } from './rag/rag.module';
 import { AutonomyModule } from './autonomy/autonomy.module';
 import { StorageModule } from './storage/storage.module';
+import { OpenbbModule } from './openbb/openbb.module';
 
 @Module({
   imports: [
@@ -30,6 +31,8 @@ import { StorageModule } from './storage/storage.module';
     RagModule,
     AutonomyModule,
     StorageModule,
+    // OpenBB is always imported; its service guards at method level via config.enabled.
+    OpenbbModule,
   ],
   controllers: [HealthController],
 })
