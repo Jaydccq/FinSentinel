@@ -1,4 +1,5 @@
 export { AppConfigModule } from './config.module';
+export { DatabaseModule } from './database.module';
 export { envSchema, type EnvConfig } from './env.validation';
 export { databaseConfig } from './database.config';
 export { redisConfig } from './redis.config';

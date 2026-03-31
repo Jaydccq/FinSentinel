@@ -3,7 +3,7 @@ import { TradingMode, Contract } from '@finsentinel/shared';
 import type { IBroker } from './interfaces/broker';
 import { PaperBroker } from './brokers/paper.broker';
 import { PaperTradingEngine } from './engines/paper-trading.engine';
-import type { MarketDataService } from '../market/market-data.service';
+import { MarketDataService } from '../market/market-data.service';
 
 /**
  * BrokerRegistry — resolves the correct IBroker for a given Contract + TradingMode.

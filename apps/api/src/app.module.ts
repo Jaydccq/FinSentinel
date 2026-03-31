@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AppConfigModule } from './config';
+import { AppConfigModule, DatabaseModule } from './config';
 import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
 import { CommonModule } from './common/common.module';
@@ -17,6 +17,7 @@ import { StorageModule } from './storage/storage.module';
 @Module({
   imports: [
     AppConfigModule,
+    DatabaseModule,
     AuthModule,
     CommonModule,
     MarketModule,
