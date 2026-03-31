@@ -3,6 +3,11 @@ import {
   stageRequestSchema,
   unifiedStageRequestSchema,
   v2WalletResponseSchema,
+  orderRequestSchema,
+  orderResultSchema,
+  accountInfoSchema,
+  positionInfoSchema,
+  marketClockSchema,
 } from '../trading';
 
 describe('stageRequestSchema', () => {
@@ -254,6 +259,378 @@ describe('v2WalletResponseSchema', () => {
           pnlPercent: '16.67',
         },
       ],
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+// ── Trading Engine DTO Schemas ──────────────────────────────────────────────
+
+describe('orderRequestSchema', () => {
+  const validOrder = {
+    symbol: 'AAPL',
+    side: 'BUY' as const,
+    qty: '10',
+    type: 'MARKET' as const,
+  };
+
+  it('accepts valid market order', () => {
+    const result = orderRequestSchema.safeParse(validOrder);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.timeInForce).toBe('DAY');
+    }
+  });
+
+  it('accepts valid limit order with limitPrice', () => {
+    const result = orderRequestSchema.safeParse({
+      ...validOrder,
+      type: 'LIMIT',
+      limitPrice: '150.00',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts SELL side', () => {
+    const result = orderRequestSchema.safeParse({
+      ...validOrder,
+      side: 'SELL',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts GTC timeInForce', () => {
+    const result = orderRequestSchema.safeParse({
+      ...validOrder,
+      timeInForce: 'GTC',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.timeInForce).toBe('GTC');
+    }
+  });
+
+  it('accepts IOC timeInForce', () => {
+    const result = orderRequestSchema.safeParse({
+      ...validOrder,
+      timeInForce: 'IOC',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('defaults timeInForce to DAY when omitted', () => {
+    const result = orderRequestSchema.safeParse({
+      symbol: 'AAPL',
+      side: 'BUY',
+      qty: '10',
+      type: 'MARKET',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.timeInForce).toBe('DAY');
+    }
+  });
+
+  it('allows limitPrice to be omitted', () => {
+    const result = orderRequestSchema.safeParse(validOrder);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.limitPrice).toBeUndefined();
+    }
+  });
+
+  it('rejects invalid side', () => {
+    const result = orderRequestSchema.safeParse({
+      ...validOrder,
+      side: 'HOLD',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid type', () => {
+    const result = orderRequestSchema.safeParse({
+      ...validOrder,
+      type: 'STOP',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid timeInForce', () => {
+    const result = orderRequestSchema.safeParse({
+      ...validOrder,
+      timeInForce: 'FOK',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects empty symbol', () => {
+    const result = orderRequestSchema.safeParse({
+      ...validOrder,
+      symbol: '',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing qty', () => {
+    const result = orderRequestSchema.safeParse({
+      symbol: 'AAPL',
+      side: 'BUY',
+      type: 'MARKET',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing side', () => {
+    const result = orderRequestSchema.safeParse({
+      symbol: 'AAPL',
+      qty: '10',
+      type: 'MARKET',
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('orderResultSchema', () => {
+  const validResult = {
+    orderId: 'ord-123',
+    symbol: 'AAPL',
+    side: 'BUY' as const,
+    qty: '10',
+    filledQty: '10',
+    avgPrice: '150.25',
+    status: 'FILLED' as const,
+    createdAt: '2026-03-31T10:00:00Z',
+  };
+
+  it('accepts valid filled order result', () => {
+    const result = orderResultSchema.safeParse(validResult);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts all valid statuses', () => {
+    for (const status of ['NEW', 'FILLED', 'PARTIALLY_FILLED', 'CANCELLED', 'REJECTED']) {
+      const result = orderResultSchema.safeParse({ ...validResult, status });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it('accepts SELL side', () => {
+    const result = orderResultSchema.safeParse({
+      ...validResult,
+      side: 'SELL',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects invalid status', () => {
+    const result = orderResultSchema.safeParse({
+      ...validResult,
+      status: 'PENDING',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing orderId', () => {
+    const { orderId: _, ...rest } = validResult;
+    const result = orderResultSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing symbol', () => {
+    const { symbol: _, ...rest } = validResult;
+    const result = orderResultSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing createdAt', () => {
+    const { createdAt: _, ...rest } = validResult;
+    const result = orderResultSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('accountInfoSchema', () => {
+  const validAccount = {
+    equity: '100000.00',
+    cash: '50000.00',
+    buyingPower: '150000.00',
+    unrealizedPnl: '5000.00',
+  };
+
+  it('accepts valid account info', () => {
+    const result = accountInfoSchema.safeParse(validAccount);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts account with dayTradeCount', () => {
+    const result = accountInfoSchema.safeParse({
+      ...validAccount,
+      dayTradeCount: 2,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.dayTradeCount).toBe(2);
+    }
+  });
+
+  it('allows dayTradeCount to be omitted', () => {
+    const result = accountInfoSchema.safeParse(validAccount);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.dayTradeCount).toBeUndefined();
+    }
+  });
+
+  it('rejects non-integer dayTradeCount', () => {
+    const result = accountInfoSchema.safeParse({
+      ...validAccount,
+      dayTradeCount: 2.5,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing equity', () => {
+    const { equity: _, ...rest } = validAccount;
+    const result = accountInfoSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing cash', () => {
+    const { cash: _, ...rest } = validAccount;
+    const result = accountInfoSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing buyingPower', () => {
+    const { buyingPower: _, ...rest } = validAccount;
+    const result = accountInfoSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing unrealizedPnl', () => {
+    const { unrealizedPnl: _, ...rest } = validAccount;
+    const result = accountInfoSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('positionInfoSchema', () => {
+  const validPosition = {
+    symbol: 'AAPL',
+    qty: '100',
+    avgEntryPrice: '150.00',
+    currentPrice: '175.00',
+    unrealizedPnl: '2500.00',
+    side: 'LONG' as const,
+  };
+
+  it('accepts valid long position', () => {
+    const result = positionInfoSchema.safeParse(validPosition);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts valid short position', () => {
+    const result = positionInfoSchema.safeParse({
+      ...validPosition,
+      side: 'SHORT',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects invalid side', () => {
+    const result = positionInfoSchema.safeParse({
+      ...validPosition,
+      side: 'NEUTRAL',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing symbol', () => {
+    const { symbol: _, ...rest } = validPosition;
+    const result = positionInfoSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing qty', () => {
+    const { qty: _, ...rest } = validPosition;
+    const result = positionInfoSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing avgEntryPrice', () => {
+    const { avgEntryPrice: _, ...rest } = validPosition;
+    const result = positionInfoSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing currentPrice', () => {
+    const { currentPrice: _, ...rest } = validPosition;
+    const result = positionInfoSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing unrealizedPnl', () => {
+    const { unrealizedPnl: _, ...rest } = validPosition;
+    const result = positionInfoSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing side', () => {
+    const { side: _, ...rest } = validPosition;
+    const result = positionInfoSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('marketClockSchema', () => {
+  const validClock = {
+    isOpen: true,
+    nextOpen: '2026-03-31T09:30:00Z',
+    nextClose: '2026-03-31T16:00:00Z',
+    timestamp: '2026-03-31T12:00:00Z',
+  };
+
+  it('accepts valid market clock', () => {
+    const result = marketClockSchema.safeParse(validClock);
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts closed market', () => {
+    const result = marketClockSchema.safeParse({
+      ...validClock,
+      isOpen: false,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects missing isOpen', () => {
+    const { isOpen: _, ...rest } = validClock;
+    const result = marketClockSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing nextOpen', () => {
+    const { nextOpen: _, ...rest } = validClock;
+    const result = marketClockSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing nextClose', () => {
+    const { nextClose: _, ...rest } = validClock;
+    const result = marketClockSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing timestamp', () => {
+    const { timestamp: _, ...rest } = validClock;
+    const result = marketClockSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects non-boolean isOpen', () => {
+    const result = marketClockSchema.safeParse({
+      ...validClock,
+      isOpen: 'yes',
     });
     expect(result.success).toBe(false);
   });

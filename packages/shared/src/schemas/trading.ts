@@ -136,3 +136,61 @@ export const marketHoursResponseSchema = z.object({
   timestamp: z.string().datetime(),
 });
 export type MarketHoursResponse = z.infer<typeof marketHoursResponseSchema>;
+
+// ── Trading Engine DTOs ────────────────────────────────────────────────────
+// Zod schemas for trading engine types, mirroring the Java records in
+// com.example.finsentinel.service.trading.engine.*
+
+// --- OrderRequest ---
+export const orderRequestSchema = z.object({
+  symbol: z.string().min(1),
+  side: z.enum(['BUY', 'SELL']),
+  qty: z.string(),
+  type: z.enum(['MARKET', 'LIMIT']),
+  limitPrice: z.string().optional(),
+  timeInForce: z.enum(['DAY', 'GTC', 'IOC']).default('DAY'),
+});
+export type OrderRequest = z.infer<typeof orderRequestSchema>;
+
+// --- OrderResult ---
+export const orderResultSchema = z.object({
+  orderId: z.string(),
+  symbol: z.string(),
+  side: z.enum(['BUY', 'SELL']),
+  qty: z.string(),
+  filledQty: z.string(),
+  avgPrice: z.string(),
+  status: z.enum(['NEW', 'FILLED', 'PARTIALLY_FILLED', 'CANCELLED', 'REJECTED']),
+  createdAt: z.string(),
+});
+export type OrderResult = z.infer<typeof orderResultSchema>;
+
+// --- AccountInfo ---
+export const accountInfoSchema = z.object({
+  equity: z.string(),
+  cash: z.string(),
+  buyingPower: z.string(),
+  unrealizedPnl: z.string(),
+  dayTradeCount: z.number().int().optional(),
+});
+export type AccountInfo = z.infer<typeof accountInfoSchema>;
+
+// --- PositionInfo ---
+export const positionInfoSchema = z.object({
+  symbol: z.string(),
+  qty: z.string(),
+  avgEntryPrice: z.string(),
+  currentPrice: z.string(),
+  unrealizedPnl: z.string(),
+  side: z.enum(['LONG', 'SHORT']),
+});
+export type PositionInfo = z.infer<typeof positionInfoSchema>;
+
+// --- MarketClock ---
+export const marketClockSchema = z.object({
+  isOpen: z.boolean(),
+  nextOpen: z.string(),
+  nextClose: z.string(),
+  timestamp: z.string(),
+});
+export type MarketClock = z.infer<typeof marketClockSchema>;
