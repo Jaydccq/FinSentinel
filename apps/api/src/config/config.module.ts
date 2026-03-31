@@ -9,6 +9,19 @@ import { aiConfig } from './ai.config';
 import { polygonConfig } from './polygon.config';
 import { tradingConfig } from './trading.config';
 import { personaConfig } from './persona.config';
+import { storageConfig } from './storage.config';
+import { okxConfig } from './okx.config';
+import { alpacaConfig } from './alpaca.config';
+import { openbbConfig } from './openbb.config';
+import { fmpConfig } from './fmp.config';
+import { ragConfig } from './rag.config';
+import { archivalConfig } from './archival.config';
+import { chatConfig } from './chat.config';
+import { firecrawlConfig } from './firecrawl.config';
+import { mcpConfig } from './mcp.config';
+import { marketProviderConfig } from './market-provider.config';
+import { researchConfig } from './research.config';
+import { encryptionConfig } from './encryption.config';
 
 @Module({
   imports: [
@@ -23,6 +36,19 @@ import { personaConfig } from './persona.config';
         polygonConfig,
         tradingConfig,
         personaConfig,
+        storageConfig,
+        okxConfig,
+        alpacaConfig,
+        openbbConfig,
+        fmpConfig,
+        ragConfig,
+        archivalConfig,
+        chatConfig,
+        firecrawlConfig,
+        mcpConfig,
+        marketProviderConfig,
+        researchConfig,
+        encryptionConfig,
       ],
     }),
   ],
