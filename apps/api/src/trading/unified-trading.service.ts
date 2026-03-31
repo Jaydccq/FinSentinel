@@ -2,7 +2,8 @@ import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common'
 import { createHash } from 'crypto';
 import type Redis from 'ioredis';
 import { tradeWallets, eq } from '@finsentinel/db';
-import { TradingMode, Contract } from '@finsentinel/shared';
+import { TradingMode, Contract, AgentEventType, SecurityType } from '@finsentinel/shared';
+import type { AgentEventType as AgentEventTypeValue } from '@finsentinel/shared';
 import type { UnifiedStageRequest, V2WalletResponse, V2CommitResponse, V2StagedResponse } from '@finsentinel/shared';
 import { BrokerRegistry } from './broker-registry.service';
 import { PaperBroker } from './brokers/paper.broker';
@@ -221,10 +222,9 @@ export class UnifiedTradingService {
       operations: ops,
     };
 
-    // Store as pending commit in Redis
+    // Store as pending commit in Redis (single atomic setex)
     const pendingKey = PENDING_KEY_PREFIX + userId;
-    await this.redis.set(pendingKey, JSON.stringify(commitData));
-    await this.redis.expire(pendingKey, STATE_TTL_SECONDS);
+    await this.redis.setex(pendingKey, STATE_TTL_SECONDS, JSON.stringify(commitData));
 
     // Clear staging
     await this.clearStagingArea(userId);
@@ -252,18 +252,15 @@ export class UnifiedTradingService {
    * 7. Emit event (stub)
    */
   async execute(userId: string): Promise<ExecuteResult> {
-    // 1. Atomic get-and-delete pending commit
+    // 1. Atomic get-and-delete pending commit (Redis 6.2+ GETDEL)
     const pendingKey = PENDING_KEY_PREFIX + userId;
-    const raw = await this.redis.get(pendingKey);
+    const raw = await (this.redis as any).getdel(pendingKey) as string | null;
 
     if (!raw) {
       throw new BadRequestException(
         'No pending commit found. Stage and commit operations first.',
       );
     }
-
-    // Delete immediately to prevent double-spend
-    await this.redis.del(pendingKey);
 
     const commitData = JSON.parse(raw) as CommitData;
 
@@ -427,7 +424,7 @@ export class UnifiedTradingService {
     ].join('\n');
 
     // 8. Emit event (stub — actual AgentEventService built in Phase 10)
-    this.emitTradeEvent(userId, wallet.id, 'TRADE_EXECUTED', {
+    this.emitTradeEvent(userId, wallet.id, AgentEventType.TRADE_COMMIT_EXECUTED, {
       hash: commitData.hash,
       message: commitData.message,
       operationCount: commitData.operations.length,
@@ -558,7 +555,7 @@ export class UnifiedTradingService {
         marketValue: marketValue.toFixed(2),
         unrealizedPnl: unrealizedPnl.toFixed(2),
         pnlPercent: pnlPercent.toFixed(2),
-        securityType: 'STOCK',
+        securityType: SecurityType.STOCK,
       };
     });
 
@@ -642,7 +639,7 @@ export class UnifiedTradingService {
   private emitTradeEvent(
     userId: string,
     walletId: string,
-    eventType: string,
+    eventType: AgentEventTypeValue,
     payload: Record<string, unknown>,
   ): void {
     this.logger.log(

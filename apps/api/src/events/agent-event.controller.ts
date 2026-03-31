@@ -7,6 +7,7 @@ import {
 import { JwtGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
+import { parseIntParam } from '../common/utils/parse-int-param';
 import { AgentEventService } from './agent-event.service';
 
 /**
@@ -25,17 +26,15 @@ export class AgentEventController {
     @Query('afterSeq') afterSeqParam?: string,
     @Query('limit') limitParam?: string,
   ) {
-    const afterSeq = afterSeqParam ? parseInt(afterSeqParam, 10) : undefined;
-    const limit = limitParam ? parseInt(limitParam, 10) : undefined;
+    const afterSeq = afterSeqParam !== undefined ? parseInt(afterSeqParam, 10) : undefined;
+    const safeLimit = parseIntParam(limitParam, 500, 1, 500);
 
     // If afterSeq is provided, use replay; otherwise use getRecent
     if (afterSeq != null && !isNaN(afterSeq)) {
       const events = await this.eventService.replayAfter(user.userId, afterSeq);
-      // Apply limit if provided (replay returns all, so slice)
-      const safeLimit = limit != null && !isNaN(limit) ? Math.min(Math.max(limit, 1), 500) : 500;
       return events.slice(0, safeLimit);
     }
 
-    return this.eventService.getRecent(user.userId, limit ?? null);
+    return this.eventService.getRecent(user.userId, safeLimit);
   }
 }

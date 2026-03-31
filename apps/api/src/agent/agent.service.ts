@@ -17,12 +17,19 @@ import { personaConfig } from '../config/persona.config';
 @Injectable()
 export class AgentService {
   private readonly logger = new Logger(AgentService.name);
+  private readonly model;
 
   constructor(
     private readonly toolRegistry: ToolRegistry,
     @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
     @Inject(personaConfig.KEY) private readonly persona: ConfigType<typeof personaConfig>,
-  ) {}
+  ) {
+    const openrouter = createOpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: this.aiCfg.openrouterApiKey,
+    });
+    this.model = openrouter(this.aiCfg.model);
+  }
 
   /**
    * Stream a chat response as SSE events matching the Java format:
@@ -51,7 +58,7 @@ export class AgentService {
 
     // 4. Stream from LLM
     const result = streamText({
-      model: this.getModel(),
+      model: this.model,
       system: systemPrompt,
       messages: messages.map((m) => ({
         role: m.role as 'user' | 'assistant',
@@ -76,15 +83,6 @@ export class AgentService {
    */
   private async loadProfileSummary(_userId: string): Promise<string | null> {
     return null;
-  }
-
-  /** Build the OpenRouter-compatible model instance. */
-  private getModel() {
-    const openrouter = createOpenAI({
-      baseURL: 'https://openrouter.ai/api/v1',
-      apiKey: this.aiCfg.openrouterApiKey,
-    });
-    return openrouter(this.aiCfg.model);
   }
 
   /**

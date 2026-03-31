@@ -282,10 +282,7 @@ describe('PortfolioService', () => {
           updatedAt: NOW,
         },
       ]);
-      // getPortfolio: holdings sub-query
-      mockDb.enqueueSelect([]);
-
-      // getPortfolioAnalytics: holdings for analytics
+      // getPortfolio: holdings sub-query (reused by analytics — no separate fetch)
       const holdingsData = [
         {
           id: 'h1', portfolioId: PORTFOLIO_ID, symbol: 'AAPL',
@@ -331,10 +328,7 @@ describe('PortfolioService', () => {
           updatedAt: NOW,
         },
       ]);
-      // getPortfolio: holdings sub-query
-      mockDb.enqueueSelect([]);
-
-      // Analytics: one holding dominates (80%), another is small (20%)
+      // getPortfolio: holdings sub-query (reused by analytics — no separate fetch)
       const holdingsData = [
         {
           id: 'h1', portfolioId: PORTFOLIO_ID, symbol: 'AAPL',

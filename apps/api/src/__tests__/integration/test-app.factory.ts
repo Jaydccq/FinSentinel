@@ -259,6 +259,21 @@ export function createMockRedis() {
       expiries.delete(key);
       return Promise.resolve(had ? 1 : 0);
     },
+    getdel(key: string): Promise<string | null> {
+      // Check expiry
+      const exp = expiries.get(key);
+      if (exp && Date.now() > exp) {
+        store.delete(key);
+        expiries.delete(key);
+        return Promise.resolve(null);
+      }
+      const value = store.get(key) ?? null;
+      if (value !== null) {
+        store.delete(key);
+        expiries.delete(key);
+      }
+      return Promise.resolve(value);
+    },
     expire(key: string, seconds: number): Promise<number> {
       if (store.has(key)) {
         expiries.set(key, Date.now() + seconds * 1000);
@@ -411,21 +426,7 @@ export async function createTestApp(): Promise<{
   const mockRedis = createMockRedis();
   const mockMarketProvider = createMockMarketDataProvider();
 
-  // Set env vars needed by ConfigModule validation
-  process.env['DATABASE_URL'] = 'postgresql://test:test@localhost:5432/test';
-  process.env['REDIS_URL'] = 'redis://localhost:6379/0';
-  process.env['JWT_SECRET'] = 'test-secret-key-that-is-at-least-32-chars-long!!';
-  process.env['JWT_EXPIRATION'] = '86400000';
-  process.env['OPENROUTER_API_KEY'] = 'test-openrouter-key';
-  process.env['AI_MODEL'] = 'test/model';
-  process.env['POLYGON_API_KEY'] = 'test-polygon-key';
-  process.env['APP_TRADING_DEFAULT_MODE'] = 'PAPER';
-  process.env['APP_AGENT_PERSONA'] = 'default';
-  process.env['APP_CRYPTO_NEWS_ENABLED'] = 'false';
-  process.env['APP_TWITTER_6551_ENABLED'] = 'false';
-  process.env['APP_OKX_ENABLED'] = 'false';
-  process.env['NODE_ENV'] = 'test';
-  process.env['PORT'] = '0'; // random port for testing
+  // Env vars are set by import './setup' above — no duplication needed.
 
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],

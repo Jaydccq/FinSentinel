@@ -19,7 +19,9 @@ function createMockRedis() {
   return {
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue('OK'),
+    setex: vi.fn().mockResolvedValue('OK'),
     del: vi.fn().mockResolvedValue(1),
+    getdel: vi.fn().mockResolvedValue(null),
     eval: vi.fn().mockResolvedValue(1),
     expire: vi.fn().mockResolvedValue(1),
   };
@@ -213,12 +215,13 @@ describe('UnifiedTradingService', () => {
       expect(result.hash).toHaveLength(64); // SHA-256 hex = 64 chars
       expect(result.count).toBe(1);
 
-      // Should have stored the commit in pending key
-      expect(mockRedis.set).toHaveBeenCalled();
-      const setCall = (mockRedis.set as Mock).mock.calls[0]!;
-      expect(setCall[0]).toBe(`uta:pending:${TEST_USER_ID}`);
+      // Should have stored the commit in pending key via setex (atomic set+expire)
+      expect(mockRedis.setex).toHaveBeenCalled();
+      const setexCall = (mockRedis.setex as Mock).mock.calls[0]!;
+      expect(setexCall[0]).toBe(`uta:pending:${TEST_USER_ID}`);
+      expect(setexCall[1]).toBe(30 * 60); // STATE_TTL_SECONDS
       // Parse the stored commit data
-      const storedCommit = JSON.parse(setCall[1] as string);
+      const storedCommit = JSON.parse(setexCall[2] as string);
       expect(storedCommit.hash).toBe(result.hash);
       expect(storedCommit.message).toBe('Buy some AAPL');
       expect(storedCommit.operations).toEqual(ops);
@@ -268,8 +271,8 @@ describe('UnifiedTradingService', () => {
     };
 
     it('resolves broker, executes operations, persists wallet', async () => {
-      // Pending commit exists in Redis
-      mockRedis.get.mockResolvedValue(JSON.stringify(pendingCommit));
+      // Pending commit exists in Redis (atomic getdel)
+      mockRedis.getdel.mockResolvedValue(JSON.stringify(pendingCommit));
 
       // Wallet exists in DB
       mockDb._selectChain.limit.mockResolvedValue([
@@ -293,15 +296,15 @@ describe('UnifiedTradingService', () => {
       expect(result.commitData).toBeDefined();
       expect(result.results).toBeInstanceOf(Array);
 
-      // Should have deleted pending (atomic get-and-delete)
-      expect(mockRedis.del).toHaveBeenCalledWith(`uta:pending:${TEST_USER_ID}`);
+      // Should have used atomic getdel (no separate del call for pending)
+      expect(mockRedis.getdel).toHaveBeenCalledWith(`uta:pending:${TEST_USER_ID}`);
 
       // Should have persisted wallet to DB (update)
       expect(mockDb.update).toHaveBeenCalled();
     });
 
     it('rejects when no pending commit', async () => {
-      mockRedis.get.mockResolvedValue(null);
+      mockRedis.getdel.mockResolvedValue(null);
 
       await expect(service.execute(TEST_USER_ID)).rejects.toThrow(
         BadRequestException,
@@ -309,8 +312,8 @@ describe('UnifiedTradingService', () => {
     });
 
     it('prevents double-execution (idempotency check)', async () => {
-      // Pending commit exists
-      mockRedis.get.mockResolvedValue(JSON.stringify(pendingCommit));
+      // Pending commit exists (atomic getdel)
+      mockRedis.getdel.mockResolvedValue(JSON.stringify(pendingCommit));
 
       // Wallet already has this commit hash in history
       mockDb._selectChain.limit.mockResolvedValue([

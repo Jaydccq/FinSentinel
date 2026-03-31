@@ -4,7 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { portfolios, holdings, riskReports, eq, and } from '@finsentinel/db';
+import { portfolios, holdings, riskReports, eq, and, inArray } from '@finsentinel/db';
 import type {
   PortfolioRequest,
   PortfolioResponse,
@@ -46,16 +46,28 @@ export class PortfolioService {
       .from(portfolios)
       .where(eq(portfolios.userId, userId));
 
-    const result: PortfolioResponse[] = [];
-    for (const row of rows) {
-      const holdingRows = await this.db
-        .select()
-        .from(holdings)
-        .where(eq(holdings.portfolioId, row.id));
+    if (rows.length === 0) return [];
 
-      result.push(this.toPortfolioResponse(row, holdingRows));
+    // Fetch all holdings in a single query to avoid N+1
+    const portfolioIds = rows.map((r: Record<string, unknown>) => r.id as string);
+    const allHoldings = await this.db
+      .select()
+      .from(holdings)
+      .where(inArray(holdings.portfolioId, portfolioIds));
+
+    // Group holdings by portfolioId in memory
+    const holdingsByPortfolio = new Map<string, Record<string, unknown>[]>();
+    for (const h of allHoldings) {
+      const pid = h.portfolioId as string;
+      if (!holdingsByPortfolio.has(pid)) {
+        holdingsByPortfolio.set(pid, []);
+      }
+      holdingsByPortfolio.get(pid)!.push(h as Record<string, unknown>);
     }
-    return result;
+
+    return rows.map((row: Record<string, unknown>) =>
+      this.toPortfolioResponse(row, holdingsByPortfolio.get(row.id as string) ?? []),
+    );
   }
 
   async getPortfolio(
@@ -237,13 +249,18 @@ export class PortfolioService {
     userId: string,
     portfolioId: string,
   ): Promise<PortfolioAnalyticsResponse> {
-    // Verify ownership
+    // Verify ownership and reuse holdings already fetched by getPortfolio
     const portfolio = await this.getPortfolio(userId, portfolioId);
 
-    const holdingRows = await this.db
-      .select()
-      .from(holdings)
-      .where(eq(holdings.portfolioId, portfolioId));
+    // Map PortfolioResponse holdings back to row-like objects for analytics
+    const holdingRows = portfolio.holdings.map((h) => ({
+      symbol: h.symbol,
+      companyName: h.companyName,
+      quantity: h.quantity,
+      averageCost: h.averageCost,
+      currentPrice: h.currentPrice,
+      sector: h.sector,
+    }));
 
     // Calculate market values and total
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

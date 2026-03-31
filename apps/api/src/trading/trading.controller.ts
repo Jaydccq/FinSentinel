@@ -15,7 +15,6 @@ import {
   commitRequestSchema,
   switchModeRequestSchema,
   TradingMode,
-  Contract,
 } from '@finsentinel/shared';
 import type {
   StageRequest,
@@ -30,6 +29,7 @@ import { JwtGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { parseIntParam } from '../common/utils/parse-int-param';
 import { UnifiedTradingService } from './unified-trading.service';
 
 /**
@@ -112,8 +112,7 @@ export class TradingController {
     @CurrentUser() user: CurrentUserPayload,
     @Query('limit') limitParam?: string,
   ) {
-    const raw = limitParam ? parseInt(limitParam, 10) : 10;
-    const limit = Math.min(Math.max(isNaN(raw) ? 10 : raw, 1), 50);
+    const limit = parseIntParam(limitParam, 10, 1, 50);
     const log = await this.tradingService.getCommitLog(user.userId, limit);
     return { history: log };
   }
@@ -137,8 +136,6 @@ export class TradingController {
     @CurrentUser() user: CurrentUserPayload,
     @Body(new ZodValidationPipe(unifiedStageRequestSchema)) body: UnifiedStageRequest,
   ) {
-    // Parse symbol through Contract for validation
-    Contract.fromString(body.symbol);
     const count = await this.tradingService.stage(user.userId, body);
     return { message: `Staged ${body.action} ${body.symbol}`, count };
   }
@@ -187,8 +184,7 @@ export class TradingController {
     @CurrentUser() user: CurrentUserPayload,
     @Query('limit') limitParam?: string,
   ): Promise<V2CommitResponse[]> {
-    const raw = limitParam ? parseInt(limitParam, 10) : 10;
-    const limit = Math.min(Math.max(isNaN(raw) ? 10 : raw, 1), 50);
+    const limit = parseIntParam(limitParam, 10, 1, 50);
     return this.tradingService.getCommitLogStructured(user.userId, limit);
   }
 

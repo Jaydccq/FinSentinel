@@ -9,6 +9,7 @@ import { Observable, interval, map, startWith } from 'rxjs';
 import { newsItems, desc, eq, and } from '@finsentinel/db';
 import { Inject } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt.guard';
+import { parseIntParam } from '../common/utils/parse-int-param';
 
 /**
  * News controller — GET /news (paginated) and GET /news/stream (SSE).
@@ -27,8 +28,8 @@ export class NewsController {
     @Query('offset') offsetParam?: string,
     @Query('source') source?: string,
   ) {
-    const limit = Math.min(Math.max(parseInt(limitParam ?? '20', 10) || 20, 1), 100);
-    const offset = Math.max(parseInt(offsetParam ?? '0', 10) || 0, 0);
+    const limit = parseIntParam(limitParam, 20, 1, 100);
+    const offset = parseIntParam(offsetParam, 0, 0, 10000);
 
     let query = this.db
       .select()

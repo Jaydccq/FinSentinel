@@ -6,6 +6,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt.guard';
+import { parseIntParam } from '../common/utils/parse-int-param';
 import { MarketDataService } from './market-data.service';
 
 /**
@@ -30,8 +31,7 @@ export class MarketDataController {
     @Param('ticker') ticker: string,
     @Query('days') daysParam?: string,
   ) {
-    const raw = daysParam ? parseInt(daysParam, 10) : 30;
-    const days = Math.min(Math.max(isNaN(raw) ? 30 : raw, 1), 365);
+    const days = parseIntParam(daysParam, 30, 1, 365);
     return this.marketDataService.getHistoricalBars(ticker, days);
   }
 
