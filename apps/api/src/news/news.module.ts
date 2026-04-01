@@ -1,28 +1,72 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
+import { TwitterModule } from '../twitter/twitter.module';
 import { NewsFetcherService } from './news-fetcher.service';
+import { OnDemandNewsService } from './on-demand-news.service';
+import { NewsSentimentService } from './news-sentiment.service';
+import { NewsArchivalService } from './news-archival.service';
 import { NewsController } from './news.controller';
+import { PolygonNewsFetcher } from './fetchers/polygon-news.fetcher';
+import { RssNewsFetcher } from './fetchers/rss-news.fetcher';
+import { CryptoNewsApiClient } from './fetchers/crypto-news-api.client';
+import { CryptoNewsFetcher } from './fetchers/crypto-news.fetcher';
+import { XInfluencerFetcher } from './fetchers/x-influencer.fetcher';
 
 /**
  * News module -- Phase 7.
  *
  * Provides:
  * - NewsFetcherService — orchestrates all NewsFetcher implementations, deduplicates, persists
+ * - OnDemandNewsService — on-demand fetching for specific tickers
+ * - NewsSentimentService — LLM-based sentiment classification
+ * - NewsArchivalService — scheduled archival of old news items
  * - NewsController — GET /news, GET /news/stream (SSE)
  *
- * Actual fetcher implementations (Polygon, RSS, 6551.io) are registered via
- * the NEWS_FETCHERS injection token. By default, no fetchers are registered.
+ * Fetcher implementations:
+ * - PolygonNewsFetcher — Polygon.io news API
+ * - RssNewsFetcher — RSS feeds (CNBC, Reuters, etc.)
+ * - CryptoNewsFetcher — 6551.io crypto news API (filtered by AI score)
+ * - XInfluencerFetcher — Twitter/X influencer tweets via 6551.io
  */
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, TwitterModule],
   controllers: [NewsController],
   providers: [
-    NewsFetcherService,
+    // ── Fetchers ────────────────────────────────────────────────────
+    PolygonNewsFetcher,
+    RssNewsFetcher,
+    CryptoNewsApiClient,
+    CryptoNewsFetcher,
+    XInfluencerFetcher,
+
+    // ── Injection token: all fetchers as array ──────────────────────
     {
       provide: 'NEWS_FETCHERS',
-      useValue: [], // Fetchers are added incrementally as APIs become available
+      useFactory: (
+        polygon: PolygonNewsFetcher,
+        rss: RssNewsFetcher,
+        crypto: CryptoNewsFetcher,
+        xInfluencer: XInfluencerFetcher,
+      ) => [polygon, rss, crypto, xInfluencer],
+      inject: [
+        PolygonNewsFetcher,
+        RssNewsFetcher,
+        CryptoNewsFetcher,
+        XInfluencerFetcher,
+      ],
     },
+
+    // ── Services ────────────────────────────────────────────────────
+    NewsFetcherService,
+    OnDemandNewsService,
+    NewsSentimentService,
+    NewsArchivalService,
   ],
-  exports: [NewsFetcherService],
+  exports: [
+    NewsFetcherService,
+    OnDemandNewsService,
+    NewsSentimentService,
+    NewsArchivalService,
+  ],
 })
 export class NewsModule {}
