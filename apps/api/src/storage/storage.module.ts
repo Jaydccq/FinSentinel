@@ -1,41 +1,30 @@
 import { Module } from '@nestjs/common';
 import { RustfsStorageService } from './rustfs.storage';
 import { HybridStorageService } from './hybrid.storage';
+import { GoogleDriveStorageService } from './google-drive.storage';
 
 /**
  * Storage module -- Phase 11.
  *
  * Provides:
  * - RustfsStorageService — S3-compatible hot storage (RustFS/MinIO)
- * - HybridStorageService — hot + cold fallback (cold = Google Drive, stub for now)
- *
- * The cold storage (Google Drive) provider is a no-op stub.
- * It will be replaced with a real implementation when the Google Drive
- * integration is wired.
+ * - GoogleDriveStorageService — Google Drive cold storage (stub until configured)
+ * - HybridStorageService — hot + cold fallback
  */
-
-/** No-op cold storage stub until Google Drive is implemented. */
-const coldStorageStub = {
-  async upload() { /* no-op */ },
-  async download(key: string): Promise<Buffer> {
-    throw new Error(`Cold storage not available for key: ${key}`);
-  },
-  async delete() { /* no-op */ },
-};
-
 @Module({
   providers: [
     RustfsStorageService,
+    GoogleDriveStorageService,
     {
       provide: 'HOT_STORAGE',
       useExisting: RustfsStorageService,
     },
     {
       provide: 'COLD_STORAGE',
-      useValue: coldStorageStub,
+      useExisting: GoogleDriveStorageService,
     },
     HybridStorageService,
   ],
-  exports: [RustfsStorageService, HybridStorageService],
+  exports: [RustfsStorageService, GoogleDriveStorageService, HybridStorageService],
 })
 export class StorageModule {}
