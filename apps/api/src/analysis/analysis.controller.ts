@@ -17,8 +17,8 @@ import type { CurrentUserPayload } from '../auth/decorators/current-user.decorat
 import { StockAnalysisService } from '../agent/stock-analysis.service';
 import { randomUUID } from 'crypto';
 
-/** Ticker format: 1-10 uppercase letters (e.g. AAPL, BTC). */
-const TICKER_REGEX = /^[A-Z]{1,10}$/;
+/** Ticker format: 1-10 alphanumeric or hyphen characters (e.g. AAPL, BTC, BRK-B). */
+const TICKER_REGEX = /^[A-Za-z0-9\-]{1,10}$/;
 
 /**
  * Analysis controller — SSE streaming of AI-powered stock analysis.
@@ -41,9 +41,9 @@ export class AnalysisController {
   ) {
     const upperTicker = ticker.toUpperCase();
 
-    if (!TICKER_REGEX.test(upperTicker)) {
+    if (!TICKER_REGEX.test(ticker)) {
       throw new BadRequestException(
-        `Invalid ticker format: ${ticker}. Expected 1-10 uppercase letters.`,
+        `Invalid ticker format: ${ticker}. Expected 1-10 alphanumeric or hyphen characters.`,
       );
     }
 
