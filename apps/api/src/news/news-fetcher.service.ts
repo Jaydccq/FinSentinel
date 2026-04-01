@@ -1,10 +1,14 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { newsItems, eq, and } from '@finsentinel/db';
 import type { RawNewsItem, NewsFetcher } from './interfaces/news-fetcher';
+import { NewsEnrichProducer } from '../queue/news-enrich.producer';
 
 /**
  * Orchestrator that polls all registered NewsFetcher implementations,
  * deduplicates against the DB, and persists new items.
+ *
+ * When QueueModule is loaded, newly saved items are automatically
+ * enqueued for enrichment (scrape, sentiment, vectorize).
  */
 @Injectable()
 export class NewsFetcherService {
@@ -14,6 +18,7 @@ export class NewsFetcherService {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     @Inject('DRIZZLE_DB') private readonly db: any,
     @Inject('NEWS_FETCHERS') private readonly fetchers: NewsFetcher[],
+    @Optional() private readonly enrichProducer?: NewsEnrichProducer,
   ) {}
 
   /**
@@ -27,8 +32,14 @@ export class NewsFetcherService {
       try {
         const items = await fetcher.fetch(tickers);
         for (const item of items) {
-          const isNew = await this.saveIfNew(item);
-          if (isNew) savedCount++;
+          const savedId = await this.saveIfNew(item);
+          if (savedId) {
+            savedCount++;
+            // Enqueue for enrichment if producer is available
+            if (this.enrichProducer) {
+              await this.enrichProducer.send(savedId);
+            }
+          }
         }
       } catch (err) {
         this.logger.error(
@@ -42,9 +53,9 @@ export class NewsFetcherService {
 
   /**
    * Check if a news item already exists by (source, sourceId).
-   * If not, insert it and return true. Otherwise return false.
+   * If not, insert it and return the new item's ID. Otherwise return null.
    */
-  private async saveIfNew(item: RawNewsItem): Promise<boolean> {
+  private async saveIfNew(item: RawNewsItem): Promise<string | null> {
     const existing = await this.db
       .select({ id: newsItems.id })
       .from(newsItems)
@@ -57,10 +68,10 @@ export class NewsFetcherService {
       .limit(1);
 
     if (existing.length > 0) {
-      return false;
+      return null;
     }
 
-    await this.db.insert(newsItems).values({
+    const [inserted] = await this.db.insert(newsItems).values({
       sourceId: item.sourceId,
       source: item.source,
       title: item.title,
@@ -70,8 +81,8 @@ export class NewsFetcherService {
       publishedAt: new Date(item.publishedAt),
       tickers: item.tickers,
       tags: item.tags,
-    });
+    }).returning({ id: newsItems.id });
 
-    return true;
+    return inserted.id;
   }
 }

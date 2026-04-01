@@ -29,8 +29,9 @@ function createMockDb() {
     limit: vi.fn().mockResolvedValue([]),
   };
 
+  const insertReturning = vi.fn().mockResolvedValue([{ id: 'new-item-id' }]);
   const insertChain = {
-    values: vi.fn().mockResolvedValue([]),
+    values: vi.fn().mockReturnValue({ returning: insertReturning }),
   };
 
   return {

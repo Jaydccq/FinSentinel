@@ -1,18 +1,21 @@
 import { Module } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { CommonModule } from '../common/common.module';
+import { AuthModule } from '../auth/auth.module';
 import { polygonConfig } from '../config/polygon.config';
 import { PolygonResearchProvider } from './providers/polygon-research.provider';
 import { YahooResearchProvider } from './providers/yahoo-research.provider';
 import { ResearchDataProviderRegistry } from './research-data-provider.registry';
 import { CompanyResearchService } from './company-research.service';
 import { EquityScreenerService } from './equity-screener.service';
+import { ResearchController } from './research.controller';
 
 /**
  * Research module — company research providers, services, and equity screener.
  */
 @Module({
-  imports: [CommonModule],
+  imports: [CommonModule, AuthModule],
+  controllers: [ResearchController],
   providers: [
     // Build provider instances
     {

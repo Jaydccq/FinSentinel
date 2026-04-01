@@ -4,7 +4,10 @@ import { DocumentParseService } from './document-parse.service';
 import { DocumentChunkingService } from './document-chunking.service';
 import { DocumentVectorService } from './document-vector.service';
 import { DocumentUploadService } from './document-upload.service';
+import { DocumentController } from './document.controller';
 import { StorageModule } from '../storage/storage.module';
+import { AuthModule } from '../auth/auth.module';
+import { CommonModule } from '../common/common.module';
 
 /**
  * Document module -- RAG document processing pipeline.
@@ -15,11 +18,13 @@ import { StorageModule } from '../storage/storage.module';
  * - DocumentChunkingService — split text into overlapping chunks
  * - DocumentVectorService — embed chunks into pgvector
  * - DocumentUploadService — upload + persist + queue for vectorization
+ * - DocumentController — REST endpoints for upload, list, get, delete
  *
  * Imports StorageModule for file storage (hot tier via RustFS).
  */
 @Module({
-  imports: [StorageModule],
+  imports: [StorageModule, AuthModule, CommonModule],
+  controllers: [DocumentController],
   providers: [
     TextCleaningService,
     DocumentParseService,

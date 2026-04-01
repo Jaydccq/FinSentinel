@@ -1,9 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
+import type { ConfigType } from '@nestjs/config';
 import { TradingMode, Contract } from '@finsentinel/shared';
 import type { IBroker } from './interfaces/broker';
 import { PaperBroker } from './brokers/paper.broker';
+import { AlpacaBroker } from './brokers/alpaca.broker';
+import { OkxBroker } from './brokers/okx.broker';
+import { CcxtBroker } from './brokers/ccxt.broker';
 import { PaperTradingEngine } from './engines/paper-trading.engine';
+import { AlpacaTradingEngine } from './engines/alpaca-trading.engine';
 import { MarketDataService } from '../market/market-data.service';
+import { alpacaConfig } from '../config/alpaca.config';
+import type { OkxTradingEngine } from '../okx/okx-trading.engine';
 
 /**
  * BrokerRegistry — resolves the correct IBroker for a given Contract + TradingMode.
@@ -13,13 +20,17 @@ import { MarketDataService } from '../market/market-data.service';
  * - LIVE mode: iterates cached live brokers, returns first that canHandle(contract)
  *
  * Live brokers are built lazily and cached. Priority order: Alpaca > OKX > CCXT.
- * Currently no live brokers are enabled (stubs for future phases).
  */
 @Injectable()
 export class BrokerRegistry {
+  private readonly logger = new Logger(BrokerRegistry.name);
   private cachedLiveBrokers: IBroker[] | null = null;
 
-  constructor(private readonly marketDataService: MarketDataService) {}
+  constructor(
+    private readonly marketDataService: MarketDataService,
+    @Inject(alpacaConfig.KEY) private readonly alpacaCfg: ConfigType<typeof alpacaConfig>,
+    @Optional() @Inject('OKX_TRADING_ENGINE') private readonly okxEngine: OkxTradingEngine | null,
+  ) {}
 
   // ── Public API ─────────────────────────────────────────────────────────
 
@@ -86,15 +97,39 @@ export class BrokerRegistry {
   /**
    * Build the list of enabled live brokers.
    * Priority: Alpaca > OKX > CCXT
-   *
-   * TODO: Phase 5.5+ — add AlpacaBroker, OkxBroker, CcxtBroker when ready
    */
   private buildLiveBrokers(): IBroker[] {
     const brokers: IBroker[] = [];
 
-    // TODO: if (alpacaConfig.enabled) brokers.push(new AlpacaBroker(...));
-    // TODO: if (okxApiClient != null) brokers.push(new OkxBroker(...));
-    // TODO: if (ccxtConfig.enabled) brokers.push(new CcxtBroker(...));
+    // ── Alpaca (US equities) ────────────────────────────────────────────
+    if (this.alpacaCfg.enabled && this.alpacaCfg.apiKey && this.alpacaCfg.secretKey) {
+      const engine = new AlpacaTradingEngine(
+        this.alpacaCfg.apiKey,
+        this.alpacaCfg.secretKey,
+        this.alpacaCfg.baseUrl,
+      );
+      brokers.push(new AlpacaBroker(engine));
+      this.logger.log('Alpaca broker registered (US equities)');
+    }
+
+    // ── OKX (crypto derivatives) ────────────────────────────────────────
+    if (this.okxEngine) {
+      brokers.push(new OkxBroker(this.okxEngine));
+      this.logger.log('OKX broker registered (crypto derivatives)');
+    }
+
+    // ── CCXT (crypto spot) ──────────────────────────────────────────────
+    // CCXT requires runtime exchange instantiation which depends on the
+    // ccxt library. Register when a CcxtTradingEngine is provided via DI.
+    // For now, CCXT is not auto-registered; it can be added when
+    // a CCXT_TRADING_ENGINE injection token is provided by a future module.
+
+    if (brokers.length === 0) {
+      this.logger.warn(
+        'No live brokers registered. LIVE trading mode will fail. ' +
+        'Enable Alpaca (ALPACA_ENABLED=true) or OKX (APP_OKX_ENABLED=true) with valid credentials.',
+      );
+    }
 
     return Object.freeze([...brokers]) as IBroker[];
   }

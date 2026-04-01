@@ -16,6 +16,11 @@ import { StorageModule } from './storage/storage.module';
 import { DocumentModule } from './document/document.module';
 import { OpenbbModule } from './openbb/openbb.module';
 import { OkxModule } from './okx/okx.module';
+import { QueueModule } from './queue/queue.module';
+import { AnalysisModule } from './analysis/analysis.module';
+import { ResearchModule } from './research/research.module';
+import { ScraperModule } from './scraper/scraper.module';
+import { ReportModule } from './report/report.module';
 
 @Module({
   imports: [
@@ -38,6 +43,16 @@ import { OkxModule } from './okx/okx.module';
     OpenbbModule,
     // OKX is always imported; guards at service level via config.enabled.
     OkxModule,
+    // BullMQ queues for async document vectorization and news enrichment.
+    QueueModule,
+    // AI-powered stock analysis with SSE streaming.
+    AnalysisModule,
+    // Company research and equity screener.
+    ResearchModule,
+    // Web scrapers for SEC, Investopedia, Polygon.
+    ScraperModule,
+    // Risk report generation and PDF export.
+    ReportModule,
   ],
   controllers: [HealthController],
 })

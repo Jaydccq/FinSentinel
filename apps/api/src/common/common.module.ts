@@ -5,6 +5,8 @@ import { RateLimiterService } from './services/rate-limiter.service';
 import { RateLimitGuard } from './guards/rate-limit.guard';
 import { EncryptionService } from './services/encryption.service';
 import { ApiKeyService } from './services/api-key.service';
+import { ApiKeyController } from './controllers/api-key.controller';
+import { AuthModule } from '../auth/auth.module';
 
 const redisProvider = {
   provide: 'REDIS',
@@ -15,6 +17,8 @@ const redisProvider = {
 };
 
 @Module({
+  imports: [AuthModule],
+  controllers: [ApiKeyController],
   providers: [
     redisProvider,
     RateLimiterService,

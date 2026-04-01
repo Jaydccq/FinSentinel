@@ -21,13 +21,21 @@ function createMockMarketDataService(): MarketDataService {
   } as unknown as MarketDataService;
 }
 
+// ── Mock Alpaca config (disabled by default) ────────────────────────────────
+const mockAlpacaConfig = {
+  enabled: false,
+  apiKey: undefined,
+  secretKey: undefined,
+  baseUrl: 'https://paper-api.alpaca.markets',
+};
+
 describe('BrokerRegistry', () => {
   let registry: BrokerRegistry;
   let mockMarketData: MarketDataService;
 
   beforeEach(() => {
     mockMarketData = createMockMarketDataService();
-    registry = new BrokerRegistry(mockMarketData);
+    registry = new BrokerRegistry(mockMarketData, mockAlpacaConfig as any, null);
   });
 
   // ── 1. paperMode_alwaysReturnsPaperBroker ──────────────────────────────

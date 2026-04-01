@@ -25,6 +25,7 @@
     "@nestjs/platform-express": "^11.1.17",
     "ai": "^6.0.141",
     "bcryptjs": "^3.0.3",
+    "bullmq": "^5.71.1",
     "cookie-parser": "^1.4.7",
     "drizzle-orm": "^0.44.7",
     "ioredis": "^5.10.1",

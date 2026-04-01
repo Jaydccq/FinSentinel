@@ -5,6 +5,10 @@ import { OkxApiClient } from './okx-api.client';
 import { OkxTradingEngine } from './okx-trading.engine';
 import { OkxPriceService } from './okx-price.service';
 import { OkxAnalysisService } from './okx-analysis.service';
+import { OkxController } from './okx.controller';
+import { OkxAnalysisController } from './okx-analysis.controller';
+import { AuthModule } from '../auth/auth.module';
+import { CommonModule } from '../common/common.module';
 
 /**
  * OKX module -- conditionally active when APP_OKX_ENABLED=true.
@@ -14,11 +18,15 @@ import { OkxAnalysisService } from './okx-analysis.service';
  * - OkxTradingEngine — TradingEngine implementation
  * - OkxPriceService — in-memory ticker price cache
  * - OkxAnalysisService — AI-powered crypto derivatives analysis with SSE streaming
+ * - OkxController — REST endpoints for account, positions, orders, ticker, funding rate
+ * - OkxAnalysisController — SSE streaming endpoints for AI analysis
  *
  * The module is always imported but guards at service level via config.enabled.
  * OkxApiClient and OkxTradingEngine are created at initialization when enabled.
  */
 @Module({
+  imports: [AuthModule, CommonModule],
+  controllers: [OkxController, OkxAnalysisController],
   providers: [
     OkxPriceService,
     OkxAnalysisService,

@@ -1,8 +1,9 @@
-import { Injectable, Logger, Inject, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, Inject, BadRequestException, Optional } from '@nestjs/common';
 import { documents, eq } from '@finsentinel/db';
 import { HybridStorageService } from '../storage/hybrid.storage';
 import { DocumentParseService } from './document-parse.service';
 import { DocumentVectorService } from './document-vector.service';
+import { VectorizeProducer } from '../queue/vectorize.producer';
 
 /** Maximum file size: 50 MB */
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -37,8 +38,8 @@ export interface UploadResult {
  * 1. Validate file (size, MIME type)
  * 2. Upload to StorageService (hot tier via HybridStorageService)
  * 3. Create Document record in DB with status=PENDING
- * 4. Parse text and vectorize (synchronous for now; will be BullMQ job later)
- * 5. Update document status to VECTORIZED or FAILED
+ * 4. If VectorizeProducer is available, enqueue async vectorization job
+ * 5. Otherwise, fall back to synchronous parse + vectorize
  */
 @Injectable()
 export class DocumentUploadService {
@@ -50,6 +51,7 @@ export class DocumentUploadService {
     private readonly storage: HybridStorageService,
     private readonly parseService: DocumentParseService,
     private readonly vectorService: DocumentVectorService,
+    @Optional() private readonly vectorizeProducer?: VectorizeProducer,
   ) {}
 
   /**
@@ -98,9 +100,13 @@ export class DocumentUploadService {
 
     this.logger.log(`Created document record: ${doc.id} (status=PENDING)`);
 
-    // 5. Synchronous vectorization (will be replaced with BullMQ job)
-    // In production, this should be:
-    //   await this.vectorizeQueue.add('vectorize', { docId: doc.id });
+    // 5. Dispatch to BullMQ queue if available, otherwise fall back to sync
+    if (this.vectorizeProducer) {
+      await this.vectorizeProducer.send(doc.id);
+      return { id: doc.id, status: 'PENDING' };
+    }
+
+    // Synchronous fallback (used when QueueModule is not loaded)
     try {
       const text = this.parseService.parseToCleanText(file.buffer, file.mimetype);
 
