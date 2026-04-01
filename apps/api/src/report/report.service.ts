@@ -1,5 +1,6 @@
-import { Injectable, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { riskReports, portfolios, eq, and } from '@finsentinel/db';
+import { PdfService } from '../common/services/pdf.service';
 
 /** Shape of the data needed to create a risk report. */
 export interface CreateReportData {
@@ -40,6 +41,7 @@ export class ReportService {
   constructor(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     @Inject('DRIZZLE_DB') private readonly db: any,
+    @Optional() private readonly pdfService?: PdfService,
   ) {}
 
   /**
@@ -109,6 +111,13 @@ export class ReportService {
     const report = await this.getReport(userId, reportId);
 
     const markdown = this.buildMarkdown(report);
+
+    if (this.pdfService) {
+      return this.pdfService.markdownToPdf(markdown, {
+        title: `Risk Report - ${report.riskLevel}`,
+      });
+    }
+
     return Buffer.from(markdown, 'utf-8');
   }
 
