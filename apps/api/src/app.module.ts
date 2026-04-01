@@ -33,6 +33,7 @@ import { OkxModule } from './okx/okx.module';
     RagModule,
     AutonomyModule,
     StorageModule,
+    DocumentModule,
     // OpenBB is always imported; its service guards at method level via config.enabled.
     OpenbbModule,
     // OKX is always imported; guards at service level via config.enabled.
