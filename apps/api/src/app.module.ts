@@ -21,6 +21,7 @@ import { AnalysisModule } from './analysis/analysis.module';
 import { ResearchModule } from './research/research.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { ReportModule } from './report/report.module';
+import { McpModule } from './mcp/mcp.module';
 
 @Module({
   imports: [
@@ -53,6 +54,8 @@ import { ReportModule } from './report/report.module';
     ScraperModule,
     // Risk report generation and PDF export.
     ReportModule,
+    // MCP server for Claude Desktop integration; guards at controller level via McpApiKeyGuard.
+    McpModule,
   ],
   controllers: [HealthController],
 })
