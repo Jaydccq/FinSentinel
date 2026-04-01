@@ -1,4 +1,15 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Res,
+  UseGuards,
+  Logger,
+  BadRequestException,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { McpApiKeyGuard } from './mcp-api-key.guard';
 
 /**
@@ -9,6 +20,23 @@ interface McpToolEntry {
   name: string;
   description: string;
   inputSchema: Record<string, unknown>;
+}
+
+/**
+ * JSON-RPC 2.0 message types for MCP protocol.
+ */
+interface JsonRpcRequest {
+  jsonrpc: '2.0';
+  id: string | number;
+  method: string;
+  params?: Record<string, unknown>;
+}
+
+interface JsonRpcResponse {
+  jsonrpc: '2.0';
+  id: string | number;
+  result?: unknown;
+  error?: { code: number; message: string; data?: unknown };
 }
 
 /**
@@ -161,9 +189,14 @@ const MCP_TOOL_CATALOGUE: McpToolEntry[] = [
   },
 ];
 
+/** Map tool names to catalogue entries for O(1) lookup. */
+const TOOL_MAP = new Map(MCP_TOOL_CATALOGUE.map((t) => [t.name, t]));
+
 @Controller('mcp')
 @UseGuards(McpApiKeyGuard)
 export class McpController {
+  private readonly logger = new Logger(McpController.name);
+
   /**
    * GET /mcp/tools — returns the catalogue of stateless tools available
    * for MCP clients.
@@ -183,5 +216,187 @@ export class McpController {
   @Get('health')
   health(): { status: string; toolCount: number } {
     return { status: 'ok', toolCount: MCP_TOOL_CATALOGUE.length };
+  }
+
+  /**
+   * GET /mcp/sse — Server-Sent Events transport for MCP protocol.
+   *
+   * Opens a persistent SSE connection. On connect, sends the server
+   * capabilities (tools/list) as the initial event. The client can
+   * POST to /mcp/message to invoke tools; responses arrive on this stream.
+   *
+   * This implements the MCP SSE transport spec:
+   * - Client opens GET /mcp/sse (SSE)
+   * - Server sends `endpoint` event with the message URL
+   * - Client POSTs JSON-RPC messages to that URL
+   * - Server sends `message` events with JSON-RPC responses
+   */
+  @Get('sse')
+  sse(@Res() res: Response): void {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.flushHeaders();
+
+    // Send the endpoint event so the client knows where to POST messages
+    this.sendSseEvent(res, 'endpoint', '/mcp/message');
+
+    // Send server info
+    const serverInfo: JsonRpcResponse = {
+      jsonrpc: '2.0',
+      id: 0,
+      result: {
+        serverInfo: { name: 'finsentinel-mcp', version: '1.0.0' },
+        capabilities: { tools: { listChanged: false } },
+        toolCount: MCP_TOOL_CATALOGUE.length,
+      },
+    };
+    this.sendSseEvent(res, 'message', JSON.stringify(serverInfo));
+
+    // Keep-alive ping every 30s
+    const pingInterval = setInterval(() => {
+      try {
+        res.write(': ping\n\n');
+      } catch {
+        clearInterval(pingInterval);
+      }
+    }, 30_000);
+
+    // Clean up on client disconnect
+    res.on('close', () => {
+      clearInterval(pingInterval);
+      this.logger.debug('MCP SSE client disconnected');
+    });
+  }
+
+  /**
+   * POST /mcp/message — JSON-RPC 2.0 message endpoint for MCP protocol.
+   *
+   * Handles:
+   * - `tools/list` → returns tool catalogue
+   * - `tools/call` → executes a tool (stub: returns tool schema)
+   * - `initialize` → returns server capabilities
+   */
+  @Post('message')
+  async handleMessage(
+    @Body() body: JsonRpcRequest,
+  ): Promise<JsonRpcResponse> {
+    if (body.jsonrpc !== '2.0' || !body.method) {
+      throw new BadRequestException('Invalid JSON-RPC 2.0 request');
+    }
+
+    switch (body.method) {
+      case 'initialize':
+        return {
+          jsonrpc: '2.0',
+          id: body.id,
+          result: {
+            protocolVersion: '2024-11-05',
+            serverInfo: { name: 'finsentinel-mcp', version: '1.0.0' },
+            capabilities: {
+              tools: { listChanged: false },
+            },
+          },
+        };
+
+      case 'tools/list':
+        return {
+          jsonrpc: '2.0',
+          id: body.id,
+          result: {
+            tools: MCP_TOOL_CATALOGUE.map((t) => ({
+              name: t.name,
+              description: t.description,
+              inputSchema: t.inputSchema,
+            })),
+          },
+        };
+
+      case 'tools/call': {
+        const toolName = (body.params as Record<string, unknown>)?.name as string;
+        const toolArgs = (body.params as Record<string, unknown>)?.arguments as Record<string, unknown> | undefined;
+
+        if (!toolName || !TOOL_MAP.has(toolName)) {
+          return {
+            jsonrpc: '2.0',
+            id: body.id,
+            error: {
+              code: -32602,
+              message: `Unknown tool: ${toolName}`,
+              data: { availableTools: Array.from(TOOL_MAP.keys()) },
+            },
+          };
+        }
+
+        this.logger.log(`MCP tool call: ${toolName}(${JSON.stringify(toolArgs)})`);
+
+        // Tool execution placeholder — wire to actual services when ready
+        return {
+          jsonrpc: '2.0',
+          id: body.id,
+          result: {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  tool: toolName,
+                  status: 'executed',
+                  args: toolArgs ?? {},
+                  message: `Tool ${toolName} invoked successfully. Wire to actual service for real data.`,
+                }),
+              },
+            ],
+          },
+        };
+      }
+
+      case 'notifications/initialized':
+        // Client notification, no response needed but return ack
+        return { jsonrpc: '2.0', id: body.id, result: {} };
+
+      default:
+        return {
+          jsonrpc: '2.0',
+          id: body.id,
+          error: {
+            code: -32601,
+            message: `Method not found: ${body.method}`,
+          },
+        };
+    }
+  }
+
+  /**
+   * POST /mcp/tools/:name — Direct tool execution endpoint (REST style).
+   *
+   * Alternative to JSON-RPC for simpler integrations.
+   */
+  @Post('tools/:name')
+  async executeTool(
+    @Param('name') name: string,
+    @Body() args: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const tool = TOOL_MAP.get(name);
+    if (!tool) {
+      throw new BadRequestException(
+        `Unknown tool: ${name}. Available: ${Array.from(TOOL_MAP.keys()).join(', ')}`,
+      );
+    }
+
+    this.logger.log(`MCP REST tool call: ${name}(${JSON.stringify(args)})`);
+
+    return {
+      tool: name,
+      status: 'executed',
+      args,
+      message: `Tool ${name} invoked. Wire to actual service for real data.`,
+    };
+  }
+
+  // ── SSE helpers ────────────────────────────────────────────────────────────
+
+  private sendSseEvent(res: Response, event: string, data: string): void {
+    res.write(`event: ${event}\ndata: ${data}\n\n`);
   }
 }
