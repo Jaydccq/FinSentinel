@@ -13,7 +13,9 @@ import { NewsModule } from './news/news.module';
 import { RagModule } from './rag/rag.module';
 import { AutonomyModule } from './autonomy/autonomy.module';
 import { StorageModule } from './storage/storage.module';
+import { DocumentModule } from './document/document.module';
 import { OpenbbModule } from './openbb/openbb.module';
+import { OkxModule } from './okx/okx.module';
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { OpenbbModule } from './openbb/openbb.module';
     StorageModule,
     // OpenBB is always imported; its service guards at method level via config.enabled.
     OpenbbModule,
+    // OKX is always imported; guards at service level via config.enabled.
+    OkxModule,
   ],
   controllers: [HealthController],
 })
