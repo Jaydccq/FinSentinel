@@ -21,12 +21,14 @@ import { ScheduleService } from './schedule.service';
 /**
  * Schedule controller — CRUD for user cron schedules.
  *
- * POST   /autonomy/schedules       — create schedule
- * GET    /autonomy/schedules       — list user schedules
- * PUT    /autonomy/schedules/:id   — update schedule
- * DELETE /autonomy/schedules/:id   — delete schedule
+ * POST   /schedules            — create schedule
+ * GET    /schedules            — list user schedules
+ * PUT    /schedules/:id        — update schedule
+ * POST   /schedules/:id/pause  — pause schedule
+ * POST   /schedules/:id/resume — resume schedule
+ * DELETE /schedules/:id        — delete schedule
  */
-@Controller('autonomy/schedules')
+@Controller('schedules')
 @UseGuards(JwtGuard)
 export class ScheduleController {
   constructor(private readonly scheduleService: ScheduleService) {}
@@ -64,6 +66,24 @@ export class ScheduleController {
       taskPayload: body.payload ?? {},
       enabled: body.enabled ?? true,
     });
+  }
+
+  @Post(':id/pause')
+  @HttpCode(HttpStatus.OK)
+  async pause(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.scheduleService.pause(user.userId, id);
+  }
+
+  @Post(':id/resume')
+  @HttpCode(HttpStatus.OK)
+  async resume(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.scheduleService.resume(user.userId, id);
   }
 
   @Delete(':id')

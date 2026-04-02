@@ -130,6 +130,16 @@ export class ScheduleService {
     return updated;
   }
 
+  /** Pause a schedule (set enabled = false). */
+  async pause(userId: string, scheduleId: string) {
+    return this.update(userId, scheduleId, { enabled: false });
+  }
+
+  /** Resume a schedule (set enabled = true). */
+  async resume(userId: string, scheduleId: string) {
+    return this.update(userId, scheduleId, { enabled: true });
+  }
+
   /** Delete a schedule. Only the schedule owner can delete. */
   async delete(userId: string, scheduleId: string): Promise<void> {
     // Verify ownership

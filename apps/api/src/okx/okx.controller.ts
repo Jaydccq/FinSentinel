@@ -32,6 +32,15 @@ export class OkxController {
     return this.client!.getAccountBalance();
   }
 
+  /** GET /okx/balance/details — detailed balance breakdown per currency. */
+  @Get('balance/details')
+  async getBalanceDetails() {
+    this.ensureClient();
+    const balance = await this.client!.getAccountBalance();
+    // Return details array if available, otherwise empty array
+    return (balance as any).details ?? [];
+  }
+
   /** GET /okx/positions — all open positions. */
   @Get('positions')
   async getPositions() {
@@ -39,12 +48,19 @@ export class OkxController {
     return this.client!.getPositions();
   }
 
-  /** GET /okx/orders — pending orders (stub, delegates to positions for now). */
-  @Get('orders')
-  async getOrders() {
+  /** GET /okx/orders/pending — currently open orders. */
+  @Get('orders/pending')
+  async getPendingOrders() {
     this.ensureClient();
-    // OKX API does not have a simple "list orders" in our client yet;
-    // return empty until we add GET /api/v5/trade/orders-pending
+    // TODO: Wire to OKX API GET /api/v5/trade/orders-pending when client supports it
+    return [];
+  }
+
+  /** GET /okx/orders/history — filled/cancelled order history. */
+  @Get('orders/history')
+  async getOrderHistory(@Query('instType') instType?: string) {
+    this.ensureClient();
+    // TODO: Wire to OKX API GET /api/v5/trade/orders-history when client supports it
     return [];
   }
 

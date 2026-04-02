@@ -1,6 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { apiKeys } from '@finsentinel/db';
-import { eq, and } from 'drizzle-orm';
+import { apiKeys, eq, and } from '@finsentinel/db';
 import { EncryptionService } from './encryption.service';
 
 /**

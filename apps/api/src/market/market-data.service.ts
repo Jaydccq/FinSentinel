@@ -84,8 +84,8 @@ export class MarketDataService {
 
   // ── Ticker Search ───────────────────────────────────────────────────────
 
-  async searchTickers(query: string): Promise<TickerSearchResult[]> {
-    const cacheKey = `market:search:${query}`;
+  async searchTickers(query: string, limit = 10): Promise<TickerSearchResult[]> {
+    const cacheKey = `market:search:${query}:${limit}`;
 
     const cached = await this.redis.get(cacheKey);
     if (cached) {
@@ -93,7 +93,7 @@ export class MarketDataService {
       return JSON.parse(cached) as TickerSearchResult[];
     }
 
-    const results = await this.callYahooSearch(query);
+    const results = await this.callYahooSearch(query, limit);
     await this.redis.setex(cacheKey, CACHE_TTL.SEARCH, JSON.stringify(results));
 
     return results;
@@ -111,8 +111,8 @@ export class MarketDataService {
     return normalised;
   }
 
-  private async callYahooSearch(query: string): Promise<TickerSearchResult[]> {
-    const url = `${YAHOO_SEARCH_URL}?q=${encodeURIComponent(query)}&quotesCount=10&newsCount=0`;
+  private async callYahooSearch(query: string, limit = 10): Promise<TickerSearchResult[]> {
+    const url = `${YAHOO_SEARCH_URL}?q=${encodeURIComponent(query)}&quotesCount=${limit}&newsCount=0`;
 
     const response = await fetch(url, {
       headers: {

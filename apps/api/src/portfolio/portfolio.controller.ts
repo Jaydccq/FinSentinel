@@ -123,4 +123,14 @@ export class PortfolioController {
   ) {
     return this.portfolioService.getPortfolioAnalytics(user.userId, id);
   }
+
+  // ── Reports ───────────────────────────────────────────────────────────
+
+  @Get(':id/reports')
+  async getPortfolioReports(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.portfolioService.getReports(user.userId, id);
+  }
 }

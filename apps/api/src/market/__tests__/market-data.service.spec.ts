@@ -196,9 +196,9 @@ describe('MarketDataService', () => {
         { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NMS', assetType: 'EQUITY' },
         { symbol: 'AAPX', name: 'T. Rowe Price Blue Chip Growth', exchange: 'NYQ', assetType: 'ETF' },
       ]);
-      expect(mockRedis.get).toHaveBeenCalledWith('market:search:AAP');
+      expect(mockRedis.get).toHaveBeenCalledWith('market:search:AAP:10');
       expect(mockRedis.setex).toHaveBeenCalledWith(
-        'market:search:AAP',
+        'market:search:AAP:10',
         600,
         expect.any(String),
       );

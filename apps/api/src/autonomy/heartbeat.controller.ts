@@ -16,20 +16,20 @@ import { HeartbeatService } from './heartbeat.service';
 /**
  * Heartbeat controller — manages per-user heartbeat configuration.
  *
- * GET /autonomy/heartbeat/status — get heartbeat config
- * PUT /autonomy/heartbeat/config — update heartbeat config
+ * GET /heartbeat — get heartbeat config
+ * PUT /heartbeat — update heartbeat config
  */
-@Controller('autonomy/heartbeat')
+@Controller('heartbeat')
 @UseGuards(JwtGuard)
 export class HeartbeatController {
   constructor(private readonly heartbeatService: HeartbeatService) {}
 
-  @Get('status')
+  @Get()
   async getStatus(@CurrentUser() user: CurrentUserPayload) {
     return this.heartbeatService.getOrCreateConfig(user.userId);
   }
 
-  @Put('config')
+  @Put()
   async updateConfig(
     @CurrentUser() user: CurrentUserPayload,
     @Body(new ZodValidationPipe(heartbeatConfigRequestSchema)) body: HeartbeatConfigRequest,

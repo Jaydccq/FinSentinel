@@ -4,7 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { portfolios, holdings, riskReports, eq, and, inArray } from '@finsentinel/db';
+import { portfolios, holdings, riskReports, eq, and, inArray, desc } from '@finsentinel/db';
 import type {
   PortfolioRequest,
   PortfolioResponse,
@@ -363,6 +363,30 @@ export class PortfolioService {
       holdingWeights,
       concentrationWarnings,
     };
+  }
+
+  // ── Reports ───────────────────────────────────────────────────────────
+
+  async getReports(userId: string, portfolioId: string) {
+    // Verify ownership first
+    await this.getPortfolio(userId, portfolioId);
+
+    const rows = await this.db
+      .select()
+      .from(riskReports)
+      .where(eq(riskReports.portfolioId, portfolioId))
+      .orderBy(desc(riskReports.createdAt));
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return rows.map((r: any) => ({
+      id: r.id,
+      riskScore: Number(r.riskScore),
+      riskLevel: r.riskLevel,
+      summary: r.summary,
+      factors: r.factors ?? [],
+      actionableAdvice: r.actionableAdvice ?? [],
+      createdAt: r.createdAt?.toISOString(),
+    }));
   }
 
   // ── Mappers ────────────────────────────────────────────────────────────

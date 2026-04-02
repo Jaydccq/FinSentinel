@@ -11,10 +11,12 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
+  Res,
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import { documents, eq, and, desc } from '@finsentinel/db';
 import { JwtGuard } from '../auth/jwt.guard';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
@@ -104,6 +106,35 @@ export class DocumentController {
       .offset(offset);
 
     return rows;
+  }
+
+  /** Download a document by ID. */
+  @Get(':id/download')
+  async download(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const rows = await this.db
+      .select()
+      .from(documents)
+      .where(and(eq(documents.id, id), eq(documents.userId, user.userId)))
+      .limit(1);
+
+    if (rows.length === 0) {
+      throw new NotFoundException(`Document ${id} not found`);
+    }
+
+    const doc = rows[0];
+    res.setHeader('Content-Type', 'application/octet-stream');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${doc.fileName ?? `document-${id}`}"`,
+    );
+
+    // TODO: Wire to HybridStorageService.download() when storage is active
+    // For now return document metadata as placeholder
+    return Buffer.from(JSON.stringify(doc));
   }
 
   /** Get a single document by ID. */
