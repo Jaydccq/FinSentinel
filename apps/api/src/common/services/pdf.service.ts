@@ -3,163 +3,185 @@ import { Injectable, Logger } from '@nestjs/common';
 /**
  * Markdown-to-PDF conversion service.
  *
- * Mirrors Java MarkdownToPdfConverter (iText 8).
- * Uses a lightweight HTML-based approach:
- * - Converts markdown → HTML with basic styling
- * - Renders to PDF buffer
- *
- * For production, install `md-to-pdf` or `puppeteer` for full PDF rendering.
- * This implementation provides a styled HTML-to-buffer fallback.
+ * Dependency-free markdown-to-PDF renderer for generated reports.
+ * The output is a real PDF buffer, not HTML masquerading as a PDF.
  */
 @Injectable()
 export class PdfService {
   private readonly logger = new Logger(PdfService.name);
+  private static readonly PAGE_WIDTH = 595;
+  private static readonly PAGE_HEIGHT = 842;
+  private static readonly LEFT_MARGIN = 50;
+  private static readonly TOP_MARGIN = 792;
+  private static readonly LINE_HEIGHT = 14;
+  private static readonly MAX_CHARS_PER_LINE = 88;
+  private static readonly MAX_LINES_PER_PAGE = 48;
 
   /**
    * Convert markdown content to a PDF buffer.
    *
-   * Current implementation wraps markdown in a styled HTML document and
-   * returns it as a buffer. For true PDF rendering, swap in `md-to-pdf`.
+   * Converts markdown into a simple, text-forward PDF document.
    */
   async markdownToPdf(
     markdown: string,
     options?: { title?: string },
   ): Promise<Buffer> {
     const title = options?.title ?? 'FinSentinel Report';
+    const lines = this.wrapLines([
+      title,
+      '',
+      ...this.markdownToPlainText(markdown),
+    ]);
 
-    // Convert markdown to basic HTML
-    const htmlBody = this.markdownToHtml(markdown);
-
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>${this.escapeHtml(title)}</title>
-  <style>
-    @page { margin: 2cm; size: A4; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      font-size: 11pt;
-      line-height: 1.6;
-      color: #1a1a1a;
-      max-width: 210mm;
-      margin: 0 auto;
-      padding: 20px;
+    if (lines.length === 0) {
+      lines.push(title);
     }
-    h1 { font-size: 20pt; border-bottom: 2px solid #2563eb; padding-bottom: 8px; color: #1e3a5f; }
-    h2 { font-size: 16pt; color: #2563eb; margin-top: 24px; }
-    h3 { font-size: 13pt; color: #374151; }
-    table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-    th, td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; font-size: 10pt; }
-    th { background-color: #f3f4f6; font-weight: 600; }
-    code { background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-size: 10pt; }
-    pre { background: #f3f4f6; padding: 12px; border-radius: 6px; overflow-x: auto; }
-    pre code { background: none; padding: 0; }
-    blockquote { border-left: 4px solid #2563eb; margin: 12px 0; padding: 8px 16px; color: #4b5563; }
-    ul, ol { padding-left: 24px; }
-    .risk-high { color: #dc2626; font-weight: bold; }
-    .risk-medium { color: #f59e0b; font-weight: bold; }
-    .risk-low { color: #16a34a; font-weight: bold; }
-    hr { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
-  </style>
-</head>
-<body>
-${htmlBody}
-</body>
-</html>`;
 
-    // Try md-to-pdf if available, otherwise return HTML as buffer
-    try {
-      const { mdToPdf } = await import('md-to-pdf');
-      const result = await mdToPdf(
-        { content: markdown },
-        {
-          pdf_options: {
-            format: 'A4',
-            margin: { top: '2cm', right: '2cm', bottom: '2cm', left: '2cm' },
-            printBackground: true,
-          },
-          launch_options: { args: ['--no-sandbox'] },
-        },
-      );
-      if (result?.content) {
-        return Buffer.from(result.content);
+    const pdf = this.renderPdf(lines);
+    this.logger.debug(`Rendered PDF "${title}" with ${lines.length} lines`);
+    return pdf;
+  }
+
+  private markdownToPlainText(markdown: string): string[] {
+    const normalized = markdown
+      .replace(/\r\n/g, '\n')
+      .replace(/```[\w-]*\n([\s\S]*?)```/g, (_, code: string) => `${code.trim()}\n`)
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1 ($2)')
+      .replace(/^#{1,6}\s+/gm, '')
+      .replace(/^>\s?/gm, '')
+      .replace(/^\s*[-*]\s+/gm, '• ')
+      .replace(/^\s*\d+\.\s+/gm, '• ')
+      .replace(/\*\*\*(.+?)\*\*\*/g, '$1')
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/^---+$/gm, '')
+      .replace(/\|/g, ' | ');
+
+    return normalized
+      .split('\n')
+      .map((line) => line.trimEnd())
+      .filter((line, index, arr) => line.length > 0 || arr[index - 1] !== '');
+  }
+
+  private wrapLines(lines: string[]): string[] {
+    const wrapped: string[] = [];
+
+    for (const rawLine of lines) {
+      if (rawLine.length === 0) {
+        wrapped.push('');
+        continue;
       }
-    } catch {
-      this.logger.warn('md-to-pdf not available, returning styled HTML as PDF-compatible buffer');
+
+      let remaining = rawLine;
+      while (remaining.length > PdfService.MAX_CHARS_PER_LINE) {
+        const splitAt = remaining.lastIndexOf(' ', PdfService.MAX_CHARS_PER_LINE);
+        const safeSplitAt =
+          splitAt > Math.floor(PdfService.MAX_CHARS_PER_LINE / 2)
+            ? splitAt
+            : PdfService.MAX_CHARS_PER_LINE;
+        wrapped.push(remaining.slice(0, safeSplitAt).trimEnd());
+        remaining = remaining.slice(safeSplitAt).trimStart();
+      }
+      wrapped.push(remaining);
     }
 
-    // Fallback: return the styled HTML as a buffer
-    return Buffer.from(html, 'utf-8');
+    return wrapped;
   }
 
-  /**
-   * Simple markdown-to-HTML converter for basic formatting.
-   * Handles: headers, bold, italic, code blocks, lists, tables, blockquotes, links, hr.
-   */
-  private markdownToHtml(md: string): string {
-    let html = md;
+  private renderPdf(lines: string[]): Buffer {
+    const pages = this.chunkLines(lines, PdfService.MAX_LINES_PER_PAGE);
+    const objects: string[] = [];
 
-    // Code blocks (``` ... ```)
-    html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+    const reserveObject = () => {
+      objects.push('');
+      return objects.length;
+    };
 
-    // Inline code
-    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    const setObject = (index: number, content: string) => {
+      objects[index - 1] = `${index} 0 obj\n${content}\nendobj\n`;
+    };
 
-    // Headers
-    html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-    html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+    const catalogId = reserveObject();
+    const pagesId = reserveObject();
+    const fontId = reserveObject();
+    const pageIds: number[] = [];
 
-    // Bold + italic
-    html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
-    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    for (const pageLines of pages) {
+      const contentId = reserveObject();
+      const pageId = reserveObject();
+      const stream = this.buildPageStream(pageLines);
 
-    // HR
-    html = html.replace(/^---+$/gm, '<hr>');
+      setObject(
+        contentId,
+        `<< /Length ${Buffer.byteLength(stream, 'utf8')} >>\nstream\n${stream}\nendstream`,
+      );
+      setObject(
+        pageId,
+        `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${PdfService.PAGE_WIDTH} ${PdfService.PAGE_HEIGHT}] ` +
+          `/Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentId} 0 R >>`,
+      );
+      pageIds.push(pageId);
+    }
 
-    // Blockquotes
-    html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
-
-    // Unordered lists
-    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
-    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-
-    // Links
-    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-
-    // Tables (simple)
-    html = html.replace(
-      /^\|(.+)\|$/gm,
-      (match) => {
-        const cells = match
-          .split('|')
-          .filter((c) => c.trim() !== '')
-          .map((c) => c.trim());
-        // Skip separator rows
-        if (cells.every((c) => /^[-:]+$/.test(c))) return '';
-        const tag = 'td';
-        return `<tr>${cells.map((c) => `<${tag}>${c}</${tag}>`).join('')}</tr>`;
-      },
+    setObject(
+      pagesId,
+      `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`,
     );
-    html = html.replace(/(<tr>.*<\/tr>\n?)+/g, '<table>$&</table>');
+    setObject(catalogId, `<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
+    setObject(fontId, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
 
-    // Paragraphs (lines not already wrapped)
-    html = html.replace(/^(?!<[a-z])(.+)$/gm, '<p>$1</p>');
+    let pdf = '%PDF-1.4\n';
+    const offsets = [0];
+    for (const object of objects) {
+      offsets.push(Buffer.byteLength(pdf, 'utf8'));
+      pdf += object;
+    }
 
-    // Clean up empty paragraphs
-    html = html.replace(/<p>\s*<\/p>/g, '');
+    const xrefOffset = Buffer.byteLength(pdf, 'utf8');
+    pdf += `xref\n0 ${objects.length + 1}\n`;
+    pdf += '0000000000 65535 f \n';
 
-    return html;
+    for (let i = 1; i < offsets.length; i++) {
+      pdf += `${offsets[i]!.toString().padStart(10, '0')} 00000 n \n`;
+    }
+
+    pdf +=
+      `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\n` +
+      `startxref\n${xrefOffset}\n%%EOF`;
+
+    return Buffer.from(pdf, 'utf8');
   }
 
-  private escapeHtml(str: string): string {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+  private chunkLines(lines: string[], size: number): string[][] {
+    const pages: string[][] = [];
+    for (let index = 0; index < lines.length; index += size) {
+      pages.push(lines.slice(index, index + size));
+    }
+    return pages.length > 0 ? pages : [['']];
+  }
+
+  private buildPageStream(lines: string[]): string {
+    const contentLines = [
+      'BT',
+      '/F1 12 Tf',
+      `${PdfService.LEFT_MARGIN} ${PdfService.TOP_MARGIN} Td`,
+      `${PdfService.LINE_HEIGHT} TL`,
+    ];
+
+    for (const line of lines) {
+      contentLines.push(`(${this.escapePdfText(line)}) Tj`);
+      contentLines.push('T*');
+    }
+
+    contentLines.push('ET');
+    return contentLines.join('\n');
+  }
+
+  private escapePdfText(value: string): string {
+    return value
+      .replace(/\\/g, '\\\\')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
   }
 }

@@ -18,7 +18,7 @@ export interface RateLimitResult {
 /**
  * Fixed-window rate limiter backed by a Redis Lua script.
  *
- * Translates the Java RateLimiterService from FinSentinel Spring Boot.
+ * Redis-backed request throttling for the API.
  * Key format: `rl:{dimension}:{identifier}:{endpoint}`
  */
 const LUA_RATE_LIMIT = `

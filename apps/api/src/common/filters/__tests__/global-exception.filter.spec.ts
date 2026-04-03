@@ -41,7 +41,7 @@ describe('GlobalExceptionFilter', () => {
     filter.catch(new BadRequestException(['field1: required', 'field2: invalid']), host);
 
     expect(statusFn).toHaveBeenCalledWith(400);
-    const body: ErrorResponse = jsonFn.mock.calls[0][0];
+    const body: ErrorResponse = jsonFn.mock.calls[0]![0];
     expect(body.status).toBe(400);
     expect(body.message).toBe('Validation failed');
     expect(body.errors).toEqual(['field1: required', 'field2: invalid']);
@@ -55,7 +55,7 @@ describe('GlobalExceptionFilter', () => {
     filter.catch(new BadRequestException('Invalid input'), host);
 
     expect(statusFn).toHaveBeenCalledWith(400);
-    const body: ErrorResponse = jsonFn.mock.calls[0][0];
+    const body: ErrorResponse = jsonFn.mock.calls[0]![0];
     expect(body.status).toBe(400);
     expect(body.message).toBe('Invalid input');
   });
@@ -73,7 +73,7 @@ describe('GlobalExceptionFilter', () => {
 
     expect(statusFn).toHaveBeenCalledWith(429);
     expect(setHeaderFn).toHaveBeenCalledWith('Retry-After', 5);
-    const body: ErrorResponse = jsonFn.mock.calls[0][0];
+    const body: ErrorResponse = jsonFn.mock.calls[0]![0];
     expect(body.retryAfterMs).toBe(5000);
   });
 
@@ -84,7 +84,7 @@ describe('GlobalExceptionFilter', () => {
     filter.catch(new NotFoundException('Resource not found'), host);
 
     expect(statusFn).toHaveBeenCalledWith(404);
-    const body: ErrorResponse = jsonFn.mock.calls[0][0];
+    const body: ErrorResponse = jsonFn.mock.calls[0]![0];
     expect(body.status).toBe(404);
     expect(body.message).toBe('Resource not found');
   });
@@ -96,7 +96,7 @@ describe('GlobalExceptionFilter', () => {
     filter.catch(new Error('database connection failed'), host);
 
     expect(statusFn).toHaveBeenCalledWith(500);
-    const body: ErrorResponse = jsonFn.mock.calls[0][0];
+    const body: ErrorResponse = jsonFn.mock.calls[0]![0];
     expect(body.status).toBe(500);
     expect(body.message).toBe('Internal server error');
     // Must NOT leak internal error details
@@ -110,7 +110,7 @@ describe('GlobalExceptionFilter', () => {
     filter.catch('string error', host);
 
     expect(statusFn).toHaveBeenCalledWith(500);
-    const body: ErrorResponse = jsonFn.mock.calls[0][0];
+    const body: ErrorResponse = jsonFn.mock.calls[0]![0];
     expect(body.status).toBe(500);
     expect(body.message).toBe('Internal server error');
   });
@@ -122,7 +122,7 @@ describe('GlobalExceptionFilter', () => {
     filter.catch(new HttpException('Forbidden resource', HttpStatus.FORBIDDEN), host);
 
     expect(statusFn).toHaveBeenCalledWith(403);
-    const body: ErrorResponse = jsonFn.mock.calls[0][0];
+    const body: ErrorResponse = jsonFn.mock.calls[0]![0];
     expect(body.status).toBe(403);
     expect(body.message).toBe('Forbidden resource');
   });

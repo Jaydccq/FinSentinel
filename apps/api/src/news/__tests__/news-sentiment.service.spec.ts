@@ -127,7 +127,7 @@ describe('NewsSentimentService', () => {
     await service.classify('Headline', 'Summary text');
 
     expect(fetchMock).toHaveBeenCalledOnce();
-    const [url, options] = fetchMock.mock.calls[0];
+    const [url, options] = fetchMock.mock.calls[0] ?? [];
     expect(url).toBe(`${BASE_URL}/v1/chat/completions`);
     expect(options.method).toBe('POST');
     expect(options.headers.Authorization).toBe(`Bearer ${API_KEY}`);
@@ -147,7 +147,7 @@ describe('NewsSentimentService', () => {
 
     await service.classify('Just a headline', null);
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const body = JSON.parse(fetchMock.mock.calls[0]![1].body);
     expect(body.messages[1].content).toBe('Title: Just a headline');
     expect(body.messages[1].content).not.toContain('Summary');
   });
