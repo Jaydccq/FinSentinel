@@ -43,10 +43,12 @@ services:
       timeout: 3s
       retries: 5
 
-  backend:
-    build: .
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
     ports:
-      - "8080:8080"
+      - "3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,46 +57,82 @@ services:
       rustfs:
         condition: service_healthy
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: finsentinel
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_DB: 0
-      APP_STORAGE_ENDPOINT: http://rustfs:9000
-      APP_STORAGE_ACCESS_KEY: rustfsadmin
-      APP_STORAGE_SECRET_KEY: rustfsadmin
-      APP_STORAGE_BUCKET: finsentinel
-      APP_STORAGE_REGION: us-east-1
-      HIBERNATE_DDL_AUTO: update
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/finsentinel
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       AI_MODEL: ${AI_MODEL:-google/gemini-3-flash-preview}
       POLYGON_API_KEY: ${POLYGON_API_KEY}
       FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
-      APP_STORAGE_PROVIDER: ${APP_STORAGE_PROVIDER:-rustfs}
+      ENCRYPTION_AES_KEY: ${ENCRYPTION_AES_KEY:-}
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-rustfs}
+      STORAGE_ENDPOINT: http://rustfs:9000
+      STORAGE_ACCESS_KEY: rustfsadmin
+      STORAGE_SECRET_KEY: rustfsadmin
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-finsentinel}
+      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
       GOOGLE_DRIVE_CLIENT_ID: ${GOOGLE_DRIVE_CLIENT_ID:-}
       GOOGLE_DRIVE_CLIENT_SECRET: ${GOOGLE_DRIVE_CLIENT_SECRET:-}
       GOOGLE_DRIVE_REFRESH_TOKEN: ${GOOGLE_DRIVE_REFRESH_TOKEN:-}
       GOOGLE_DRIVE_ROOT_FOLDER_ID: ${GOOGLE_DRIVE_ROOT_FOLDER_ID:-}
+      APP_TRADING_DEFAULT_MODE: ${APP_TRADING_DEFAULT_MODE:-PAPER}
+      APP_AGENT_PERSONA: ${APP_AGENT_PERSONA:-default}
+      APP_CRYPTO_NEWS_ENABLED: ${APP_CRYPTO_NEWS_ENABLED:-false}
+      CRYPTO_NEWS_6551_TOKEN: ${CRYPTO_NEWS_6551_TOKEN:-}
+      APP_TWITTER_6551_ENABLED: ${APP_TWITTER_6551_ENABLED:-false}
+      TWITTER_6551_TOKEN: ${TWITTER_6551_TOKEN:-}
       APP_OKX_ENABLED: ${APP_OKX_ENABLED:-false}
       OKX_API_KEY: ${OKX_API_KEY:-}
       OKX_SECRET_KEY: ${OKX_SECRET_KEY:-}
       OKX_PASSPHRASE: ${OKX_PASSPHRASE:-}
       OKX_SANDBOX: ${OKX_SANDBOX:-false}
       OKX_WEBSOCKET_ENABLED: ${OKX_WEBSOCKET_ENABLED:-true}
+      OPENBB_ENABLED: ${OPENBB_ENABLED:-false}
+      OPENBB_BASE_URL: ${OPENBB_BASE_URL:-http://host.docker.internal:6900}
+      OPENBB_API_PREFIX: ${OPENBB_API_PREFIX:-/api/v1}
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3001
 
-  frontend:
-    build: ./frontend
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
     ports:
-      - "3000:80"
+      - "3000:3000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      INTERNAL_API_ORIGIN: http://api:3001
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "9090:9090"
+    depends_on:
+      api:
+        condition: service_started
     volumes:
-      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    ports:
+      - "3002:3000"
+    depends_on:
+      prometheus:
+        condition: service_started
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
 
 volumes:
   pgdata:

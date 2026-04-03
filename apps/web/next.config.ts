@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+const apiOrigin = process.env['INTERNAL_API_ORIGIN'] || 'http://localhost:3001';
+
 const nextConfig: NextConfig = {
   output: 'standalone',
   reactCompiler: true,
@@ -11,7 +13,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3001/api/:path*',
+        destination: `${apiOrigin}/api/:path*`,
       },
     ];
   },
