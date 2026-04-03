@@ -1,5 +1,5 @@
 /**
- * Barrel export for all 19 tool factory functions (24 Java tool classes, 65+ methods).
+ * Barrel export for all tool factory functions.
  *
  * Each factory accepts service dependencies and returns a record of AI SDK tool() definitions.
  *

@@ -6,7 +6,7 @@ import { z } from 'zod';
  *
  * Auto-approves most requests. Blocks LIVE mode transitions when configured.
  *
- * Maps to Java ConfirmationTool (1 method).
+ * Confirmation tool surface exposed to the agent.
  */
 export interface ConfirmationConfig {
   blockLiveMode: boolean;

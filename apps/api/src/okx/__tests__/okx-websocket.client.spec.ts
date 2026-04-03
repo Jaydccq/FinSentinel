@@ -66,7 +66,7 @@ describe('OkxWebSocketClient', () => {
       expect.stringContaining('"op":"subscribe"'),
     );
 
-    const msg = JSON.parse((mockPublicWs.send as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+    const msg = JSON.parse((mockPublicWs.send as ReturnType<typeof vi.fn>).mock.calls[0]![0]);
     expect(msg.args).toHaveLength(2);
     expect(msg.args[0]).toEqual({ channel: 'tickers', instId: 'BTC-USDT' });
     expect(msg.args[1]).toEqual({ channel: 'tickers', instId: 'ETH-USDT' });
@@ -80,7 +80,7 @@ describe('OkxWebSocketClient', () => {
       expect.stringContaining('"op":"login"'),
     );
 
-    const msg = JSON.parse((mockPrivateWs.send as ReturnType<typeof vi.fn>).mock.calls[0][0]);
+    const msg = JSON.parse((mockPrivateWs.send as ReturnType<typeof vi.fn>).mock.calls[0]![0]);
     expect(msg.args[0]).toHaveProperty('apiKey', 'test-api-key');
     expect(msg.args[0]).toHaveProperty('passphrase', 'test-passphrase');
     expect(msg.args[0]).toHaveProperty('sign');
@@ -95,7 +95,7 @@ describe('OkxWebSocketClient', () => {
 
     // First call = login, second call = subscribe
     expect(mockPrivateWs.send).toHaveBeenCalledTimes(2);
-    const subMsg = JSON.parse((mockPrivateWs.send as ReturnType<typeof vi.fn>).mock.calls[1][0]);
+    const subMsg = JSON.parse((mockPrivateWs.send as ReturnType<typeof vi.fn>).mock.calls[1]![0]);
     expect(subMsg.op).toBe('subscribe');
     expect(subMsg.args).toContainEqual({ channel: 'account' });
     expect(subMsg.args).toContainEqual({ channel: 'positions', instType: 'ANY' });
@@ -130,8 +130,8 @@ describe('OkxWebSocketClient', () => {
     );
 
     expect(tickerUpdates).toHaveLength(1);
-    expect(tickerUpdates[0].instId).toBe('BTC-USDT');
-    expect(tickerUpdates[0].ticker.last).toBe('50000');
+    expect(tickerUpdates[0]!.instId).toBe('BTC-USDT');
+    expect(tickerUpdates[0]!.ticker.last).toBe('50000');
   });
 
   it('generates correct HMAC signature', () => {

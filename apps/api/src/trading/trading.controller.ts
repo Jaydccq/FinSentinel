@@ -33,7 +33,7 @@ import { parseIntParam } from '../common/utils/parse-int-param';
 import { UnifiedTradingService } from './unified-trading.service';
 
 /**
- * Trading controller — v1 legacy + v2 UTA endpoints.
+ * Trading controller exposing compatibility endpoints and the UTA surface.
  *
  * v1 endpoints return human-readable text or simple objects.
  * v2 endpoints return structured typed responses.

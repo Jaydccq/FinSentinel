@@ -12,7 +12,7 @@ interface PortfolioAnalysisServiceStub {
  *
  * userId is injected via closure (factory param), NOT as a tool parameter.
  *
- * Maps to Java PortfolioAnalysisTool (1 method).
+ * Portfolio-analysis tool surface exposed to the agent.
  */
 export function createPortfolioAnalysisTools(
   service: PortfolioAnalysisServiceStub,

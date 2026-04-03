@@ -140,7 +140,7 @@ describe('PolygonNewsFetcher', () => {
 
     await fetcher.fetch(['AAPL', 'TSLA']);
 
-    const url = fetchMock.mock.calls[0][0] as string;
+    const url = fetchMock.mock.calls[0]![0] as string;
     expect(url).toContain('ticker=AAPL%2CTSLA');
     expect(url).toContain('limit=10');
     expect(url).toContain(`apiKey=${API_KEY}`);
@@ -152,7 +152,7 @@ describe('PolygonNewsFetcher', () => {
 
     await fetcher.fetch([]);
 
-    const url = fetchMock.mock.calls[0][0] as string;
+    const url = fetchMock.mock.calls[0]![0] as string;
     expect(url).not.toContain('ticker=');
   });
 

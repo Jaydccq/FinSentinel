@@ -19,21 +19,20 @@ import { RateLimit } from '../common/decorators/rate-limit.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { AgentService } from '../agent/agent.service';
-import { randomUUID } from 'crypto';
+import { ChatService } from './chat.service';
 
 /**
  * Chat controller — SSE streaming + structured risk assessment.
  *
  * POST /chat/stream     — streams AI response via SSE
- * POST /chat/assess     — returns structured RiskReport JSON (stub)
- * GET  /chat/sessions   — list user's chat sessions (stub — future phase)
- * GET  /chat/sessions/:sessionId — get messages for a session (stub)
+ * POST /chat/assess     — returns structured RiskReport JSON
+ * GET  /chat/sessions   — list user's chat sessions
+ * GET  /chat/sessions/:sessionId — get messages for a session
  */
 @Controller('chat')
 @UseGuards(JwtGuard)
 export class ChatController {
-  constructor(private readonly agentService: AgentService) {}
+  constructor(private readonly chatService: ChatService) {}
 
   // ── POST /chat/stream ──────────────────────────────────────────────────
 
@@ -46,13 +45,10 @@ export class ChatController {
     @CurrentUser() user: CurrentUserPayload,
     @Res() res: Response,
   ) {
-    const sessionId = body.sessionId ?? randomUUID();
-
-    const sseStream = await this.agentService.streamChat(
+    const result = await this.chatService.streamChat(
       body.message,
       user.userId,
-      [{ role: 'user', content: body.message }],
-      sessionId,
+      body.sessionId,
     );
 
     // Set SSE headers and status (must set status explicitly with @Res())
@@ -63,7 +59,7 @@ export class ChatController {
     res.setHeader('X-Accel-Buffering', 'no'); // Nginx buffering off
 
     // Pipe the ReadableStream to the response
-    const reader = sseStream.getReader();
+    const reader = result.stream.getReader();
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -83,37 +79,27 @@ export class ChatController {
   @UseGuards(RateLimitGuard)
   async assess(
     @Body(new ZodValidationPipe(chatRequestSchema)) body: ChatRequest,
-    @CurrentUser() _user: CurrentUserPayload,
+    @CurrentUser() user: CurrentUserPayload,
   ) {
-    // Stub — actual structured RiskReport generation is a future phase.
-    // Will use generateText with Output.object({ schema: riskReportSchema })
-    return {
-      riskScore: 0,
-      riskLevel: 'UNKNOWN',
-      summary: 'Risk assessment not yet implemented.',
-      factors: [],
-      actionableAdvice: [],
-    };
+    return this.chatService.assess(body.message, user.userId, body.sessionId);
   }
 
   // ── GET /chat/sessions ────────────────────────────────────────────────
 
   @Get('sessions')
   async listSessions(
-    @CurrentUser() _user: CurrentUserPayload,
+    @CurrentUser() user: CurrentUserPayload,
   ): Promise<ChatSessionSummary[]> {
-    // Stub — actual ChatService with DB persistence is a future phase.
-    return [];
+    return this.chatService.listSessions(user.userId);
   }
 
   // ── GET /chat/sessions/:sessionId ──────────────────────────────────────
 
   @Get('sessions/:sessionId')
   async getSessionMessages(
-    @CurrentUser() _user: CurrentUserPayload,
-    @Param('sessionId') _sessionId: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('sessionId') sessionId: string,
   ): Promise<ChatMessageResponse[]> {
-    // Stub — actual ChatService with DB persistence is a future phase.
-    return [];
+    return this.chatService.getSessionMessages(user.userId, sessionId);
   }
 }

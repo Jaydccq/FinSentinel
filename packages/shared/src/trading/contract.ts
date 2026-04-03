@@ -1,8 +1,7 @@
 import { SecurityType } from '../enums/security-type';
 
 /**
- * Full set of fiat currency codes for forex pair detection.
- * Matches the Java FIAT_CURRENCIES set exactly.
+ * Full set of fiat currency codes used for forex pair detection.
  */
 const FIAT_CURRENCIES = new Set([
   'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'HKD', 'SGD',
@@ -18,7 +17,7 @@ const DATED_FUTURE_PATTERN = /^[A-Z]+-[A-Z]+-\d{6}$/;
 /**
  * Immutable value object representing a tradable instrument contract.
  *
- * Mirrors the Java `Contract` record from the UTA (Unified Trading Architecture) package.
+ * Shared immutable value object representing a tradable instrument contract.
  * Uses a private constructor with static factory methods.
  */
 export class Contract {
@@ -50,7 +49,7 @@ export class Contract {
   }
 
   // ---------------------------------------------------------------------------
-  // fromString — heuristic parser (matches every branch in Java)
+  // fromString — heuristic parser
   // ---------------------------------------------------------------------------
 
   static fromString(input: string): Contract {

@@ -174,7 +174,7 @@ describe('Trading Flow (integration)', () => {
   });
 
   // ═══════════════════════════════════════════════════════════════════════
-  // v1 Endpoints (legacy)
+  // Compatibility endpoints
   // ═══════════════════════════════════════════════════════════════════════
 
   it('v1 wallet returns human-readable structure', async () => {

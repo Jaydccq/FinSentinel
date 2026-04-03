@@ -1,38 +1,20 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { Test } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import request from 'supertest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { BadRequestException } from '@nestjs/common';
 import { ChatController } from '../chat.controller';
-import { AgentService } from '../../agent/agent.service';
-import { JwtGuard } from '../../auth/jwt.guard';
-import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
+import { ChatService } from '../chat.service';
+import { chatRequestSchema } from '@finsentinel/shared';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 
-// ── Constants ──────────────────────────────────────────────────────────────
 const USER_ID = '11111111-1111-1111-1111-111111111111';
 const SESSION_ID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 
-// ── Mock AgentService ─────────────────────────────────────────────────────
-const mockAgentService = {
+const mockChatService = {
   streamChat: vi.fn(),
+  assess: vi.fn(),
+  listSessions: vi.fn(),
+  getSessionMessages: vi.fn(),
 };
 
-// ── Fake JwtGuard that injects userId ─────────────────────────────────────
-const fakeJwtGuard = {
-  canActivate: (context: { switchToHttp: () => { getRequest: () => Record<string, unknown> } }) => {
-    const req = context.switchToHttp().getRequest();
-    req['user'] = { userId: USER_ID, username: 'testuser' };
-    return true;
-  },
-};
-
-// ── Fake RateLimitGuard (always passes) ───────────────────────────────────
-const fakeRateLimitGuard = {
-  canActivate: () => true,
-};
-
-/**
- * Helper to create a ReadableStream from SSE chunks.
- */
 function createSSEStream(chunks: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   return new ReadableStream<Uint8Array>({
@@ -45,160 +27,183 @@ function createSSEStream(chunks: string[]): ReadableStream<Uint8Array> {
   });
 }
 
+function createMockResponse() {
+  const headers = new Map<string, string>();
+  const writes: string[] = [];
+
+  return {
+    statusCode: 0,
+    ended: false,
+    headers,
+    writes,
+    status(code: number) {
+      this.statusCode = code;
+      return this;
+    },
+    setHeader(name: string, value: string) {
+      headers.set(name, value);
+    },
+    write(value: Uint8Array) {
+      writes.push(new TextDecoder().decode(value));
+    },
+    end() {
+      this.ended = true;
+    },
+  };
+}
+
 describe('ChatController', () => {
-  let app: INestApplication;
+  let controller: ChatController;
+  const user = { userId: USER_ID, username: 'testuser' };
+  const validationPipe = new ZodValidationPipe(chatRequestSchema);
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
-
-    const module = await Test.createTestingModule({
-      controllers: [ChatController],
-      providers: [
-        { provide: AgentService, useValue: mockAgentService },
-      ],
-    })
-      .overrideGuard(JwtGuard)
-      .useValue(fakeJwtGuard)
-      .overrideGuard(RateLimitGuard)
-      .useValue(fakeRateLimitGuard)
-      .compile();
-
-    app = module.createNestApplication();
-    app.setGlobalPrefix('api');
-    await app.init();
+    controller = new ChatController(mockChatService as unknown as ChatService);
   });
 
-  afterEach(async () => {
-    await app.close();
-  });
-
-  // ── POST /api/chat/stream ──────────────────────────────────────────────
-
-  describe('POST /api/chat/stream', () => {
-    it('returns SSE headers and streams data', async () => {
+  describe('stream', () => {
+    it('sets SSE headers and writes stream chunks', async () => {
       const sseChunks = [
         `event: message\ndata: {"content":"Hello","sessionId":"${SESSION_ID}"}\n\n`,
-        `event: done\ndata: [DONE]\n\n`,
+        'event: done\ndata: [DONE]\n\n',
       ];
-      mockAgentService.streamChat.mockResolvedValueOnce(createSSEStream(sseChunks));
+      mockChatService.streamChat.mockResolvedValueOnce({
+        sessionId: SESSION_ID,
+        stream: createSSEStream(sseChunks),
+      });
+      const res = createMockResponse();
 
-      const res = await request(app.getHttpServer())
-        .post('/api/chat/stream')
-        .send({ message: 'Analyze AAPL', sessionId: SESSION_ID })
-        .expect(200);
-
-      expect(res.headers['content-type']).toContain('text/event-stream');
-      expect(res.headers['cache-control']).toBe('no-cache');
-      expect(res.text).toContain('event: message');
-      expect(res.text).toContain('"content":"Hello"');
-      expect(res.text).toContain('event: done');
-    });
-
-    it('calls agentService.streamChat with correct arguments', async () => {
-      mockAgentService.streamChat.mockResolvedValueOnce(
-        createSSEStream(['event: done\ndata: [DONE]\n\n']),
+      await controller.stream(
+        { message: 'Analyze AAPL', sessionId: SESSION_ID },
+        user,
+        res as never,
       );
 
-      await request(app.getHttpServer())
-        .post('/api/chat/stream')
-        .send({ message: 'Test message', sessionId: SESSION_ID })
-        .expect(200);
-
-      expect(mockAgentService.streamChat).toHaveBeenCalledWith(
-        'Test message',
+      expect(res.statusCode).toBe(200);
+      expect(res.headers.get('Content-Type')).toBe('text/event-stream');
+      expect(res.headers.get('Cache-Control')).toBe('no-cache');
+      expect(res.writes.join('')).toContain('event: message');
+      expect(res.writes.join('')).toContain('"content":"Hello"');
+      expect(res.ended).toBe(true);
+      expect(mockChatService.streamChat).toHaveBeenCalledWith(
+        'Analyze AAPL',
         USER_ID,
-        [{ role: 'user', content: 'Test message' }],
         SESSION_ID,
       );
     });
 
-    it('generates sessionId when not provided', async () => {
-      mockAgentService.streamChat.mockResolvedValueOnce(
-        createSSEStream(['event: done\ndata: [DONE]\n\n']),
-      );
-
-      await request(app.getHttpServer())
-        .post('/api/chat/stream')
-        .send({ message: 'Hello agent' })
-        .expect(200);
-
-      // Should have been called with a generated UUID as the 4th argument
-      expect(mockAgentService.streamChat).toHaveBeenCalledTimes(1);
-      const [, , , sessionIdArg] = mockAgentService.streamChat.mock.calls[0]!;
-      expect(sessionIdArg).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-      );
-    });
-
-    it('returns 400 for empty message', async () => {
-      await request(app.getHttpServer())
-        .post('/api/chat/stream')
-        .send({ message: '' })
-        .expect(400);
-    });
-
-    it('returns 400 for missing message', async () => {
-      await request(app.getHttpServer())
-        .post('/api/chat/stream')
-        .send({})
-        .expect(400);
-    });
-
-    it('returns 400 for invalid sessionId', async () => {
-      await request(app.getHttpServer())
-        .post('/api/chat/stream')
-        .send({ message: 'Hello', sessionId: 'not-a-uuid' })
-        .expect(400);
-    });
-  });
-
-  // ── POST /api/chat/assess ─────────────────────────────────────────────
-
-  describe('POST /api/chat/assess', () => {
-    it('returns stub RiskReport', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/chat/assess')
-        .send({ message: 'Assess AAPL risk' })
-        .expect(200);
-
-      expect(res.body).toEqual({
-        riskScore: 0,
-        riskLevel: 'UNKNOWN',
-        summary: 'Risk assessment not yet implemented.',
-        factors: [],
-        actionableAdvice: [],
+    it('passes undefined sessionId when omitted', async () => {
+      mockChatService.streamChat.mockResolvedValueOnce({
+        sessionId: SESSION_ID,
+        stream: createSSEStream(['event: done\ndata: [DONE]\n\n']),
       });
-    });
 
-    it('returns 400 for invalid body', async () => {
-      await request(app.getHttpServer())
-        .post('/api/chat/assess')
-        .send({})
-        .expect(400);
-    });
-  });
+      await controller.stream(
+        { message: 'Hello agent' },
+        user,
+        createMockResponse() as never,
+      );
 
-  // ── GET /api/chat/sessions ────────────────────────────────────────────
-
-  describe('GET /api/chat/sessions', () => {
-    it('returns empty array (stub)', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/chat/sessions')
-        .expect(200);
-
-      expect(res.body).toEqual([]);
+      expect(mockChatService.streamChat).toHaveBeenCalledWith(
+        'Hello agent',
+        USER_ID,
+        undefined,
+      );
     });
   });
 
-  // ── GET /api/chat/sessions/:sessionId ─────────────────────────────────
+  describe('assess', () => {
+    it('delegates to chat service', async () => {
+      mockChatService.assess.mockResolvedValueOnce({
+        riskScore: 25,
+        riskLevel: 'LOW',
+        summary: 'General assessment generated from request text.',
+        factors: [],
+        actionableAdvice: ['Provide a portfolioId for a holdings-aware assessment.'],
+      });
 
-  describe('GET /api/chat/sessions/:sessionId', () => {
-    it('returns empty array (stub)', async () => {
-      const res = await request(app.getHttpServer())
-        .get(`/api/chat/sessions/${SESSION_ID}`)
-        .expect(200);
+      const result = await controller.assess(
+        { message: 'Assess AAPL risk' },
+        user,
+      );
 
-      expect(res.body).toEqual([]);
+      expect(result.riskScore).toBe(25);
+      expect(mockChatService.assess).toHaveBeenCalledWith(
+        'Assess AAPL risk',
+        USER_ID,
+        undefined,
+      );
+    });
+  });
+
+  describe('sessions', () => {
+    it('returns chat sessions from chat service', async () => {
+      mockChatService.listSessions.mockResolvedValueOnce([
+        {
+          sessionId: SESSION_ID,
+          firstMessage: 'Assess AAPL risk',
+          messageCount: 2,
+          createdAt: '2026-04-02T12:00:00.000Z',
+          lastMessageAt: '2026-04-02T12:01:00.000Z',
+        },
+      ]);
+
+      const result = await controller.listSessions(user);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]!.sessionId).toBe(SESSION_ID);
+    });
+
+    it('returns session messages from chat service', async () => {
+      mockChatService.getSessionMessages.mockResolvedValueOnce([
+        {
+          id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+          sessionId: SESSION_ID,
+          role: 'user',
+          content: 'Assess AAPL risk',
+          createdAt: '2026-04-02T12:00:00.000Z',
+        },
+      ]);
+
+      const result = await controller.getSessionMessages(user, SESSION_ID);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]!.sessionId).toBe(SESSION_ID);
+    });
+  });
+
+  describe('validation', () => {
+    it('rejects empty message', async () => {
+      expect(() =>
+        validationPipe.transform(
+          { message: '' },
+        ),
+      ).toThrow(BadRequestException);
+    });
+
+    it('rejects missing message', async () => {
+      expect(() =>
+        validationPipe.transform(
+          {},
+        ),
+      ).toThrow(BadRequestException);
+    });
+
+    it('rejects invalid sessionId', async () => {
+      expect(() =>
+        validationPipe.transform(
+          { message: 'Hello', sessionId: 'not-a-uuid' },
+        ),
+      ).toThrow(BadRequestException);
+    });
+
+    it('accepts valid payload', async () => {
+      const result = validationPipe.transform(
+        { message: 'Hello', sessionId: SESSION_ID },
+      );
+
+      expect(result).toEqual({ message: 'Hello', sessionId: SESSION_ID });
     });
   });
 });

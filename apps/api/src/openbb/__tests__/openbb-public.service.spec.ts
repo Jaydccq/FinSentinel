@@ -94,7 +94,7 @@ describe('OpenbbPublicDataService', () => {
       expect(result).toEqual(responseBody);
       expect(mockFetch).toHaveBeenCalledOnce();
 
-      const [url, options] = mockFetch.mock.calls[0];
+      const [url, options] = mockFetch.mock.calls[0] ?? [];
       expect(url).toBe(
         'http://localhost:6900/api/v1/equity/price/quote?provider=polygon&symbol=AAPL',
       );
@@ -113,7 +113,7 @@ describe('OpenbbPublicDataService', () => {
 
       await service.queryPublicData('economy/cpi', 'fred');
 
-      const [, options] = mockFetch.mock.calls[0];
+      const [, options] = mockFetch.mock.calls[0] ?? [];
       expect(options.headers['Authorization']).toBe('Bearer my-secret-key');
       expect(options.headers['X-API-Key']).toBe('my-secret-key');
     });

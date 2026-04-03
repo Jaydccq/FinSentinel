@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
 import { RagRetrievalService } from './rag-retrieval.service';
 import { QueryRewriteService } from './query-rewrite.service';
+import { RagEmbeddingService } from './rag-embedding.service';
+import { RagChunkStoreService } from './rag-chunk-store.service';
+import { RagReindexService } from './rag-reindex.service';
+import { RagBackfillSchedulerService } from './rag-backfill-scheduler.service';
 
 /**
  * RAG module -- Phase 8.
@@ -8,12 +12,26 @@ import { QueryRewriteService } from './query-rewrite.service';
  * Provides:
  * - RagRetrievalService — pgvector cosine similarity search with metadata filters
  * - QueryRewriteService — LLM-powered query rewriting for better retrieval
- *
- * The embedding pipeline (chunking, tokenization, embedding model) will be
- * wired in a future phase. Until then, search returns empty results.
+ * - RagEmbeddingService / RagChunkStoreService — chunk storage + embedding persistence
+ * - RagReindexService — backfill flow for documents/news that predate chunk storage
+ * - RagBackfillSchedulerService — automatic background reindex for missing chunks
  */
 @Module({
-  providers: [RagRetrievalService, QueryRewriteService],
-  exports: [RagRetrievalService, QueryRewriteService],
+  providers: [
+    RagRetrievalService,
+    QueryRewriteService,
+    RagEmbeddingService,
+    RagChunkStoreService,
+    RagReindexService,
+    RagBackfillSchedulerService,
+  ],
+  exports: [
+    RagRetrievalService,
+    QueryRewriteService,
+    RagEmbeddingService,
+    RagChunkStoreService,
+    RagReindexService,
+    RagBackfillSchedulerService,
+  ],
 })
 export class RagModule {}

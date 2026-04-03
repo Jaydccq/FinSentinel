@@ -84,7 +84,7 @@ export interface CcxtPosition {
  *
  * NOT an Injectable — instantiated by BrokerRegistry at runtime.
  *
- * Mirrors the Java CcxtTradingEngine exactly.
+ * Implements the CCXT-backed trading engine.
  */
 export class CcxtTradingEngine implements TradingEngine {
   constructor(private readonly exchange: CcxtExchange) {}

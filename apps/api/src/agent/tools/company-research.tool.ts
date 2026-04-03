@@ -3,15 +3,15 @@ import { z } from 'zod';
 
 // TODO: wire when service exists
 interface CompanyResearchServiceStub {
-  getCompanyProfile(ticker: string): Promise<string>;
-  getFinancialStatements(ticker: string, periods: number): Promise<string>;
-  getAnalystRating(ticker: string): Promise<string>;
+  getCompanyProfile(ticker: string): Promise<unknown>;
+  getFinancialStatements(ticker: string, periods: number): Promise<unknown>;
+  getAnalystRating(ticker: string): Promise<unknown>;
 }
 
 /**
  * Company fundamental research tools — profiles, financials, analyst ratings.
  *
- * Maps to Java CompanyResearchTool (3 methods).
+ * Company-research tool surface exposed to the agent.
  */
 export function createCompanyResearchTools(
   service: CompanyResearchServiceStub,
@@ -31,7 +31,7 @@ export function createCompanyResearchTools(
       }),
       execute: async ({ ticker }) => {
         try {
-          return await service.getCompanyProfile(ticker);
+          return JSON.stringify(await service.getCompanyProfile(ticker), null, 2);
         } catch (e) {
           return `Error fetching company profile for ${ticker}: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -58,7 +58,11 @@ export function createCompanyResearchTools(
       }),
       execute: async ({ ticker, periods }) => {
         try {
-          return await service.getFinancialStatements(ticker, periods);
+          return JSON.stringify(
+            await service.getFinancialStatements(ticker, periods),
+            null,
+            2,
+          );
         } catch (e) {
           return `Error fetching financial data for ${ticker}: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -78,7 +82,7 @@ export function createCompanyResearchTools(
       }),
       execute: async ({ ticker }) => {
         try {
-          return await service.getAnalystRating(ticker);
+          return JSON.stringify(await service.getAnalystRating(ticker), null, 2);
         } catch (e) {
           return `Error computing analyst rating for ${ticker}: ${e instanceof Error ? e.message : 'unknown'}`;
         }

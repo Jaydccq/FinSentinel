@@ -25,6 +25,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { DocumentUploadService } from './document-upload.service';
 import { parseIntParam } from '../common/utils/parse-int-param';
+import { RagReindexService } from '../rag/rag-reindex.service';
 
 /** Minimal multer file shape (avoids @types/multer dependency). */
 interface MulterFile {
@@ -44,6 +45,7 @@ interface MulterFile {
 export class DocumentController {
   constructor(
     private readonly uploadService: DocumentUploadService,
+    private readonly ragReindexService: RagReindexService,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     @Inject('DRIZZLE_DB') private readonly db: any,
   ) {}
@@ -73,6 +75,39 @@ export class DocumentController {
       docType ?? 'GENERAL',
       sector,
     );
+  }
+
+  /** Requeue documents owned by the current user that are missing stored chunks. */
+  @Post('reindex-missing')
+  @RateLimit({ limit: 3, windowSecs: 300 })
+  @UseGuards(RateLimitGuard)
+  async reindexMissing(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('limit') limitParam?: string,
+    @Query('force') forceParam?: string,
+  ) {
+    const limit = parseIntParam(limitParam, 100, 1, 500);
+    const force = forceParam === 'true';
+    return this.ragReindexService.reindexMissingDocumentsForUser(
+      user.userId,
+      limit,
+      force,
+    );
+  }
+
+  /** Requeue a single document for vectorization, even if it was previously marked VECTORIZED. */
+  @Post(':id/reindex')
+  @RateLimit({ limit: 10, windowSecs: 300 })
+  @UseGuards(RateLimitGuard)
+  async reindexOne(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+  ) {
+    const result = await this.ragReindexService.reindexDocumentById(user.userId, id);
+    if (result.queued === 0) {
+      throw new NotFoundException(`Document ${id} not found`);
+    }
+    return result;
   }
 
   /** List documents with optional filters and pagination. */

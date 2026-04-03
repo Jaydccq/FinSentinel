@@ -15,7 +15,7 @@ interface UserInvestmentProfileServiceStub {
  *
  * userId is injected via closure (factory param), NOT as a tool parameter.
  *
- * Maps to Java UserProfileTool (4 methods).
+ * User-profile tool surface exposed to the agent.
  */
 export function createUserProfileTools(
   service: UserInvestmentProfileServiceStub,

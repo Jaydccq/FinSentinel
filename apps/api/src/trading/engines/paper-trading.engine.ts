@@ -22,9 +22,9 @@ export interface PositionMap {
  * In-memory paper trading engine for simulated trading.
  *
  * NOT an Injectable — it is created by BrokerRegistry at runtime.
- * Uses `number` for all financial calculations (mirrors Java BigDecimal.doubleValue()).
+ * Uses `number` for all financial calculations inside the paper engine.
  *
- * Matches Java PaperTradingEngine logic exactly:
+ * Behavior:
  * - executeBuy: resolve qty from notional, check funds, weighted avg cost on existing positions
  * - executeSell: find position, resolve qty (sell all if null), calculate realized P&L
  */

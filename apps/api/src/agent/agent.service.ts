@@ -6,13 +6,14 @@ import { ToolRegistry } from './tool-registry';
 import { getPersonaPrompt } from './personas';
 import { aiConfig } from '../config/ai.config';
 import { personaConfig } from '../config/persona.config';
+import { UserInvestmentProfileService } from './user-investment-profile.service';
 
 /**
  * Primary AI agent service. Orchestrates LLM calls with tools, persona
  * injection, and streaming. Produces SSE events in the FinSentinel format
  * so the existing frontend works without changes.
  *
- * Maps to Java's AgentConfig + RiskAgentService + UserContextAdvisor.
+ * This is the primary orchestration service for the FinSentinel agent runtime.
  */
 @Injectable()
 export class AgentService {
@@ -21,6 +22,7 @@ export class AgentService {
 
   constructor(
     private readonly toolRegistry: ToolRegistry,
+    private readonly userInvestmentProfileService: UserInvestmentProfileService,
     @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
     @Inject(personaConfig.KEY) private readonly persona: ConfigType<typeof personaConfig>,
   ) {
@@ -32,7 +34,7 @@ export class AgentService {
   }
 
   /**
-   * Stream a chat response as SSE events matching the Java format:
+   * Stream a chat response as SSE events in the FinSentinel format:
    *   event: message\ndata: {"content":"chunk","sessionId":"uuid"}\n\n
    *   event: done\ndata: [DONE]\n\n
    *   event: error\ndata: {"error":"message"}\n\n
@@ -81,8 +83,15 @@ export class AgentService {
    * Stub profile loader. Returns null for now.
    * Will be replaced by UserInvestmentProfileService in Phase 6.
    */
-  private async loadProfileSummary(_userId: string): Promise<string | null> {
-    return null;
+  private async loadProfileSummary(userId: string): Promise<string | null> {
+    try {
+      return await this.userInvestmentProfileService.getProfileSummary(userId);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to load investment profile for ${userId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return null;
+    }
   }
 
   /**

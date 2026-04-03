@@ -14,7 +14,7 @@ interface NewsAnalysisServiceStub {
 /**
  * News analysis and RAG knowledge base search tools.
  *
- * Maps to Java NewsAnalysisTool (2 methods).
+ * News-analysis tool surface exposed to the agent.
  */
 export function createNewsAnalysisTools(service: NewsAnalysisServiceStub) {
   return {

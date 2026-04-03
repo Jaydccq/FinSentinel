@@ -15,7 +15,7 @@ import type { CurrentUserPayload } from '../auth/decorators/current-user.decorat
  * is attached to the request so downstream services (ToolRegistry,
  * @CurrentUser decorator) work transparently.
  *
- * Maps to Java McpApiKeyAuthFilter.
+ * Guard for MCP API-key authentication.
  */
 @Injectable()
 export class McpApiKeyGuard implements CanActivate {

@@ -12,8 +12,13 @@ const NOW = new Date('2026-03-30T12:00:00Z');
 function createMockDb() {
   const selectResults: unknown[][] = [];
 
-  function makeSelectChain(): Record<string, ReturnType<typeof vi.fn>> {
-    const chain: Record<string, ReturnType<typeof vi.fn>> = {
+  function makeSelectChain(): {
+    from: ReturnType<typeof vi.fn>;
+    where: ReturnType<typeof vi.fn>;
+    orderBy: ReturnType<typeof vi.fn>;
+    limit: ReturnType<typeof vi.fn>;
+  } {
+    const chain = {
       from: vi.fn(),
       where: vi.fn(),
       orderBy: vi.fn(),

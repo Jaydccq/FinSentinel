@@ -24,7 +24,7 @@ const AUTH_TAG_LENGTH = 16; // 128-bit authentication tag
  * The IV is generated fresh for each encryption operation, ensuring unique
  * ciphertexts even for identical plaintexts.
  *
- * Translates the Java `AesEncryptionUtil` from FinSentinel Spring Boot.
+ * AES-GCM encryption helpers for sensitive application secrets.
  */
 @Injectable()
 export class EncryptionService {
@@ -59,7 +59,7 @@ export class EncryptionService {
     ]);
     const authTag = cipher.getAuthTag();
 
-    // Concatenate ciphertext + authTag (matches Java GCM behavior)
+    // Concatenate ciphertext + authTag for transport/storage.
     const combined = Buffer.concat([encrypted, authTag]);
 
     return {

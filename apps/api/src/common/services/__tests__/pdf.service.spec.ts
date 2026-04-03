@@ -12,63 +12,62 @@ describe('PdfService', () => {
     const result = await service.markdownToPdf('# Hello\n\nWorld');
     expect(result).toBeInstanceOf(Buffer);
     expect(result.length).toBeGreaterThan(0);
+    expect(result.toString('utf-8', 0, 8)).toContain('%PDF-1.4');
   });
 
-  it('includes HTML structure in output', async () => {
+  it('renders a real PDF instead of HTML', async () => {
     const result = await service.markdownToPdf('# Test Report');
-    const html = result.toString('utf-8');
-    expect(html).toContain('<!DOCTYPE html>');
-    expect(html).toContain('<h1>Test Report</h1>');
+    const pdf = result.toString('utf-8');
+    expect(pdf).toContain('%PDF-1.4');
+    expect(pdf).toContain('/Type /Catalog');
+    expect(pdf).toContain('Test Report');
   });
 
-  it('uses custom title in head', async () => {
+  it('uses custom title in PDF content', async () => {
     const result = await service.markdownToPdf('content', {
       title: 'Risk Assessment',
     });
-    const html = result.toString('utf-8');
-    expect(html).toContain('<title>Risk Assessment</title>');
+    const pdf = result.toString('utf-8');
+    expect(pdf).toContain('Risk Assessment');
   });
 
-  it('converts bold and italic', async () => {
+  it('keeps emphasized text content', async () => {
     const result = await service.markdownToPdf('**bold** and *italic*');
-    const html = result.toString('utf-8');
-    expect(html).toContain('<strong>bold</strong>');
-    expect(html).toContain('<em>italic</em>');
+    const pdf = result.toString('utf-8');
+    expect(pdf).toContain('bold and italic');
   });
 
-  it('converts code blocks', async () => {
+  it('keeps code block text', async () => {
     const result = await service.markdownToPdf('```js\nconst x = 1;\n```');
-    const html = result.toString('utf-8');
-    expect(html).toContain('<pre><code>');
-    expect(html).toContain('const x = 1;');
+    const pdf = result.toString('utf-8');
+    expect(pdf).toContain('const x = 1;');
   });
 
-  it('converts inline code', async () => {
+  it('keeps inline code text', async () => {
     const result = await service.markdownToPdf('Use `ticker` param');
-    const html = result.toString('utf-8');
-    expect(html).toContain('<code>ticker</code>');
+    const pdf = result.toString('utf-8');
+    expect(pdf).toContain('Use ticker param');
   });
 
-  it('converts blockquotes', async () => {
+  it('keeps blockquote text', async () => {
     const result = await service.markdownToPdf('> Important note');
-    const html = result.toString('utf-8');
-    expect(html).toContain('<blockquote>Important note</blockquote>');
+    const pdf = result.toString('utf-8');
+    expect(pdf).toContain('Important note');
   });
 
-  it('includes print-friendly CSS', async () => {
+  it('includes PDF page metadata', async () => {
     const result = await service.markdownToPdf('# Report');
-    const html = result.toString('utf-8');
-    expect(html).toContain('@page');
-    expect(html).toContain('font-family');
+    const pdf = result.toString('utf-8');
+    expect(pdf).toContain('/Type /Page');
+    expect(pdf).toContain('/BaseFont /Helvetica');
   });
 
-  it('escapes HTML in title', async () => {
+  it('escapes PDF control characters in content', async () => {
     const result = await service.markdownToPdf('content', {
-      title: '<script>alert("xss")</script>',
+      title: '(alert) \\ path',
     });
-    const html = result.toString('utf-8');
-    expect(html).not.toContain('<script>');
-    expect(html).toContain('&lt;script&gt;');
+    const pdf = result.toString('utf-8');
+    expect(pdf).toContain('\\(alert\\) \\\\ path');
   });
 
   it('handles empty markdown', async () => {

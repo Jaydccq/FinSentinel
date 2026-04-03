@@ -35,6 +35,7 @@ export const envSchema = z.object({
   // ── AI / LLM ─────────────────────────────────────────────────────
   OPENROUTER_API_KEY: z.string().min(1),
   AI_MODEL: z.string().default('google/gemini-3-flash-preview'),
+  AI_EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
 
   // ── Market Data ──────────────────────────────────────────────────
   POLYGON_API_KEY: z.string().min(1),
@@ -120,6 +121,12 @@ export const envSchema = z.object({
   RAG_SIMILARITY_THRESHOLD: z.coerce.number().default(0.65),
   RAG_MAX_TOP_K: z.coerce.number().default(20),
   RAG_QUERY_REWRITE_ENABLED: envBoolean.default(true),
+  RAG_REINDEX_ENABLED: envBoolean.default(true),
+  RAG_REINDEX_INTERVAL_MS: z.coerce.number().default(900000),
+  RAG_REINDEX_STARTUP_DELAY_MS: z.coerce.number().default(30000),
+  RAG_REINDEX_DOCUMENT_BATCH_SIZE: z.coerce.number().default(25),
+  RAG_REINDEX_NEWS_BATCH_SIZE: z.coerce.number().default(25),
+  RAG_REINDEX_FORCE: envBoolean.default(false),
 
   // ── Archival ──────────────────────────────────────────────────────
   ARCHIVAL_ENABLED: envBoolean.default(false),

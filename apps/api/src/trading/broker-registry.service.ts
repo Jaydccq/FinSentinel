@@ -15,7 +15,7 @@ import type { OkxTradingEngine } from '../okx/okx-trading.engine';
 /**
  * BrokerRegistry — resolves the correct IBroker for a given Contract + TradingMode.
  *
- * Mirrors the Java BrokerRegistry @Component:
+ * Broker registry and router:
  * - PAPER mode: always returns a fresh PaperBroker wrapping a new PaperTradingEngine
  * - LIVE mode: iterates cached live brokers, returns first that canHandle(contract)
  *

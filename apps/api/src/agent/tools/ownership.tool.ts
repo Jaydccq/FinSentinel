@@ -3,14 +3,14 @@ import { z } from 'zod';
 
 // TODO: wire when service exists
 interface OwnershipServiceStub {
-  getInstitutionalHolders(ticker: string): Promise<string>;
-  getInsiderTransactions(ticker: string): Promise<string>;
+  getInstitutionalHolders(ticker: string): Promise<unknown>;
+  getInsiderTransactions(ticker: string): Promise<unknown>;
 }
 
 /**
  * Ownership data tools — institutional holders and insider transactions.
  *
- * Maps to Java OwnershipTool (2 methods).
+ * Ownership-data tool surface exposed to the agent.
  */
 export function createOwnershipTools(service: OwnershipServiceStub) {
   return {
@@ -26,7 +26,11 @@ export function createOwnershipTools(service: OwnershipServiceStub) {
       }),
       execute: async ({ ticker }) => {
         try {
-          return await service.getInstitutionalHolders(ticker);
+          return JSON.stringify(
+            await service.getInstitutionalHolders(ticker),
+            null,
+            2,
+          );
         } catch (e) {
           return `Error fetching institutional holders for ${ticker}: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -45,7 +49,11 @@ export function createOwnershipTools(service: OwnershipServiceStub) {
       }),
       execute: async ({ ticker }) => {
         try {
-          return await service.getInsiderTransactions(ticker);
+          return JSON.stringify(
+            await service.getInsiderTransactions(ticker),
+            null,
+            2,
+          );
         } catch (e) {
           return `Error fetching insider transactions for ${ticker}: ${e instanceof Error ? e.message : 'unknown'}`;
         }

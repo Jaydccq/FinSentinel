@@ -171,4 +171,36 @@ export class EquityScreenerService {
 
     return results;
   }
+
+  async screenStocks(
+    sector?: string,
+    exchange?: string,
+    marketCapMin?: string,
+    marketCapMax?: string,
+    search?: string,
+    limit: number = 20,
+  ): Promise<ScreenerResult[]> {
+    return this.screenTickers({
+      sector,
+      exchange,
+      marketCapMin,
+      marketCapMax,
+      search,
+      limit,
+      sortBy: 'market_cap',
+      order: 'desc',
+    });
+  }
+
+  async searchStocks(
+    query: string,
+    limit: number = 10,
+  ): Promise<ScreenerResult[]> {
+    return this.screenTickers({
+      search: query,
+      limit,
+      sortBy: 'market_cap',
+      order: 'desc',
+    });
+  }
 }

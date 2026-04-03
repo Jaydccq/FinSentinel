@@ -17,7 +17,7 @@ interface CryptoNewsServiceStub {
  *
  * Gated by APP_CRYPTO_NEWS_ENABLED=true.
  *
- * Maps to Java CryptoNewsTool (2 methods).
+ * Crypto-news tool surface exposed to the agent.
  */
 export function createCryptoNewsTools(service: CryptoNewsServiceStub) {
   return {

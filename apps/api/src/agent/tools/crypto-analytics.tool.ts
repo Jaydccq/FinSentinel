@@ -14,7 +14,7 @@ interface CryptoAnalyticsServiceStub {
  *
  * Gated by APP_OKX_ENABLED=true.
  *
- * Maps to Java CryptoAnalyticsTool (3 methods).
+ * Crypto-analytics tool surface exposed to the agent.
  */
 export function createCryptoAnalyticsTools(
   service: CryptoAnalyticsServiceStub,

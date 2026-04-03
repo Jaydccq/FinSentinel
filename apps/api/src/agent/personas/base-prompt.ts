@@ -1,6 +1,5 @@
-// ── Shared RISEN sections (identical across all 3 personas) ─────────────────
-// Source of truth: src/main/resources/prompts/personas/{default,conservative,aggressive}.st
-// Every word preserved verbatim from the StringTemplate originals.
+// Shared RISEN sections (identical across all 3 personas).
+// The TypeScript persona modules are the source of truth.
 
 export const INSTRUCTIONS_SECTION = `## [I] Instructions — Directives & Tool Usage
 You have access to the following discrete tools and MUST use them to gather factual data before forming any assessment:

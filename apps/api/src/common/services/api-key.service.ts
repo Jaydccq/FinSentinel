@@ -31,7 +31,7 @@ export interface ApiKeyStatus {
  * uses a unique IV, ensuring identical plaintext values produce different
  * ciphertexts.
  *
- * Translates the Java `ApiKeyService` from FinSentinel Spring Boot.
+ * API-key lifecycle management for user-scoped provider credentials.
  */
 @Injectable()
 export class ApiKeyService {

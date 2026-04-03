@@ -146,6 +146,27 @@ export class OkxApiClient {
     }
   }
 
+  /** POST /api/v5/account/set-leverage — configure leverage for an instrument */
+  async setLeverage(
+    instId: string,
+    leverage: string,
+    marginMode: string,
+  ): Promise<boolean> {
+    try {
+      const response = await this.sendPost('/api/v5/account/set-leverage', {
+        instId,
+        lever: leverage,
+        mgnMode: marginMode,
+      });
+      const body = (await response.json()) as OkxResponse<unknown>;
+      this.checkOkxResponse(body);
+      return true;
+    } catch (err) {
+      this.logger.error(`Failed to set leverage for ${instId}`, err);
+      return false;
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // HMAC-SHA256 signature generation
   // ---------------------------------------------------------------------------

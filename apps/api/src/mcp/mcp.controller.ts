@@ -80,7 +80,7 @@ const MCP_TOOL_CATALOGUE: McpToolEntry[] = [
   {
     name: 'calculateTechnicalIndicators',
     description:
-      'Calculate technical indicators (RSI, MACD, Bollinger Bands, SMA, EMA) for a stock. Uses Ta4j-equivalent calculations.',
+      'Calculate technical indicators (RSI, MACD, Bollinger Bands, SMA, EMA) for a stock using the repository baseline calculations.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -201,8 +201,7 @@ export class McpController {
    * GET /mcp/tools — returns the catalogue of stateless tools available
    * for MCP clients.
    *
-   * This mirrors the Java McpToolConfig which registers 10 stateless tool
-   * classes (32 methods) via MethodToolCallbackProvider.
+   * Returns the stateless MCP tool surface exposed by the API.
    */
   @Get('tools')
   listTools(): { tools: McpToolEntry[] } {

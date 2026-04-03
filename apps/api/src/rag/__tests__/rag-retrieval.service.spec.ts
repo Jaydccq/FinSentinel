@@ -1,24 +1,34 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
-import { RagRetrievalService } from '../rag-retrieval.service';
-import type { RagSearchOptions } from '../rag-retrieval.service';
-
-// ── Mock Drizzle DB ────────────────────────────────────────────────────────
-function createMockDb() {
-  return {
-    execute: async () => ({ rows: [] }),
-  };
-}
+import { RagRetrievalService, type RagSearchOptions } from '../rag-retrieval.service';
+import { RagEmbeddingService } from '../rag-embedding.service';
+import { RagChunkStoreService } from '../rag-chunk-store.service';
+import { MetricsService } from '../../common/services/metrics.service';
 
 describe('RagRetrievalService', () => {
   let service: RagRetrievalService;
+  let mockEmbeddingService: { embedQuery: Mock };
+  let mockChunkStore: { search: Mock };
 
   beforeEach(async () => {
+    mockEmbeddingService = {
+      embedQuery: vi.fn().mockResolvedValue([1, 0]),
+    };
+
+    mockChunkStore = {
+      search: vi.fn().mockResolvedValue([]),
+    };
+
     const module = await Test.createTestingModule({
       providers: [
         RagRetrievalService,
-        { provide: 'DRIZZLE_DB', useValue: createMockDb() },
+        { provide: RagEmbeddingService, useValue: mockEmbeddingService },
+        { provide: RagChunkStoreService, useValue: mockChunkStore },
+        {
+          provide: MetricsService,
+          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn() },
+        },
         {
           provide: ConfigService,
           useValue: {
@@ -34,169 +44,102 @@ describe('RagRetrievalService', () => {
     service = module.get(RagRetrievalService);
   });
 
-  // ── Test: empty search ────────────────────────────────────────────────────
+  it('returns ranked results above the configured similarity threshold', async () => {
+    mockChunkStore.search.mockResolvedValueOnce([
+      {
+        sourceType: 'document',
+        sourceId: 'doc-1',
+        chunkIndex: 0,
+        content: 'Apple revenue grew 12% year-over-year.',
+        embedding: [1, 0],
+        metadata: { doc_type: 'SEC_FILING', source: '10-Q' },
+        similarity: 0.91,
+      },
+      {
+        sourceType: 'news',
+        sourceId: 'news-1',
+        chunkIndex: 0,
+        content: 'AAPL supply chain concern.',
+        embedding: [0.8, 0.2],
+        metadata: { doc_type: 'NEWS', source: 'POLYGON' },
+        similarity: 0.72,
+      },
+      {
+        sourceType: 'document',
+        sourceId: 'doc-2',
+        chunkIndex: 0,
+        content: 'Irrelevant low-similarity result.',
+        embedding: [0, 1],
+        metadata: { doc_type: 'RESEARCH_REPORT' },
+        similarity: 0.5,
+      },
+    ]);
 
-  it('search returns empty when no embeddings exist', async () => {
-    const results = await service.search('what is the risk of AAPL?');
+    const results = await service.search('apple revenue growth');
 
-    expect(results).toEqual([]);
-    expect(results).toHaveLength(0);
+    expect(results).toHaveLength(2);
+    expect(results[0]?.similarity).toBeGreaterThan(results[1]!.similarity);
+    expect(results[0]?.content).toContain('Apple revenue');
+    expect(results[1]?.content).toContain('supply chain');
   });
 
-  // ── Test: topK respected ──────────────────────────────────────────────────
-
-  it('search respects topK limit', async () => {
-    // With no embeddings, result is always empty, but the service
-    // should clamp topK to [1, 50] without throwing
-    const results3 = await service.search('test', 3);
-    expect(results3).toEqual([]);
-
-    const results0 = await service.search('test', 0);
-    expect(results0).toEqual([]);
-
-    const results100 = await service.search('test', 100);
-    expect(results100).toEqual([]);
-
-    // Verify threshold is configured correctly
-    expect(service.getThreshold()).toBe(0.65);
-  });
-
-  // ── Test: positional args backward-compatible ──────────────────────────
-
-  it('accepts positional arguments (backward compatible)', async () => {
-    const results = await service.search(
-      'risk assessment for AAPL',
-      10,
-      'SEC_FILING',
-      'Technology',
-      'US',
-      '2024-01-01',
-    );
-
-    expect(results).toEqual([]);
-  });
-
-  // ── Test: options object ───────────────────────────────────────────────
-
-  it('accepts RagSearchOptions object', async () => {
+  it('passes normalized filters and candidate limit to the chunk store', async () => {
     const opts: RagSearchOptions = {
       query: 'risk assessment for AAPL',
-      topK: 10,
+      topK: 3,
       docType: 'SEC_FILING',
       sector: 'Technology',
       regionId: 'US',
       afterDate: '2024-01-01',
     };
 
-    const results = await service.search(opts);
+    await service.search(opts);
 
+    expect(mockEmbeddingService.embedQuery).toHaveBeenCalledWith('risk assessment for AAPL');
+    expect(mockChunkStore.search).toHaveBeenCalledWith(
+      [1, 0],
+      expect.objectContaining({
+        docType: 'SEC_FILING',
+        sector: 'Technology',
+        regionId: 'US',
+        afterDate: '2024-01-01',
+        limit: 200,
+      }),
+    );
+  });
+
+  it('accepts positional arguments and clamps topK into range', async () => {
+    await service.search('test query', 0, 'NEWS', undefined, undefined, undefined);
+    expect(mockChunkStore.search).toHaveBeenLastCalledWith(
+      [1, 0],
+      expect.objectContaining({ docType: 'NEWS', limit: 200 }),
+    );
+
+    await service.search('test query', 1000);
+    expect(mockChunkStore.search).toHaveBeenLastCalledWith(
+      [1, 0],
+      expect.objectContaining({ limit: 1000 }),
+    );
+  });
+
+  it('returns empty when no chunk clears similarity threshold', async () => {
+    mockChunkStore.search.mockResolvedValueOnce([
+      {
+        sourceType: 'document',
+        sourceId: 'doc-1',
+        chunkIndex: 0,
+        content: 'Low-signal chunk',
+        embedding: [1, 0],
+        metadata: { doc_type: 'SEC_FILING' },
+        similarity: 0.4,
+      },
+    ]);
+
+    const results = await service.search({ query: 'anything' });
     expect(results).toEqual([]);
   });
-
-  // ── Test: partial filters ──────────────────────────────────────────────
-
-  it('handles partial metadata filters', async () => {
-    // Only docType filter
-    const r1 = await service.search({
-      query: 'earnings report',
-      docType: 'SEC_FILING',
-    });
-    expect(r1).toEqual([]);
-
-    // Only sector filter
-    const r2 = await service.search({
-      query: 'tech analysis',
-      sector: 'Technology',
-    });
-    expect(r2).toEqual([]);
-
-    // Only afterDate filter
-    const r3 = await service.search({
-      query: 'recent news',
-      afterDate: '2024-06-01',
-    });
-    expect(r3).toEqual([]);
-
-    // Only regionId filter
-    const r4 = await service.search({
-      query: 'China market',
-      regionId: 'CN',
-    });
-    expect(r4).toEqual([]);
-  });
-
-  // ── Test: no filters ───────────────────────────────────────────────────
-
-  it('works with no metadata filters', async () => {
-    const results = await service.search({ query: 'general search' });
-    expect(results).toEqual([]);
-  });
-
-  // ── Test: all filters combined ─────────────────────────────────────────
-
-  it('works with all metadata filters combined', async () => {
-    const results = await service.search({
-      query: 'quarterly earnings',
-      topK: 3,
-      docType: 'SEC_FILING',
-      sector: 'Healthcare',
-      regionId: 'US',
-      afterDate: '2024-01-01',
-    });
-
-    expect(results).toEqual([]);
-  });
-
-  // ── Test: default topK ─────────────────────────────────────────────────
-
-  it('uses default topK of 5 when not specified', async () => {
-    const results = await service.search({ query: 'test query' });
-    // Should not throw — defaults to topK=5
-    expect(results).toEqual([]);
-  });
-
-  // ── Test: topK clamping ────────────────────────────────────────────────
-
-  it('clamps topK to valid range [1, 50]', async () => {
-    // Negative topK
-    const r1 = await service.search({ query: 'test', topK: -5 });
-    expect(r1).toEqual([]);
-
-    // Zero topK
-    const r2 = await service.search({ query: 'test', topK: 0 });
-    expect(r2).toEqual([]);
-
-    // Very large topK
-    const r3 = await service.search({ query: 'test', topK: 1000 });
-    expect(r3).toEqual([]);
-  });
-
-  // ── Test: threshold ────────────────────────────────────────────────────
 
   it('reports configured similarity threshold', () => {
     expect(service.getThreshold()).toBe(0.65);
-  });
-
-  // ── Test: custom threshold from config ─────────────────────────────────
-
-  it('uses custom threshold from ConfigService', async () => {
-    const module = await Test.createTestingModule({
-      providers: [
-        RagRetrievalService,
-        { provide: 'DRIZZLE_DB', useValue: createMockDb() },
-        {
-          provide: ConfigService,
-          useValue: {
-            get: (key: string, defaultVal: unknown) => {
-              if (key === 'RAG_SIMILARITY_THRESHOLD') return 0.8;
-              return defaultVal;
-            },
-          },
-        },
-      ],
-    }).compile();
-
-    const customService = module.get(RagRetrievalService);
-    expect(customService.getThreshold()).toBe(0.8);
   });
 });

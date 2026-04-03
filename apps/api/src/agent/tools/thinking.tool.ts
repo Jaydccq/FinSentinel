@@ -7,7 +7,7 @@ import { z } from 'zod';
  * Forces the LLM to structure its reasoning before acting on investment
  * decisions. Inspired by the OpenAlice Thinking Kit pattern.
  *
- * Maps to Java ThinkingTool (4 methods).
+ * Internal thinking/planning tool surface exposed to the agent.
  */
 export function createThinkingTools() {
   return {
@@ -143,7 +143,7 @@ export function createThinkingTools() {
 }
 
 // ── Safe recursive-descent expression parser ────────────────────────────────
-// Mirrors Java ThinkingTool.ExpressionParser: numbers, +, -, *, /, (), unary -
+// Expression parser supporting numbers, +, -, *, /, (), and unary -
 
 type Token =
   | { type: 'NUMBER'; value: number }

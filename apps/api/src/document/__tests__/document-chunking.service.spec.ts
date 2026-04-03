@@ -113,7 +113,7 @@ describe('DocumentChunkingService', () => {
     if (chunks.length >= 2) {
       // The second chunk should start with some overlap from the first
       // (unless the segment is too large to fit overlap)
-      const lastCharsOfFirst = chunks[0].slice(-50);
+      const lastCharsOfFirst = chunks[0]!.slice(-50);
       // Overlap is best-effort — just verify chunks were produced
       expect(lastCharsOfFirst.length).toBe(50);
     }

@@ -25,7 +25,7 @@ const CCXT_CAPABILITIES: Set<BrokerCapability> = new Set([
  *
  * NOT an Injectable. Created by BrokerRegistry at runtime.
  *
- * Mirrors the Java CcxtBroker exactly:
+ * CCXT broker adapter:
  * - Supports CRYPTO security type only
  * - Converts contract to CCXT-native symbol via Contract.toEngineSymbol()
  *   (e.g., BTC → BTC/USDT using contract.currency)

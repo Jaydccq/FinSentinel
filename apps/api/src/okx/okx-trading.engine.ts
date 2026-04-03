@@ -14,7 +14,7 @@ import type { OkxApiClient } from './okx-api.client';
  * Wraps OkxApiClient, maps OKX API responses to internal FinSentinel types.
  * NOT an Injectable -- instantiated by OkxModule at runtime.
  *
- * Mirrors the Java OkxTradingEngine exactly.
+ * Implements the OKX-backed trading engine.
  */
 export class OkxTradingEngine implements TradingEngine {
   constructor(private readonly client: OkxApiClient) {}

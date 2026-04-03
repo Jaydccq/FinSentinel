@@ -12,7 +12,7 @@ import type {
  * Each engine handles order placement, position tracking, and account info
  * for a specific broker or simulation mode.
  *
- * Mirrors the Java `TradingEngine` interface exactly.
+ * Shared contract implemented by all trading engines.
  */
 export interface TradingEngine {
   /** Place a buy or sell order. */

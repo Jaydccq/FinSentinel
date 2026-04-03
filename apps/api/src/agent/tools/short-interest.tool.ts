@@ -8,9 +8,9 @@ interface ShortInterestServiceStub {
 }
 
 /**
- * Short interest and fails-to-deliver tools.
+ * Short-interest and fails-to-deliver tools.
  *
- * Maps to Java ShortInterestTool (2 methods).
+ * Short-interest tool surface exposed to the agent.
  */
 export function createShortInterestTools(service: ShortInterestServiceStub) {
   return {

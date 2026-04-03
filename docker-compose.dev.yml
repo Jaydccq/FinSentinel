@@ -1,5 +1,5 @@
 # Docker Compose for local TypeScript development
-# Provides PostgreSQL + pgvector and Redis only (no Java backend, no RustFS)
+# Provides PostgreSQL + pgvector and Redis only for the TypeScript app stack.
 #
 # Usage:
 #   docker compose -f docker-compose.dev.yml up -d

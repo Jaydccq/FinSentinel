@@ -465,14 +465,29 @@ export default function CryptoTradingPage() {
   }, [fetchAccount, fetchPositions, fetchFundingRates, fetchPendingOrders, fetchOrderHistory])
 
   useEffect(() => {
-    Promise.all([fetchAccount(), fetchPositions(), fetchFundingRates(), fetchPendingOrders(), fetchOrderHistory()]).finally(() =>
-      setLoading(false),
-    )
+    let cancelled = false
+
+    const loadInitialData = async () => {
+      await Promise.all([
+        fetchAccount(),
+        fetchPositions(),
+        fetchFundingRates(),
+        fetchPendingOrders(),
+        fetchOrderHistory(),
+      ])
+
+      if (!cancelled) {
+        setLoading(false)
+      }
+    }
+
+    void loadInitialData()
 
     accountTimer.current = setInterval(fetchAccount, 60_000)
     fundingTimer.current = setInterval(fetchFundingRates, 30_000)
 
     return () => {
+      cancelled = true
       if (accountTimer.current) clearInterval(accountTimer.current)
       if (fundingTimer.current) clearInterval(fundingTimer.current)
     }
@@ -888,7 +903,7 @@ export default function CryptoTradingPage() {
             </div>
           ) : !healthRunning ? (
             <p className="text-sm text-[var(--text-muted)] text-center py-4">
-              Click "Run Health Check" to analyze your crypto portfolio.
+              Click &quot;Run Health Check&quot; to analyze your crypto portfolio.
             </p>
           ) : (
             <div className="flex items-center gap-2 text-sm text-[var(--text-muted)] py-4 justify-center">

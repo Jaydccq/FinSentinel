@@ -16,6 +16,7 @@ import { DocumentModule } from '../document/document.module';
 import { StorageModule } from '../storage/storage.module';
 import { NewsModule } from '../news/news.module';
 import { ScraperModule } from '../scraper/scraper.module';
+import { CommonModule } from '../common/common.module';
 
 /**
  * BullMQ queue infrastructure module.
@@ -27,12 +28,12 @@ import { ScraperModule } from '../scraper/scraper.module';
  * - VectorizeProducer / NewsEnrichProducer — injectable services to enqueue jobs
  * - VectorizeConsumer / NewsEnrichConsumer — workers that process jobs
  *
- * Replaces the Java Redis Streams (`stream:vectorize`, `stream:news-enrich`)
+ * Uses BullMQ queues (`vectorize`, `news-enrich`)
  * with BullMQ for reliable job processing with retries, backoff, and
  * dead-letter handling.
  */
 @Module({
-  imports: [DocumentModule, StorageModule, NewsModule, ScraperModule],
+  imports: [CommonModule, DocumentModule, StorageModule, NewsModule, ScraperModule],
   providers: [
     // ── BullMQ connection (shared by all queues and workers) ──────────
     {

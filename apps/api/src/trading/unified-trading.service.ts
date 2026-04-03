@@ -90,7 +90,7 @@ interface CommitData {
 /**
  * UnifiedTradingService — core trading orchestration with stage/commit/execute lifecycle.
  *
- * Mirrors the Java UnifiedTradingService with:
+ * Provides the unified trading lifecycle with:
  * - Phase 1: Stage operations into Redis (atomic Lua append, 30-min TTL)
  * - Phase 2: Commit staged ops (SHA-256 hash, store pending, clear staging)
  * - Phase 3: Execute pending commit (resolve broker, execute, persist wallet)
@@ -592,6 +592,30 @@ export class UnifiedTradingService {
       .join('\n');
   }
 
+  async getPositions(userId: string): Promise<string> {
+    const wallet = await this.getOrCreateWallet(userId);
+    const positions = wallet.positions as PositionMap[];
+
+    if (positions.length === 0) {
+      return 'No open positions.';
+    }
+
+    return positions
+      .map(
+        (position) =>
+          `${position.ticker}: ${position.shares} shares @ $${position.avgCost.toFixed(2)} (current: $${(position.currentPrice || position.avgCost).toFixed(2)})`,
+      )
+      .join('\n');
+  }
+
+  async getStagedOrders(userId: string): Promise<string> {
+    const staged = await this.getStagingArea(userId);
+    if (staged.length === 0) {
+      return 'No staged orders.';
+    }
+    return JSON.stringify(staged, null, 2);
+  }
+
   /**
    * Structured commit log (V2CommitResponse[]).
    */
@@ -628,6 +652,39 @@ export class UnifiedTradingService {
     return this.marketDataService.searchTickers(query);
   }
 
+  async checkMarketHours(userId: string): Promise<string> {
+    const wallet = await this.getOrCreateWallet(userId);
+    const broker = this.brokerRegistry.resolve(
+      this.resolveOperationalContract(wallet),
+      wallet.tradingMode as TradingMode,
+      Number(wallet.cashBalance),
+    );
+    const clock = await broker.getMarketClock();
+
+    return [
+      `Market open: ${clock.isOpen ? 'YES' : 'NO'}`,
+      `Timestamp: ${clock.timestamp}`,
+      `Next open: ${clock.nextOpen ?? 'N/A'}`,
+      `Next close: ${clock.nextClose ?? 'N/A'}`,
+    ].join('\n');
+  }
+
+  async syncOrders(userId: string): Promise<string> {
+    const wallet = await this.getOrCreateWallet(userId);
+    const broker = this.brokerRegistry.resolve(
+      this.resolveOperationalContract(wallet),
+      wallet.tradingMode as TradingMode,
+      Number(wallet.cashBalance),
+    );
+    const results = await broker.syncOrders();
+
+    if (results.length === 0) {
+      return 'No broker order updates.';
+    }
+
+    return JSON.stringify(results, null, 2);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Private helpers
   // ═══════════════════════════════════════════════════════════════════════════
@@ -645,5 +702,26 @@ export class UnifiedTradingService {
     this.logger.log(
       `[Event] ${eventType} for user ${userId} wallet ${walletId}: ${JSON.stringify(payload)}`,
     );
+  }
+
+  private resolveOperationalContract(wallet: WalletRow): Contract {
+    const history = wallet.commitHistory as CommitData[];
+    for (let commitIndex = history.length - 1; commitIndex >= 0; commitIndex--) {
+      const operations = history[commitIndex]?.operations ?? [];
+      for (let operationIndex = operations.length - 1; operationIndex >= 0; operationIndex--) {
+        const symbol = operations[operationIndex]?.['symbol'];
+        if (typeof symbol === 'string' && symbol.trim().length > 0) {
+          return Contract.fromString(symbol);
+        }
+      }
+    }
+
+    const positions = wallet.positions as PositionMap[];
+    const firstTicker = positions.find((position) => position.ticker.trim().length > 0)?.ticker;
+    if (firstTicker) {
+      return Contract.fromString(firstTicker);
+    }
+
+    return Contract.stock('AAPL');
   }
 }

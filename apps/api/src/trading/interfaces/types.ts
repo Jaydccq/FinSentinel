@@ -1,8 +1,7 @@
 /**
  * Trading engine type definitions.
  *
- * These mirror the Java records in
- * com.example.finsentinel.service.trading.engine.*
+ * Shared trading engine types used across broker and engine implementations.
  *
  * Internal types (not API-facing), so we use plain interfaces.
  * Financial values use `string` for precision-safe serialization;

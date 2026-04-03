@@ -261,7 +261,7 @@ describe('TwitterDataService', () => {
       await service.getUserInfo('test');
 
       const callArgs = fetchMock.mock.calls[0];
-      expect(callArgs[1].headers.Authorization).toBe(`Bearer ${TOKEN}`);
+      expect(callArgs?.[1].headers.Authorization).toBe(`Bearer ${TOKEN}`);
     });
   });
 });

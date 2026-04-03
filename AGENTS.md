@@ -1,38 +1,38 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-`src/main/java/com/example/finsentinel/` is the backend root. Key packages:
-- `agent/` (AI orchestration: `advisor/`, `tool/`, `output/`)
-- `controller/`, `service/` (plus `service/scraper` and `service/storage`)
-- `security/`, `config/`, `repository/`
-- `model/` and `model/enums/`
-- `dto/` split by domain (`auth`, `chat`, `portfolio`, `risk`)
+The active workspace is a TypeScript monorepo:
+- `apps/api/`: NestJS backend root
+- `apps/web/`: Next.js frontend
+- `packages/db/`: Drizzle schema package
+- `packages/shared/`: shared Zod schemas, enums, and utils
 
-Configuration lives in `src/main/resources/application.yaml`. Tests are in `src/test/java/` and should mirror main-package structure as coverage grows.
+API source lives under `apps/api/src/` with domain packages such as `agent/`, `auth/`, `chat/`, `common/`, `config/`, `document/`, `news/`, `portfolio/`, `rag/`, `research/`, `storage/`, and `trading/`. Tests live alongside source as `*.spec.ts`. Frontend source lives under `apps/web/src/`.
 
 ## Build, Test, and Development Commands
-- `./gradlew compileJava`: compile main sources only.
-- `./gradlew bootRun`: start the Spring Boot app locally.
-- `./gradlew test`: run all JUnit tests.
-- `./gradlew clean build`: clean, compile, test, and package.
-- `./gradlew test --tests "com.example.finsentinel.service.AuthServiceTest"`: run one test class.
+- `pnpm --filter @finsentinel/api dev`: start the NestJS API locally.
+- `pnpm --filter @finsentinel/web dev`: start the Next.js frontend locally.
+- `pnpm typecheck`: run workspace type checks.
+- `pnpm test`: run workspace tests.
+- `pnpm build`: build active workspace packages.
+- `pnpm --filter @finsentinel/api test`: run API tests only.
+- `pnpm --filter @finsentinel/web lint`: lint the frontend.
 
-Use Java 21 (toolchain is configured in `build.gradle`).
+Use Node.js 22+ and pnpm 10+.
 
 ## Coding Style & Naming Conventions
-- Use 4-space indentation and standard Java formatting.
-- Package names are lowercase; classes/enums use PascalCase; methods/fields use camelCase.
-- Keep controllers thin; business logic belongs in `service/`.
-- Prefer constructor injection (`@RequiredArgsConstructor`).
-- Use `@ConfigurationProperties` for external config.
-- Keep DTOs as Java records in `dto/*`; keep persistence models in `model/*`.
+- Use 2-space indentation in JSON/YAML and the prevailing formatter output in TypeScript files.
+- Directory names are lowercase; TypeScript files use kebab-case or framework conventions; classes/types/components use PascalCase; functions/variables use camelCase.
+- Keep NestJS controllers thin; business logic belongs in services.
+- Prefer explicit types at module boundaries and shared contracts in `packages/shared`.
+- Keep runtime config in `apps/api/src/config/`.
 
 ## Testing Guidelines
-- Frameworks: JUnit 5, Spring Boot Test, Spring Security Test.
-- Test classes: `*Test`; test methods should describe behavior (example: `login_returns_token_for_valid_credentials`).
+- Frameworks: Vitest for workspace tests and NestJS test utilities in `apps/api`.
+- Test files should use `*.spec.ts` and describe behavior clearly.
 - Add tests for happy path, validation failures, and auth/security boundaries.
-- Run `./gradlew clean test` before opening a PR.
-- No enforced coverage gate currently; prioritize meaningful coverage on auth, security, and AI-agent workflows.
+- Run `pnpm typecheck` and relevant package tests before opening a PR.
+- Prioritize meaningful coverage on auth, security, trading, RAG, and AI-agent workflows.
 
 ## Commit & Pull Request Guidelines
 Local `.git` history is not available in this workspace snapshot, so follow Conventional Commits:

@@ -20,7 +20,7 @@ interface TwitterServiceStub {
  *
  * Gated by APP_TWITTER_6551_ENABLED=true.
  *
- * Maps to Java TwitterTool (4 methods).
+ * Twitter/X social-intelligence tool surface exposed to the agent.
  */
 export function createTwitterTools(service: TwitterServiceStub) {
   return {
