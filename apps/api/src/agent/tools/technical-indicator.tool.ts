@@ -5,7 +5,7 @@ import type { TechnicalIndicatorsService } from '../../market/technical-indicato
 /**
  * Technical indicator tools — fully wired to TechnicalIndicatorsService.
  *
- * Maps to Java TechnicalIndicatorTool (9 methods).
+ * Technical-indicator tool surface exposed to the agent.
  */
 export function createTechnicalIndicatorTools(
   technicalIndicatorsService: TechnicalIndicatorsService,

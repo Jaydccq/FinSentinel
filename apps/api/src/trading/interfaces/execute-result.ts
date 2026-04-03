@@ -1,7 +1,7 @@
 /**
  * Result of executing a pending commit.
  *
- * Mirrors the Java `ExecuteResult` record from UnifiedTradingService.
+ * Result shape returned after executing a pending commit.
  * Contains a human-readable report, the raw commit data, and per-operation results.
  */
 export interface ExecuteResult {

@@ -22,7 +22,7 @@ interface UnifiedTradingServiceStub {
  *
  * userId is injected via closure (factory param), NOT as a tool parameter.
  *
- * Maps to Java UnifiedTradingTool (11 methods).
+ * Unified trading tool surface exposed to the agent.
  */
 export function createUnifiedTradingTools(
   service: UnifiedTradingServiceStub,

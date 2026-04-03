@@ -11,7 +11,7 @@ import type {
 /**
  * Contract-aware broker abstraction.
  *
- * Mirrors the Java `IBroker` interface from the UTA (Unified Trading Architecture).
+ * Contract-aware broker abstraction used by the unified trading layer.
  * Each broker adapter (Paper, Alpaca, OKX, CCXT) implements this interface.
  *
  * Key difference from TradingEngine: IBroker is Contract-aware and converts

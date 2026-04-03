@@ -3,11 +3,17 @@ import { Test } from '@nestjs/testing';
 import { ToolRegistry } from '../tool-registry';
 import { MarketDataService } from '../../market/market-data.service';
 import { TechnicalIndicatorsService } from '../../market/technical-indicators.service';
+import { NewsAnalysisService } from '../news-analysis.service';
+import { TwitterToolsService } from '../twitter-tools.service';
+import { CryptoToolsService } from '../crypto-tools.service';
 
 describe('ToolRegistry', () => {
   let registry: ToolRegistry;
   let mockMarketDataService: Partial<MarketDataService>;
   let mockTechnicalIndicatorsService: Partial<TechnicalIndicatorsService>;
+  let mockNewsAnalysisService: Partial<NewsAnalysisService>;
+  let mockTwitterToolsService: Partial<TwitterToolsService>;
+  let mockCryptoToolsService: Partial<CryptoToolsService>;
 
   beforeEach(async () => {
     mockMarketDataService = {
@@ -28,11 +34,34 @@ describe('ToolRegistry', () => {
       calculateOBV: vi.fn(),
     };
 
+    mockNewsAnalysisService = {
+      getRecentNews: vi.fn(),
+      searchKnowledgeBase: vi.fn(),
+    };
+
+    mockTwitterToolsService = {
+      getTwitterProfile: vi.fn(),
+      searchTweets: vi.fn(),
+      getUserTweets: vi.fn(),
+      getKolFollowers: vi.fn(),
+    };
+
+    mockCryptoToolsService = {
+      getCryptoNews: vi.fn(),
+      getCryptoNewsBySignal: vi.fn(),
+      getFundingRate: vi.fn(),
+      analyzePosition: vi.fn(),
+      setLeverage: vi.fn(),
+    };
+
     const module = await Test.createTestingModule({
       providers: [
         ToolRegistry,
         { provide: MarketDataService, useValue: mockMarketDataService },
         { provide: TechnicalIndicatorsService, useValue: mockTechnicalIndicatorsService },
+        { provide: NewsAnalysisService, useValue: mockNewsAnalysisService },
+        { provide: TwitterToolsService, useValue: mockTwitterToolsService },
+        { provide: CryptoToolsService, useValue: mockCryptoToolsService },
       ],
     }).compile();
 
@@ -69,6 +98,20 @@ describe('ToolRegistry', () => {
 
       // Confirmation tool (from createConfirmationTools — always included)
       expect(keys).toContain('getConfirm');
+
+      // News + RAG
+      expect(keys).toContain('getRecentNews');
+      expect(keys).toContain('searchKnowledgeBase');
+
+      // Twitter / crypto-social
+      expect(keys).toContain('getTwitterProfile');
+      expect(keys).toContain('searchTweets');
+      expect(keys).toContain('getCryptoNews');
+
+      // OKX crypto analytics
+      expect(keys).toContain('getFundingRate');
+      expect(keys).toContain('analyzePosition');
+      expect(keys).toContain('setLeverage');
     });
 
     it('tools have correct structure (description, inputSchema, execute)', () => {

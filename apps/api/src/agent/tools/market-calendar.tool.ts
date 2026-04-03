@@ -3,16 +3,16 @@ import { z } from 'zod';
 
 // TODO: wire when service exists
 interface MarketCalendarServiceStub {
-  getUpcomingEarnings(ticker: string): Promise<string>;
-  getDividendHistory(ticker: string): Promise<string>;
-  getSplitHistory(ticker: string): Promise<string>;
-  getIPOCalendar(): Promise<string>;
+  getUpcomingEarnings(ticker: string): Promise<unknown>;
+  getDividendHistory(ticker: string): Promise<unknown>;
+  getSplitHistory(ticker: string): Promise<unknown>;
+  getIPOCalendar(): Promise<unknown>;
 }
 
 /**
  * Market calendar tools — earnings, dividends, splits, IPOs.
  *
- * Maps to Java MarketCalendarTool (4 methods).
+ * Market-calendar tool surface exposed to the agent.
  */
 export function createMarketCalendarTools(
   service: MarketCalendarServiceStub,
@@ -30,7 +30,7 @@ export function createMarketCalendarTools(
       }),
       execute: async ({ ticker }) => {
         try {
-          return await service.getUpcomingEarnings(ticker);
+          return JSON.stringify(await service.getUpcomingEarnings(ticker), null, 2);
         } catch (e) {
           return `Error fetching earnings for ${ticker}: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -49,7 +49,7 @@ export function createMarketCalendarTools(
       }),
       execute: async ({ ticker }) => {
         try {
-          return await service.getDividendHistory(ticker);
+          return JSON.stringify(await service.getDividendHistory(ticker), null, 2);
         } catch (e) {
           return `Error fetching dividend history for ${ticker}: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -67,7 +67,7 @@ export function createMarketCalendarTools(
       }),
       execute: async ({ ticker }) => {
         try {
-          return await service.getSplitHistory(ticker);
+          return JSON.stringify(await service.getSplitHistory(ticker), null, 2);
         } catch (e) {
           return `Error fetching split history for ${ticker}: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -81,7 +81,7 @@ export function createMarketCalendarTools(
       inputSchema: z.object({}),
       execute: async () => {
         try {
-          return await service.getIPOCalendar();
+          return JSON.stringify(await service.getIPOCalendar(), null, 2);
         } catch (e) {
           return `Error fetching IPO calendar: ${e instanceof Error ? e.message : 'unknown'}`;
         }

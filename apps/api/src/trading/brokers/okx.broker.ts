@@ -26,7 +26,7 @@ const OKX_CAPABILITIES: Set<BrokerCapability> = new Set([
  *
  * NOT an Injectable. Created by BrokerRegistry at runtime.
  *
- * Mirrors the Java OkxBroker exactly:
+ * OKX broker adapter:
  * - Supports PERP and FUTURE security types
  * - Converts contract to engine-native symbol via Contract.toEngineSymbol()
  * - Delegates all operations to the underlying OkxTradingEngine

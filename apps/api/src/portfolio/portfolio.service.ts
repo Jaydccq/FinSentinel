@@ -365,6 +365,14 @@ export class PortfolioService {
     };
   }
 
+  async analyzePortfolio(
+    userId: string,
+    portfolioId: string,
+  ): Promise<string> {
+    const analytics = await this.getPortfolioAnalytics(userId, portfolioId);
+    return JSON.stringify(analytics, null, 2);
+  }
+
   // ── Reports ───────────────────────────────────────────────────────────
 
   async getReports(userId: string, portfolioId: string) {

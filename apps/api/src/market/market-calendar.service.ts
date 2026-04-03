@@ -86,4 +86,32 @@ export class MarketCalendarService {
       params,
     );
   }
+
+  async getUpcomingEarnings(ticker: string): Promise<unknown> {
+    return this.openbb.queryPublicData(
+      'equity/calendar/earnings',
+      undefined,
+      { symbol: ticker.toUpperCase() },
+    );
+  }
+
+  async getDividendHistory(ticker: string): Promise<unknown> {
+    return this.openbb.queryPublicData(
+      'equity/calendar/dividend',
+      undefined,
+      { symbol: ticker.toUpperCase() },
+    );
+  }
+
+  async getSplitHistory(ticker: string): Promise<unknown> {
+    return this.openbb.queryPublicData(
+      'equity/calendar/splits',
+      undefined,
+      { symbol: ticker.toUpperCase() },
+    );
+  }
+
+  async getIPOCalendar(): Promise<string> {
+    return 'IPO calendar is not available from the current OpenBB-backed market calendar service.';
+  }
 }

@@ -68,4 +68,24 @@ export class HeartbeatService {
 
     return updated;
   }
+
+  async configureHeartbeat(
+    userId: string,
+    enabled: boolean,
+    intervalSeconds: number,
+    drawdownAlertPct: number,
+  ): Promise<string> {
+    const updated = await this.updateConfig(userId, {
+      enabled,
+      intervalSeconds,
+      drawdownAlertPct: drawdownAlertPct.toFixed(2),
+    });
+
+    return `Heartbeat ${updated.enabled ? 'enabled' : 'disabled'} at ${updated.intervalSeconds}s with ${updated.drawdownAlertPct}% drawdown alert.`;
+  }
+
+  async getHeartbeatConfig(userId: string): Promise<string> {
+    const config = await this.getOrCreateConfig(userId);
+    return JSON.stringify(config, null, 2);
+  }
 }

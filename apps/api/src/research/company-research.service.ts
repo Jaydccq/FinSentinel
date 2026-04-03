@@ -128,4 +128,15 @@ export class CompanyResearchService {
 
     return consensus;
   }
+
+  async getFinancialStatements(
+    ticker: string,
+    periods: number,
+  ): Promise<FinancialMetrics[]> {
+    return this.getFinancialMetrics(ticker, periods);
+  }
+
+  async getAnalystRating(ticker: string): Promise<AnalystConsensus> {
+    return this.getAnalystConsensus(ticker);
+  }
 }

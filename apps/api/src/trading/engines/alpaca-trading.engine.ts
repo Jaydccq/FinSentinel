@@ -15,7 +15,7 @@ import type {
  *
  * Default base URL targets the Alpaca paper-trading sandbox.
  *
- * Mirrors the Java AlpacaTradingEngine exactly.
+ * Implements the Alpaca-backed trading engine.
  */
 export class AlpacaTradingEngine implements TradingEngine {
   private static readonly DEFAULT_BASE_URL =
@@ -78,7 +78,7 @@ export class AlpacaTradingEngine implements TradingEngine {
         costBasis: node['cost_basis'],
       }));
     } catch (err: unknown) {
-      // Log and return empty on failure, matching Java behavior
+      // Return an empty result set on fetch failure.
       return [];
     }
   }

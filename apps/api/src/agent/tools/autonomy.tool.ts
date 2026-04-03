@@ -32,7 +32,7 @@ interface AgentHeartbeatServiceStub {
  *
  * userId is injected via closure (factory param), NOT as a tool parameter.
  *
- * Maps to Java AutonomyTool (7 methods).
+ * Autonomy-management tool surface exposed to the agent.
  */
 export function createAutonomyTools(
   scheduleService: AgentScheduleServiceStub,

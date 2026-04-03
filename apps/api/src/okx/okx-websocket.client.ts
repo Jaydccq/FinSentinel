@@ -21,7 +21,7 @@ export type WsFactory = (url: string) => WsLike;
 /**
  * OKX WebSocket client with dual channels (public + private) and auto-reconnect.
  *
- * Mirrors Java OkxWebSocketClient:
+ * Behavior:
  * - Public channel: real-time ticker feeds (no auth)
  * - Private channel: positions, orders, account updates (HMAC auth)
  * - Auto-reconnect with exponential backoff (1s, 2s, 4s, 8s, max 30s)

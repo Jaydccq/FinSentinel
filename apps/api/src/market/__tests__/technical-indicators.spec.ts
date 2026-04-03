@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TechnicalIndicatorsService } from '../technical-indicators.service';
 
-// ── Golden Baseline Data (30 OHLCV bars, AAPL-like 170-188) ─────────────────
-// Source: Java Ta4j output — this is the SPEC.
+// Golden baseline data (30 OHLCV bars, AAPL-like 170-188).
+// This fixed dataset is the parity reference for indicator outputs.
 const SAMPLE_BARS = [
   { o: 170.0, h: 172.0, l: 169.0, c: 171.5, v: 50000000, t: 1706745600000 },
   { o: 171.5, h: 173.0, l: 170.5, c: 172.0, v: 48000000, t: 1706832000000 },
@@ -38,7 +38,7 @@ const SAMPLE_BARS = [
 
 const SAMPLE_BARS_JSON = JSON.stringify(SAMPLE_BARS);
 
-// ── Golden Baseline Expected Values (from Java Ta4j) ─────────────────────────
+// Golden baseline expected values.
 const GOLDEN = {
   rsi14: 93.42,
   macd: { macdLine: 1.0368, signalLine: 1.0236, histogram: 0.0132 },
@@ -51,9 +51,9 @@ const GOLDEN = {
   obv: 1273000000,
 };
 
-// ── Tolerances ───────────────────────────────────────────────────────────────
+// Tolerances.
 // Different TA libraries may use slightly different smoothing algorithms.
-// Ta4j uses Wilder's smoothing for RSI; technicalindicators may differ.
+// RSI in particular can vary slightly across implementations.
 const TOL = {
   RSI: 1.0,
   MACD: 0.1,

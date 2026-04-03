@@ -13,7 +13,7 @@ interface QuantAnalysisServiceStub {
  * Quantitative risk analytics tools — return distributions, VaR, volatility,
  * and cross-asset correlation.
  *
- * Maps to Java QuantAnalysisTool (4 methods).
+ * Quant-analysis tool surface exposed to the agent.
  */
 export function createQuantAnalysisTools(service: QuantAnalysisServiceStub) {
   return {

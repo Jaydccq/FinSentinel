@@ -40,7 +40,7 @@ const PAPER_CAPABILITIES: Set<BrokerCapability> = new Set([
  *
  * NOT an Injectable. Created by BrokerRegistry at runtime.
  *
- * Mirrors the Java PaperBroker exactly:
+ * Paper broker adapter:
  * - Converts crypto/perp contracts to Polygon format: "X:{symbol}{currency}"
  * - Delegates all operations to the underlying PaperTradingEngine
  */

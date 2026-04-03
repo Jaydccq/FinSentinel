@@ -4,7 +4,7 @@ import { OpenbbPublicDataService } from './openbb-public.service';
 /**
  * Default business-level route configuration for macro data queries.
  *
- * Mirrors the Java OpenbbProperties.Business class defaults.
+ * Business-facing OpenBB defaults and route helpers.
  */
 const BUSINESS_DEFAULTS = {
   macroProvider: 'fred',

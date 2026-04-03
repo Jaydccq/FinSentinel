@@ -111,7 +111,16 @@ describe('UnifiedTradingService', () => {
     mockDb = createMockDb();
     mockMarketData = createMockMarketDataService();
 
-    const brokerRegistry = new BrokerRegistry(mockMarketData);
+    const brokerRegistry = new BrokerRegistry(
+      mockMarketData,
+      {
+        enabled: false,
+        apiKey: '',
+        secretKey: '',
+        baseUrl: '',
+      },
+      null,
+    );
 
     const module = await Test.createTestingModule({
       providers: [

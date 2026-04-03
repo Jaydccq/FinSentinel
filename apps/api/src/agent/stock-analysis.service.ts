@@ -20,7 +20,7 @@ Always cite specific numbers from tool results. Never fabricate data.`;
  * Uses a reduced tool set (market data + technical indicators) and a
  * simpler prompt without persona injection or user profile context.
  *
- * Maps to the Java secondary ChatClient configuration.
+ * This is the lightweight stock-analysis agent configuration.
  */
 @Injectable()
 export class StockAnalysisService {

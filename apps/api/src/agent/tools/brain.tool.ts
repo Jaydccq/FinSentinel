@@ -15,7 +15,7 @@ interface AgentBrainServiceStub {
  *
  * userId is injected via closure (factory param), NOT as a tool parameter.
  *
- * Maps to Java BrainTool (5 methods).
+ * Brain-state tool surface exposed to the agent.
  */
 export function createBrainTools(
   service: AgentBrainServiceStub,

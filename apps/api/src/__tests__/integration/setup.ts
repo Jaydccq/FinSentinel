@@ -11,6 +11,7 @@ process.env['JWT_EXPIRATION'] = '86400000';
 process.env['OPENROUTER_API_KEY'] = 'test-openrouter-key';
 process.env['AI_MODEL'] = 'test/model';
 process.env['POLYGON_API_KEY'] = 'test-polygon-key';
+process.env['ENCRYPTION_AES_KEY'] = Buffer.alloc(32, 7).toString('base64');
 process.env['APP_TRADING_DEFAULT_MODE'] = 'PAPER';
 process.env['APP_AGENT_PERSONA'] = 'default';
 process.env['APP_CRYPTO_NEWS_ENABLED'] = 'false';

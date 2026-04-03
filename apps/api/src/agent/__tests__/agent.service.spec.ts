@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { AgentService } from '../agent.service';
 import { ToolRegistry } from '../tool-registry';
+import { UserInvestmentProfileService } from '../user-investment-profile.service';
 import { aiConfig } from '../../config/ai.config';
 import { personaConfig } from '../../config/persona.config';
 
@@ -24,6 +25,9 @@ describe('AgentService', () => {
     buildTools: Mock;
     buildStockAnalysisTools: Mock;
   };
+  let mockUserInvestmentProfileService: {
+    getProfileSummary: Mock;
+  };
 
   const mockTools = { getStockQuote: { execute: vi.fn() } };
 
@@ -33,6 +37,9 @@ describe('AgentService', () => {
     mockToolRegistry = {
       buildTools: vi.fn().mockReturnValue(mockTools),
       buildStockAnalysisTools: vi.fn().mockReturnValue(mockTools),
+    };
+    mockUserInvestmentProfileService = {
+      getProfileSummary: vi.fn().mockResolvedValue('Risk tolerance: MODERATE'),
     };
 
     // Default mock: streamText returns a result with a textStream
@@ -54,6 +61,10 @@ describe('AgentService', () => {
       providers: [
         AgentService,
         { provide: ToolRegistry, useValue: mockToolRegistry },
+        {
+          provide: UserInvestmentProfileService,
+          useValue: mockUserInvestmentProfileService,
+        },
         { provide: aiConfig.KEY, useValue: { openrouterApiKey: 'test-key', model: 'google/gemini-3-flash-preview' } },
         { provide: personaConfig.KEY, useValue: { active: 'default' } },
       ],
@@ -79,12 +90,15 @@ describe('AgentService', () => {
       expect(mockStreamText).toHaveBeenCalledTimes(1);
       const callArgs = mockStreamText.mock.calls[0]![0];
       expect(callArgs.system).toBeDefined();
+      expect(callArgs.system).toContain('Risk tolerance: MODERATE');
       // Persona prompt should be included (default persona has RISEN sections)
       expect(callArgs.system).toContain('[R] Role');
       expect(callArgs.system).toContain('[I] Instructions');
     });
 
     it('composes system prompt without profile (new user)', async () => {
+      mockUserInvestmentProfileService.getProfileSummary.mockResolvedValueOnce('');
+
       const stream = await service.streamChat(
         'Analyze AAPL risk',
         'new-user',
@@ -97,6 +111,7 @@ describe('AgentService', () => {
       const callArgs = mockStreamText.mock.calls[0]![0];
       // Even without a profile, the persona prompt should be present
       expect(callArgs.system).toContain('[R] Role');
+      expect(callArgs.system).not.toContain('Risk tolerance: MODERATE');
     });
   });
 

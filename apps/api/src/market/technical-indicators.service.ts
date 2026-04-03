@@ -9,7 +9,7 @@ import {
   Stochastic,
 } from 'technicalindicators';
 
-/** OHLCV bar shape matching the Java DTO: {o, h, l, c, v, t}. */
+/** OHLCV bar shape used by the technical-indicators service: {o, h, l, c, v, t}. */
 interface Bar {
   o: number;
   h: number;
@@ -28,10 +28,10 @@ function last<T>(arr: T[]): T {
 /**
  * 9 technical indicators calculated in TypeScript using the `technicalindicators`
  * npm package. Each method accepts a JSON string of OHLCV bars and returns a
- * human-readable formatted string matching the Java Ta4j output format.
+ * human-readable formatted string for agent and API consumers.
  *
- * Golden baseline parity is validated against Java Ta4j output — see the
- * companion spec file for tolerance thresholds.
+ * Golden baseline parity is validated against a fixed reference dataset — see
+ * the companion spec file for tolerance thresholds.
  */
 @Injectable()
 export class TechnicalIndicatorsService {
@@ -78,8 +78,8 @@ export class TechnicalIndicatorsService {
       fastPeriod,
       slowPeriod,
       signalPeriod,
-      SimpleMAOscillator: false, // Use EMA (matches Ta4j default)
-      SimpleMASignal: false, // Use EMA for signal line (matches Ta4j default)
+      SimpleMAOscillator: false, // Use EMA for the oscillator
+      SimpleMASignal: false, // Use EMA for the signal line
     });
 
     const latest = last(macdResult);
@@ -124,7 +124,6 @@ export class TechnicalIndicatorsService {
     // %B = (Price - Lower) / (Upper - Lower)
     const percentB = (currentClose - lower) / (upper - lower);
     // Band Width as percentage: (Upper - Lower) / Middle * 100
-    // This matches Java Ta4j BandWidthIndicator output format
     const bandWidth = ((upper - lower) / middle) * 100;
 
     return [
@@ -254,18 +253,18 @@ export class TechnicalIndicatorsService {
       return `Insufficient data: need at least ${2 * period} bars, got ${bars.length}`;
     }
 
-    // Manual ADX implementation matching Ta4j's exact algorithm.
+    // Manual ADX implementation matching the repository's established baseline.
     //
-    // Ta4j uses MMAIndicator (Modified Moving Average = EMA with alpha = 1/period)
-    // applied from bar 0 with no SMA seed. Key differences from standard Wilder:
+    // The baseline uses a modified moving average with alpha = 1/period applied
+    // from bar 0 with no SMA seed. Key differences from a standard Wilder seed:
     //   1. Bar 0: TR = high - low, +DM = 0, -DM = 0
-    //   2. MMA starts from bar 0 value (not SMA of first N values)
+    //   2. MMA starts from bar 0 value
     //   3. DX computed per-bar from smoothed DI values
     //   4. ADX = MMA(DX) also starts from bar 0's DX value
     //
-    // The `technicalindicators` library uses the Wilder SUM-then-smooth approach
-    // which diverges >12% from Ta4j on short datasets (30 bars, period 14).
-    const { adx: adxValue, plusDI, minusDI } = this.computeADX_Ta4j(bars, period);
+    // The `technicalindicators` library uses a different seeding approach, which
+    // diverges materially on short datasets (30 bars, period 14).
+    const { adx: adxValue, plusDI, minusDI } = this.computeAdxBaseline(bars, period);
 
     const trendStrength = this.classifyADX(adxValue);
     const trendDirection = plusDI > minusDI ? 'Bullish' : 'Bearish';
@@ -281,21 +280,21 @@ export class TechnicalIndicatorsService {
   }
 
   /**
-   * Compute ADX, +DI, -DI matching Ta4j's exact algorithm.
+   * Compute ADX, +DI, -DI matching the repository's baseline algorithm.
    *
-   * Ta4j chain: ADXIndicator -> MMAIndicator(DXIndicator, period)
-   *   DXIndicator -> |+DI - -DI| / (+DI + -DI) * 100
+   * Chain:
+   *   DX -> |+DI - -DI| / (+DI + -DI) * 100
    *   +DI = MMA(+DM, period) / MMA(TR, period) * 100
-   *   MMA = EMA with multiplier = 1/period, seeded from bar 0 value (no SMA)
+   *   MMA = EMA with multiplier = 1/period, seeded from bar 0 value
    */
-  private computeADX_Ta4j(
+  private computeAdxBaseline(
     bars: Bar[],
     period: number,
   ): { adx: number; plusDI: number; minusDI: number } {
     const alpha = 1.0 / period;
     const n = bars.length;
 
-    // Bar 0: TR = high - low, +DM = 0, -DM = 0 (Ta4j convention)
+    // Bar 0: TR = high - low, +DM = 0, -DM = 0.
     const tr: number[] = [bars[0]!.h - bars[0]!.l];
     const pdm: number[] = [0];
     const mdm: number[] = [0];
@@ -319,7 +318,7 @@ export class TechnicalIndicatorsService {
       mdm.push(downMove > upMove && downMove > 0 ? downMove : 0);
     }
 
-    // Pure EMA (MMA) from bar 0 -- no SMA seed
+    // Pure EMA (MMA) from bar 0 with no SMA seed.
     const sTR = this.wilderMma(tr, alpha);
     const sPDM = this.wilderMma(pdm, alpha);
     const sMDM = this.wilderMma(mdm, alpha);
@@ -368,8 +367,8 @@ export class TechnicalIndicatorsService {
       return `Insufficient data: need at least 2 bars, got ${bars.length}`;
     }
 
-    // Manual OBV calculation matching Ta4j behavior:
-    // Ta4j starts OBV with the first bar's volume, then accumulates.
+    // Manual OBV calculation using the repository baseline:
+    // start with the first bar's volume, then accumulate.
     // The `technicalindicators` library skips the first bar (starts at 0),
     // so we implement manually for exact parity.
     let obv = bars[0]!.v;

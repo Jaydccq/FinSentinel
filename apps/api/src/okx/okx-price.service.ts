@@ -7,7 +7,7 @@ import type { OkxTicker } from './interfaces/okx-types';
  * Provides fast last-price lookups from cached ticker data.
  * Tickers are updated by external sources (WebSocket feeds, polling, etc.).
  *
- * Mirrors the Java OkxPriceService exactly.
+ * Provides cached OKX ticker lookups for downstream services.
  */
 @Injectable()
 export class OkxPriceService {

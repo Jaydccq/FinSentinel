@@ -138,8 +138,7 @@ export const marketHoursResponseSchema = z.object({
 export type MarketHoursResponse = z.infer<typeof marketHoursResponseSchema>;
 
 // ── Trading Engine DTOs ────────────────────────────────────────────────────
-// Zod schemas for trading engine types, mirroring the Java records in
-// com.example.finsentinel.service.trading.engine.*
+// Zod schemas for trading engine request/response types.
 
 // --- OrderRequest ---
 export const orderRequestSchema = z.object({

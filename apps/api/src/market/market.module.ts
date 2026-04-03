@@ -17,6 +17,12 @@ import { OwnershipDataService } from './ownership-data.service';
 import { MarketDataController } from './market-data.controller';
 import type { MarketDataProvider } from './interfaces/market-data-provider';
 
+function isMarketDataProvider(
+  provider: MarketDataProvider | null,
+): provider is MarketDataProvider {
+  return provider !== null;
+}
+
 /**
  * Market module — Phase 3 data providers + Phase 12 controller.
  *
@@ -68,13 +74,11 @@ import type { MarketDataProvider } from './interfaces/market-data-provider';
     {
       provide: 'MARKET_DATA_PROVIDERS',
       useFactory: (
-        polygon: PolygonMarketDataProvider,
-        fmp: FmpMarketDataProvider | null,
-        yahoo: YahooFinanceMarketDataProvider | null,
+        polygon: MarketDataProvider,
+        fmp: MarketDataProvider | null,
+        yahoo: MarketDataProvider | null,
       ): MarketDataProvider[] =>
-        [polygon, fmp, yahoo].filter(
-          (p): p is MarketDataProvider => p != null,
-        ),
+        [polygon, fmp, yahoo].filter(isMarketDataProvider),
       inject: [
         PolygonMarketDataProvider,
         FmpMarketDataProvider,

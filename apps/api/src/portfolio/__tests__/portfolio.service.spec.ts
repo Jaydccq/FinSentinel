@@ -26,8 +26,12 @@ function createMockDb() {
   // Queue of results: each db.select() call consumes the next entry
   const selectResults: unknown[][] = [];
 
-  function makeSelectChain(): Record<string, ReturnType<typeof vi.fn>> {
-    const chain: Record<string, ReturnType<typeof vi.fn>> = {
+  function makeSelectChain(): {
+    from: ReturnType<typeof vi.fn>;
+    where: ReturnType<typeof vi.fn>;
+    limit: ReturnType<typeof vi.fn>;
+  } {
+    const chain = {
       from: vi.fn(),
       where: vi.fn(),
       limit: vi.fn(),

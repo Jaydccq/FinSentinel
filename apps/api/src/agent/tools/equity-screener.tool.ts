@@ -10,15 +10,15 @@ interface EquityScreenerServiceStub {
     marketCapMax?: string,
     search?: string,
     limit?: number,
-  ): Promise<string>;
-  getMarketMovers(type: string): Promise<string>;
-  searchStocks(query: string, limit: number): Promise<string>;
+  ): Promise<unknown>;
+  getMarketMovers(type: string): Promise<unknown>;
+  searchStocks(query: string, limit: number): Promise<unknown>;
 }
 
 /**
  * Equity discovery and screening tools — stock screener, market movers, search.
  *
- * Maps to Java EquityScreenerTool (3 methods).
+ * Equity-screener tool surface exposed to the agent.
  */
 export function createEquityScreenerTools(
   service: EquityScreenerServiceStub,
@@ -76,13 +76,17 @@ export function createEquityScreenerTools(
         limit,
       }) => {
         try {
-          return await service.screenStocks(
-            sector,
-            exchange,
-            marketCapMin,
-            marketCapMax,
-            search,
-            limit ?? 20,
+          return JSON.stringify(
+            await service.screenStocks(
+              sector,
+              exchange,
+              marketCapMin,
+              marketCapMax,
+              search,
+              limit ?? 20,
+            ),
+            null,
+            2,
           );
         } catch (e) {
           return `Error screening stocks: ${e instanceof Error ? e.message : 'unknown'}`;
@@ -106,7 +110,7 @@ export function createEquityScreenerTools(
       }),
       execute: async ({ type }) => {
         try {
-          return await service.getMarketMovers(type);
+          return JSON.stringify(await service.getMarketMovers(type), null, 2);
         } catch (e) {
           return `Error fetching market movers: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -135,7 +139,11 @@ export function createEquityScreenerTools(
       }),
       execute: async ({ query, limit }) => {
         try {
-          return await service.searchStocks(query, limit ?? 10);
+          return JSON.stringify(
+            await service.searchStocks(query, limit ?? 10),
+            null,
+            2,
+          );
         } catch (e) {
           return `Error searching for stocks: ${e instanceof Error ? e.message : 'unknown'}`;
         }

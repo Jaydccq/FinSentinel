@@ -25,7 +25,7 @@ const ALPACA_CAPABILITIES: Set<BrokerCapability> = new Set([
  *
  * NOT an Injectable. Created by BrokerRegistry at runtime.
  *
- * Mirrors the Java AlpacaBroker exactly:
+ * Alpaca broker adapter:
  * - Supports STOCK security type only
  * - Converts contract to engine-native symbol via Contract.toEngineSymbol()
  * - Delegates all operations to the underlying AlpacaTradingEngine

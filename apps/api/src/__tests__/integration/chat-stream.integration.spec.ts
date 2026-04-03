@@ -8,7 +8,7 @@
  * 1. Auth enforcement on chat endpoints
  * 2. SSE headers are set correctly
  * 3. Response content-type is text/event-stream
- * 4. Stub endpoints return expected shapes
+ * 4. Non-streaming endpoints return persisted chat data / risk report shapes
  *
  * The actual AI streaming is tested via the AgentService unit tests.
  * Here we focus on the controller → service wiring and HTTP contract.
@@ -66,7 +66,7 @@ describe('Chat Stream (integration)', () => {
   });
 
   // ═══════════════════════════════════════════════════════════════════════
-  // Stub endpoints (non-streaming)
+  // Non-streaming endpoints
   // ═══════════════════════════════════════════════════════════════════════
 
   it('GET /chat/sessions returns empty array for new user', async () => {
@@ -79,9 +79,9 @@ describe('Chat Stream (integration)', () => {
     expect(res.body).toHaveLength(0);
   });
 
-  it('GET /chat/sessions/:sessionId returns empty array (stub)', async () => {
+  it('GET /chat/sessions/:sessionId returns empty array for an unknown session', async () => {
     const res = await request(app.getHttpServer())
-      .get('/api/chat/sessions/some-uuid')
+      .get('/api/chat/sessions/11111111-1111-1111-1111-111111111111')
       .set('Authorization', `Bearer ${authToken}`)
       .expect(200);
 
@@ -89,15 +89,17 @@ describe('Chat Stream (integration)', () => {
     expect(res.body).toHaveLength(0);
   });
 
-  it('POST /chat/assess returns stub risk report', async () => {
+  it('POST /chat/assess returns a generated risk report', async () => {
     const res = await request(app.getHttpServer())
       .post('/api/chat/assess')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ message: 'Analyze AAPL risk' })
       .expect(200);
 
-    expect(res.body).toHaveProperty('riskScore', 0);
-    expect(res.body).toHaveProperty('riskLevel', 'UNKNOWN');
+    expect(res.body).toHaveProperty('riskScore');
+    expect(typeof res.body.riskScore).toBe('number');
+    expect(res.body.riskScore).toBeGreaterThan(0);
+    expect(res.body).toHaveProperty('riskLevel');
     expect(res.body).toHaveProperty('summary');
     expect(res.body).toHaveProperty('factors');
     expect(res.body).toHaveProperty('actionableAdvice');

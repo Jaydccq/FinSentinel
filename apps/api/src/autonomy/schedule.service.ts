@@ -162,4 +162,48 @@ export class ScheduleService {
       .delete(agentSchedules)
       .where(eq(agentSchedules.id, scheduleId));
   }
+
+  async createCronTask(
+    userId: string,
+    name: string,
+    cronExpression: string,
+    taskType: string,
+    payloadJson?: string,
+  ): Promise<string> {
+    const payload = payloadJson
+      ? (JSON.parse(payloadJson) as Record<string, unknown>)
+      : {};
+    const created = await this.create(
+      userId,
+      name,
+      cronExpression,
+      taskType,
+      payload,
+      true,
+    );
+    return `Created cron task ${created.id} (${created.name}).`;
+  }
+
+  async listCronTasks(userId: string): Promise<string> {
+    const schedules = await this.listByUser(userId);
+    if (schedules.length === 0) {
+      return 'No cron tasks configured.';
+    }
+    return JSON.stringify(schedules, null, 2);
+  }
+
+  async pauseCronTask(userId: string, scheduleId: string): Promise<string> {
+    await this.pause(userId, scheduleId);
+    return `Paused cron task ${scheduleId}.`;
+  }
+
+  async resumeCronTask(userId: string, scheduleId: string): Promise<string> {
+    await this.resume(userId, scheduleId);
+    return `Resumed cron task ${scheduleId}.`;
+  }
+
+  async deleteCronTask(userId: string, scheduleId: string): Promise<string> {
+    await this.delete(userId, scheduleId);
+    return `Deleted cron task ${scheduleId}.`;
+  }
 }

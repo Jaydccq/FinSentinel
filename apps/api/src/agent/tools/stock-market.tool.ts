@@ -5,7 +5,7 @@ import type { MarketDataService } from '../../market/market-data.service';
 /**
  * Stock market data tools — fully wired to MarketDataService.
  *
- * Maps to Java StockMarketTool (2 methods).
+ * Stock-market tool surface exposed to the agent.
  */
 export function createStockMarketTools(marketDataService: MarketDataService) {
   return {
