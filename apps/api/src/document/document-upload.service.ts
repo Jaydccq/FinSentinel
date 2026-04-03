@@ -17,7 +17,6 @@ const ALLOWED_MIME_TYPES = new Set([
   'text/xml',
   'application/json',
   'application/xml',
-  'application/pdf',
 ]);
 
 export interface UploadedFile {
@@ -116,7 +115,7 @@ export class DocumentUploadService {
           sector: sector ?? '',
           region_id: 'US',
           source: file.originalname,
-          date: new Date().toISOString().split('T')[0],
+          date: new Date().toISOString().split('T')[0] ?? '',
         });
 
         await this.db
@@ -157,7 +156,7 @@ export class DocumentUploadService {
       );
     }
 
-    const normalizedMime = file.mimetype.toLowerCase().split(';')[0].trim();
+    const normalizedMime = file.mimetype.toLowerCase().split(';')[0]?.trim() ?? '';
     if (!ALLOWED_MIME_TYPES.has(normalizedMime)) {
       throw new BadRequestException(
         `Unsupported file type: ${normalizedMime}. ` +

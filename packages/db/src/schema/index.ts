@@ -3,6 +3,7 @@ export { users } from './users';
 export { portfolios } from './portfolios';
 export { holdings } from './holdings';
 export { documents } from './documents';
+export { documentChunks } from './document-chunks';
 export { riskReports } from './risk-reports';
 export { chatMessages } from './chat-messages';
 export { newsItems } from './news-items';

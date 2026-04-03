@@ -16,4 +16,14 @@ export const ragConfig = registerAs('rag', () => ({
     queryRewriteEnabled:
       process.env['RAG_QUERY_REWRITE_ENABLED'] !== 'false',
   },
+  backfill: {
+    enabled: process.env['RAG_REINDEX_ENABLED'] !== 'false',
+    intervalMs: Number(process.env['RAG_REINDEX_INTERVAL_MS']) || 900000,
+    startupDelayMs: Number(process.env['RAG_REINDEX_STARTUP_DELAY_MS']) || 30000,
+    documentBatchSize:
+      Number(process.env['RAG_REINDEX_DOCUMENT_BATCH_SIZE']) || 25,
+    newsBatchSize:
+      Number(process.env['RAG_REINDEX_NEWS_BATCH_SIZE']) || 25,
+    force: process.env['RAG_REINDEX_FORCE'] === 'true',
+  },
 }));

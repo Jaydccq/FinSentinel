@@ -8,6 +8,7 @@ import { DocumentController } from './document.controller';
 import { StorageModule } from '../storage/storage.module';
 import { AuthModule } from '../auth/auth.module';
 import { CommonModule } from '../common/common.module';
+import { RagModule } from '../rag/rag.module';
 
 /**
  * Document module -- RAG document processing pipeline.
@@ -23,7 +24,7 @@ import { CommonModule } from '../common/common.module';
  * Imports StorageModule for file storage (hot tier via RustFS).
  */
 @Module({
-  imports: [StorageModule, AuthModule, CommonModule],
+  imports: [StorageModule, AuthModule, CommonModule, RagModule],
   controllers: [DocumentController],
   providers: [
     TextCleaningService,

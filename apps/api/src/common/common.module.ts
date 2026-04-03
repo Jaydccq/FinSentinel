@@ -6,7 +6,9 @@ import { RateLimitGuard } from './guards/rate-limit.guard';
 import { EncryptionService } from './services/encryption.service';
 import { ApiKeyService } from './services/api-key.service';
 import { PdfService } from './services/pdf.service';
+import { MetricsService } from './services/metrics.service';
 import { ApiKeyController } from './controllers/api-key.controller';
+import { MetricsController } from './controllers/metrics.controller';
 import { AuthModule } from '../auth/auth.module';
 
 const redisProvider = {
@@ -19,7 +21,7 @@ const redisProvider = {
 
 @Module({
   imports: [AuthModule],
-  controllers: [ApiKeyController],
+  controllers: [ApiKeyController, MetricsController],
   providers: [
     redisProvider,
     RateLimiterService,
@@ -27,7 +29,8 @@ const redisProvider = {
     EncryptionService,
     ApiKeyService,
     PdfService,
+    MetricsService,
   ],
-  exports: [RateLimiterService, RateLimitGuard, 'REDIS', EncryptionService, ApiKeyService, PdfService],
+  exports: [RateLimiterService, RateLimitGuard, 'REDIS', EncryptionService, ApiKeyService, PdfService, MetricsService],
 })
 export class CommonModule {}

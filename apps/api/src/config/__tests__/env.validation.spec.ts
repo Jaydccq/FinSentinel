@@ -59,6 +59,12 @@ describe('envSchema', () => {
     expect(result.RAG_SIMILARITY_THRESHOLD).toBe(0.65);
     expect(result.RAG_MAX_TOP_K).toBe(20);
     expect(result.RAG_QUERY_REWRITE_ENABLED).toBe(true);
+    expect(result.RAG_REINDEX_ENABLED).toBe(true);
+    expect(result.RAG_REINDEX_INTERVAL_MS).toBe(900000);
+    expect(result.RAG_REINDEX_STARTUP_DELAY_MS).toBe(30000);
+    expect(result.RAG_REINDEX_DOCUMENT_BATCH_SIZE).toBe(25);
+    expect(result.RAG_REINDEX_NEWS_BATCH_SIZE).toBe(25);
+    expect(result.RAG_REINDEX_FORCE).toBe(false);
 
     // Archival
     expect(result.ARCHIVAL_ENABLED).toBe(false);
@@ -144,6 +150,12 @@ describe('envSchema', () => {
       RAG_SIMILARITY_THRESHOLD: '0.7',
       RAG_MAX_TOP_K: '30',
       RAG_QUERY_REWRITE_ENABLED: 'false',
+      RAG_REINDEX_ENABLED: 'true',
+      RAG_REINDEX_INTERVAL_MS: '600000',
+      RAG_REINDEX_STARTUP_DELAY_MS: '5000',
+      RAG_REINDEX_DOCUMENT_BATCH_SIZE: '40',
+      RAG_REINDEX_NEWS_BATCH_SIZE: '15',
+      RAG_REINDEX_FORCE: 'true',
       // Archival
       ARCHIVAL_ENABLED: 'true',
       ARCHIVAL_RETENTION_DAYS: '14',
@@ -193,6 +205,8 @@ describe('envSchema', () => {
       FMP_ENABLED: 'true',
       YAHOO_FINANCE_ENABLED: 'false',
       RAG_QUERY_REWRITE_ENABLED: 'false',
+      RAG_REINDEX_ENABLED: 'false',
+      RAG_REINDEX_FORCE: 'true',
       ARCHIVAL_ENABLED: 'true',
       CHAT_COMPACTION_ENABLED: 'false',
       CONFIRMATION_BLOCK_LIVE: 'false',
@@ -207,6 +221,8 @@ describe('envSchema', () => {
     expect(result.FMP_ENABLED).toBe(true);
     expect(result.YAHOO_FINANCE_ENABLED).toBe(false);
     expect(result.RAG_QUERY_REWRITE_ENABLED).toBe(false);
+    expect(result.RAG_REINDEX_ENABLED).toBe(false);
+    expect(result.RAG_REINDEX_FORCE).toBe(true);
     expect(result.ARCHIVAL_ENABLED).toBe(true);
     expect(result.CHAT_COMPACTION_ENABLED).toBe(false);
     expect(result.CONFIRMATION_BLOCK_LIVE).toBe(false);
@@ -219,12 +235,16 @@ describe('envSchema', () => {
       ...validConfig,
       RAG_CHUNK_SIZE: '1000',
       RAG_SIMILARITY_THRESHOLD: '0.8',
+      RAG_REINDEX_INTERVAL_MS: '600000',
+      RAG_REINDEX_DOCUMENT_BATCH_SIZE: '40',
       ARCHIVAL_RETENTION_DAYS: '14',
       CHAT_COMPACTION_THRESHOLD: '30',
       OKX_RATE_LIMIT_PER_SECOND: '20',
     });
     expect(result.RAG_CHUNK_SIZE).toBe(1000);
     expect(result.RAG_SIMILARITY_THRESHOLD).toBe(0.8);
+    expect(result.RAG_REINDEX_INTERVAL_MS).toBe(600000);
+    expect(result.RAG_REINDEX_DOCUMENT_BATCH_SIZE).toBe(40);
     expect(result.ARCHIVAL_RETENTION_DAYS).toBe(14);
     expect(result.CHAT_COMPACTION_THRESHOLD).toBe(30);
     expect(result.OKX_RATE_LIMIT_PER_SECOND).toBe(20);

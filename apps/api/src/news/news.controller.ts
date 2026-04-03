@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Param,
   Query,
   Sse,
@@ -14,6 +15,7 @@ import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import { RateLimit } from '../common/decorators/rate-limit.decorator';
 import { parseIntParam } from '../common/utils/parse-int-param';
 import { OnDemandNewsService } from './on-demand-news.service';
+import { RagReindexService } from '../rag/rag-reindex.service';
 
 /**
  * News controller — list, filter, ticker-specific, summary, stats, and SSE stream.
@@ -25,6 +27,7 @@ export class NewsController {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     @Inject('DRIZZLE_DB') private readonly db: any,
     private readonly onDemandNewsService: OnDemandNewsService,
+    private readonly ragReindexService: RagReindexService,
   ) {}
 
   /** GET /news — list news with optional source filter + pagination. */
@@ -89,6 +92,19 @@ export class NewsController {
         bySourceResult.map((r: { source: string; count: number }) => [r.source, Number(r.count)])
       ),
     };
+  }
+
+  /** Requeue news items that predate the chunk index and are missing stored vectors. */
+  @Post('reindex-missing')
+  @RateLimit({ limit: 2, windowSecs: 300 })
+  @UseGuards(RateLimitGuard)
+  async reindexMissing(
+    @Query('limit') limitParam?: string,
+    @Query('force') forceParam?: string,
+  ) {
+    const limit = parseIntParam(limitParam, 100, 1, 500);
+    const force = forceParam === 'true';
+    return this.ragReindexService.reindexMissingNews(limit, force);
   }
 
   /**

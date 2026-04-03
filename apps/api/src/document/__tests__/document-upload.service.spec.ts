@@ -125,7 +125,7 @@ describe('DocumentUploadService', () => {
 
     // Verify storage was called
     expect(mockStorage.upload).toHaveBeenCalledTimes(1);
-    const [storageKey, content, contentType] = mockStorage.upload.mock.calls[0];
+    const [storageKey, content, contentType] = mockStorage.upload.mock.calls[0] ?? [];
     expect(storageKey).toContain('documents/user-1/');
     expect(storageKey).toContain('report.txt');
     expect(content).toEqual(file.buffer);
@@ -149,24 +149,6 @@ describe('DocumentUploadService', () => {
         source: 'report.txt',
       }),
     );
-  });
-
-  // ── Empty parse result ──────────────────────────────────────────────────
-
-  it('sets status to EMPTY when parse returns empty text', async () => {
-    mockParseService.parseToCleanText.mockReturnValue('');
-
-    const file = {
-      buffer: Buffer.from('%PDF-1.4 binary content'),
-      mimetype: 'application/pdf',
-      originalname: 'empty.pdf',
-    };
-
-    const result = await service.upload(file, 'user-1', 'RESEARCH');
-
-    expect(result.id).toBe('doc-uuid-123');
-    expect(result.status).toBe('EMPTY');
-    expect(mockVectorService.vectorize).not.toHaveBeenCalled();
   });
 
   // ── Vectorization failure ───────────────────────────────────────────────
@@ -197,7 +179,7 @@ describe('DocumentUploadService', () => {
 
     await service.upload(file, 'user-1', 'RESEARCH');
 
-    const storageKey = mockStorage.upload.mock.calls[0][0] as string;
+    const storageKey = mockStorage.upload.mock.calls[0]?.[0] as string;
     // Special characters should be replaced with underscores
     expect(storageKey).not.toContain('(');
     expect(storageKey).not.toContain(')');
@@ -216,7 +198,6 @@ describe('DocumentUploadService', () => {
     'text/xml',
     'application/json',
     'application/xml',
-    'application/pdf',
   ])('accepts MIME type: %s', async (mimetype) => {
     const file = {
       buffer: Buffer.from('content'),
@@ -226,5 +207,17 @@ describe('DocumentUploadService', () => {
 
     const result = await service.upload(file, 'user-1', 'RESEARCH');
     expect(result.id).toBe('doc-uuid-123');
+  });
+
+  it('rejects PDF uploads until PDF parsing is implemented', async () => {
+    const file = {
+      buffer: Buffer.from('%PDF-1.4 binary content'),
+      mimetype: 'application/pdf',
+      originalname: 'unsupported.pdf',
+    };
+
+    await expect(service.upload(file, 'user-1', 'RESEARCH')).rejects.toThrow(
+      BadRequestException,
+    );
   });
 });
