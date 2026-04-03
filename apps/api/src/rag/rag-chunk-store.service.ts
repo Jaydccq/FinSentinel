@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, documentChunks, eq, sql } from '@finsentinel/db';
+import { and, documentChunks, eq, sql } from '@finsentinel/db';
 
 export interface RagChunkRecord {
   sourceType: 'document' | 'news';
@@ -31,8 +31,6 @@ interface RagChunkSearchFilters {
 
 @Injectable()
 export class RagChunkStoreService {
-  private schemaEnsured = false;
-
   constructor(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     @Inject('DRIZZLE_DB') private readonly db: any,
@@ -47,8 +45,6 @@ export class RagChunkStoreService {
       metadata: Record<string, unknown>;
     }>,
   ): Promise<void> {
-    await this.ensureSchema();
-
     await this.db
       .delete(documentChunks)
       .where(
@@ -79,8 +75,6 @@ export class RagChunkStoreService {
     queryEmbedding: number[],
     filters: RagChunkSearchFilters,
   ): Promise<Array<RagChunkRecord & { similarity: number }>> {
-    await this.ensureSchema();
-
     const baseQuery = this.db
       .select({
         id: documentChunks.id,
@@ -111,9 +105,7 @@ export class RagChunkStoreService {
       ? baseQuery.where(sql.join(clauses, sql` AND `))
       : baseQuery;
 
-    const rows: ChunkRow[] = await query
-      .orderBy(desc(documentChunks.createdAt))
-      .limit(filters.limit ?? 500);
+    const rows: ChunkRow[] = await query.limit(filters.limit ?? 500);
 
     return rows
       .map((row) => ({
@@ -125,38 +117,8 @@ export class RagChunkStoreService {
         metadata: row.metadata,
         similarity: this.cosineSimilarity(queryEmbedding, row.embedding),
       }))
-      .filter((row) => Number.isFinite(row.similarity));
-  }
-
-  private async ensureSchema(): Promise<void> {
-    if (this.schemaEnsured) {
-      return;
-    }
-
-    await this.db.execute(sql`
-      CREATE TABLE IF NOT EXISTS document_chunks (
-        id uuid PRIMARY KEY,
-        source_type varchar(20) NOT NULL,
-        source_id uuid NOT NULL,
-        chunk_index integer NOT NULL,
-        content text NOT NULL,
-        embedding jsonb NOT NULL,
-        metadata jsonb NOT NULL,
-        created_at timestamptz NOT NULL DEFAULT now()
-      )
-    `);
-
-    await this.db.execute(sql`
-      CREATE UNIQUE INDEX IF NOT EXISTS uk_document_chunks_source_chunk
-      ON document_chunks (source_type, source_id, chunk_index)
-    `);
-
-    await this.db.execute(sql`
-      CREATE INDEX IF NOT EXISTS idx_document_chunks_source
-      ON document_chunks (source_type, source_id)
-    `);
-
-    this.schemaEnsured = true;
+      .filter((row) => Number.isFinite(row.similarity))
+      .sort((left, right) => right.similarity - left.similarity);
   }
 
   private cosineSimilarity(left: number[], right: number[]): number {

@@ -1,14 +1,30 @@
 import {
+  customType,
   pgTable,
   uuid,
   varchar,
   integer,
-  text,
   jsonb,
+  text,
   timestamp,
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
+
+const vector = customType<{
+  data: number[];
+  driverData: string;
+}>({
+  dataType() {
+    return 'vector';
+  },
+  toDriver(value) {
+    return `[${value.join(',')}]`;
+  },
+  fromDriver(value) {
+    return JSON.parse(value) as number[];
+  },
+});
 
 export const documentChunks = pgTable('document_chunks', {
   id: uuid('id').primaryKey(),
@@ -16,7 +32,7 @@ export const documentChunks = pgTable('document_chunks', {
   sourceId: uuid('source_id').notNull(),
   chunkIndex: integer('chunk_index').notNull(),
   content: text('content').notNull(),
-  embedding: jsonb('embedding').$type<number[]>().notNull(),
+  embedding: vector('embedding').notNull(),
   metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [

@@ -655,7 +655,7 @@ export class UnifiedTradingService {
   async checkMarketHours(userId: string): Promise<string> {
     const wallet = await this.getOrCreateWallet(userId);
     const broker = this.brokerRegistry.resolve(
-      Contract.stock('AAPL'),
+      this.resolveOperationalContract(wallet),
       wallet.tradingMode as TradingMode,
       Number(wallet.cashBalance),
     );
@@ -672,7 +672,7 @@ export class UnifiedTradingService {
   async syncOrders(userId: string): Promise<string> {
     const wallet = await this.getOrCreateWallet(userId);
     const broker = this.brokerRegistry.resolve(
-      Contract.stock('AAPL'),
+      this.resolveOperationalContract(wallet),
       wallet.tradingMode as TradingMode,
       Number(wallet.cashBalance),
     );
@@ -702,5 +702,26 @@ export class UnifiedTradingService {
     this.logger.log(
       `[Event] ${eventType} for user ${userId} wallet ${walletId}: ${JSON.stringify(payload)}`,
     );
+  }
+
+  private resolveOperationalContract(wallet: WalletRow): Contract {
+    const history = wallet.commitHistory as CommitData[];
+    for (let commitIndex = history.length - 1; commitIndex >= 0; commitIndex--) {
+      const operations = history[commitIndex]?.operations ?? [];
+      for (let operationIndex = operations.length - 1; operationIndex >= 0; operationIndex--) {
+        const symbol = operations[operationIndex]?.['symbol'];
+        if (typeof symbol === 'string' && symbol.trim().length > 0) {
+          return Contract.fromString(symbol);
+        }
+      }
+    }
+
+    const positions = wallet.positions as PositionMap[];
+    const firstTicker = positions.find((position) => position.ticker.trim().length > 0)?.ticker;
+    if (firstTicker) {
+      return Contract.fromString(firstTicker);
+    }
+
+    return Contract.stock('AAPL');
   }
 }

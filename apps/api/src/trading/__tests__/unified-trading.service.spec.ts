@@ -105,13 +105,14 @@ describe('UnifiedTradingService', () => {
   let mockRedis: ReturnType<typeof createMockRedis>;
   let mockDb: ReturnType<typeof createMockDb>;
   let mockMarketData: MarketDataService;
+  let brokerRegistry: BrokerRegistry;
 
   beforeEach(async () => {
     mockRedis = createMockRedis();
     mockDb = createMockDb();
     mockMarketData = createMockMarketDataService();
 
-    const brokerRegistry = new BrokerRegistry(
+    brokerRegistry = new BrokerRegistry(
       mockMarketData,
       {
         enabled: false,
@@ -435,6 +436,47 @@ describe('UnifiedTradingService', () => {
         (mockMarketData.searchTickers as Mock),
       ).toHaveBeenCalledWith('AAPL');
       expect(results).toBeDefined();
+    });
+  });
+
+  describe('operational broker resolution', () => {
+    it('derives the broker contract from the most recent commit symbol', async () => {
+      mockDb._selectChain.limit.mockResolvedValue([
+        {
+          id: TEST_WALLET_ID,
+          userId: TEST_USER_ID,
+          initialCapital: '100000.00',
+          cashBalance: '100000.00',
+          tradingMode: 'LIVE',
+          positions: [],
+          commitHistory: [
+            {
+              hash: 'recent-commit',
+              message: 'Open BTC perp',
+              timestamp: new Date().toISOString(),
+              operations: [{ symbol: 'BTC-USDT-SWAP', action: 'BUY' }],
+            },
+          ],
+        },
+      ]);
+
+      const getMarketClock = vi.fn().mockResolvedValue({
+        isOpen: true,
+        timestamp: '2026-04-03T20:00:00.000Z',
+        nextOpen: null,
+        nextClose: null,
+      });
+      const resolveSpy = vi
+        .spyOn(brokerRegistry, 'resolve')
+        .mockReturnValue({ getMarketClock } as never);
+
+      await service.checkMarketHours(TEST_USER_ID);
+
+      const contract = resolveSpy.mock.calls[0]?.[0];
+      expect(contract).toBeInstanceOf(Contract);
+      expect(contract?.toEngineSymbol()).toBe('BTC-USDT-SWAP');
+      expect(resolveSpy.mock.calls[0]?.[1]).toBe(TradingMode.LIVE);
+      expect(getMarketClock).toHaveBeenCalledOnce();
     });
   });
 });

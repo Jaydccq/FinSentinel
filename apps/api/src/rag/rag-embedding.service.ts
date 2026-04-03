@@ -4,9 +4,11 @@ import { embed, embedMany } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { aiConfig } from '../config/ai.config';
 
+type EmbeddingModel = Parameters<typeof embed>[0]['model'];
+
 @Injectable()
 export class RagEmbeddingService {
-  private readonly embeddingModel;
+  private readonly embeddingModel: EmbeddingModel;
 
   constructor(
     @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
