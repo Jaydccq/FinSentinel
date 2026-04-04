@@ -1,7 +1,8 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { CommonModule } from '../common/common.module';
 import { AuthModule } from '../auth/auth.module';
 import { TwitterModule } from '../twitter/twitter.module';
+import { RagModule } from '../rag/rag.module';
 import { NewsFetcherService } from './news-fetcher.service';
 import { OnDemandNewsService } from './on-demand-news.service';
 import { NewsSentimentService } from './news-sentiment.service';
@@ -30,7 +31,7 @@ import { XInfluencerFetcher } from './fetchers/x-influencer.fetcher';
  * - XInfluencerFetcher — Twitter/X influencer tweets via 6551.io
  */
 @Module({
-  imports: [CommonModule, AuthModule, TwitterModule],
+  imports: [CommonModule, AuthModule, TwitterModule, forwardRef(() => RagModule)],
   controllers: [NewsController],
   providers: [
     // ── Fetchers ────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ import { XInfluencerFetcher } from './fetchers/x-influencer.fetcher';
     NewsArchivalService,
   ],
   exports: [
+    CryptoNewsApiClient,
     NewsFetcherService,
     OnDemandNewsService,
     NewsSentimentService,

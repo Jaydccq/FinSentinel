@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TextCleaningService } from './text-cleaning.service';
 import { DocumentParseService } from './document-parse.service';
 import { DocumentChunkingService } from './document-chunking.service';
@@ -24,7 +24,7 @@ import { RagModule } from '../rag/rag.module';
  * Imports StorageModule for file storage (hot tier via RustFS).
  */
 @Module({
-  imports: [StorageModule, AuthModule, CommonModule, RagModule],
+  imports: [StorageModule, AuthModule, CommonModule, forwardRef(() => RagModule)],
   controllers: [DocumentController],
   providers: [
     TextCleaningService,

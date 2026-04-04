@@ -1,4 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
+import { CommonModule } from '../common/common.module';
+import { QueueModule } from '../queue/queue.module';
 import { RagRetrievalService } from './rag-retrieval.service';
 import { QueryRewriteService } from './query-rewrite.service';
 import { RagEmbeddingService } from './rag-embedding.service';
@@ -17,6 +19,7 @@ import { RagBackfillSchedulerService } from './rag-backfill-scheduler.service';
  * - RagBackfillSchedulerService — automatic background reindex for missing chunks
  */
 @Module({
+  imports: [CommonModule, forwardRef(() => QueueModule)],
   providers: [
     RagRetrievalService,
     QueryRewriteService,

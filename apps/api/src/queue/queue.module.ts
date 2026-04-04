@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
@@ -33,7 +33,13 @@ import { CommonModule } from '../common/common.module';
  * dead-letter handling.
  */
 @Module({
-  imports: [CommonModule, DocumentModule, StorageModule, NewsModule, ScraperModule],
+  imports: [
+    CommonModule,
+    forwardRef(() => DocumentModule),
+    StorageModule,
+    forwardRef(() => NewsModule),
+    ScraperModule,
+  ],
   providers: [
     // ── BullMQ connection (shared by all queues and workers) ──────────
     {

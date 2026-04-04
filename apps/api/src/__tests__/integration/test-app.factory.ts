@@ -107,6 +107,7 @@ export function createMockDb() {
       let _table: unknown;
       let _whereClause: unknown;
       let _limit: number | undefined;
+      let _offset = 0;
 
       const chain = {
         from(table: unknown) {
@@ -121,10 +122,20 @@ export function createMockDb() {
           _limit = n;
           return chain;
         },
+        offset(n: number) {
+          _offset = n;
+          return chain;
+        },
+        orderBy(_clause: unknown) {
+          return chain;
+        },
         then(resolve: (rows: Record<string, unknown>[]) => void) {
           let rows = getTable(_table).filter((r) =>
             matchesWhere(r, _whereClause),
           );
+          if (_offset > 0) {
+            rows = rows.slice(_offset);
+          }
           if (_limit !== undefined) {
             rows = rows.slice(0, _limit);
           }
