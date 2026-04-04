@@ -76,3 +76,14 @@ dist/
 
 ### TypeScript build artifacts ###
 *.tsbuildinfo
+
+### Local agent / tooling state ###
+.claude/settings.local.json
+.agents/
+.junie/
+.kiro/
+.qwen/
+opennews-mcp/
+opentwitter-mcp/
+skills/
+skills-lock.json
