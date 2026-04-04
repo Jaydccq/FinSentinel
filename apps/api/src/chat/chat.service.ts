@@ -7,6 +7,7 @@ import {
   desc,
   eq,
 } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import type {
   ChatMessageResponse,
   ChatSessionSummary,
@@ -29,8 +30,7 @@ interface ChatMessageRow {
 @Injectable()
 export class ChatService {
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     private readonly agentService: AgentService,
     private readonly chatCompactionService: ChatCompactionService,
     private readonly portfolioService: PortfolioService,

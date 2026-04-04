@@ -7,6 +7,7 @@ import {
   desc,
   asc,
 } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { sql } from 'drizzle-orm';
 import type {
   AgentEventAggregateType,
@@ -22,8 +23,7 @@ import type {
 @Injectable()
 export class AgentEventService {
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
   ) {}
 
   /**

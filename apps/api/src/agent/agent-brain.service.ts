@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { agentBrains, eq } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 
 interface BrainCommitEntry {
   timestamp: string;
@@ -21,8 +22,7 @@ interface AgentBrainRow {
 @Injectable()
 export class AgentBrainService {
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
   ) {}
 
   async getFrontalLobe(userId: string): Promise<string> {

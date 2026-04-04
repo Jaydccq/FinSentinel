@@ -1,5 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { agentHeartbeatConfigs, eq } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 
 /**
  * Heartbeat service — manages per-user heartbeat configuration.
@@ -12,8 +13,7 @@ import { agentHeartbeatConfigs, eq } from '@finsentinel/db';
 @Injectable()
 export class HeartbeatService {
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
   ) {}
 
   /**
@@ -42,7 +42,7 @@ export class HeartbeatService {
       })
       .returning();
 
-    return created;
+    return created!;
   }
 
   /**
@@ -66,7 +66,7 @@ export class HeartbeatService {
       .where(eq(agentHeartbeatConfigs.userId, userId))
       .returning();
 
-    return updated;
+    return updated!;
   }
 
   async configureHeartbeat(

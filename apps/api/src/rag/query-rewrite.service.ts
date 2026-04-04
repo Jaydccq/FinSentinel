@@ -1,12 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { ConfigType } from '@nestjs/config';
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { aiConfig } from '../config/ai.config';
 
 /**
  * Query rewrite service for RAG retrieval enhancement.
  *
- * Rewrites user queries to be more specific and effective for
- * searching a financial document database. Uses LLM to generate
- * a refined query while keeping it under the configured max length.
+ * Rewrites user queries via LLM (OpenRouter) to be more specific and
+ * effective for searching a financial document database.
  *
  * Config (from rag.config.ts):
  * - RAG_QUERY_REWRITE_ENABLED (default true)
@@ -17,10 +20,20 @@ export class QueryRewriteService {
   private readonly logger = new Logger(QueryRewriteService.name);
   private readonly enabled: boolean;
   private readonly maxLength: number;
+  private readonly model;
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
+  ) {
     this.enabled = configService.get<boolean>('rag.retrieval.queryRewriteEnabled', true);
     this.maxLength = configService.get<number>('rag.retrieval.queryRewriteMaxLength', 80);
+
+    const openrouter = createOpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: this.aiCfg.openrouterApiKey,
+    });
+    this.model = openrouter(this.aiCfg.model);
   }
 
   /**
@@ -53,30 +66,28 @@ export class QueryRewriteService {
   }
 
   /**
-   * Generate a rewritten query using LLM.
+   * Generate a rewritten query using LLM (OpenRouter).
    *
-   * TODO: Wire actual AI SDK generateText call here.
-   * For now, applies basic heuristic rewrites for financial queries.
+   * Falls back to truncation if the LLM call fails.
    */
   async generateRewrite(query: string): Promise<string> {
-    // TODO: Replace with actual LLM call:
-    //
-    // const { text } = await generateText({
-    //   model: openai(this.model),
-    //   system: `Rewrite the following query to be more specific and effective
-    //            for searching a financial document database. Keep it under
-    //            ${this.maxLength} characters. Return only the rewritten query.`,
-    //   prompt: query,
-    // });
-    // return text.substring(0, this.maxLength);
+    try {
+      const { text } = await generateText({
+        model: this.model,
+        system:
+          `You are a financial search query optimizer. Rewrite the following ` +
+          `query to be more specific and effective for searching a financial ` +
+          `document database (SEC filings, research reports, market news). ` +
+          `Keep it under ${this.maxLength} characters. Return only the rewritten query.`,
+        prompt: query,
+      });
 
-    // Heuristic fallback: clean up and truncate the query
-    const cleaned = query.trim();
-    if (cleaned.length <= this.maxLength) {
-      return cleaned;
+      return text.substring(0, this.maxLength);
+    } catch (error) {
+      this.logger.warn(`LLM rewrite failed, using heuristic: ${error}`);
+      // Heuristic fallback: clean up and truncate
+      return query.trim().substring(0, this.maxLength);
     }
-
-    return cleaned.substring(0, this.maxLength);
   }
 
   /** Returns whether query rewriting is enabled. */

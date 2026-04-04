@@ -1,14 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface AgentBrainServiceStub {
-  getFrontalLobe(userId: string): Promise<string>;
-  updateFrontalLobe(userId: string, content: string): Promise<string>;
-  updateEmotion(userId: string, emotion: string, reason: string): Promise<string>;
-  getEmotion(userId: string): Promise<string>;
-  getBrainLog(userId: string, limit: number): Promise<string>;
-}
+import { AgentBrainService } from '../agent-brain.service';
 
 /**
  * Cognitive state management tools (OpenAlice Brain pattern).
@@ -18,7 +10,7 @@ interface AgentBrainServiceStub {
  * Brain-state tool surface exposed to the agent.
  */
 export function createBrainTools(
-  service: AgentBrainServiceStub,
+  service: AgentBrainService,
   userId: string,
 ) {
   return {

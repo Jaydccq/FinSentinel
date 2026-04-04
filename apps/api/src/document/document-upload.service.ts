@@ -1,5 +1,6 @@
 import { Injectable, Logger, Inject, BadRequestException, Optional } from '@nestjs/common';
 import { documents, eq } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { HybridStorageService } from '../storage/hybrid.storage';
 import { DocumentParseService } from './document-parse.service';
 import { DocumentVectorService } from './document-vector.service';
@@ -45,8 +46,7 @@ export class DocumentUploadService {
   private readonly logger = new Logger(DocumentUploadService.name);
 
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     private readonly storage: HybridStorageService,
     private readonly parseService: DocumentParseService,
     private readonly vectorService: DocumentVectorService,
@@ -81,7 +81,7 @@ export class DocumentUploadService {
     this.logger.log(`Uploaded file to storage: ${storageKey}`);
 
     // 4. Create DB record with status=PENDING
-    const [doc] = await this.db
+    const insertResult = await this.db
       .insert(documents)
       .values({
         fileName: safeFileName,
@@ -96,6 +96,11 @@ export class DocumentUploadService {
         storageTier: 'HOT',
       })
       .returning({ id: documents.id });
+
+    const doc = insertResult[0];
+    if (!doc) {
+      throw new Error('Failed to insert document record');
+    }
 
     this.logger.log(`Created document record: ${doc.id} (status=PENDING)`);
 

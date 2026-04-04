@@ -1,13 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface MarketCalendarServiceStub {
-  getUpcomingEarnings(ticker: string): Promise<unknown>;
-  getDividendHistory(ticker: string): Promise<unknown>;
-  getSplitHistory(ticker: string): Promise<unknown>;
-  getIPOCalendar(): Promise<unknown>;
-}
+import { MarketCalendarService } from '../../market/market-calendar.service';
 
 /**
  * Market calendar tools — earnings, dividends, splits, IPOs.
@@ -15,7 +8,7 @@ interface MarketCalendarServiceStub {
  * Market-calendar tool surface exposed to the agent.
  */
 export function createMarketCalendarTools(
-  service: MarketCalendarServiceStub,
+  service: MarketCalendarService,
 ) {
   return {
     getUpcomingEarnings: tool({

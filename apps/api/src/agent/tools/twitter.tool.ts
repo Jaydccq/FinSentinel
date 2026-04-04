@@ -1,19 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface TwitterServiceStub {
-  getTwitterProfile(username: string): Promise<string>;
-  searchTweets(
-    keywords: string,
-    fromUser?: string,
-    hashtag?: string,
-    minLikes?: number,
-    limit?: number,
-  ): Promise<string>;
-  getUserTweets(username: string, limit: number): Promise<string>;
-  getKolFollowers(username: string): Promise<string>;
-}
+import { TwitterToolsService } from '../twitter-tools.service';
 
 /**
  * Twitter/X social intelligence tools via 6551 API.
@@ -22,7 +9,7 @@ interface TwitterServiceStub {
  *
  * Twitter/X social-intelligence tool surface exposed to the agent.
  */
-export function createTwitterTools(service: TwitterServiceStub) {
+export function createTwitterTools(service: TwitterToolsService) {
   return {
     getTwitterProfile: tool({
       description:

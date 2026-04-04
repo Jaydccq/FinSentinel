@@ -1,31 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface AgentScheduleServiceStub {
-  createCronTask(
-    userId: string,
-    name: string,
-    cronExpression: string,
-    taskType: string,
-    payloadJson?: string,
-  ): Promise<string>;
-  listCronTasks(userId: string): Promise<string>;
-  pauseCronTask(userId: string, scheduleId: string): Promise<string>;
-  resumeCronTask(userId: string, scheduleId: string): Promise<string>;
-  deleteCronTask(userId: string, scheduleId: string): Promise<string>;
-}
-
-// TODO: wire when service exists
-interface AgentHeartbeatServiceStub {
-  configureHeartbeat(
-    userId: string,
-    enabled: boolean,
-    intervalSeconds: number,
-    drawdownAlertPct: number,
-  ): Promise<string>;
-  getHeartbeatConfig(userId: string): Promise<string>;
-}
+import { ScheduleService } from '../../autonomy/schedule.service';
+import { HeartbeatService } from '../../autonomy/heartbeat.service';
 
 /**
  * Autonomy management tools — cron tasks and heartbeat configuration.
@@ -35,8 +11,8 @@ interface AgentHeartbeatServiceStub {
  * Autonomy-management tool surface exposed to the agent.
  */
 export function createAutonomyTools(
-  scheduleService: AgentScheduleServiceStub,
-  heartbeatService: AgentHeartbeatServiceStub,
+  scheduleService: ScheduleService,
+  heartbeatService: HeartbeatService,
   userId: string,
 ) {
   return {

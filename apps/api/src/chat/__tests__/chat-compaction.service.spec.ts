@@ -2,6 +2,24 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { ChatCompactionService } from '../chat-compaction.service';
+import { aiConfig } from '../../config/ai.config';
+
+// Mock the AI SDK generateText to return concatenated conversation (fallback behavior)
+vi.mock('ai', () => ({
+  generateText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => ({
+    text: prompt,
+  })),
+}));
+
+vi.mock('@ai-sdk/openai', () => ({
+  createOpenAI: vi.fn().mockReturnValue(() => 'mock-model'),
+}));
+
+const mockAiConfig = {
+  openrouterApiKey: 'test-key',
+  model: 'google/gemini-3-flash-preview',
+  embeddingModel: 'text-embedding-3-small',
+};
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const USER_ID = '11111111-1111-1111-1111-111111111111';
@@ -54,6 +72,7 @@ describe('ChatCompactionService', () => {
         ChatCompactionService,
         { provide: 'DRIZZLE_DB', useValue: mockDb },
         { provide: ConfigService, useValue: createConfigService() },
+        { provide: aiConfig.KEY, useValue: mockAiConfig },
       ],
     }).compile();
 
@@ -105,6 +124,7 @@ describe('ChatCompactionService', () => {
           provide: ConfigService,
           useValue: createConfigService({ 'chat.compaction.enabled': false }),
         },
+        { provide: aiConfig.KEY, useValue: mockAiConfig },
       ],
     }).compile();
 
@@ -141,6 +161,7 @@ describe('ChatCompactionService', () => {
           provide: ConfigService,
           useValue: createConfigService({ 'chat.compaction.maxSummaryChars': 20 }),
         },
+        { provide: aiConfig.KEY, useValue: mockAiConfig },
       ],
     }).compile();
 

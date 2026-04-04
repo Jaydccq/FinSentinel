@@ -1,21 +1,14 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface QuantAnalysisServiceStub {
-  analyzeReturns(barsJson: string): Promise<string>;
-  calculateVaR(barsJson: string, method: string): Promise<string>;
-  analyzeVolatility(barsJson: string): Promise<string>;
-  calculateCorrelation(barsJsonA: string, barsJsonB: string): Promise<string>;
-}
+import { QuantAnalysisService } from '../../quant/quant-analysis.service';
 
 /**
- * Quantitative risk analytics tools — return distributions, VaR, volatility,
- * and cross-asset correlation.
+ * Quantitative risk analytics tools — return distributions, VaR, volatility.
+ * Note: calculateCorrelation is omitted because the service doesn't support it yet.
  *
  * Quant-analysis tool surface exposed to the agent.
  */
-export function createQuantAnalysisTools(service: QuantAnalysisServiceStub) {
+export function createQuantAnalysisTools(service: QuantAnalysisService) {
   return {
     analyzeReturns: tool({
       description:
@@ -33,7 +26,9 @@ export function createQuantAnalysisTools(service: QuantAnalysisServiceStub) {
       }),
       execute: async ({ barsJson }) => {
         try {
-          return await service.analyzeReturns(barsJson);
+          const bars = JSON.parse(barsJson) as Array<{ c: number }>;
+          const closePrices = bars.map((b) => b.c);
+          return JSON.stringify(service.calculateReturnStatistics(closePrices), null, 2);
         } catch (e) {
           return `Error analyzing returns: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -62,7 +57,10 @@ export function createQuantAnalysisTools(service: QuantAnalysisServiceStub) {
       }),
       execute: async ({ barsJson, method }) => {
         try {
-          return await service.calculateVaR(barsJson, method);
+          const bars = JSON.parse(barsJson) as Array<{ c: number }>;
+          const closePrices = bars.map((b) => b.c);
+          // currently only parametric is implemented in service
+          return JSON.stringify(service.calculateValueAtRisk(closePrices), null, 2);
         } catch (e) {
           return `Error calculating VaR: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -85,37 +83,11 @@ export function createQuantAnalysisTools(service: QuantAnalysisServiceStub) {
       }),
       execute: async ({ barsJson }) => {
         try {
-          return await service.analyzeVolatility(barsJson);
+          const bars = JSON.parse(barsJson) as Array<{ c: number }>;
+          const closePrices = bars.map((b) => b.c);
+          return JSON.stringify(service.calculateVolatilityRegime(closePrices), null, 2);
         } catch (e) {
           return `Error analyzing volatility: ${e instanceof Error ? e.message : 'unknown'}`;
-        }
-      },
-    }),
-
-    calculateCorrelation: tool({
-      description:
-        "Calculate the Pearson correlation between two stocks' returns. " +
-        'Correlation > 0.7 = highly correlated (move together, less diversification benefit). ' +
-        'Correlation 0.3-0.7 = moderately correlated. Correlation < 0.3 = low correlation ' +
-        '(good for diversification). Negative correlation = inverse relationship (natural hedge). ' +
-        'Both inputs must cover the same time period with the same number of bars.',
-      inputSchema: z.object({
-        barsJsonA: z
-          .string()
-          .describe(
-            'JSON array of price bars for first stock [{o,h,l,c,v,t}, ...]',
-          ),
-        barsJsonB: z
-          .string()
-          .describe(
-            'JSON array of price bars for second stock [{o,h,l,c,v,t}, ...]',
-          ),
-      }),
-      execute: async ({ barsJsonA, barsJsonB }) => {
-        try {
-          return await service.calculateCorrelation(barsJsonA, barsJsonB);
-        } catch (e) {
-          return `Error calculating correlation: ${e instanceof Error ? e.message : 'unknown'}`;
         }
       },
     }),

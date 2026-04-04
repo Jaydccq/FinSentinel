@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common'
 import { createHash } from 'crypto';
 import type Redis from 'ioredis';
 import { tradeWallets, eq } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { TradingMode, Contract, AgentEventType, SecurityType } from '@finsentinel/shared';
 import type { AgentEventType as AgentEventTypeValue } from '@finsentinel/shared';
 import type { UnifiedStageRequest, V2WalletResponse, V2CommitResponse, V2StagedResponse } from '@finsentinel/shared';
@@ -105,8 +106,7 @@ export class UnifiedTradingService {
   constructor(
     private readonly brokerRegistry: BrokerRegistry,
     @Inject('REDIS') private readonly redis: Redis,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     @Inject('MarketDataService') private readonly marketDataService: MarketDataService,
   ) {}
 
@@ -127,7 +127,7 @@ export class UnifiedTradingService {
     const item = JSON.stringify(op);
 
     // ioredis eval() executes Lua on the Redis server (not JS eval)
-    const result = await (this.redis as any)['eval'](
+    const result = await this.redis.eval(
       LUA_ATOMIC_APPEND,
       1,      // number of KEYS
       key,    // KEYS[1]
@@ -254,7 +254,7 @@ export class UnifiedTradingService {
   async execute(userId: string): Promise<ExecuteResult> {
     // 1. Atomic get-and-delete pending commit (Redis 6.2+ GETDEL)
     const pendingKey = PENDING_KEY_PREFIX + userId;
-    const raw = await (this.redis as any).getdel(pendingKey) as string | null;
+    const raw = await (this.redis as Redis & { getdel(key: string): Promise<string | null> }).getdel(pendingKey);
 
     if (!raw) {
       throw new BadRequestException(

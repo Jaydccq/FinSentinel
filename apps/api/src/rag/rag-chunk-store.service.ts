@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { and, documentChunks, eq, sql } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 
 export interface RagChunkRecord {
   sourceType: 'document' | 'news';
@@ -32,8 +33,7 @@ interface RagChunkSearchFilters {
 @Injectable()
 export class RagChunkStoreService {
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
   ) {}
 
   async replaceChunks(

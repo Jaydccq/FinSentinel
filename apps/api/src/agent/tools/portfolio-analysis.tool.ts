@@ -1,10 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface PortfolioAnalysisServiceStub {
-  analyzePortfolio(userId: string, portfolioId: string): Promise<string>;
-}
+import { PortfolioService } from '../../portfolio/portfolio.service';
 
 /**
  * Portfolio analysis tool — sector concentration, top positions, P&L,
@@ -15,7 +11,7 @@ interface PortfolioAnalysisServiceStub {
  * Portfolio-analysis tool surface exposed to the agent.
  */
 export function createPortfolioAnalysisTools(
-  service: PortfolioAnalysisServiceStub,
+  service: PortfolioService,
   userId: string,
 ) {
   return {

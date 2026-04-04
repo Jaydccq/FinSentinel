@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { userInvestmentProfiles, eq } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 
 interface UserInvestmentProfileRow {
   id: string;
@@ -25,8 +26,7 @@ interface ProfileHistoryEntry {
 @Injectable()
 export class UserInvestmentProfileService {
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
   ) {}
 
   async getProfileSummary(userId: string): Promise<string> {

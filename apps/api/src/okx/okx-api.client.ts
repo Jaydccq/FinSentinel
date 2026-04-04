@@ -115,6 +115,36 @@ export class OkxApiClient {
     }
   }
 
+  /** GET /api/v5/trade/orders-pending — fetch all pending orders */
+  async getPendingOrders(): Promise<OkxOrder[]> {
+    try {
+      const response = await this.sendGet('/api/v5/trade/orders-pending');
+      const body = (await response.json()) as OkxResponse<OkxOrder>;
+      this.checkOkxResponse(body);
+      return body.data;
+    } catch (err) {
+      this.logger.error('Failed to get pending orders', err);
+      return [];
+    }
+  }
+
+  /** GET /api/v5/trade/orders-history — fetch historical orders */
+  async getOrderHistory(instType?: string): Promise<OkxOrder[]> {
+    try {
+      let path = '/api/v5/trade/orders-history';
+      if (instType) {
+        path += `?instType=${encodeURIComponent(instType)}`;
+      }
+      const response = await this.sendGet(path);
+      const body = (await response.json()) as OkxResponse<OkxOrder>;
+      this.checkOkxResponse(body);
+      return body.data;
+    } catch (err) {
+      this.logger.error('Failed to get order history', err);
+      return [];
+    }
+  }
+
   /** POST /api/v5/trade/cancel-order — cancel an order */
   async cancelOrder(instId: string, ordId: string): Promise<boolean> {
     try {

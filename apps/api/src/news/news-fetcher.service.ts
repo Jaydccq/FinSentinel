@@ -1,5 +1,6 @@
 import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { newsItems, eq, and } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import type { RawNewsItem, NewsFetcher } from './interfaces/news-fetcher';
 import { NewsEnrichProducer } from '../queue/news-enrich.producer';
 
@@ -15,8 +16,7 @@ export class NewsFetcherService {
   private readonly logger = new Logger(NewsFetcherService.name);
 
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     @Inject('NEWS_FETCHERS') private readonly fetchers: NewsFetcher[],
     @Optional() private readonly enrichProducer?: NewsEnrichProducer,
   ) {}
@@ -83,6 +83,6 @@ export class NewsFetcherService {
       tags: item.tags,
     }).returning({ id: newsItems.id });
 
-    return inserted.id;
+    return inserted?.id ?? null;
   }
 }

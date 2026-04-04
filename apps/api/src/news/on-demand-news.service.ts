@@ -1,5 +1,6 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { newsItems, eq, and } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import type { NewsFetcher, RawNewsItem } from './interfaces/news-fetcher';
 
 /**
@@ -14,8 +15,7 @@ export class OnDemandNewsService {
   private readonly logger = new Logger(OnDemandNewsService.name);
 
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     @Inject('NEWS_FETCHERS') private readonly fetchers: NewsFetcher[],
   ) {}
 

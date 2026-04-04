@@ -1,8 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 
-// TODO: wire when service exists
-interface UnifiedTradingServiceStub {
+interface UnifiedTradingAdapter {
   stage(userId: string, action: string, symbol: string, qty?: string, amount?: string, price?: string): Promise<string>;
   commit(userId: string, message: string): Promise<string>;
   execute(userId: string): Promise<string>;
@@ -25,7 +24,7 @@ interface UnifiedTradingServiceStub {
  * Unified trading tool surface exposed to the agent.
  */
 export function createUnifiedTradingTools(
-  service: UnifiedTradingServiceStub,
+  service: UnifiedTradingAdapter,
   userId: string,
 ) {
   return {

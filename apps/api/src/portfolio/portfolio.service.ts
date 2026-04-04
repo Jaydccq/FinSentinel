@@ -5,6 +5,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { portfolios, holdings, riskReports, eq, and, inArray, desc } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import type {
   PortfolioRequest,
   PortfolioResponse,
@@ -17,8 +18,7 @@ import type {
 @Injectable()
 export class PortfolioService {
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
   ) {}
 
   // ── Portfolio CRUD ─────────────────────────────────────────────────────
@@ -49,24 +49,24 @@ export class PortfolioService {
     if (rows.length === 0) return [];
 
     // Fetch all holdings in a single query to avoid N+1
-    const portfolioIds = rows.map((r: Record<string, unknown>) => r.id as string);
+    const portfolioIds = rows.map((r) => r.id);
     const allHoldings = await this.db
       .select()
       .from(holdings)
       .where(inArray(holdings.portfolioId, portfolioIds));
 
     // Group holdings by portfolioId in memory
-    const holdingsByPortfolio = new Map<string, Record<string, unknown>[]>();
+    const holdingsByPortfolio = new Map<string, Array<typeof holdings.$inferSelect>>();
     for (const h of allHoldings) {
       const pid = h.portfolioId as string;
       if (!holdingsByPortfolio.has(pid)) {
         holdingsByPortfolio.set(pid, []);
       }
-      holdingsByPortfolio.get(pid)!.push(h as Record<string, unknown>);
+      holdingsByPortfolio.get(pid)!.push(h);
     }
 
-    return rows.map((row: Record<string, unknown>) =>
-      this.toPortfolioResponse(row, holdingsByPortfolio.get(row.id as string) ?? []),
+    return rows.map((row) =>
+      this.toPortfolioResponse(row, holdingsByPortfolio.get(row.id) ?? []),
     );
   }
 
@@ -163,7 +163,7 @@ export class PortfolioService {
       })
       .returning();
 
-    return this.toHoldingResponse(created);
+    return this.toHoldingResponse(created!);
   }
 
   async getHoldings(
@@ -178,7 +178,7 @@ export class PortfolioService {
       .from(holdings)
       .where(eq(holdings.portfolioId, portfolioId));
 
-    return rows.map((row: Record<string, unknown>) => this.toHoldingResponse(row));
+    return rows.map((row) => this.toHoldingResponse(row));
   }
 
   async updateHolding(
@@ -216,7 +216,7 @@ export class PortfolioService {
       .where(eq(holdings.id, holdingId))
       .returning();
 
-    return this.toHoldingResponse(updated);
+    return this.toHoldingResponse(updated!);
   }
 
   async deleteHolding(
@@ -263,8 +263,7 @@ export class PortfolioService {
     }));
 
     // Calculate market values and total
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const holdingCalcs = holdingRows.map((h: any) => {
+    const holdingCalcs = holdingRows.map((h) => {
         const qty = parseFloat(h.quantity ?? '0');
         const price = parseFloat(h.currentPrice ?? h.averageCost ?? '0');
         const cost = parseFloat(h.averageCost ?? '0');
@@ -385,44 +384,51 @@ export class PortfolioService {
       .where(eq(riskReports.portfolioId, portfolioId))
       .orderBy(desc(riskReports.createdAt));
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return rows.map((r: any) => ({
+    return rows.map((r) => ({
       id: r.id,
       riskScore: Number(r.riskScore),
       riskLevel: r.riskLevel,
       summary: r.summary,
-      factors: r.factors ?? [],
-      actionableAdvice: r.actionableAdvice ?? [],
+      factors: (r.factorsJson as unknown[]) ?? [],
+      actionableAdvice: (r.adviceJson as unknown[]) ?? [],
       createdAt: r.createdAt?.toISOString(),
     }));
   }
 
   // ── Mappers ────────────────────────────────────────────────────────────
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private toPortfolioResponse(row: any, holdingRows: any[]): PortfolioResponse {
+  /** Row type returned by Drizzle `select().from(portfolios)`. */
+  private toPortfolioResponse(
+    row: typeof portfolios.$inferSelect | undefined,
+    holdingRows: Array<typeof holdings.$inferSelect>,
+  ): PortfolioResponse {
+    if (!row) {
+      throw new NotFoundException('Portfolio record missing');
+    }
     return {
       id: row.id,
       name: row.name,
       description: row.description ?? '',
       totalValue: row.totalValue ?? '0',
-      holdings: holdingRows.map((h: Record<string, unknown>) => this.toHoldingResponse(h)),
+      holdings: holdingRows.map((h) => this.toHoldingResponse(h)),
       createdAt: row.createdAt instanceof Date
         ? row.createdAt.toISOString()
         : String(row.createdAt),
     };
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private toHoldingResponse(row: any): HoldingResponse {
+  /** Row type returned by Drizzle `select().from(holdings)`. */
+  private toHoldingResponse(
+    row: typeof holdings.$inferSelect | Record<string, unknown>,
+  ): HoldingResponse {
     return {
-      id: row.id,
-      symbol: row.symbol,
-      companyName: row.companyName ?? '',
-      quantity: row.quantity ?? '0',
-      averageCost: row.averageCost ?? '0',
-      currentPrice: row.currentPrice ?? '0',
-      sector: row.sector ?? '',
+      id: row.id as string,
+      symbol: row.symbol as string,
+      companyName: (row.companyName as string) ?? '',
+      quantity: (row.quantity as string) ?? '0',
+      averageCost: (row.averageCost as string) ?? '0',
+      currentPrice: (row.currentPrice as string) ?? '0',
+      sector: (row.sector as string) ?? '',
     };
   }
 }

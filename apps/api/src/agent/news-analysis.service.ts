@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { desc, documents, newsItems, sql } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { OnDemandNewsService } from '../news/on-demand-news.service';
 import { RagRetrievalService } from '../rag/rag-retrieval.service';
 
@@ -24,8 +25,7 @@ interface KnowledgeBaseDocumentRow {
 @Injectable()
 export class NewsAnalysisService {
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     private readonly onDemandNewsService: OnDemandNewsService,
     private readonly ragRetrievalService: RagRetrievalService,
   ) {}

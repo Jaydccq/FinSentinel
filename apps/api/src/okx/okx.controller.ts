@@ -38,7 +38,7 @@ export class OkxController {
     this.ensureClient();
     const balance = await this.client!.getAccountBalance();
     // Return details array if available, otherwise empty array
-    return (balance as any).details ?? [];
+    return balance?.details ?? [];
   }
 
   /** GET /okx/positions — all open positions. */
@@ -52,16 +52,14 @@ export class OkxController {
   @Get('orders/pending')
   async getPendingOrders() {
     this.ensureClient();
-    // TODO: Wire to OKX API GET /api/v5/trade/orders-pending when client supports it
-    return [];
+    return this.client!.getPendingOrders();
   }
 
   /** GET /okx/orders/history — filled/cancelled order history. */
   @Get('orders/history')
   async getOrderHistory(@Query('instType') instType?: string) {
     this.ensureClient();
-    // TODO: Wire to OKX API GET /api/v5/trade/orders-history when client supports it
-    return [];
+    return this.client!.getOrderHistory(instType);
   }
 
   /** GET /okx/funding-rate/:instId — funding rate for a perpetual swap. */

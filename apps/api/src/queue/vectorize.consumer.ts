@@ -2,6 +2,7 @@ import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy } from '@nest
 import { Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 import { documents, eq } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { VECTORIZE_QUEUE } from './queue.constants';
 import { DocumentParseService } from '../document/document-parse.service';
 import { DocumentVectorService } from '../document/document-vector.service';
@@ -28,8 +29,7 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject('BULLMQ_CONNECTION') private readonly connection: ConnectionOptions,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     private readonly parseService: DocumentParseService,
     private readonly vectorService: DocumentVectorService,
     private readonly storage: HybridStorageService,
@@ -92,6 +92,9 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
     }
 
     // 2. Download content from storage
+    if (!doc.storageKey) {
+      throw new Error(`Document ${docId} has no storageKey`);
+    }
     const content = await this.storage.download(doc.storageKey);
 
     // 3. Determine MIME type from file extension

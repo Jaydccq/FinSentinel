@@ -1,5 +1,6 @@
 import { Injectable, Inject, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { riskReports, portfolios, eq, and } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { PdfService } from '../common/services/pdf.service';
 
 /** Shape of the data needed to create a risk report. */
@@ -39,8 +40,7 @@ export class ReportService {
   private readonly logger = new Logger(ReportService.name);
 
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     @Optional() private readonly pdfService?: PdfService,
   ) {}
 
@@ -56,7 +56,7 @@ export class ReportService {
     // Verify portfolio ownership
     await this.verifyPortfolioOwnership(userId, data.portfolioId);
 
-    const [report] = await this.db
+    const rows = await this.db
       .insert(riskReports)
       .values({
         portfolioId: data.portfolioId,
@@ -69,6 +69,11 @@ export class ReportService {
         regulatoryFramework: data.regulatoryFramework ?? null,
       })
       .returning();
+
+    const report = rows[0];
+    if (!report) {
+      throw new Error('Failed to insert risk report');
+    }
 
     this.logger.log(
       `Created risk report ${report.id} for portfolio ${data.portfolioId} ` +

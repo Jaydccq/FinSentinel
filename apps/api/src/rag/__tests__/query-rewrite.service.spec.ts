@@ -1,7 +1,25 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { QueryRewriteService } from '../query-rewrite.service';
+import { aiConfig } from '../../config/ai.config';
+
+// Mock the AI SDK generateText to avoid real API calls
+vi.mock('ai', () => ({
+  generateText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => ({
+    text: prompt.trim(),
+  })),
+}));
+
+vi.mock('@ai-sdk/openai', () => ({
+  createOpenAI: vi.fn().mockReturnValue(() => 'mock-model'),
+}));
+
+const mockAiConfig = {
+  openrouterApiKey: 'test-key',
+  model: 'google/gemini-3-flash-preview',
+  embeddingModel: 'text-embedding-3-small',
+};
 
 // ── Config factory ────────────────────────────────────────────────────────
 function createConfigService(overrides: Record<string, unknown> = {}) {
@@ -23,6 +41,7 @@ describe('QueryRewriteService', () => {
       providers: [
         QueryRewriteService,
         { provide: ConfigService, useValue: createConfigService() },
+        { provide: aiConfig.KEY, useValue: mockAiConfig },
       ],
     }).compile();
 
@@ -60,6 +79,7 @@ describe('QueryRewriteService', () => {
           provide: ConfigService,
           useValue: createConfigService({ 'rag.retrieval.queryRewriteEnabled': false }),
         },
+        { provide: aiConfig.KEY, useValue: mockAiConfig },
       ],
     }).compile();
 
@@ -95,6 +115,7 @@ describe('QueryRewriteService', () => {
           provide: ConfigService,
           useValue: createConfigService({ 'rag.retrieval.queryRewriteMaxLength': 30 }),
         },
+        { provide: aiConfig.KEY, useValue: mockAiConfig },
       ],
     }).compile();
 

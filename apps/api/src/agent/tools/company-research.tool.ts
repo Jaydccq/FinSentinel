@@ -1,12 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface CompanyResearchServiceStub {
-  getCompanyProfile(ticker: string): Promise<unknown>;
-  getFinancialStatements(ticker: string, periods: number): Promise<unknown>;
-  getAnalystRating(ticker: string): Promise<unknown>;
-}
+import { CompanyResearchService } from '../../research/company-research.service';
 
 /**
  * Company fundamental research tools — profiles, financials, analyst ratings.
@@ -14,7 +8,7 @@ interface CompanyResearchServiceStub {
  * Company-research tool surface exposed to the agent.
  */
 export function createCompanyResearchTools(
-  service: CompanyResearchServiceStub,
+  service: CompanyResearchService,
 ) {
   return {
     getCompanyProfile: tool({

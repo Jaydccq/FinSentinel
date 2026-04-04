@@ -1,12 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface CryptoAnalyticsServiceStub {
-  getFundingRate(instId: string): Promise<string>;
-  analyzePosition(instId: string): Promise<string>;
-  setLeverage(instId: string, leverage: number, marginMode: string): Promise<string>;
-}
+import { CryptoToolsService } from '../crypto-tools.service';
 
 /**
  * OKX-specific crypto analytics tools — funding rates, position analysis,
@@ -17,7 +11,7 @@ interface CryptoAnalyticsServiceStub {
  * Crypto-analytics tool surface exposed to the agent.
  */
 export function createCryptoAnalyticsTools(
-  service: CryptoAnalyticsServiceStub,
+  service: CryptoToolsService,
 ) {
   return {
     getFundingRate: tool({

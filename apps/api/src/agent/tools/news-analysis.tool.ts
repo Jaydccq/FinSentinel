@@ -1,22 +1,13 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface NewsAnalysisServiceStub {
-  getRecentNews(ticker: string, days: number): Promise<string>;
-  searchKnowledgeBase(
-    query: string,
-    docType?: string,
-    afterDate?: string,
-  ): Promise<string>;
-}
+import { NewsAnalysisService } from '../news-analysis.service';
 
 /**
  * News analysis and RAG knowledge base search tools.
  *
  * News-analysis tool surface exposed to the agent.
  */
-export function createNewsAnalysisTools(service: NewsAnalysisServiceStub) {
+export function createNewsAnalysisTools(service: NewsAnalysisService) {
   return {
     getRecentNews: tool({
       description:

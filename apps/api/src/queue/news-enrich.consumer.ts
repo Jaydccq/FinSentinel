@@ -2,6 +2,7 @@ import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy } from '@nest
 import { Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 import { newsItems, eq } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { NEWS_ENRICH_QUEUE } from './queue.constants';
 import { NewsSentimentService } from '../news/news-sentiment.service';
 import { FirecrawlClient } from '../scraper/firecrawl.client';
@@ -28,8 +29,7 @@ export class NewsEnrichConsumer implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject('BULLMQ_CONNECTION') private readonly connection: ConnectionOptions,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     private readonly sentimentService: NewsSentimentService,
     private readonly firecrawl: FirecrawlClient,
     private readonly vectorService: DocumentVectorService,

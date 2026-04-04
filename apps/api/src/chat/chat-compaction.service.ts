@@ -1,13 +1,18 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { ConfigType } from '@nestjs/config';
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
 import { chatMessages, chatSessionMemories, eq, and, asc } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { sql } from 'drizzle-orm';
+import { aiConfig } from '../config/ai.config';
 
 /**
  * Chat context compaction service.
  *
  * When a chat session exceeds the configured message threshold,
- * the oldest messages are summarized via LLM and stored in
+ * the oldest messages are summarized via LLM (OpenRouter) and stored in
  * `chatSessionMemories`. The summary is prepended to the user's
  * next message to maintain context without sending all history.
  *
@@ -24,16 +29,23 @@ export class ChatCompactionService {
   private readonly threshold: number;
   private readonly recentWindow: number;
   private readonly maxSummaryChars: number;
+  private readonly model;
 
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     configService: ConfigService,
+    @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
   ) {
     this.enabled = configService.get<boolean>('chat.compaction.enabled', true);
     this.threshold = configService.get<number>('chat.compaction.threshold', 24);
     this.recentWindow = configService.get<number>('chat.compaction.recentWindow', 10);
     this.maxSummaryChars = configService.get<number>('chat.compaction.maxSummaryChars', 1200);
+
+    const openrouter = createOpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: this.aiCfg.openrouterApiKey,
+    });
+    this.model = openrouter(this.aiCfg.model);
   }
 
   /**
@@ -120,25 +132,34 @@ export class ChatCompactionService {
   }
 
   /**
-   * Generate a summary of old messages using LLM.
+   * Generate a summary of old messages using LLM (OpenRouter).
    *
-   * TODO: Wire actual AI SDK generateText call here.
-   * For now, returns a concatenated summary of the conversation.
+   * Falls back to truncation if the LLM call fails.
    */
   async generateSummary(
     messages: Array<{ role: string; content: string }>,
   ): Promise<string> {
-    // Build a compact conversation representation
     const conversationText = messages
       .map((m) => `${m.role}: ${m.content}`)
       .join('\n');
 
-    // Truncate to maxSummaryChars
-    if (conversationText.length <= this.maxSummaryChars) {
-      return conversationText;
-    }
+    try {
+      const { text } = await generateText({
+        model: this.model,
+        system:
+          `You are a financial assistant summarizer. Produce a concise summary ` +
+          `of the conversation below, capturing key topics, tickers, decisions, ` +
+          `and any action items. Keep it under ${this.maxSummaryChars} characters. ` +
+          `Return only the summary text, no extra commentary.`,
+        prompt: conversationText,
+      });
 
-    return conversationText.substring(0, this.maxSummaryChars);
+      return text.substring(0, this.maxSummaryChars);
+    } catch (error) {
+      this.logger.warn(`LLM summary failed, using heuristic fallback: ${error}`);
+      // Heuristic fallback: truncate
+      return conversationText.substring(0, this.maxSummaryChars);
+    }
   }
 
   /** Upsert a compaction summary into chatSessionMemories. */

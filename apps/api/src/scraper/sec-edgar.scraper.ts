@@ -1,6 +1,8 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { documents, eq } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { FirecrawlClient } from './firecrawl.client';
+import { VectorizeProducer } from '../queue/vectorize.producer';
 
 interface EdgarSearchResult {
   hits: {
@@ -35,9 +37,9 @@ export class SecEdgarScraper {
   private static readonly FORMS = '10-K,10-Q,8-K';
 
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     private readonly firecrawl: FirecrawlClient,
+    @Optional() private readonly vectorizeProducer?: VectorizeProducer,
   ) {}
 
   /**
@@ -130,9 +132,10 @@ export class SecEdgarScraper {
           })
           .returning({ id: documents.id });
 
-        this.logger.log(
-          `TODO: queue vectorization for doc ${inserted.id}`,
-        );
+        if (inserted?.id && this.vectorizeProducer) {
+          await this.vectorizeProducer.send(inserted.id);
+          this.logger.log(`Enqueued vectorization for doc ${inserted.id}`);
+        }
         savedCount++;
       } catch (err) {
         this.logger.warn(

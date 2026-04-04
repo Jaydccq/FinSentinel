@@ -1,5 +1,6 @@
 import { Injectable, Inject, BadRequestException, NotFoundException } from '@nestjs/common';
 import { agentSchedules, eq, and, desc } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { sql } from 'drizzle-orm';
 
 /** Maximum number of schedules per user. */
@@ -28,8 +29,7 @@ function isValidCron(expression: string): boolean {
 @Injectable()
 export class ScheduleService {
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
   ) {}
 
   /** List all schedules for a user, newest first. */
@@ -181,7 +181,7 @@ export class ScheduleService {
       payload,
       true,
     );
-    return `Created cron task ${created.id} (${created.name}).`;
+    return `Created cron task ${created!.id} (${created!.name}).`;
   }
 
   async listCronTasks(userId: string): Promise<string> {

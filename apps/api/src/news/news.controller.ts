@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { Observable, interval, map, startWith } from 'rxjs';
 import { newsItems, desc, eq, and, sql, gte } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { Inject } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt.guard';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
@@ -24,8 +25,7 @@ import { RagReindexService } from '../rag/rag-reindex.service';
 @UseGuards(JwtGuard)
 export class NewsController {
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     private readonly onDemandNewsService: OnDemandNewsService,
     private readonly ragReindexService: RagReindexService,
   ) {}
@@ -41,7 +41,7 @@ export class NewsController {
     const size = parseIntParam(sizeParam, 50, 1, 100);
     const offset = page * size;
 
-    const conditions: any[] = [];
+    const conditions: Array<ReturnType<typeof eq>> = [];
     if (source) conditions.push(eq(newsItems.source, source));
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 

@@ -1,13 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface UserInvestmentProfileServiceStub {
-  getProfileSummary(userId: string): Promise<string>;
-  updateSentiment(userId: string, sentiment: string, reason: string): Promise<string>;
-  updateWorkingMemory(userId: string, memory: string): Promise<string>;
-  updatePreferences(userId: string, preferencesJson: string): Promise<string>;
-}
+import { UserInvestmentProfileService } from '../user-investment-profile.service';
 
 /**
  * User investment profile tools — read/update user risk tolerance,
@@ -18,7 +11,7 @@ interface UserInvestmentProfileServiceStub {
  * User-profile tool surface exposed to the agent.
  */
 export function createUserProfileTools(
-  service: UserInvestmentProfileServiceStub,
+  service: UserInvestmentProfileService,
   userId: string,
 ) {
   return {

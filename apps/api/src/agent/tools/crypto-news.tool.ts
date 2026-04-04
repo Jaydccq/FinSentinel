@@ -1,16 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface CryptoNewsServiceStub {
-  getCryptoNews(
-    keyword: string,
-    coin?: string,
-    minScore?: number,
-    limit?: number,
-  ): Promise<string>;
-  getCryptoNewsBySignal(signal: string, limit: number): Promise<string>;
-}
+import { CryptoToolsService } from '../crypto-tools.service';
 
 /**
  * Crypto news tools — real-time news from 6551 API with AI scoring.
@@ -19,7 +9,7 @@ interface CryptoNewsServiceStub {
  *
  * Crypto-news tool surface exposed to the agent.
  */
-export function createCryptoNewsTools(service: CryptoNewsServiceStub) {
+export function createCryptoNewsTools(service: CryptoToolsService) {
   return {
     getCryptoNews: tool({
       description:

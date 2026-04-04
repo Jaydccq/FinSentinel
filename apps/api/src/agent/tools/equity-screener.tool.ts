@@ -1,19 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface EquityScreenerServiceStub {
-  screenStocks(
-    sector?: string,
-    exchange?: string,
-    marketCapMin?: string,
-    marketCapMax?: string,
-    search?: string,
-    limit?: number,
-  ): Promise<unknown>;
-  getMarketMovers(type: string): Promise<unknown>;
-  searchStocks(query: string, limit: number): Promise<unknown>;
-}
+import { EquityScreenerService } from '../../research/equity-screener.service';
 
 /**
  * Equity discovery and screening tools — stock screener, market movers, search.
@@ -21,7 +8,7 @@ interface EquityScreenerServiceStub {
  * Equity-screener tool surface exposed to the agent.
  */
 export function createEquityScreenerTools(
-  service: EquityScreenerServiceStub,
+  service: EquityScreenerService,
 ) {
   return {
     screenStocks: tool({

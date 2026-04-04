@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { CommonModule } from '../common/common.module';
+import { QueueModule } from '../queue/queue.module';
 import { FirecrawlClient } from './firecrawl.client';
 import { SecEdgarScraper } from './sec-edgar.scraper';
 import { InvestopediaScraper } from './investopedia.scraper';
@@ -20,10 +21,10 @@ import { ScraperController } from './scraper.controller';
  * - ScraperController — REST endpoints to trigger scrapers
  *
  * All scrapers dedup via the Document table (`originalFileName` check)
- * and will queue vectorization once the producer is implemented.
+ * and enqueue vectorization via VectorizeProducer after insert.
  */
 @Module({
-  imports: [AuthModule, CommonModule],
+  imports: [AuthModule, CommonModule, forwardRef(() => QueueModule)],
   controllers: [ScraperController],
   providers: [
     FirecrawlClient,

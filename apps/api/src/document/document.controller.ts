@@ -18,6 +18,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { documents, eq, and, desc } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { JwtGuard } from '../auth/jwt.guard';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import { RateLimit } from '../common/decorators/rate-limit.decorator';
@@ -46,8 +47,7 @@ export class DocumentController {
   constructor(
     private readonly uploadService: DocumentUploadService,
     private readonly ragReindexService: RagReindexService,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
   ) {}
 
   /** Upload a document for RAG vectorization. */
@@ -160,7 +160,7 @@ export class DocumentController {
       throw new NotFoundException(`Document ${id} not found`);
     }
 
-    const doc = rows[0];
+    const doc = rows[0]!;
     res.setHeader('Content-Type', 'application/octet-stream');
     res.setHeader(
       'Content-Disposition',

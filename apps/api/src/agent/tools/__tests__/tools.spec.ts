@@ -340,12 +340,11 @@ describe('createQuantAnalysisTools', () => {
     calculateCorrelation: vi.fn().mockResolvedValue('Correlation'),
   };
 
-  it('returns 4 tool keys', () => {
+  it('returns 3 tool keys', () => {
     expect(Object.keys(createQuantAnalysisTools(stub))).toEqual([
       'analyzeReturns',
       'calculateVaR',
       'analyzeVolatility',
-      'calculateCorrelation',
     ]);
   });
 
@@ -724,7 +723,7 @@ describe('total tool count across all factories', () => {
       ...createStockMarketTools(allStub),                          // 2
       ...createTechnicalIndicatorTools(allStub),                   // 9
       ...createNewsAnalysisTools(allStub),                         // 2
-      ...createQuantAnalysisTools(allStub),                        // 4
+      ...createQuantAnalysisTools(allStub),                        // 3
       ...createCompanyResearchTools(allStub),                      // 3
       ...createEquityScreenerTools(allStub),                       // 3
       ...createMarketCalendarTools(allStub),                       // 4

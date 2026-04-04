@@ -1,6 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { newsItems, lt, eq, and, sql } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 
 /**
  * Scheduled job that archives old news items to cold storage.
@@ -18,8 +19,7 @@ export class NewsArchivalService {
   private readonly batchSize: number;
 
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     configService: ConfigService,
   ) {
     this.retentionDays = configService.get<number>(

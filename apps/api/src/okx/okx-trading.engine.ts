@@ -82,10 +82,25 @@ export class OkxTradingEngine implements TradingEngine {
   }
 
   async getOrders(): Promise<OrderResult[]> {
-    // OKX does not have a simple "list all orders" GET.
-    // In practice, this would call /api/v5/trade/orders-pending or orders-history.
-    // For now, return empty to match the engine contract.
-    return [];
+    try {
+      const orders = await this.client.getPendingOrders();
+      return orders.map((ord) => ({
+        success: true,
+        orderId: ord.ordId,
+        symbol: ord.instId,
+        side: ord.side as 'buy' | 'sell',
+        status: this.mapOrderStatus(ord.state),
+        filledPrice: ord.fillPx || ord.avgPx || '0',
+        filledQty: ord.fillSz || '0',
+        avgPrice: ord.avgPx || '0',
+        errorMessage: null,
+        timestamp: ord.cTime
+          ? new Date(Number(ord.cTime)).toISOString()
+          : new Date().toISOString(),
+      }));
+    } catch (err: unknown) {
+      return [];
+    }
   }
 
   async getAccount(): Promise<AccountInfo> {

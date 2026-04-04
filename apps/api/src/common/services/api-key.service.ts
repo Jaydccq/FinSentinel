@@ -1,5 +1,6 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { apiKeys, eq, and } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { EncryptionService } from './encryption.service';
 
 /**
@@ -38,8 +39,7 @@ export class ApiKeyService {
   private readonly logger = new Logger(ApiKeyService.name);
 
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     private readonly encryptionService: EncryptionService,
   ) {}
 
@@ -94,7 +94,7 @@ export class ApiKeyService {
       return null;
     }
 
-    const row = rows[0];
+    const row = rows[0]!;
     return this.encryptionService.decrypt(row.encryptedValue, row.iv);
   }
 

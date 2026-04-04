@@ -1,18 +1,13 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-
-// TODO: wire when service exists
-interface OwnershipServiceStub {
-  getInstitutionalHolders(ticker: string): Promise<unknown>;
-  getInsiderTransactions(ticker: string): Promise<unknown>;
-}
+import { OwnershipDataService } from '../../market/ownership-data.service';
 
 /**
  * Ownership data tools — institutional holders and insider transactions.
  *
  * Ownership-data tool surface exposed to the agent.
  */
-export function createOwnershipTools(service: OwnershipServiceStub) {
+export function createOwnershipTools(service: OwnershipDataService) {
   return {
     getInstitutionalHolders: tool({
       description:

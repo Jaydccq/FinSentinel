@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { hash, compare } from 'bcryptjs';
 import { users, eq } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import type {
   RegisterRequest,
   LoginRequest,
@@ -19,8 +20,7 @@ const BCRYPT_ROUNDS = 10;
 export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
   ) {}
 
   async register(request: RegisterRequest): Promise<AuthResponse> {

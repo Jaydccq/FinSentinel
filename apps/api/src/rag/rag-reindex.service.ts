@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, documentChunks, documents, eq, inArray, isNotNull, newsItems } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { VectorizeProducer } from '../queue/vectorize.producer';
 import { NewsEnrichProducer } from '../queue/news-enrich.producer';
 
@@ -11,8 +12,7 @@ export interface ReindexResult {
 @Injectable()
 export class RagReindexService {
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     private readonly vectorizeProducer: VectorizeProducer,
     private readonly newsEnrichProducer: NewsEnrichProducer,
   ) {}

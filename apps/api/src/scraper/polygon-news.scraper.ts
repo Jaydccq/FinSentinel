@@ -1,7 +1,9 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { documents, eq } from '@finsentinel/db';
+import type { DrizzleDB } from '@finsentinel/db';
 import { FirecrawlClient } from './firecrawl.client';
+import { VectorizeProducer } from '../queue/vectorize.producer';
 
 interface PolygonNewsResponse {
   results: Array<{
@@ -32,10 +34,10 @@ export class PolygonNewsScraper {
     'https://api.polygon.io/v2/reference/news';
 
   constructor(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    @Inject('DRIZZLE_DB') private readonly db: any,
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     private readonly firecrawl: FirecrawlClient,
     configService: ConfigService,
+    @Optional() private readonly vectorizeProducer?: VectorizeProducer,
   ) {
     this.apiKey = configService.get<string>('polygon.apiKey', '');
   }
@@ -122,9 +124,10 @@ export class PolygonNewsScraper {
           })
           .returning({ id: documents.id });
 
-        this.logger.log(
-          `TODO: queue vectorization for doc ${inserted.id}`,
-        );
+        if (inserted?.id && this.vectorizeProducer) {
+          await this.vectorizeProducer.send(inserted.id);
+          this.logger.log(`Enqueued vectorization for doc ${inserted.id}`);
+        }
         savedCount++;
       } catch (err) {
         this.logger.warn(
