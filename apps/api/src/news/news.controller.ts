@@ -7,8 +7,8 @@ import {
   Sse,
   UseGuards,
 } from '@nestjs/common';
-import { Observable, interval, map, startWith } from 'rxjs';
-import { newsItems, desc, eq, and, sql, gte } from '@finsentinel/db';
+import { Observable } from 'rxjs';
+import { newsItems, desc, asc, eq, and, sql, gte, gt } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import { Inject } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt.guard';
@@ -186,11 +186,50 @@ export class NewsController {
   /** SSE stream — heartbeat for real-time news polling. */
   @Sse('stream')
   streamNews(): Observable<MessageEvent> {
-    return interval(30_000).pipe(
-      startWith(0),
-      map(() => {
-        return { data: JSON.stringify({ type: 'heartbeat', timestamp: new Date().toISOString() }) } as MessageEvent;
-      }),
-    );
+    return new Observable<MessageEvent>((subscriber) => {
+      let lastSeenCreatedAt = new Date();
+      let isPolling = false;
+
+      const emitUpdates = async () => {
+        if (isPolling) {
+          return;
+        }
+        isPolling = true;
+
+        try {
+          const rows = await this.db
+            .select()
+            .from(newsItems)
+            .where(gt(newsItems.createdAt, lastSeenCreatedAt))
+            .orderBy(asc(newsItems.createdAt))
+            .limit(50);
+
+          for (const row of rows) {
+            subscriber.next({ type: 'news', data: row } as MessageEvent);
+          }
+
+          const latest = rows.at(-1);
+          if (latest?.createdAt) {
+            lastSeenCreatedAt = latest.createdAt;
+          }
+
+          subscriber.next({
+            type: 'heartbeat',
+            data: { timestamp: new Date().toISOString(), delivered: rows.length },
+          } as MessageEvent);
+        } catch (error) {
+          subscriber.error(error);
+        } finally {
+          isPolling = false;
+        }
+      };
+
+      void emitUpdates();
+      const timer = setInterval(() => {
+        void emitUpdates();
+      }, 30_000);
+
+      return () => clearInterval(timer);
+    });
   }
 }

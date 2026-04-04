@@ -179,8 +179,12 @@ export default function NewsPage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [tickerSearch, setTickerSearch] = useState('')
   const [tickerActive, setTickerActive] = useState('')
+  const itemIdsRef = useRef<Set<string>>(new Set())
   const tickerActiveRef = useRef(tickerActive)
   useEffect(() => { tickerActiveRef.current = tickerActive }, [tickerActive])
+  useEffect(() => {
+    itemIdsRef.current = new Set(items.map((item) => item.id))
+  }, [items])
 
   useEffect(() => {
     Promise.all([newsApi.list(0, 50), newsApi.stats()])
@@ -195,21 +199,20 @@ export default function NewsPage() {
 
   useEffect(() => {
     const cancel = newsApi.stream((item) => {
-      // Skip items that don't match the active ticker filter
       const activeTicker = tickerActiveRef.current
-      if (activeTicker && !item.tickers?.includes(activeTicker)) {
-        // Still update stats (global count), but don't insert into list
-        setStats(prev => prev
-          ? { ...prev, todayCount: prev.todayCount + 1, totalCount: prev.totalCount + 1 }
-          : prev)
-        return
-      }
+      const matchesTicker = !activeTicker || item.tickers?.includes(activeTicker)
+      if (!matchesTicker || itemIdsRef.current.has(item.id)) return
 
+      itemIdsRef.current.add(item.id)
       setItems(prev => [item, ...prev])
       setLiveCount(count => count + 1)
       setStats(prev => prev
         ? { ...prev, todayCount: prev.todayCount + 1, totalCount: prev.totalCount + 1 }
         : prev)
+    }, undefined, (err) => {
+      if (err) {
+        toast.error(`Live news feed error: ${err}`)
+      }
     })
 
     return cancel

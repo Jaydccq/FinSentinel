@@ -159,6 +159,9 @@ describe('ApiKeyService', () => {
       expect(statuses).toHaveLength(KNOWN_KEY_NAMES.length);
       for (const status of statuses) {
         expect(status.configured).toBe(false);
+        expect(typeof status.label).toBe('string');
+        expect(typeof status.category).toBe('string');
+        expect(status.maskedPreview).toBeNull();
         expect(KNOWN_KEY_NAMES).toContain(status.name);
       }
     });
@@ -166,8 +169,8 @@ describe('ApiKeyService', () => {
     it('marks configured keys as true', async () => {
       mockDb._selectChain.from.mockReturnValue({
         where: vi.fn().mockResolvedValue([
-          { keyName: 'POLYGON' },
-          { keyName: 'OPENROUTER' },
+          { keyName: 'POLYGON', encryptedValue: 'cipher-1' },
+          { keyName: 'OPENROUTER', encryptedValue: 'cipher-2' },
         ]),
       });
 
@@ -178,7 +181,10 @@ describe('ApiKeyService', () => {
       const fmp = statuses.find((s) => s.name === 'FMP');
 
       expect(polygon?.configured).toBe(true);
+      expect(polygon?.maskedPreview).toBe('••••••••');
+      expect(polygon?.label).toBe('Polygon');
       expect(openrouter?.configured).toBe(true);
+      expect(openrouter?.category).toBe('AI');
       expect(fmp?.configured).toBe(false);
     });
   });

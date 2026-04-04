@@ -52,6 +52,7 @@ export const newsApi = {
 
   stream: (
     onNews: (item: NewsItemResponse) => void,
+    onHeartbeat?: () => void,
     onError?: (err: string) => void
   ): (() => void) => {
     let cancelled = false
@@ -95,6 +96,8 @@ export const newsApi = {
                 } catch {
                   // ignore parse errors
                 }
+              } else if (eventName === 'heartbeat') {
+                onHeartbeat?.()
               }
             } else if (line === '') {
               eventName = ''

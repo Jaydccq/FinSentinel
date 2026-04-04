@@ -22,8 +22,23 @@ export type KnownKeyName = (typeof KNOWN_KEY_NAMES)[number];
 
 export interface ApiKeyStatus {
   name: string;
+  label: string;
   configured: boolean;
+  maskedPreview: string | null;
+  category: string;
 }
+
+const API_KEY_METADATA: Record<KnownKeyName, { label: string; category: string }> = {
+  POLYGON: { label: 'Polygon', category: 'Market Data' },
+  OPENROUTER: { label: 'OpenRouter', category: 'AI' },
+  FMP: { label: 'Financial Modeling Prep', category: 'Market Data' },
+  FIRECRAWL: { label: 'Firecrawl', category: 'News' },
+  OKX_API_KEY: { label: 'OKX API Key', category: 'Trading' },
+  OKX_SECRET_KEY: { label: 'OKX Secret Key', category: 'Trading' },
+  OKX_PASSPHRASE: { label: 'OKX Passphrase', category: 'Trading' },
+  ALPACA_API_KEY: { label: 'Alpaca API Key', category: 'Trading' },
+  ALPACA_SECRET_KEY: { label: 'Alpaca Secret Key', category: 'Trading' },
+};
 
 /**
  * Manages encrypted API key storage, retrieval, and lifecycle operations.
@@ -121,16 +136,23 @@ export class ApiKeyService {
    * @returns array of status entries for all known keys
    */
   async listStatus(userId: string): Promise<ApiKeyStatus[]> {
-    const stored: Array<{ keyName: string }> = await this.db
-      .select({ keyName: apiKeys.keyName })
+    const stored: Array<{ keyName: string; encryptedValue: string }> = await this.db
+      .select({ keyName: apiKeys.keyName, encryptedValue: apiKeys.encryptedValue })
       .from(apiKeys)
       .where(eq(apiKeys.userId, userId));
 
-    const configuredNames = new Set(stored.map((row) => row.keyName));
+    const storedByName = new Map(stored.map((row) => [row.keyName, row]));
 
     return KNOWN_KEY_NAMES.map((name) => ({
       name,
-      configured: configuredNames.has(name),
+      label: API_KEY_METADATA[name].label,
+      configured: storedByName.has(name),
+      maskedPreview: storedByName.has(name) ? this.maskValue() : null,
+      category: API_KEY_METADATA[name].category,
     }));
+  }
+
+  private maskValue(): string {
+    return '••••••••';
   }
 }

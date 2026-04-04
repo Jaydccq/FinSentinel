@@ -8,52 +8,23 @@ export interface TradeOperation {
   price?: number
 }
 
-export interface WalletPosition {
-  ticker: string
-  shares: number
-  avgCost: number
-  currentPrice: number
-  marketValue: number
-  unrealizedPnl: number
-  pnlPercent: number
-}
-
 export interface WalletStatus {
-  cashBalance: number
-  initialCapital: number
-  totalValue: number
-  returnPercent: number
+  cashBalance: string
+  initialCapital: string
+  totalValue: string
+  returnPercent: string
   tradingMode: string
-  positions: WalletPosition[]
+  positions: Array<Record<string, unknown>>
 }
 
 export interface TradeCommit {
-  hash: string
-  parentHash?: string
   message: string
-  timestamp: string
-  operations: TradeOperation[]
-  results: Record<string, unknown>[]
 }
 
-export interface StagedOrders {
-  operations: TradeOperation[]
-  count: number
-}
+export type StagedOrders = TradeOperation[]
 
-export interface MarketHours {
-  isOpen: boolean
-  nextOpen?: string
-  nextClose?: string
-  currentTime: string
-}
-
-export interface SimulateResult {
-  ticker: string
-  changePercent: number
-  currentValue: number
-  hypotheticalValue: number
-  impact: number
+export interface TradeHistoryResponse {
+  history: string
 }
 
 export const tradingApi = {
@@ -70,18 +41,10 @@ export const tradingApi = {
     apiFetch<WalletStatus>('/trading/wallet'),
 
   history: (limit = 10) =>
-    apiFetch<TradeCommit[]>(`/trading/history?limit=${limit}`),
+    apiFetch<TradeHistoryResponse>(`/trading/history?limit=${limit}`),
 
   staged: () =>
     apiFetch<StagedOrders>('/trading/staged'),
-
-  simulate: (ticker: string, changePercent: number) =>
-    apiFetch<SimulateResult>('/trading/simulate', {
-      method: 'POST', body: JSON.stringify({ ticker, changePercent }),
-    }),
-
-  marketHours: () =>
-    apiFetch<MarketHours>('/trading/market-hours'),
 
   switchMode: (mode: string) =>
     apiFetch<void>('/trading/mode', { method: 'PUT', body: JSON.stringify({ mode }) }),
@@ -158,5 +121,5 @@ export const tradingApiV2 = {
     apiFetch<V2StagedOrders>('/trading/v2/staged'),
 
   search: (query: string) =>
-    apiFetch<AssetSearchResult[]>(`/trading/v2/search?q=${encodeURIComponent(query)}`),
+    apiFetch<AssetSearchResult[]>(`/trading/v2/search?query=${encodeURIComponent(query)}`),
 }

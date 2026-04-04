@@ -218,12 +218,11 @@ export const okxApi = {
     onError: (err: string) => void,
   ): Promise<void> => {
     try {
-      const res = await fetch(`${BASE}/okx/analysis/health-check`, {
+      const res = await fetch(`${BASE}/okx/analysis/health`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Accept: 'text/event-stream',
           ...authHeaders(),
         },
       })
@@ -233,53 +232,18 @@ export const okxApi = {
         return
       }
 
-      const reader = res.body!.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let fullText = ''
-      let receivedDone = false
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-
-        let eventName = ''
-        for (const line of lines) {
-          if (line.startsWith('event:')) {
-            eventName = line.slice(6).trim()
-          } else if (line.startsWith('data:')) {
-            const data = line.slice(5).trim()
-            if (eventName === 'done') {
-              receivedDone = true
-              onDone(fullText)
-            } else if (eventName === 'error') {
-              receivedDone = true
-              try { onError(JSON.parse(data).message) } catch { onError(data) }
-            } else if (eventName === 'message') {
-              try {
-                const parsed = JSON.parse(data)
-                const content = parsed.content ?? ''
-                fullText += content
-                onChunk(content)
-              } catch { /* ignore malformed */ }
-            }
-          } else if (line === '') {
-            eventName = ''
-          }
-        }
+      const payload = await res.json() as {
+        status?: string
+        message?: string
+        lastPrice?: string
       }
 
-      // Fallback: if stream ended without a done/error event, still resolve
-      if (!receivedDone) {
-        if (fullText) {
-          onDone(fullText)
-        } else {
-          onError('Stream ended unexpectedly')
-        }
-      }
+      const narrative = payload.lastPrice
+        ? `${payload.message ?? 'OKX API responded'} Last BTC-USDT-SWAP price: ${payload.lastPrice}.`
+        : (payload.message ?? 'OKX health check completed.')
+
+      onChunk(narrative)
+      onDone(narrative)
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Connection failed')
     }

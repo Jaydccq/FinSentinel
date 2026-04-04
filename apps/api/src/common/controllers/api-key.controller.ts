@@ -61,6 +61,6 @@ export class ApiKeyController {
     @CurrentUser() _user: CurrentUserPayload,
     @Param('name') _name: string,
   ) {
-    return { status: 'test_not_available' };
+    return { success: false, message: 'API key connectivity test is not implemented yet.' };
   }
 }
