@@ -33,9 +33,10 @@ export class DocumentParseService {
    * @param content - File content as a Buffer
    * @param mimeType - MIME type of the file (e.g. 'text/plain', 'application/pdf')
    * @returns Cleaned plain text suitable for chunking
-   */
+  */
   parseToCleanText(content: Buffer, mimeType: string): string {
-    const normalizedMime = mimeType.toLowerCase().split(';')[0]?.trim() ?? '';
+    const normalizedMime =
+      mimeType.toLowerCase().split(';', 1).at(0)?.trim() ?? '';
 
     let rawText: string;
 

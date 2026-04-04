@@ -74,11 +74,20 @@ function isMarketDataProvider(
     {
       provide: 'MARKET_DATA_PROVIDERS',
       useFactory: (
-        polygon: MarketDataProvider,
-        fmp: MarketDataProvider | null,
-        yahoo: MarketDataProvider | null,
-      ): MarketDataProvider[] =>
-        [polygon, fmp, yahoo].filter(isMarketDataProvider),
+        polygon: PolygonMarketDataProvider,
+        fmp: FmpMarketDataProvider | null,
+        yahoo: YahooFinanceMarketDataProvider | null,
+      ): MarketDataProvider[] => {
+        const providers = [polygon, fmp, yahoo].filter(
+          (
+            provider,
+          ): provider is
+            | PolygonMarketDataProvider
+            | FmpMarketDataProvider
+            | YahooFinanceMarketDataProvider => provider !== null,
+        );
+        return providers;
+      },
       inject: [
         PolygonMarketDataProvider,
         FmpMarketDataProvider,

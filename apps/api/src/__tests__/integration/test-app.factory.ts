@@ -14,6 +14,12 @@ import type { INestApplication } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { randomUUID } from 'crypto';
 import { AppModule } from '../../app.module';
+import {
+  VECTORIZE_QUEUE_TOKEN,
+  NEWS_ENRICH_QUEUE_TOKEN,
+} from '../../queue/queue.constants';
+import { VectorizeConsumer } from '../../queue/vectorize.consumer';
+import { NewsEnrichConsumer } from '../../queue/news-enrich.consumer';
 
 // ════════════════════════════════════════════════════════════════════════════
 // Mock DB — in-memory Drizzle-compatible query builder
@@ -407,6 +413,15 @@ function createMockS3StorageService() {
   };
 }
 
+function createMockQueue() {
+  return {
+    add: async () => ({
+      id: randomUUID(),
+    }),
+    close: async () => {},
+  };
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // Test App Factory
 // ════════════════════════════════════════════════════════════════════════════
@@ -425,6 +440,7 @@ export async function createTestApp(): Promise<{
   const mockDb = createMockDb();
   const mockRedis = createMockRedis();
   const mockMarketProvider = createMockMarketDataProvider();
+  const mockQueue = createMockQueue();
 
   // Env vars are set by import './setup' above — no duplication needed.
 
@@ -441,6 +457,14 @@ export async function createTestApp(): Promise<{
     .useValue(createMockS3StorageService())
     .overrideProvider('COLD_STORAGE')
     .useValue(createMockS3StorageService())
+    .overrideProvider(VECTORIZE_QUEUE_TOKEN)
+    .useValue(mockQueue)
+    .overrideProvider(NEWS_ENRICH_QUEUE_TOKEN)
+    .useValue(mockQueue)
+    .overrideProvider(VectorizeConsumer)
+    .useValue({})
+    .overrideProvider(NewsEnrichConsumer)
+    .useValue({})
     .compile();
 
   const app = moduleRef.createNestApplication();

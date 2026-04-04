@@ -61,6 +61,12 @@ services:
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      STORAGE_PROVIDER: rustfs
+      STORAGE_ENDPOINT: http://rustfs:9000
+      STORAGE_ACCESS_KEY: rustfsadmin
+      STORAGE_SECRET_KEY: rustfsadmin
+      STORAGE_BUCKET: finsentinel
+      STORAGE_REGION: us-east-1
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       AI_MODEL: ${AI_MODEL:-google/gemini-3-flash-preview}
       POLYGON_API_KEY: ${POLYGON_API_KEY}
@@ -98,6 +104,8 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      args:
+        INTERNAL_API_ORIGIN: http://api:3001
     ports:
       - "3000:3000"
     extra_hosts:
@@ -107,6 +115,7 @@ services:
         condition: service_started
     environment:
       INTERNAL_API_ORIGIN: http://api:3001
+      INTERNAL_API_BASE_URL: http://api:3001
 
   prometheus:
     image: prom/prometheus:v2.54.1

@@ -108,6 +108,7 @@ export class DocumentUploadService {
     // Synchronous fallback (used when QueueModule is not loaded)
     try {
       const text = this.parseService.parseToCleanText(file.buffer, file.mimetype);
+      const uploadDate = new Date().toISOString().slice(0, 10);
 
       if (text) {
         const chunkCount = await this.vectorService.vectorize(doc.id, text, {
@@ -115,7 +116,7 @@ export class DocumentUploadService {
           sector: sector ?? '',
           region_id: 'US',
           source: file.originalname,
-          date: new Date().toISOString().split('T')[0] ?? '',
+          date: uploadDate,
         });
 
         await this.db
@@ -156,7 +157,8 @@ export class DocumentUploadService {
       );
     }
 
-    const normalizedMime = file.mimetype.toLowerCase().split(';')[0]?.trim() ?? '';
+    const normalizedMime =
+      file.mimetype.toLowerCase().split(';', 1).at(0)?.trim() ?? '';
     if (!ALLOWED_MIME_TYPES.has(normalizedMime)) {
       throw new BadRequestException(
         `Unsupported file type: ${normalizedMime}. ` +

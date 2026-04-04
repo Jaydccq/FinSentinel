@@ -82,9 +82,13 @@ export class PolygonMarketDataProvider implements MarketDataProvider {
   // ── Internal ────────────────────────────────────────────────────────────
 
   private async fetchBars(ticker: string, days: number): Promise<PolygonBar[]> {
-    const to = new Date();
-    const from = new Date();
-    from.setDate(from.getDate() - days);
+    // Use UTC calendar math so CI and local machines produce the same Polygon range.
+    const now = new Date();
+    const to = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    const from = new Date(to);
+    from.setUTCDate(from.getUTCDate() - days);
 
     const fromStr = this.formatDate(from);
     const toStr = this.formatDate(to);

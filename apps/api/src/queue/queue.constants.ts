@@ -1,10 +1,11 @@
 /**
  * BullMQ queue name constants.
  *
- * Prefixed with `finsentinel:` to namespace within shared Redis instances.
+ * Use BullMQ-safe names without ":" because BullMQ reserves colon-delimited keys
+ * for its own Redis metadata.
  */
-export const VECTORIZE_QUEUE = 'finsentinel:vectorize';
-export const NEWS_ENRICH_QUEUE = 'finsentinel:news-enrich';
+export const VECTORIZE_QUEUE = 'finsentinel-vectorize';
+export const NEWS_ENRICH_QUEUE = 'finsentinel-news-enrich';
 
 /** Injection tokens for BullMQ Queue instances. */
 export const VECTORIZE_QUEUE_TOKEN = 'VECTORIZE_QUEUE';

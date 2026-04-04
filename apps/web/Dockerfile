@@ -5,6 +5,10 @@ RUN corepack enable && corepack prepare pnpm@10.30.0 --activate
 FROM base AS builder
 WORKDIR /app
 
+ARG INTERNAL_API_ORIGIN=http://localhost:3001
+ENV INTERNAL_API_ORIGIN=${INTERNAL_API_ORIGIN}
+ENV INTERNAL_API_BASE_URL=${INTERNAL_API_ORIGIN}
+
 # Copy workspace-level files first
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json tsconfig.base.json ./
 
@@ -24,6 +28,10 @@ RUN pnpm --filter @finsentinel/shared build && \
 # ── Runtime stage ────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
 WORKDIR /app
+
+ARG INTERNAL_API_ORIGIN=http://localhost:3001
+ENV INTERNAL_API_ORIGIN=${INTERNAL_API_ORIGIN}
+ENV INTERNAL_API_BASE_URL=${INTERNAL_API_ORIGIN}
 
 # Copy the standalone Next.js output
 COPY --from=builder /app/apps/web/.next/standalone ./

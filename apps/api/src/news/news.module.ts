@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { CommonModule } from '../common/common.module';
 import { AuthModule } from '../auth/auth.module';
 import { TwitterModule } from '../twitter/twitter.module';
 import { NewsFetcherService } from './news-fetcher.service';
@@ -29,7 +30,7 @@ import { XInfluencerFetcher } from './fetchers/x-influencer.fetcher';
  * - XInfluencerFetcher — Twitter/X influencer tweets via 6551.io
  */
 @Module({
-  imports: [AuthModule, TwitterModule],
+  imports: [CommonModule, AuthModule, TwitterModule],
   controllers: [NewsController],
   providers: [
     // ── Fetchers ────────────────────────────────────────────────────
