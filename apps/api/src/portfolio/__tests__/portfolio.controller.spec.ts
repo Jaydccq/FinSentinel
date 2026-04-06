@@ -4,6 +4,7 @@ import { INestApplication, NotFoundException, ForbiddenException } from '@nestjs
 import request from 'supertest';
 import { PortfolioController } from '../portfolio.controller';
 import { PortfolioService } from '../portfolio.service';
+import { PortfolioInsightsService } from '../portfolio-insights.service';
 import { JwtGuard } from '../../auth/jwt.guard';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -49,7 +50,7 @@ const ANALYTICS_RESPONSE = {
   concentrationWarnings: ['AAPL represents 100.00% of portfolio (>25% threshold)'],
 };
 
-// ── Mock Service ───────────────────────────────────────────────────────────
+// ── Mock Services ──────────────────────────────────────────────────────────
 const mockPortfolioService = {
   createPortfolio: vi.fn(),
   getPortfolios: vi.fn(),
@@ -61,6 +62,29 @@ const mockPortfolioService = {
   updateHolding: vi.fn(),
   deleteHolding: vi.fn(),
   getPortfolioAnalytics: vi.fn(),
+};
+
+const INSIGHTS_RESPONSE = {
+  portfolioId: PORTFOLIO_ID,
+  generatedAt: '2026-04-06T00:00:00.000Z',
+  freshness: 'full',
+  riskScore: 42,
+  riskLevel: 'LOW',
+  hhiIndex: 800,
+  hhiClassification: 'Well Diversified',
+  topHoldingSymbol: 'AAPL',
+  topHoldingWeightPercent: '20.00',
+  sectorCount: 5,
+  concentrationWarnings: [],
+  holdingCount: 10,
+  relevantEvents: [],
+  priorityActions: ['Continue monitoring.'],
+  narration: 'Your portfolio looks healthy.',
+  narrationFailed: false,
+};
+
+const mockInsightsService = {
+  getInsight: vi.fn(),
 };
 
 // ── Fake JwtGuard that injects userId ──────────────────────────────────────
@@ -82,6 +106,7 @@ describe('PortfolioController', () => {
       controllers: [PortfolioController],
       providers: [
         { provide: PortfolioService, useValue: mockPortfolioService },
+        { provide: PortfolioInsightsService, useValue: mockInsightsService },
       ],
     })
       .overrideGuard(JwtGuard)
@@ -271,6 +296,24 @@ describe('PortfolioController', () => {
       expect(res.body.hhiIndex).toBe(10000);
       expect(res.body.hhiClassification).toBe('Highly Concentrated');
       expect(res.body.concentrationWarnings).toHaveLength(1);
+    });
+  });
+
+  // ── GET /api/portfolios/:id/insights ───────────────────────────────────
+
+  describe('GET /api/portfolios/:id/insights', () => {
+    it('delegates to insightsService.getInsight and returns insight', async () => {
+      mockInsightsService.getInsight.mockResolvedValueOnce(INSIGHTS_RESPONSE);
+
+      const res = await request(app.getHttpServer())
+        .get(`/api/portfolios/${PORTFOLIO_ID}/insights`)
+        .expect(200);
+
+      expect(mockInsightsService.getInsight).toHaveBeenCalledWith(USER_ID, PORTFOLIO_ID);
+      expect(res.body.portfolioId).toBe(PORTFOLIO_ID);
+      expect(res.body.freshness).toBe('full');
+      expect(res.body.riskScore).toBe(42);
+      expect(res.body.priorityActions).toEqual(['Continue monitoring.']);
     });
   });
 });

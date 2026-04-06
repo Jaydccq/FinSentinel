@@ -17,11 +17,15 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { portfolioRequestSchema, holdingRequestSchema } from '@finsentinel/shared';
 import type { PortfolioRequest, HoldingRequest } from '@finsentinel/shared';
 import { PortfolioService } from './portfolio.service';
+import { PortfolioInsightsService } from './portfolio-insights.service';
 
 @Controller('portfolios')
 @UseGuards(JwtGuard)
 export class PortfolioController {
-  constructor(private readonly portfolioService: PortfolioService) {}
+  constructor(
+    private readonly portfolioService: PortfolioService,
+    private readonly insightsService: PortfolioInsightsService,
+  ) {}
 
   // ── Portfolio CRUD ─────────────────────────────────────────────────────
 
@@ -122,6 +126,16 @@ export class PortfolioController {
     @Param('id') id: string,
   ) {
     return this.portfolioService.getPortfolioAnalytics(user.userId, id);
+  }
+
+  // ── Insights ──────────────────────────────────────────────────────────
+
+  @Get(':id/insights')
+  async getInsights(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.insightsService.getInsight(user.userId, id);
   }
 
   // ── Reports ───────────────────────────────────────────────────────────

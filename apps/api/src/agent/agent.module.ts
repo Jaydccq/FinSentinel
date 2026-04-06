@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { CommonModule } from '../common/common.module';
 import { MarketModule } from '../market/market.module';
 import { ResearchModule } from '../research/research.module';
@@ -24,7 +24,7 @@ import { CryptoToolsService } from './crypto-tools.service';
     MarketModule,
     ResearchModule,
     TradingModule,
-    PortfolioModule,
+    forwardRef(() => PortfolioModule),
     AutonomyModule,
     NewsModule,
     RagModule,
