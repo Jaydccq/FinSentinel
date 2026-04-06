@@ -4,6 +4,7 @@ import { z } from 'zod';
 export const chatRequestSchema = z.object({
   message: z.string().min(1),
   sessionId: z.string().uuid().optional(),
+  portfolioId: z.string().uuid().optional(),
 });
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
 
