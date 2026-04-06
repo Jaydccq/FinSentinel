@@ -90,6 +90,7 @@ describe('ChatController', () => {
         'Analyze AAPL',
         USER_ID,
         SESSION_ID,
+        undefined,
       );
     });
 
@@ -108,6 +109,7 @@ describe('ChatController', () => {
       expect(mockChatService.streamChat).toHaveBeenCalledWith(
         'Hello agent',
         USER_ID,
+        undefined,
         undefined,
       );
     });
@@ -132,6 +134,7 @@ describe('ChatController', () => {
       expect(mockChatService.assess).toHaveBeenCalledWith(
         'Assess AAPL risk',
         USER_ID,
+        undefined,
         undefined,
       );
     });

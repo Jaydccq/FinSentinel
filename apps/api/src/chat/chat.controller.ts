@@ -49,6 +49,7 @@ export class ChatController {
       body.message,
       user.userId,
       body.sessionId,
+      body.portfolioId,
     );
 
     // Set SSE headers and status (must set status explicitly with @Res())
@@ -81,7 +82,7 @@ export class ChatController {
     @Body(new ZodValidationPipe(chatRequestSchema)) body: ChatRequest,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    return this.chatService.assess(body.message, user.userId, body.sessionId);
+    return this.chatService.assess(body.message, user.userId, body.sessionId, body.portfolioId);
   }
 
   // ── GET /chat/sessions ────────────────────────────────────────────────
