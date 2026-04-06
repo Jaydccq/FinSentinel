@@ -34,15 +34,11 @@ export const chatApi = {
   sessions: (): Promise<ChatSessionSummary[]> =>
     apiFetch('/chat/sessions'),
 
-  assess: (message: string, portfolioId?: string, sessionId?: string): Promise<RiskReport> => {
-    const params = new URLSearchParams()
-    if (portfolioId) params.set('portfolioId', portfolioId)
-    const qs = params.toString() ? `?${params}` : ''
-    return apiFetch(`/chat/assess${qs}`, {
+  assess: (message: string, portfolioId?: string, sessionId?: string): Promise<RiskReport> =>
+    apiFetch('/chat/assess', {
       method: 'POST',
-      body: JSON.stringify({ message, sessionId }),
-    })
-  },
+      body: JSON.stringify({ message, sessionId, portfolioId }),
+    }),
 
   history: (sessionId: string): Promise<ChatMessage[]> =>
     apiFetch(`/chat/sessions/${sessionId}`),
@@ -55,19 +51,15 @@ export const chatApi = {
     onDone: () => void,
     onError: (err: string) => void
   ): Promise<void> => {
-    const url = portfolioId
-      ? `${BASE}/chat/stream?portfolioId=${portfolioId}`
-      : `${BASE}/chat/stream`
-
     try {
-      const res = await fetch(url, {
+      const res = await fetch(`${BASE}/chat/stream`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
         },
-        body: JSON.stringify({ message, sessionId }),
+        body: JSON.stringify({ message, sessionId, portfolioId }),
       })
 
       if (!res.ok) {
