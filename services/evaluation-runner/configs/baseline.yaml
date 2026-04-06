@@ -1,0 +1,5 @@
+# Baseline config: current single-stage dense retrieval
+api_base_url: "http://localhost:3001"
+retrieval:
+  endpoint: "/api/rag/search"
+  top_k: 10

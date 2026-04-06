@@ -64,6 +64,13 @@ docs/
 work-log/
 work-logs/
 
+### Python ###
+__pycache__/
+*.pyc
+
+### Evaluation runner reports (generated) ###
+services/evaluation-runner/reports/*.json
+
 ### Node.js / TypeScript ###
 node_modules/
 dist/
@@ -87,3 +94,4 @@ opennews-mcp/
 opentwitter-mcp/
 skills/
 skills-lock.json
+.gstack/
