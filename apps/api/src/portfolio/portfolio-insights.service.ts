@@ -43,7 +43,7 @@ export class PortfolioInsightsService {
     const sortedByWeight = [...analytics.holdingWeights].sort(
       (a, b) => parseFloat(b.weightPercent) - parseFloat(a.weightPercent),
     );
-    const topHolding = sortedByWeight[0];
+    const topHolding = sortedByWeight[0]!;
     const topWeight = parseFloat(topHolding.weightPercent);
     const sectorCount = Object.keys(analytics.sectorAllocation).length;
 
@@ -77,9 +77,10 @@ export class PortfolioInsightsService {
       }
 
       for (let i = 0; i < newsResults.length; i++) {
-        const result = newsResults[i];
+        const result = newsResults[i]!;
+        const symbol = topSymbols[i]!;
         if (result.status === 'fulfilled' && !result.value.startsWith('No recent news')) {
-          const parsed = this.parseNewsToEvents(result.value, topSymbols[i], sortedByWeight);
+          const parsed = this.parseNewsToEvents(result.value, symbol, sortedByWeight);
           relevantEvents.push(...parsed);
         }
       }
@@ -139,7 +140,7 @@ export class PortfolioInsightsService {
     for (const article of articles) {
       const titleMatch = article.match(/\d+\.\s*\[(.+?)]\s*(.+)/);
       const publishedMatch = article.match(/Published:\s*(.+)/);
-      if (!titleMatch) continue;
+      if (!titleMatch?.[1] || !titleMatch[2]) continue;
 
       const source = titleMatch[1];
       const headline = titleMatch[2].trim();
