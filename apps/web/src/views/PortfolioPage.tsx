@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { Plus, Trash2, ChevronDown } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, Lightbulb } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { portfolioApi, type PortfolioResponse, type PortfolioAnalytics } from '../api/portfolio'
+import { portfolioApi, type PortfolioResponse, type PortfolioAnalytics, type PortfolioInsight } from '../api/portfolio'
 import { marketApi } from '../api/market'
 import { PortfolioListSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
@@ -122,6 +122,8 @@ export default function PortfolioPage() {
   const [analytics, setAnalytics] = useState<Record<string, PortfolioAnalytics>>({})
   const [holdingQuotes, setHoldingQuotes] = useState<Record<string, Record<string, { close: number }>>>({})
   const [holdingHistory, setHoldingHistory] = useState<Record<string, Record<string, number[]>>>({})
+  const [insights, setInsights] = useState<Record<string, PortfolioInsight>>({})
+  const [insightsLoading, setInsightsLoading] = useState<Record<string, boolean>>({})
 
   const refresh = () => portfolioApi.list().then(setPortfolios).finally(() => setLoading(false))
   useEffect(() => { refresh() }, [])
@@ -346,6 +348,85 @@ export default function PortfolioPage() {
                     </div>
                   )
                 })()}
+                {/* Insights Panel */}
+                <div className="px-4 py-3 border-b border-[color:var(--border-subtle)]">
+                  {!insights[portfolio.id] && !insightsLoading[portfolio.id] ? (
+                    <button
+                      onClick={() => {
+                        setInsightsLoading(prev => ({ ...prev, [portfolio.id]: true }))
+                        portfolioApi.getInsights(portfolio.id)
+                          .then(data => setInsights(prev => ({ ...prev, [portfolio.id]: data })))
+                          .catch(() => toast.error('Failed to load insights.'))
+                          .finally(() => setInsightsLoading(prev => ({ ...prev, [portfolio.id]: false })))
+                      }}
+                      className="btn-ghost px-3 py-1.5 text-xs flex items-center gap-1.5"
+                    >
+                      <Lightbulb size={13} />
+                      Get Insights
+                    </button>
+                  ) : insightsLoading[portfolio.id] ? (
+                    <p className="text-xs text-[var(--text-muted)] animate-pulse">Loading insights...</p>
+                  ) : insights[portfolio.id]?.freshness === 'empty' ? (
+                    <p className="text-xs text-[var(--text-muted)]">No insights available</p>
+                  ) : (() => {
+                    const ins = insights[portfolio.id]
+                    const riskColor = ins.riskLevel === 'LOW'
+                      ? 'bg-green-500/15 text-[var(--up)] border-green-400/30'
+                      : ins.riskLevel === 'HIGH'
+                        ? 'bg-red-500/15 text-[var(--down)] border-red-400/30'
+                        : 'bg-yellow-500/15 text-[var(--warn)] border-yellow-400/30'
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="space-y-3"
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold border ${riskColor}`}>
+                            Risk: {ins.riskScore} — {ins.riskLevel}
+                          </span>
+                          {ins.freshness === 'degraded' && (
+                            <span className="inline-block px-2 py-0.5 rounded text-xs font-medium border bg-yellow-500/15 text-[var(--warn)] border-yellow-400/30">
+                              Degraded
+                            </span>
+                          )}
+                        </div>
+
+                        {ins.narration && (
+                          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">{ins.narration}</p>
+                        )}
+
+                        {ins.priorityActions.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Priority Actions</p>
+                            <ul className="list-disc list-inside space-y-0.5">
+                              {ins.priorityActions.map((action, i) => (
+                                <li key={i} className="text-xs text-[var(--text-secondary)]">{action}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {ins.relevantEvents.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide mb-1">Relevant Events</p>
+                            <div className="space-y-1">
+                              {ins.relevantEvents.map((evt, i) => (
+                                <div key={i} className="flex items-baseline gap-2 text-xs">
+                                  <span className="text-[var(--text-primary)] font-medium truncate max-w-[60%]">{evt.headline}</span>
+                                  <span className="text-[var(--text-muted)]">{evt.source}</span>
+                                  <span className="text-[var(--text-muted)] tabular-nums">{new Date(evt.publishedAt).toLocaleDateString()}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    )
+                  })()}
+                </div>
+
                   <table className="table-terminal w-full min-w-[960px]">
                     <thead>
                       <tr className="bg-slate-900/35 text-[var(--text-muted)] text-xs border-b border-[color:var(--border-subtle)]">

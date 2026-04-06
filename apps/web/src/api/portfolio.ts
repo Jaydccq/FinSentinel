@@ -62,6 +62,33 @@ export interface PortfolioAnalytics {
   concentrationWarnings: string[]
 }
 
+export interface RelevantEvent {
+  headline: string
+  source: string
+  publishedAt: string
+  impactedSymbols: string[]
+  relevanceReason: string
+}
+
+export interface PortfolioInsight {
+  portfolioId: string
+  generatedAt: string
+  freshness: 'full' | 'degraded' | 'empty'
+  riskScore: number
+  riskLevel: string
+  hhiIndex: number
+  hhiClassification: string
+  topHoldingSymbol: string | null
+  topHoldingWeightPercent: string | null
+  sectorCount: number
+  concentrationWarnings: string[]
+  holdingCount: number
+  relevantEvents: RelevantEvent[]
+  priorityActions: string[]
+  narration: string | null
+  narrationFailed: boolean
+}
+
 export const portfolioApi = {
   list: () => apiFetch<PortfolioResponse[]>('/portfolios'),
   get: (id: string) => apiFetch<PortfolioResponse>(`/portfolios/${id}`),
@@ -87,4 +114,7 @@ export const portfolioApi = {
 
   getAnalytics: (id: string) =>
     apiFetch<PortfolioAnalytics>(`/portfolios/${id}/analytics`),
+
+  getInsights: (id: string) =>
+    apiFetch<PortfolioInsight>(`/portfolios/${id}/insights`),
 }
