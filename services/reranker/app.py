@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from models.bge_reranker import BGEReranker
 from routers.rerank import router as rerank_router, set_reranker
+from routers.entities import router as entities_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,6 +21,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="FinSentinel Reranker Sidecar", lifespan=lifespan)
 app.include_router(rerank_router)
+app.include_router(entities_router)
 
 
 @app.get("/health")
