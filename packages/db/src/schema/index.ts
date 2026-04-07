@@ -15,6 +15,10 @@ export { agentSchedules } from './agent-schedules';
 export { agentHeartbeatConfigs } from './agent-heartbeat-configs';
 export { chatSessionMemories } from './chat-session-memories';
 export { apiKeys } from './api-keys';
+export { knowledgeEntities } from './knowledge-entities';
+export { knowledgeRelations, RELATION_TYPES } from './knowledge-relations';
+export type { RelationType } from './knowledge-relations';
+export { chunkEntityLinks } from './chunk-entity-links';
 
 // Relations
 export {
