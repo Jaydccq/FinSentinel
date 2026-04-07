@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Inject, Optional, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 import { documents, eq } from '@finsentinel/db';
@@ -7,6 +7,7 @@ import { VECTORIZE_QUEUE } from './queue.constants';
 import { DocumentParseService } from '../document/document-parse.service';
 import { DocumentVectorService } from '../document/document-vector.service';
 import { HybridStorageService } from '../storage/hybrid.storage';
+import { GraphEnrichProducer } from './graph-enrich.producer';
 
 export interface VectorizeJobData {
   docId: string;
@@ -33,6 +34,7 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
     private readonly parseService: DocumentParseService,
     private readonly vectorService: DocumentVectorService,
     private readonly storage: HybridStorageService,
+    @Optional() @Inject(GraphEnrichProducer) private readonly graphEnrichProducer?: GraphEnrichProducer,
   ) {}
 
   onModuleInit(): void {
@@ -128,6 +130,15 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
       .where(eq(documents.id, docId));
 
     this.logger.log(`Document ${docId} vectorized: ${chunkCount} chunks`);
+
+    // Enqueue graph enrichment as a separate job
+    if (this.graphEnrichProducer) {
+      try {
+        await this.graphEnrichProducer.enqueue({ sourceType: 'document', sourceId: docId });
+      } catch (error) {
+        this.logger.warn(`Failed to enqueue graph enrichment for ${docId}: ${error}`);
+      }
+    }
   }
 
   private guessMimeType(fileName: string): string {
