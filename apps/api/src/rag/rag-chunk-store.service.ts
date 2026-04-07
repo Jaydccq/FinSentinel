@@ -12,16 +12,6 @@ export interface RagChunkRecord {
   metadata: Record<string, unknown>;
 }
 
-interface ChunkRow {
-  id: string;
-  sourceType: string;
-  sourceId: string;
-  chunkIndex: number;
-  content: string;
-  embedding: number[];
-  metadata: Record<string, unknown>;
-}
-
 interface RagChunkSearchFilters {
   docType?: string;
   sector?: string;
@@ -89,17 +79,7 @@ export class RagChunkStoreService {
     queryEmbedding: number[],
     filters: RagChunkSearchFilters,
   ): Promise<Array<RagChunkRecord & { similarity: number }>> {
-    const baseQuery = this.db
-      .select({
-        id: documentChunks.id,
-        sourceType: documentChunks.sourceType,
-        sourceId: documentChunks.sourceId,
-        chunkIndex: documentChunks.chunkIndex,
-        content: documentChunks.content,
-        embedding: documentChunks.embedding,
-        metadata: documentChunks.metadata,
-      })
-      .from(documentChunks);
+    const vectorStr = `[${queryEmbedding.join(',')}]`;
 
     const clauses = [];
     if (filters.docType) {
@@ -115,47 +95,33 @@ export class RagChunkStoreService {
       clauses.push(sql`${documentChunks.metadata}->>'date' >= ${filters.afterDate}`);
     }
 
-    const query = clauses.length > 0
-      ? baseQuery.where(sql.join(clauses, sql` AND `))
-      : baseQuery;
+    const whereClause = clauses.length > 0
+      ? sql`WHERE ${sql.join(clauses, sql` AND `)}`
+      : sql``;
 
-    const rows: ChunkRow[] = await query.limit(filters.limit ?? 500);
+    const rows = await this.db.execute(sql`
+      SELECT
+        id,
+        source_type AS "sourceType",
+        source_id AS "sourceId",
+        chunk_index AS "chunkIndex",
+        content,
+        metadata,
+        1 - (embedding <=> ${vectorStr}::vector) AS similarity
+      FROM document_chunks
+      ${whereClause}
+      ORDER BY embedding <=> ${vectorStr}::vector
+      LIMIT ${filters.limit ?? 500}
+    `);
 
-    return rows
-      .map((row) => ({
-        sourceType: row.sourceType as 'document' | 'news',
-        sourceId: row.sourceId,
-        chunkIndex: row.chunkIndex,
-        content: row.content,
-        embedding: row.embedding,
-        metadata: row.metadata,
-        similarity: this.cosineSimilarity(queryEmbedding, row.embedding),
-      }))
-      .filter((row) => Number.isFinite(row.similarity))
-      .sort((left, right) => right.similarity - left.similarity);
-  }
-
-  private cosineSimilarity(left: number[], right: number[]): number {
-    if (left.length === 0 || right.length === 0 || left.length !== right.length) {
-      return Number.NaN;
-    }
-
-    let dot = 0;
-    let leftNorm = 0;
-    let rightNorm = 0;
-
-    for (let index = 0; index < left.length; index++) {
-      const l = left[index]!;
-      const r = right[index]!;
-      dot += l * r;
-      leftNorm += l * l;
-      rightNorm += r * r;
-    }
-
-    if (leftNorm === 0 || rightNorm === 0) {
-      return Number.NaN;
-    }
-
-    return dot / (Math.sqrt(leftNorm) * Math.sqrt(rightNorm));
+    return (rows as any[]).map((row) => ({
+      sourceType: row.sourceType as 'document' | 'news',
+      sourceId: row.sourceId,
+      chunkIndex: row.chunkIndex,
+      content: row.content,
+      embedding: [],  // Don't load embeddings into memory anymore
+      metadata: row.metadata,
+      similarity: row.similarity,
+    }));
   }
 }
