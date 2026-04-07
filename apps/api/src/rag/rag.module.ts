@@ -12,6 +12,7 @@ import { RetrievalFusionService } from './retrieval-fusion.service';
 import { RetrievalOrchestratorService } from './retrieval-orchestrator.service';
 import { RerankService } from './rerank.service';
 import { ContextPackerService } from './context-packer.service';
+import { RetrievalPlannerService } from './retrieval-planner.service';
 
 /**
  * RAG module -- Phase 8.
@@ -37,6 +38,7 @@ import { ContextPackerService } from './context-packer.service';
     RetrievalOrchestratorService,
     RerankService,
     ContextPackerService,
+    RetrievalPlannerService,
   ],
   exports: [
     RagRetrievalService,
@@ -50,6 +52,7 @@ import { ContextPackerService } from './context-packer.service';
     RetrievalOrchestratorService,
     RerankService,
     ContextPackerService,
+    RetrievalPlannerService,
   ],
 })
 export class RagModule {}
