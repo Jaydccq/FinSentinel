@@ -67,8 +67,22 @@ export class RagChunkStoreService {
         content: chunk.content,
         embedding: chunk.embedding,
         metadata: chunk.metadata,
+        metaTitle: (chunk.metadata['title'] as string) ?? null,
+        metaSource: (chunk.metadata['source'] as string) ?? null,
+        metaEntities: null, // populated later by GraphEnrichmentConsumer
       })),
     );
+
+    // Build search_vector for newly inserted chunks
+    await this.db.execute(sql`
+      UPDATE document_chunks
+      SET search_vector =
+        setweight(to_tsvector('simple', coalesce(meta_title, '')), 'A') ||
+        setweight(to_tsvector('simple', coalesce(meta_source, '')), 'A') ||
+        setweight(to_tsvector('simple', coalesce(meta_entities, '')), 'A') ||
+        setweight(to_tsvector('english', coalesce(content, '')), 'B')
+      WHERE source_type = ${sourceType} AND source_id = ${sourceId}
+    `);
   }
 
   async search(
