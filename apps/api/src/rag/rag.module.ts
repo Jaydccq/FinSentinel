@@ -10,6 +10,7 @@ import { RagBackfillSchedulerService } from './rag-backfill-scheduler.service';
 import { SparseSearchService } from './sparse-search.service';
 import { RetrievalFusionService } from './retrieval-fusion.service';
 import { RetrievalOrchestratorService } from './retrieval-orchestrator.service';
+import { RerankService } from './rerank.service';
 
 /**
  * RAG module -- Phase 8.
@@ -33,6 +34,7 @@ import { RetrievalOrchestratorService } from './retrieval-orchestrator.service';
     SparseSearchService,
     RetrievalFusionService,
     RetrievalOrchestratorService,
+    RerankService,
   ],
   exports: [
     RagRetrievalService,
@@ -44,6 +46,7 @@ import { RetrievalOrchestratorService } from './retrieval-orchestrator.service';
     SparseSearchService,
     RetrievalFusionService,
     RetrievalOrchestratorService,
+    RerankService,
   ],
 })
 export class RagModule {}
