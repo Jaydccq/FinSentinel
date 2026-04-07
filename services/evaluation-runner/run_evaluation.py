@@ -3,16 +3,18 @@
 
 Usage:
   python run_evaluation.py run --dataset datasets/golden.json --output reports/baseline.json
+  python run_evaluation.py run --dataset datasets/golden.json --output reports/live.json --config config.yaml
   python run_evaluation.py compare reports/baseline.json reports/experiment.json
 """
 
 import argparse
 import json
 import sys
+import yaml
 from datetime import datetime, timezone
 from pathlib import Path
 
-from evaluators.topk_evaluator import TopKEvaluator, GoldenEntry, RetrievalResult
+from evaluators.topk_evaluator import TopKEvaluator, GoldenEntry, RetrievalResult, RetrievedChunk
 
 
 def load_golden_set(path: str) -> list[GoldenEntry]:
@@ -21,13 +23,70 @@ def load_golden_set(path: str) -> list[GoldenEntry]:
     return [GoldenEntry(**entry) for entry in data["entries"]]
 
 
-def run_evaluation(dataset_path: str, output_path: str) -> None:
+def load_config(path: str | None) -> dict:
+    if path is None:
+        return {}
+    with open(path) as f:
+        return yaml.safe_load(f) or {}
+
+
+def fetch_retrieval_results(
+    api_base_url: str,
+    endpoint: str,
+    golden_set: list[GoldenEntry],
+    top_k: int,
+) -> list[RetrievalResult]:
+    """Call the RAG API to get actual retrieval results for each golden entry."""
+    import httpx
+
+    results = []
+    with httpx.Client(timeout=30) as client:
+        for entry in golden_set:
+            try:
+                resp = client.post(
+                    f"{api_base_url}{endpoint}",
+                    json={"query": entry.query, "topK": top_k},
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                chunks = [
+                    RetrievedChunk(
+                        chunk_id=c.get("chunkId", c.get("id", "")),
+                        content=c.get("content", ""),
+                        score=c.get("similarity", c.get("score", 0)),
+                    )
+                    for c in data if isinstance(data, list)
+                ] if isinstance(data, list) else [
+                    RetrievedChunk(
+                        chunk_id=c.get("chunkId", c.get("id", "")),
+                        content=c.get("content", ""),
+                        score=c.get("similarity", c.get("score", 0)),
+                    )
+                    for c in data.get("results", data.get("chunks", []))
+                ]
+                results.append(RetrievalResult(chunks=chunks))
+            except Exception as e:
+                print(f"  Warning: retrieval failed for '{entry.query[:50]}...': {e}")
+                results.append(RetrievalResult(chunks=[]))
+    return results
+
+
+def run_evaluation(dataset_path: str, output_path: str, config_path: str | None = None) -> None:
     golden_set = load_golden_set(dataset_path)
     print(f"Loaded {len(golden_set)} golden entries from {dataset_path}")
 
-    # TODO: Phase 6 Task 23 will add API calls to actually retrieve results.
-    # For now, generate empty results to establish the baseline format.
-    retrieval_results = [RetrievalResult(chunks=[]) for _ in golden_set]
+    config = load_config(config_path)
+    retrieval_config = config.get("retrieval", {})
+    api_base_url = config.get("api_base_url", "")
+
+    if api_base_url:
+        endpoint = retrieval_config.get("endpoint", "/api/rag/search")
+        top_k = retrieval_config.get("top_k", 10)
+        print(f"Fetching results from {api_base_url}{endpoint} (top_k={top_k})")
+        retrieval_results = fetch_retrieval_results(api_base_url, endpoint, golden_set, top_k)
+    else:
+        print("No API configured, using empty retrieval results")
+        retrieval_results = [RetrievalResult(chunks=[]) for _ in golden_set]
 
     evaluator = TopKEvaluator()
     metrics = evaluator.evaluate(golden_set, retrieval_results)
@@ -91,6 +150,7 @@ def main():
     run_parser = subparsers.add_parser("run", help="Run evaluation")
     run_parser.add_argument("--dataset", required=True, help="Path to golden set JSON")
     run_parser.add_argument("--output", required=True, help="Path for output report JSON")
+    run_parser.add_argument("--config", default=None, help="Path to config YAML")
 
     cmp_parser = subparsers.add_parser("compare", help="Compare two reports")
     cmp_parser.add_argument("baseline", help="Baseline report JSON")
@@ -99,7 +159,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "run":
-        run_evaluation(args.dataset, args.output)
+        run_evaluation(args.dataset, args.output, args.config)
     elif args.command == "compare":
         compare_reports(args.baseline, args.experiment)
     else:
