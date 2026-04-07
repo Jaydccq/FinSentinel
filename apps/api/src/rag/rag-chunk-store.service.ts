@@ -115,11 +115,12 @@ export class RagChunkStoreService {
     `);
 
     return (rows as any[]).map((row) => ({
+      id: row.id as string,
       sourceType: row.sourceType as 'document' | 'news',
       sourceId: row.sourceId,
       chunkIndex: row.chunkIndex,
       content: row.content,
-      embedding: [],  // Don't load embeddings into memory anymore
+      embedding: [],
       metadata: row.metadata,
       similarity: row.similarity,
     }));

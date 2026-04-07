@@ -1,8 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RagEmbeddingService } from './rag-embedding.service';
 import { RagChunkStoreService } from './rag-chunk-store.service';
 import { MetricsService } from '../common/services/metrics.service';
+import { RetrievalPlannerService } from './retrieval-planner.service';
+import { RetrievalOrchestratorService } from './retrieval-orchestrator.service';
+import { RerankService } from './rerank.service';
+import { ContextPackerService } from './context-packer.service';
 
 export interface RagSearchResult {
   content: string;
@@ -23,14 +27,20 @@ export interface RagSearchOptions {
 export class RagRetrievalService {
   private readonly logger = new Logger(RagRetrievalService.name);
   private readonly similarityThreshold: number;
+  private readonly multiStageEnabled: boolean;
 
   constructor(
     private readonly embeddingService: RagEmbeddingService,
     private readonly chunkStore: RagChunkStoreService,
     private readonly metrics: MetricsService,
     configService: ConfigService,
+    @Optional() private readonly planner?: RetrievalPlannerService,
+    @Optional() private readonly orchestrator?: RetrievalOrchestratorService,
+    @Optional() private readonly reranker?: RerankService,
+    @Optional() private readonly contextPacker?: ContextPackerService,
   ) {
     this.similarityThreshold = configService.get<number>('RAG_SIMILARITY_THRESHOLD', 0.65);
+    this.multiStageEnabled = configService.get<string>('RAG_MULTI_STAGE_ENABLED', 'false') === 'true';
   }
 
   async search(
@@ -48,6 +58,11 @@ export class RagRetrievalService {
         : queryOrOptions;
 
     const safeTopK = Math.min(Math.max(opts.topK ?? 5, 1), 50);
+
+    // Delegate to multi-stage pipeline when enabled and all services are available
+    if (this.multiStageEnabled && this.planner && this.orchestrator && this.reranker && this.contextPacker) {
+      return this.searchMultiStage(opts, safeTopK);
+    }
 
     this.logger.debug(
       `RAG search: query="${opts.query.substring(0, 50)}..." topK=${safeTopK} ` +
@@ -114,6 +129,63 @@ export class RagRetrievalService {
       );
       throw error;
     }
+  }
+
+  private async searchMultiStage(
+    opts: RagSearchOptions,
+    safeTopK: number,
+  ): Promise<RagSearchResult[]> {
+    const startedAt = Date.now();
+    try {
+      const plan = await this.planner!.plan(opts.query);
+      const fused = await this.orchestrator!.orchestrate({
+        rewrittenQuery: plan.rewrittenQuery,
+        lanes: plan.lanes,
+        topKPerLane: plan.topKPerLane,
+        filters: {
+          docType: opts.docType,
+          sector: opts.sector,
+          regionId: opts.regionId,
+          afterDate: opts.afterDate,
+        },
+      });
+      const reranked = await this.reranker!.rerank(plan.rewrittenQuery, fused, safeTopK * 2);
+      const packed = this.contextPacker!.pack(reranked, {
+        maxTokens: 4096,
+        maxChunksPerSource: 3,
+      });
+
+      const results = packed.chunks.slice(0, safeTopK).map((c) => ({
+        content: c.content,
+        metadata: c.metadata,
+        similarity: 1.0, // reranked results don't have cosine similarity
+      }));
+
+      this.metrics.incrementCounter('rag_search_requests_total', 'Total RAG search requests by status', { status: 'success' });
+      this.metrics.setGauge('rag_search_last_duration_ms', 'Duration in milliseconds of the most recent RAG search', { status: 'success' }, Date.now() - startedAt);
+      return results;
+    } catch (error) {
+      this.logger.warn(`Multi-stage search failed, falling back to dense: ${error}`);
+      this.metrics.incrementCounter('rag_search_requests_total', 'Total RAG search requests by status', { status: 'error' });
+      // Fall back to single-stage dense search
+      return this.searchDenseFallback(opts, safeTopK);
+    }
+  }
+
+  private async searchDenseFallback(opts: RagSearchOptions, safeTopK: number): Promise<RagSearchResult[]> {
+    const queryEmbedding = await this.embeddingService.embedQuery(opts.query);
+    const ranked = await this.chunkStore.search(queryEmbedding, {
+      docType: opts.docType,
+      sector: opts.sector,
+      regionId: opts.regionId,
+      afterDate: opts.afterDate,
+      limit: Math.max(safeTopK * 20, 200),
+    });
+    return ranked
+      .filter((row) => row.similarity >= this.similarityThreshold)
+      .sort((left, right) => right.similarity - left.similarity)
+      .slice(0, safeTopK)
+      .map((row) => ({ content: row.content, metadata: row.metadata, similarity: row.similarity }));
   }
 
   getThreshold(): number {

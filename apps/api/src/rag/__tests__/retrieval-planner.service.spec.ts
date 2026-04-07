@@ -1,13 +1,22 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { RetrievalPlannerService } from '../retrieval-planner.service';
 
+function mockConfigService(graphEnabled = false) {
+  return {
+    get: vi.fn((key: string, defaultVal: unknown) => {
+      if (key === 'RAG_GRAPH_ENABLED') return graphEnabled ? 'true' : 'false';
+      return defaultVal;
+    }),
+  };
+}
+
 describe('RetrievalPlannerService', () => {
   let service: RetrievalPlannerService;
   let mockRewrite: { rewrite: Mock };
 
   beforeEach(() => {
     mockRewrite = { rewrite: vi.fn().mockImplementation((q: string) => Promise.resolve(q)) };
-    service = new RetrievalPlannerService(mockRewrite as any);
+    service = new RetrievalPlannerService(mockRewrite as any, mockConfigService(false) as any);
   });
 
   it('always includes dense and sparse lanes', async () => {
@@ -16,18 +25,20 @@ describe('RetrievalPlannerService', () => {
     expect(plan.lanes).toContain('sparse');
   });
 
-  it('activates graph lane for relational queries', async () => {
+  it('does NOT activate graph lane when graph is disabled (default)', async () => {
     const plan = await service.plan('Who are the main competitors of Tesla?');
+    expect(plan.lanes).not.toContain('graph');
+  });
+
+  it('activates graph lane for relational queries when graph is enabled', async () => {
+    const graphService = new RetrievalPlannerService(mockRewrite as any, mockConfigService(true) as any);
+    const plan = await graphService.plan('Who are the main competitors of Tesla?');
     expect(plan.lanes).toContain('graph');
   });
 
-  it('activates graph lane for supply chain queries', async () => {
-    const plan = await service.plan('Which companies supply NVIDIA with chips?');
-    expect(plan.lanes).toContain('graph');
-  });
-
-  it('does NOT activate graph lane for simple factual queries', async () => {
-    const plan = await service.plan('AAPL stock price today');
+  it('does NOT activate graph lane for simple queries even when graph is enabled', async () => {
+    const graphService = new RetrievalPlannerService(mockRewrite as any, mockConfigService(true) as any);
+    const plan = await graphService.plan('AAPL stock price today');
     expect(plan.lanes).not.toContain('graph');
   });
 

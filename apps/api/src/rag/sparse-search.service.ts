@@ -32,6 +32,20 @@ export class SparseSearchService {
 
     const candidateLimit = Math.max(topK * 4, 100);
 
+    const filterClauses = [sql`search_vector @@ websearch_to_tsquery('simple', ${query})`];
+    if (filters.docType) {
+      filterClauses.push(sql`metadata->>'doc_type' = ${filters.docType}`);
+    }
+    if (filters.sector) {
+      filterClauses.push(sql`metadata->>'sector' = ${filters.sector}`);
+    }
+    if (filters.regionId) {
+      filterClauses.push(sql`metadata->>'region_id' = ${filters.regionId}`);
+    }
+    if (filters.afterDate) {
+      filterClauses.push(sql`metadata->>'date' >= ${filters.afterDate}`);
+    }
+
     const rows = await this.db.execute(sql`
       WITH ranked AS (
         SELECT
@@ -41,7 +55,7 @@ export class SparseSearchService {
           metadata,
           ts_rank_cd(search_vector, websearch_to_tsquery('simple', ${query})) AS rank_score
         FROM document_chunks
-        WHERE search_vector @@ websearch_to_tsquery('simple', ${query})
+        WHERE ${sql.join(filterClauses, sql` AND `)}
         ORDER BY rank_score DESC
         LIMIT ${candidateLimit}
       ),

@@ -75,7 +75,7 @@ export class RetrievalOrchestratorService {
     });
 
     return results.map((r) => ({
-      chunkId: `${r.sourceId}-${r.chunkIndex}`,
+      chunkId: (r as any).id ?? `${r.sourceId}-${r.chunkIndex}`,
       sourceId: r.sourceId,
       content: r.content,
       metadata: r.metadata,
