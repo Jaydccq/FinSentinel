@@ -7,6 +7,9 @@ import { RagEmbeddingService } from './rag-embedding.service';
 import { RagChunkStoreService } from './rag-chunk-store.service';
 import { RagReindexService } from './rag-reindex.service';
 import { RagBackfillSchedulerService } from './rag-backfill-scheduler.service';
+import { SparseSearchService } from './sparse-search.service';
+import { RetrievalFusionService } from './retrieval-fusion.service';
+import { RetrievalOrchestratorService } from './retrieval-orchestrator.service';
 
 /**
  * RAG module -- Phase 8.
@@ -27,6 +30,9 @@ import { RagBackfillSchedulerService } from './rag-backfill-scheduler.service';
     RagChunkStoreService,
     RagReindexService,
     RagBackfillSchedulerService,
+    SparseSearchService,
+    RetrievalFusionService,
+    RetrievalOrchestratorService,
   ],
   exports: [
     RagRetrievalService,
@@ -35,6 +41,9 @@ import { RagBackfillSchedulerService } from './rag-backfill-scheduler.service';
     RagChunkStoreService,
     RagReindexService,
     RagBackfillSchedulerService,
+    SparseSearchService,
+    RetrievalFusionService,
+    RetrievalOrchestratorService,
   ],
 })
 export class RagModule {}
