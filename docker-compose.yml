@@ -43,6 +43,22 @@ services:
       timeout: 3s
       retries: 5
 
+  reranker:
+    build:
+      context: ./services/reranker
+      dockerfile: Dockerfile
+    ports:
+      - "8100:8100"
+    environment:
+      - TRANSFORMERS_CACHE=/app/.cache
+    volumes:
+      - reranker-cache:/app/.cache
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8100/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   api:
     build:
       context: .
@@ -97,6 +113,8 @@ services:
       OPENBB_ENABLED: ${OPENBB_ENABLED:-false}
       OPENBB_BASE_URL: ${OPENBB_BASE_URL:-http://host.docker.internal:6900}
       OPENBB_API_PREFIX: ${OPENBB_API_PREFIX:-/api/v1}
+      RERANKER_URL: http://reranker:8100
+      RERANKER_TIMEOUT_MS: ${RERANKER_TIMEOUT_MS:-5000}
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3001
 
@@ -146,3 +164,4 @@ services:
 volumes:
   pgdata:
   rustfsdata:
+  reranker-cache:

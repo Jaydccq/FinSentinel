@@ -11,6 +11,7 @@ import { SparseSearchService } from './sparse-search.service';
 import { RetrievalFusionService } from './retrieval-fusion.service';
 import { RetrievalOrchestratorService } from './retrieval-orchestrator.service';
 import { RerankService } from './rerank.service';
+import { ContextPackerService } from './context-packer.service';
 
 /**
  * RAG module -- Phase 8.
@@ -35,6 +36,7 @@ import { RerankService } from './rerank.service';
     RetrievalFusionService,
     RetrievalOrchestratorService,
     RerankService,
+    ContextPackerService,
   ],
   exports: [
     RagRetrievalService,
@@ -47,6 +49,7 @@ import { RerankService } from './rerank.service';
     RetrievalFusionService,
     RetrievalOrchestratorService,
     RerankService,
+    ContextPackerService,
   ],
 })
 export class RagModule {}
