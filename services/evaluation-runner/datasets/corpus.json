@@ -1,0 +1,294 @@
+{
+  "version": "1.0",
+  "created_at": "2026-04-06",
+  "description": "Synthetic financial document corpus for offline RAG evaluation",
+  "chunks": [
+    {
+      "chunk_id": "chunk-001",
+      "source_doc": "AAPL-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Apple Inc. reported total revenue of $391.0 billion for fiscal year 2025, representing a 5.2% increase year-over-year from $371.8 billion in fiscal year 2024. iPhone revenue was $200.6 billion, accounting for 51.3% of total revenue. Services revenue reached $96.2 billion, growing 14.1% year-over-year and achieving a record gross margin of 74.0% in the services segment. Mac revenue was $29.4 billion, iPad revenue was $28.3 billion, and Wearables, Home and Accessories contributed $36.5 billion."
+    },
+    {
+      "chunk_id": "chunk-002",
+      "source_doc": "AAPL-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Apple's Services segment includes the App Store, Apple Music, iCloud, Apple TV+, Apple Pay, AppleCare, and advertising. Services revenue grew from $84.3 billion in FY2024 to $96.2 billion in FY2025. The installed base of active devices surpassed 2.3 billion globally. Apple Pay processed over $1.8 trillion in transaction volume during FY2025. The company reported 1.1 billion paid subscriptions across its services platform, up from 900 million the prior year."
+    },
+    {
+      "chunk_id": "chunk-003",
+      "source_doc": "AAPL-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Risk Factors: Apple faces significant risks including dependence on key component suppliers, particularly for advanced semiconductor chips manufactured by TSMC. Supply chain concentration in East Asia, especially Taiwan and China, exposes the company to geopolitical tensions, natural disasters, and trade restrictions. The company's iPhone product line accounts for over 51% of total revenue, creating concentration risk. Regulatory scrutiny of App Store practices in the EU under the Digital Markets Act could materially impact Services revenue and margins."
+    },
+    {
+      "chunk_id": "chunk-004",
+      "source_doc": "AAPL-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Apple's supply chain relies heavily on contract manufacturers and component suppliers across Asia. Foxconn and Pegatron remain the primary iPhone assemblers. The company sources advanced A-series and M-series chips exclusively from TSMC's leading-edge process nodes (3nm and 2nm). Apple has been actively diversifying manufacturing to India and Vietnam, with India now accounting for approximately 14% of global iPhone production, up from 7% in the prior year. The company maintains inventory reserves and long-term supply agreements to mitigate component shortage risks."
+    },
+    {
+      "chunk_id": "chunk-005",
+      "source_doc": "AAPL-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Apple reported operating cash flow of $118.3 billion for FY2025, with free cash flow of $107.2 billion after capital expenditures of $11.1 billion. The company returned $95.0 billion to shareholders through dividends ($15.6 billion) and share repurchases ($79.4 billion). Apple held $51.2 billion in cash and marketable securities. Total debt was $98.1 billion. The board authorized an additional $90 billion share repurchase program."
+    },
+    {
+      "chunk_id": "chunk-006",
+      "source_doc": "AAPL-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Apple's Greater China segment generated revenue of $67.4 billion in FY2025, declining 2.8% year-over-year amid intensifying competition from Huawei and Xiaomi in the premium smartphone market. The company faced regulatory headwinds including restrictions on iPhone use by government employees. Apple Intelligence features were not available in China at launch due to regulatory approval delays for generative AI services, putting the company at a competitive disadvantage in the region."
+    },
+    {
+      "chunk_id": "chunk-007",
+      "source_doc": "AAPL-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Apple's research and development expenses reached $31.4 billion in FY2025, an increase of 9.2% year-over-year, driven by investments in Apple Intelligence, the Vision Pro platform, and next-generation silicon. The company employed approximately 164,000 full-time equivalent employees. Apple Intelligence, the company's on-device AI platform, was launched across iPhone, iPad, and Mac in late 2024 and contributed to strong upgrade cycles in the first half of FY2025."
+    },
+    {
+      "chunk_id": "chunk-008",
+      "source_doc": "AAPL-Q3-2025-earnings.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Apple reported Q3 FY2025 (quarter ended June 2025) revenue of $94.8 billion, up 4.9% year-over-year. iPhone revenue was $46.3 billion, Services revenue was $25.2 billion (a new quarterly record), and Mac revenue was $8.1 billion. Gross margin was 46.3% overall and 74.2% for Services. The company generated $28.9 billion in operating cash flow during the quarter. Tim Cook noted strong momentum in Apple Intelligence adoption driving hardware upgrades."
+    },
+    {
+      "chunk_id": "chunk-009",
+      "source_doc": "NVDA-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Semiconductor",
+      "content": "NVIDIA Corporation reported record revenue of $130.5 billion for fiscal year 2025 (ending January 2026), an increase of 114% year-over-year. Data Center revenue was $115.2 billion, representing 88.3% of total revenue, driven by surging demand for H100, H200, and Blackwell GPU architectures for AI training and inference workloads. Gaming revenue was $10.6 billion. Professional Visualization contributed $2.0 billion and Automotive $2.7 billion."
+    },
+    {
+      "chunk_id": "chunk-010",
+      "source_doc": "NVDA-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Semiconductor",
+      "content": "NVIDIA holds an estimated 80-85% market share in AI training GPUs globally. The company's competitive advantages include the CUDA software ecosystem with over 5 million developers, proprietary interconnect technologies (NVLink, NVSwitch), and full-stack AI platform capabilities spanning hardware, networking, and software. Key competitors include AMD with its MI300X accelerator and Intel's Gaudi line, though neither has achieved comparable software ecosystem adoption."
+    },
+    {
+      "chunk_id": "chunk-011",
+      "source_doc": "NVDA-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Semiconductor",
+      "content": "NVIDIA's Data Center segment revenue of $115.2 billion was driven by hyperscale cloud providers (Microsoft Azure, Amazon AWS, Google Cloud) which collectively represented approximately 45% of data center revenue. Enterprise and sovereign AI deployments accounted for the remaining 55%. The Blackwell architecture, launched in late 2024, achieved $18 billion in revenue within its first two quarters of availability. The company's networking revenue (InfiniBand and Ethernet switches) grew 120% to $15.8 billion."
+    },
+    {
+      "chunk_id": "chunk-012",
+      "source_doc": "NVDA-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Semiconductor",
+      "content": "NVIDIA depends on TSMC as its primary manufacturing partner for GPU production. All Hopper and Blackwell architecture GPUs are fabricated on TSMC's advanced process nodes (4nm and 3nm). This single-source dependency exposes NVIDIA to supply chain risks including TSMC capacity allocation, geopolitical tensions regarding Taiwan, and potential export controls. NVIDIA has explored packaging diversification with partners including Amkor and ASE, but TSMC remains irreplaceable for leading-edge fabrication."
+    },
+    {
+      "chunk_id": "chunk-013",
+      "source_doc": "NVDA-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Semiconductor",
+      "content": "NVIDIA faces regulatory risks from US export controls on advanced AI chips to China, which reduced China-region revenue by an estimated $12 billion in FY2025. The company developed compliant alternative products (H20) for the China market but these carry lower margins. NVIDIA's gross margin was 73.8% for FY2025, compared to 72.7% in FY2024, reflecting favorable product mix toward high-margin data center products."
+    },
+    {
+      "chunk_id": "chunk-014",
+      "source_doc": "NVDA-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Semiconductor",
+      "content": "NVIDIA invested $12.8 billion in research and development during FY2025, focused on next-generation GPU architectures, AI software frameworks, and autonomous vehicle platforms. The company employed approximately 32,000 employees. NVIDIA's AI Enterprise software platform generated $1.5 billion in annual recurring revenue, growing 150% year-over-year as enterprises adopted production AI deployments."
+    },
+    {
+      "chunk_id": "chunk-015",
+      "source_doc": "TSLA-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Tesla, Inc. reported total revenue of $97.7 billion for fiscal year 2025, a 12% increase year-over-year. Automotive revenue was $78.5 billion, Energy Generation and Storage revenue was $12.1 billion (up 67%), and Services revenue was $7.1 billion. The company delivered 1.95 million vehicles globally, with the Model Y being the best-selling vehicle worldwide for the second consecutive year. Automotive gross margin was 18.2%, impacted by price reductions and increased competition."
+    },
+    {
+      "chunk_id": "chunk-016",
+      "source_doc": "TSLA-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Tesla faces significant competition in the global EV market from both traditional automakers and EV-native companies. BYD surpassed Tesla in total EV sales volume in 2025 with 3.2 million units. Other major competitors include Volkswagen Group, Hyundai-Kia, BMW, Mercedes-Benz, Rivian, and Lucid Motors in the premium segment. In China, Tesla competes with NIO, XPeng, Li Auto, and BYD across multiple price segments. Tesla's market share in global BEV sales declined from 19.5% to 15.8% year-over-year."
+    },
+    {
+      "chunk_id": "chunk-017",
+      "source_doc": "TSLA-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Tesla's Full Self-Driving (FSD) system achieved supervised autonomous driving capability in the United States and began limited deployment of unsupervised robotaxi services in Austin, Texas and Phoenix, Arizona in late 2025. The FSD software generated $3.2 billion in revenue through subscription and one-time purchase options. Tesla's autonomous driving technology uses a vision-only approach with no lidar, relying on neural networks trained on over 20 billion miles of driving data from its fleet."
+    },
+    {
+      "chunk_id": "chunk-018",
+      "source_doc": "TSLA-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Tesla's energy storage business deployed 32 GWh of battery storage in FY2025, up from 14.7 GWh in FY2024. The Megapack product line generated the majority of energy storage revenue. Tesla Energy's gross margin reached 28.5%, significantly higher than the automotive segment. The company's Lathrop Megafactory and new Shanghai Megafactory together have annual production capacity of 40 GWh."
+    },
+    {
+      "chunk_id": "chunk-019",
+      "source_doc": "TSLA-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "The global electric vehicle market reached 18.5 million BEV sales in 2025, representing approximately 22% of total global vehicle sales. China remained the largest EV market with 10.2 million units, followed by Europe with 3.8 million and North America with 2.5 million. Government subsidies and stricter emission standards continued to drive adoption, though subsidy phase-outs in some European countries created demand uncertainty."
+    },
+    {
+      "chunk_id": "chunk-020",
+      "source_doc": "MSFT-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Microsoft Corporation reported total revenue of $264.2 billion for fiscal year 2025, an increase of 16% year-over-year. Intelligent Cloud segment revenue was $110.4 billion, with Azure and other cloud services revenue growing 29% year-over-year. Productivity and Business Processes revenue was $85.7 billion. More Personal Computing contributed $68.1 billion. Operating income was $118.5 billion with an operating margin of 44.8%."
+    },
+    {
+      "chunk_id": "chunk-021",
+      "source_doc": "MSFT-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Microsoft's Azure cloud platform maintained its position as the second-largest cloud infrastructure provider with an estimated 24% market share, behind AWS at 31%. Azure AI services contributed an estimated $15 billion in annualized revenue, growing over 100% year-over-year. Microsoft's partnership with OpenAI continued to drive AI adoption across enterprise customers. Copilot for Microsoft 365 reached 50 million monthly active users and contributed approximately $5 billion in annual revenue."
+    },
+    {
+      "chunk_id": "chunk-022",
+      "source_doc": "MSFT-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Microsoft invested $56.8 billion in capital expenditures during FY2025, primarily for data center construction to support Azure and AI workloads. The company's AI infrastructure investments were focused on GPU procurement (primarily NVIDIA H100 and Blackwell GPUs) and custom silicon development (Maia AI accelerator). Microsoft's total capital expenditure grew 78% year-over-year, raising questions about return on AI investments among analysts."
+    },
+    {
+      "chunk_id": "chunk-023",
+      "source_doc": "MSFT-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Technology",
+      "content": "Microsoft reported $89.4 billion in operating cash flow for FY2025. The company returned $52.3 billion to shareholders through dividends ($23.4 billion) and share repurchases ($28.9 billion). Microsoft held $75.8 billion in cash and short-term investments. LinkedIn revenue grew 10% to $18.2 billion, while gaming revenue including Activision Blizzard was $24.6 billion."
+    },
+    {
+      "chunk_id": "chunk-024",
+      "source_doc": "fed-fomc-minutes-2025-06.pdf",
+      "doc_type": "REGULATION",
+      "sector": "Finance",
+      "content": "The Federal Open Market Committee (FOMC) voted to maintain the federal funds rate target range at 4.25-4.50% at its June 2025 meeting, citing persistent inflation above the 2% target. Core PCE inflation remained at 2.8% year-over-year. The committee noted that while labor market conditions had softened modestly, with unemployment at 4.2%, inflation expectations remained well-anchored. Several members expressed concern about the potential inflationary impact of recently enacted tariff policies."
+    },
+    {
+      "chunk_id": "chunk-025",
+      "source_doc": "fed-rate-impact-analysis-2025.pdf",
+      "doc_type": "RESEARCH_REPORT",
+      "sector": "Finance",
+      "content": "Impact of Federal Reserve interest rate policy on technology sector valuations: Higher-for-longer interest rates continued to pressure growth stock valuations throughout 2025. The NASDAQ Composite gained only 8.2% in the first half of 2025, underperforming the S&P 500's 10.5% return. DCF-sensitive tech stocks with revenue further in the future experienced multiple compression. However, AI-related stocks (NVDA, MSFT, GOOG) outperformed due to near-term revenue growth exceeding the discount rate impact."
+    },
+    {
+      "chunk_id": "chunk-026",
+      "source_doc": "fed-fomc-minutes-2025-06.pdf",
+      "doc_type": "REGULATION",
+      "sector": "Finance",
+      "content": "The FOMC's updated economic projections (dot plot) showed a median expectation of two 25-basis-point rate cuts by end of 2025, down from three cuts projected in March. GDP growth projections were revised to 2.1% for 2025, down from 2.4%. The committee emphasized a data-dependent approach and noted risks from trade policy uncertainty. The yield on 10-year Treasury notes remained elevated at 4.45%, reflecting market expectations of sustained higher rates."
+    },
+    {
+      "chunk_id": "chunk-027",
+      "source_doc": "macro-inflation-outlook-Q2-2025.pdf",
+      "doc_type": "RESEARCH_REPORT",
+      "sector": "Finance",
+      "content": "US inflation dynamics in Q2 2025: CPI rose 3.1% year-over-year in May 2025, with shelter costs and services inflation remaining sticky above 4%. Core PCE, the Fed's preferred measure, stood at 2.8%. Tariffs on Chinese imports imposed in early 2025 added an estimated 0.3-0.5 percentage points to goods inflation. Wage growth moderated to 3.8% year-over-year. The consensus view among economists was that the Fed would begin cutting rates in September 2025 if inflation showed continued deceleration."
+    },
+    {
+      "chunk_id": "chunk-028",
+      "source_doc": "macro-tech-sector-impact-2025.pdf",
+      "doc_type": "RESEARCH_REPORT",
+      "sector": "Technology",
+      "content": "The elevated interest rate environment in 2025 had mixed effects on technology companies. Large-cap tech with strong free cash flow (AAPL, MSFT, GOOG) benefited from higher interest income on cash holdings and maintained robust share repurchase programs. However, the higher cost of capital impacted startup funding and venture capital deployment. Cloud infrastructure spending remained resilient due to AI demand, with total hyperscaler capex exceeding $200 billion in 2025. Enterprise software companies faced longer sales cycles as customers scrutinized budgets."
+    },
+    {
+      "chunk_id": "chunk-029",
+      "source_doc": "tsmc-geopolitical-risk-2025.pdf",
+      "doc_type": "RESEARCH_REPORT",
+      "sector": "Semiconductor",
+      "content": "TSMC (Taiwan Semiconductor Manufacturing Company) remained the world's most critical semiconductor manufacturer in 2025, producing over 90% of the world's most advanced chips (sub-5nm). TSMC's revenue reached $95.2 billion, growing 30% year-over-year driven by AI chip demand. The company's Arizona fab (Fab 21) began limited production of 4nm chips in late 2025, though costs were estimated at 30-50% higher than Taiwan operations. Geopolitical tensions between China and Taiwan continued to pose existential supply chain risk to the global technology industry."
+    },
+    {
+      "chunk_id": "chunk-030",
+      "source_doc": "semiconductor-supply-chain-2025.pdf",
+      "doc_type": "RESEARCH_REPORT",
+      "sector": "Semiconductor",
+      "content": "Global semiconductor industry revenue reached $680 billion in 2025, growing 18% year-over-year. The AI accelerator market (GPUs, TPUs, custom ASICs) grew 85% to $95 billion. Advanced packaging (CoWoS, chiplets) became a critical bottleneck, with TSMC's CoWoS capacity limiting NVIDIA's Blackwell GPU shipments in the first half of 2025. Samsung and Intel continued to lag TSMC in advanced process technology yield rates. The CHIPS Act subsidies drove $52 billion in announced US fab investments."
+    },
+    {
+      "chunk_id": "chunk-031",
+      "source_doc": "semiconductor-supply-chain-2025.pdf",
+      "doc_type": "RESEARCH_REPORT",
+      "sector": "Semiconductor",
+      "content": "Supply chain risks in the semiconductor industry remained elevated in 2025. Key vulnerabilities include geographic concentration of advanced manufacturing in Taiwan (TSMC produces 90%+ of sub-5nm chips), dependency on ASML for EUV lithography equipment, and neon gas supply from Eastern Europe. A potential Chinese military action against Taiwan would disrupt an estimated $500 billion in annual technology product revenue globally. Companies including Apple, NVIDIA, AMD, and Qualcomm have no viable alternative to TSMC for their most advanced chips."
+    },
+    {
+      "chunk_id": "chunk-032",
+      "source_doc": "semiconductor-export-controls-2025.pdf",
+      "doc_type": "REGULATION",
+      "sector": "Semiconductor",
+      "content": "US export controls on advanced semiconductors and AI chips to China were tightened in early 2025, expanding restrictions to cover additional chip architectures and reducing the performance threshold for export licenses. NVIDIA, AMD, and Intel were required to obtain licenses for any AI accelerator shipments to China. The restrictions reduced China-bound semiconductor exports by an estimated $15 billion annually. China accelerated domestic chip development through Huawei's Ascend AI accelerators and SMIC's 7nm process, though performance gaps with Western chips remained significant."
+    },
+    {
+      "chunk_id": "chunk-033",
+      "source_doc": "JNJ-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Healthcare",
+      "content": "Johnson & Johnson reported total revenue of $88.7 billion for fiscal year 2025 following the completion of its Kenvue consumer health spinoff. Innovative Medicine (pharmaceutical) revenue was $58.4 billion, driven by oncology and immunology portfolios. MedTech revenue was $30.3 billion. Key growth drivers included Darzalex ($12.1 billion, +15%), Tremfya ($4.8 billion, +28%), and the recently launched Nipocalimab for myasthenia gravis. The company's pharmaceutical pipeline included 50 programs in Phase 2 or later."
+    },
+    {
+      "chunk_id": "chunk-034",
+      "source_doc": "pharma-trends-2025.pdf",
+      "doc_type": "RESEARCH_REPORT",
+      "sector": "Healthcare",
+      "content": "Key pharmaceutical industry trends in 2025: GLP-1 receptor agonist drugs (Ozempic, Mounjaro, Wegovy) continued to dominate, with the obesity drug market reaching $50 billion in annual sales. Patent expirations (patent cliff) threatened $120 billion in branded drug revenue over 2025-2030. AI-driven drug discovery accelerated with 15 AI-discovered molecules in clinical trials. Cell and gene therapy approvals expanded but faced challenges with manufacturing scale and reimbursement. Biosimilar adoption increased, particularly in oncology."
+    },
+    {
+      "chunk_id": "chunk-035",
+      "source_doc": "healthcare-outlook-2025.pdf",
+      "doc_type": "RESEARCH_REPORT",
+      "sector": "Healthcare",
+      "content": "The healthcare sector showed defensive characteristics in 2025's volatile market, with the S&P 500 Health Care index returning 12.3% versus 10.5% for the broader S&P 500. Hospital systems faced margin pressure from labor costs and Medicaid redetermination effects. Medical device companies (Intuitive Surgical, Stryker, Medtronic) benefited from procedure volume recovery. The managed care sector faced regulatory uncertainty around Medicare Advantage rate adjustments. Johnson & Johnson, Eli Lilly, and AbbVie were the top-performing large-cap pharma names."
+    },
+    {
+      "chunk_id": "chunk-036",
+      "source_doc": "XOM-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Energy",
+      "content": "Exxon Mobil Corporation reported total revenue of $334.5 billion for fiscal year 2025. Upstream earnings were $26.3 billion, benefiting from strong production volumes of 4.2 million barrels of oil equivalent per day following the Pioneer Natural Resources acquisition. Downstream earnings were $5.8 billion. Chemical earnings contributed $3.2 billion. Brent crude averaged $78 per barrel in 2025, down from $82 in 2024. The company generated $52.1 billion in operating cash flow and returned $32.4 billion to shareholders."
+    },
+    {
+      "chunk_id": "chunk-037",
+      "source_doc": "oil-market-outlook-2025.pdf",
+      "doc_type": "RESEARCH_REPORT",
+      "sector": "Energy",
+      "content": "Global oil market dynamics in 2025: Brent crude oil prices averaged $78 per barrel, with a range of $68-$88 during the year. OPEC+ maintained production discipline with voluntary cuts of 2.2 million barrels per day. US shale production reached 13.5 million barrels per day. Demand growth was led by India and Southeast Asia, while Chinese oil demand growth slowed to 1.2% amid EV adoption. The energy transition continued with global renewable energy investment exceeding $500 billion, though fossil fuels still represented 80% of primary energy consumption."
+    },
+    {
+      "chunk_id": "chunk-038",
+      "source_doc": "energy-sector-analysis-2025.pdf",
+      "doc_type": "RESEARCH_REPORT",
+      "sector": "Energy",
+      "content": "Energy sector valuation analysis for 2025: Major integrated oil companies (Exxon Mobil, Chevron, Shell, BP) traded at an average forward P/E of 11.2x, a significant discount to the S&P 500's 21.5x. Free cash flow yields averaged 8.5% for the majors. The sector offered attractive dividend yields (3.5-4.5%) but faced long-term secular headwinds from the energy transition. Natural gas prices remained volatile, with Henry Hub averaging $2.85/MMBtu. LNG export capacity expansion provided structural support for US natural gas producers."
+    },
+    {
+      "chunk_id": "chunk-039",
+      "source_doc": "JPM-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Finance",
+      "content": "JPMorgan Chase & Co. reported record net income of $54.2 billion for fiscal year 2025, with total revenue of $172.3 billion. Net interest income was $92.8 billion, benefiting from the elevated rate environment. The Consumer & Community Banking segment generated $64.1 billion in revenue. Corporate & Investment Banking revenue was $55.8 billion, with investment banking fees recovering 18% year-over-year. The firm's CET1 capital ratio was 15.3%, well above the regulatory minimum of 11.4%."
+    },
+    {
+      "chunk_id": "chunk-040",
+      "source_doc": "JPM-10K-2025.pdf",
+      "doc_type": "SEC_FILING",
+      "sector": "Finance",
+      "content": "JPMorgan Chase's commercial banking division reported net charge-offs of $2.1 billion in FY2025, increasing from $1.4 billion in FY2024 as higher interest rates pressured commercial real estate borrowers. The allowance for credit losses stood at $22.3 billion. CEO Jamie Dimon warned of elevated geopolitical risks and potential for recession if trade policy uncertainty persisted. The firm invested $17.1 billion in technology, including AI-driven fraud detection systems and an internal LLM platform for employee productivity."
+    },
+    {
+      "chunk_id": "chunk-041",
+      "source_doc": "banking-sector-outlook-2025.pdf",
+      "doc_type": "RESEARCH_REPORT",
+      "sector": "Finance",
+      "content": "The US banking sector in 2025 benefited from higher net interest margins as the Federal Reserve maintained rates above 4%. Large money-center banks (JPMorgan Chase, Bank of America, Wells Fargo, Citigroup) reported strong earnings driven by interest income. However, commercial real estate exposure remained a concern, with office vacancy rates at 19.5% nationally. Regional banks faced continued deposit competition and CRE concentration risk. The KBW Bank Index returned 14.2% in the first half of 2025, outperforming the S&P 500."
+    }
+  ]
+}

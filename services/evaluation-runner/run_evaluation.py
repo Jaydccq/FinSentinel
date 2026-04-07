@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from evaluators.topk_evaluator import TopKEvaluator, GoldenEntry, RetrievalResult, RetrievedChunk
+from evaluators.corpus_retriever import CorpusRetriever
 
 
 def load_golden_set(path: str) -> list[GoldenEntry]:
@@ -71,7 +72,7 @@ def fetch_retrieval_results(
     return results
 
 
-def run_evaluation(dataset_path: str, output_path: str, config_path: str | None = None) -> None:
+def run_evaluation(dataset_path: str, output_path: str, config_path: str | None = None, corpus_path: str | None = None) -> None:
     golden_set = load_golden_set(dataset_path)
     print(f"Loaded {len(golden_set)} golden entries from {dataset_path}")
 
@@ -79,7 +80,15 @@ def run_evaluation(dataset_path: str, output_path: str, config_path: str | None 
     retrieval_config = config.get("retrieval", {})
     api_base_url = config.get("api_base_url", "")
 
-    if api_base_url:
+    # CLI --corpus flag takes precedence, then config file corpus_path
+    effective_corpus_path = corpus_path or config.get("corpus_path", "")
+
+    if effective_corpus_path:
+        print(f"Using corpus-based retrieval from {effective_corpus_path}")
+        retriever = CorpusRetriever(effective_corpus_path)
+        top_k = retrieval_config.get("top_k", 10)
+        retrieval_results = [retriever.retrieve(e.query, top_k=top_k) for e in golden_set]
+    elif api_base_url:
         endpoint = retrieval_config.get("endpoint", "/api/rag/search")
         top_k = retrieval_config.get("top_k", 10)
         print(f"Fetching results from {api_base_url}{endpoint} (top_k={top_k})")
@@ -151,6 +160,7 @@ def main():
     run_parser.add_argument("--dataset", required=True, help="Path to golden set JSON")
     run_parser.add_argument("--output", required=True, help="Path for output report JSON")
     run_parser.add_argument("--config", default=None, help="Path to config YAML")
+    run_parser.add_argument("--corpus", default=None, help="Path to corpus JSON for offline retrieval")
 
     cmp_parser = subparsers.add_parser("compare", help="Compare two reports")
     cmp_parser.add_argument("baseline", help="Baseline report JSON")
@@ -159,7 +169,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "run":
-        run_evaluation(args.dataset, args.output, args.config)
+        run_evaluation(args.dataset, args.output, args.config, args.corpus)
     elif args.command == "compare":
         compare_reports(args.baseline, args.experiment)
     else:

@@ -1,0 +1,4 @@
+# Offline evaluation config: uses synthetic corpus, no API needed
+corpus_path: "datasets/corpus.json"
+retrieval:
+  top_k: 10
