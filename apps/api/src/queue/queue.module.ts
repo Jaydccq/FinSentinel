@@ -5,13 +5,17 @@ import type { ConnectionOptions } from 'bullmq';
 import {
   VECTORIZE_QUEUE,
   NEWS_ENRICH_QUEUE,
+  GRAPH_ENRICH_QUEUE,
   VECTORIZE_QUEUE_TOKEN,
   NEWS_ENRICH_QUEUE_TOKEN,
+  GRAPH_ENRICH_QUEUE_TOKEN,
 } from './queue.constants';
 import { VectorizeProducer } from './vectorize.producer';
 import { VectorizeConsumer } from './vectorize.consumer';
 import { NewsEnrichProducer } from './news-enrich.producer';
 import { NewsEnrichConsumer } from './news-enrich.consumer';
+import { GraphEnrichProducer } from './graph-enrich.producer';
+import { GraphEnrichConsumer } from './graph-enrich.consumer';
 import { DocumentModule } from '../document/document.module';
 import { StorageModule } from '../storage/storage.module';
 import { NewsModule } from '../news/news.module';
@@ -73,14 +77,24 @@ import { CommonModule } from '../common/common.module';
       inject: ['BULLMQ_CONNECTION'],
     },
 
+    // ── Graph enrich queue ──────────────────────────────────────────
+    {
+      provide: GRAPH_ENRICH_QUEUE_TOKEN,
+      useFactory: (connection: ConnectionOptions) =>
+        new Queue(GRAPH_ENRICH_QUEUE, { connection }),
+      inject: ['BULLMQ_CONNECTION'],
+    },
+
     // ── Producers ────────────────────────────────────────────────────
     VectorizeProducer,
     NewsEnrichProducer,
+    GraphEnrichProducer,
 
     // ── Consumers (workers) ──────────────────────────────────────────
     VectorizeConsumer,
     NewsEnrichConsumer,
+    GraphEnrichConsumer,
   ],
-  exports: [VectorizeProducer, NewsEnrichProducer],
+  exports: [VectorizeProducer, NewsEnrichProducer, GraphEnrichProducer],
 })
 export class QueueModule {}

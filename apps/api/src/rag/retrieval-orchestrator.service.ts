@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { RagChunkStoreService } from './rag-chunk-store.service';
 import { RagEmbeddingService } from './rag-embedding.service';
 import { SparseSearchService, type SparseSearchFilters } from './sparse-search.service';
 import { RetrievalFusionService, type RankedCandidate, type FusedCandidate } from './retrieval-fusion.service';
+import { GraphRetrievalService } from './graph-retrieval.service';
 
 export interface OrchestrationRequest {
   rewrittenQuery: string;
@@ -22,6 +23,7 @@ export class RetrievalOrchestratorService {
     private readonly sparseSearch: SparseSearchService,
     private readonly embeddingService: RagEmbeddingService,
     private readonly fusion: RetrievalFusionService,
+    @Optional() private readonly graphRetrieval?: GraphRetrievalService,
   ) {}
 
   async orchestrate(request: OrchestrationRequest): Promise<FusedCandidate[]> {
@@ -37,7 +39,15 @@ export class RetrievalOrchestratorService {
       lanePromises.push(this.runSparseLane(rewrittenQuery, topKPerLane, filters));
     }
 
-    // Graph lane will be added in Phase 5
+    if (lanes.includes('graph') && this.graphRetrieval && request.entityNames?.length) {
+      lanePromises.push(
+        this.graphRetrieval.search(
+          request.entityNames,
+          rewrittenQuery,
+          topKPerLane,
+        ),
+      );
+    }
 
     const settled = await Promise.allSettled(lanePromises);
     const laneResults: RankedCandidate[][] = [];
