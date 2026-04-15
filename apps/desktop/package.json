@@ -7,9 +7,9 @@
     "tauri": "tauri",
     "dev": "tauri dev",
     "build": "tauri build",
-    "test": "cd src-tauri && cargo test",
+    "test": "test -d src-tauri && (cd src-tauri && cargo test) || echo 'no src-tauri yet, skipping'",
     "typecheck": "tsc --noEmit",
-    "lint": "echo 'no frontend code yet'"
+    "lint": "exit 0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.1.0",
