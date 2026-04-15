@@ -27,7 +27,7 @@ describe('RagRetrievalService', () => {
         { provide: RagChunkStoreService, useValue: mockChunkStore },
         {
           provide: MetricsService,
-          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn() },
+          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn(), startHistogramTimer: vi.fn(() => vi.fn()) },
         },
         {
           provide: ConfigService,

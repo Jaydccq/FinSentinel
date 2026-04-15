@@ -90,6 +90,7 @@ export class RagRetrievalService {
           similarity: row.similarity,
         }));
 
+      const durationSecs = (Date.now() - startedAt) / 1000;
       this.metrics.incrementCounter(
         'rag_search_requests_total',
         'Total RAG search requests by status',
@@ -101,11 +102,12 @@ export class RagRetrievalService {
         {},
         results.length,
       );
-      this.metrics.setGauge(
-        'rag_search_last_duration_ms',
-        'Duration in milliseconds of the most recent RAG search',
+      this.metrics.observeHistogram(
+        'rag_search_duration_seconds',
+        'Duration of RAG search operations in seconds',
         { status: 'success' },
-        Date.now() - startedAt,
+        durationSecs,
+        [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
       );
       this.metrics.setGauge(
         'rag_search_last_result_count',
@@ -116,16 +118,18 @@ export class RagRetrievalService {
 
       return results;
     } catch (error) {
+      const durationSecs = (Date.now() - startedAt) / 1000;
       this.metrics.incrementCounter(
         'rag_search_requests_total',
         'Total RAG search requests by status',
         { status: 'error' },
       );
-      this.metrics.setGauge(
-        'rag_search_last_duration_ms',
-        'Duration in milliseconds of the most recent RAG search',
+      this.metrics.observeHistogram(
+        'rag_search_duration_seconds',
+        'Duration of RAG search operations in seconds',
         { status: 'error' },
-        Date.now() - startedAt,
+        durationSecs,
+        [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
       );
       throw error;
     }
@@ -162,11 +166,24 @@ export class RagRetrievalService {
       }));
 
       this.metrics.incrementCounter('rag_search_requests_total', 'Total RAG search requests by status', { status: 'success' });
-      this.metrics.setGauge('rag_search_last_duration_ms', 'Duration in milliseconds of the most recent RAG search', { status: 'success' }, Date.now() - startedAt);
+      this.metrics.observeHistogram(
+        'rag_search_duration_seconds',
+        'Duration of RAG search operations in seconds',
+        { status: 'success' },
+        (Date.now() - startedAt) / 1000,
+        [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+      );
       return results;
     } catch (error) {
       this.logger.warn(`Multi-stage search failed, falling back to dense: ${error}`);
       this.metrics.incrementCounter('rag_search_requests_total', 'Total RAG search requests by status', { status: 'error' });
+      this.metrics.observeHistogram(
+        'rag_search_duration_seconds',
+        'Duration of RAG search operations in seconds',
+        { status: 'error' },
+        (Date.now() - startedAt) / 1000,
+        [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+      );
       // Fall back to single-stage dense search
       return this.searchDenseFallback(opts, safeTopK);
     }

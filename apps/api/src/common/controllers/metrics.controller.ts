@@ -7,7 +7,7 @@ export class MetricsController {
 
   @Get()
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
-  getMetrics(): string {
+  async getMetrics(): Promise<string> {
     return this.metricsService.renderPrometheus();
   }
 }

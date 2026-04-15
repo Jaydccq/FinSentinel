@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { RateLimiterService } from './services/rate-limiter.service';
@@ -7,6 +8,7 @@ import { EncryptionService } from './services/encryption.service';
 import { ApiKeyService } from './services/api-key.service';
 import { PdfService } from './services/pdf.service';
 import { MetricsService } from './services/metrics.service';
+import { MetricsInterceptor } from './interceptors/metrics.interceptor';
 import { ApiKeyController } from './controllers/api-key.controller';
 import { MetricsController } from './controllers/metrics.controller';
 import { AuthModule } from '../auth/auth.module';
@@ -30,6 +32,10 @@ const redisProvider = {
     ApiKeyService,
     PdfService,
     MetricsService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: MetricsInterceptor,
+    },
   ],
   exports: [RateLimiterService, RateLimitGuard, 'REDIS', EncryptionService, ApiKeyService, PdfService, MetricsService],
 })

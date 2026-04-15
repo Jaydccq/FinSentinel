@@ -53,7 +53,7 @@ describe('RagBackfillSchedulerService', () => {
         },
         {
           provide: MetricsService,
-          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn() },
+          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn(), startHistogramTimer: vi.fn(() => vi.fn()) },
         },
       ],
     }).compile();
@@ -97,7 +97,7 @@ describe('RagBackfillSchedulerService', () => {
         },
         {
           provide: MetricsService,
-          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn() },
+          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn(), startHistogramTimer: vi.fn(() => vi.fn()) },
         },
       ],
     }).compile();

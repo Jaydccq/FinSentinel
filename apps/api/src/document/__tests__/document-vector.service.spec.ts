@@ -34,7 +34,7 @@ describe('DocumentVectorService', () => {
         { provide: DocumentChunkingService, useValue: mockChunking },
         { provide: RagEmbeddingService, useValue: mockEmbeddingService },
         { provide: RagChunkStoreService, useValue: mockChunkStore },
-        { provide: MetricsService, useValue: { incrementCounter: vi.fn(), setGauge: vi.fn() } },
+        { provide: MetricsService, useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn(), startHistogramTimer: vi.fn(() => vi.fn()) } },
       ],
     }).compile();
 

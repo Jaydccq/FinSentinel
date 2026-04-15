@@ -5,6 +5,7 @@ import { HttpException, HttpStatus } from '@nestjs/common';
 import type { ExecutionContext } from '@nestjs/common';
 import { RateLimitGuard } from '../rate-limit.guard';
 import { RateLimiterService } from '../../services/rate-limiter.service';
+import { MetricsService } from '../../services/metrics.service';
 import { RATE_LIMIT_KEY } from '../../decorators/rate-limit.decorator';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -55,6 +56,15 @@ describe('RateLimitGuard', () => {
           provide: RateLimiterService,
           useValue: {
             check: vi.fn(),
+          },
+        },
+        {
+          provide: MetricsService,
+          useValue: {
+            incrementCounter: vi.fn(),
+            setGauge: vi.fn(),
+            observeHistogram: vi.fn(),
+            startHistogramTimer: vi.fn(() => vi.fn()),
           },
         },
       ],
