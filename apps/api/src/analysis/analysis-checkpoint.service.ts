@@ -118,6 +118,25 @@ export class AnalysisCheckpointService {
     return row as { structuredOutputJson: Record<string, unknown> | null };
   }
 
+  async writeOrderDrafts(args: {
+    runId: string;
+    stageId: string | null;
+    payload: { orderDrafts: unknown[] };
+  }): Promise<{ id: string }> {
+    const [row] = await this.db
+      .insert(analysisArtifacts)
+      .values({
+        runId: args.runId,
+        stageId: args.stageId ?? undefined,
+        artifactKind: 'ORDER_DRAFTS',
+        artifactName: 'order-drafts.json',
+        mimeType: 'application/json',
+        payloadJson: args.payload as Record<string, unknown>,
+      })
+      .returning();
+    return row as { id: string };
+  }
+
   async markStageFailed(
     userId: string,
     runId: string,
