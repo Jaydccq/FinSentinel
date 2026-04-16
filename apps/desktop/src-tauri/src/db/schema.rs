@@ -5,7 +5,7 @@ const MIGRATION_001: &str = include_str!("../../migrations/001_init.sql");
 
 /// Register the sqlite-vec extension as an auto-extension so every new
 /// connection gets it. Safe to call multiple times (SQLite deduplicates).
-fn ensure_vec_extension() {
+pub fn ensure_vec_extension() {
     unsafe {
         sqlite3_auto_extension(Some(std::mem::transmute(
             sqlite_vec::sqlite3_vec_init as *const (),
