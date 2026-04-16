@@ -134,6 +134,11 @@ export const envSchema = z.object({
   ARCHIVAL_CRON: z.string().default('0 0 2 * * *'),
   ARCHIVAL_BATCH_SIZE: z.coerce.number().default(50),
 
+  // ── News Polling ──────────────────────────────────────────────────
+  NEWS_POLLING_ENABLED: envBoolean.default(true),
+  NEWS_POLL_INTERVAL_MS: z.coerce.number().default(300000),
+  NEWS_POLL_STARTUP_DELAY_MS: z.coerce.number().default(10000),
+
   // ── Chat Compaction ───────────────────────────────────────────────
   CHAT_COMPACTION_ENABLED: envBoolean.default(true),
   CHAT_COMPACTION_THRESHOLD: z.coerce.number().default(24),

@@ -21,3 +21,4 @@ export { mcpConfig } from './mcp.config';
 export { marketProviderConfig } from './market-provider.config';
 export { researchConfig } from './research.config';
 export { encryptionConfig } from './encryption.config';
+export { newsConfig } from './news.config';

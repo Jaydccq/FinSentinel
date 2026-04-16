@@ -7,6 +7,7 @@ import { NewsFetcherService } from './news-fetcher.service';
 import { OnDemandNewsService } from './on-demand-news.service';
 import { NewsSentimentService } from './news-sentiment.service';
 import { NewsArchivalService } from './news-archival.service';
+import { NewsSchedulerService } from './news-scheduler.service';
 import { NewsController } from './news.controller';
 import { PolygonNewsFetcher } from './fetchers/polygon-news.fetcher';
 import { RssNewsFetcher } from './fetchers/rss-news.fetcher';
@@ -21,7 +22,8 @@ import { XInfluencerFetcher } from './fetchers/x-influencer.fetcher';
  * - NewsFetcherService — orchestrates all NewsFetcher implementations, deduplicates, persists
  * - OnDemandNewsService — on-demand fetching for specific tickers
  * - NewsSentimentService — LLM-based sentiment classification
- * - NewsArchivalService — scheduled archival of old news items
+ * - NewsArchivalService — archival job implementation for old news items
+ * - NewsSchedulerService — startup + recurring polling and archival scheduling
  * - NewsController — GET /news, GET /news/stream (SSE)
  *
  * Fetcher implementations:
@@ -63,6 +65,7 @@ import { XInfluencerFetcher } from './fetchers/x-influencer.fetcher';
     OnDemandNewsService,
     NewsSentimentService,
     NewsArchivalService,
+    NewsSchedulerService,
   ],
   exports: [
     CryptoNewsApiClient,

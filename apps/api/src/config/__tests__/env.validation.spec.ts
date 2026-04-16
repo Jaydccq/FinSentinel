@@ -71,6 +71,9 @@ describe('envSchema', () => {
     expect(result.ARCHIVAL_RETENTION_DAYS).toBe(7);
     expect(result.ARCHIVAL_CRON).toBe('0 0 2 * * *');
     expect(result.ARCHIVAL_BATCH_SIZE).toBe(50);
+    expect(result.NEWS_POLLING_ENABLED).toBe(true);
+    expect(result.NEWS_POLL_INTERVAL_MS).toBe(300000);
+    expect(result.NEWS_POLL_STARTUP_DELAY_MS).toBe(10000);
 
     // Chat compaction
     expect(result.CHAT_COMPACTION_ENABLED).toBe(true);
@@ -161,6 +164,9 @@ describe('envSchema', () => {
       ARCHIVAL_RETENTION_DAYS: '14',
       ARCHIVAL_CRON: '0 0 3 * * *',
       ARCHIVAL_BATCH_SIZE: '100',
+      NEWS_POLLING_ENABLED: 'false',
+      NEWS_POLL_INTERVAL_MS: '900000',
+      NEWS_POLL_STARTUP_DELAY_MS: '15000',
       // Chat
       CHAT_COMPACTION_ENABLED: 'true',
       CHAT_COMPACTION_THRESHOLD: '30',
@@ -208,6 +214,7 @@ describe('envSchema', () => {
       RAG_REINDEX_ENABLED: 'false',
       RAG_REINDEX_FORCE: 'true',
       ARCHIVAL_ENABLED: 'true',
+      NEWS_POLLING_ENABLED: 'false',
       CHAT_COMPACTION_ENABLED: 'false',
       CONFIRMATION_BLOCK_LIVE: 'false',
       MCP_SERVER_ENABLED: 'true',
@@ -224,6 +231,7 @@ describe('envSchema', () => {
     expect(result.RAG_REINDEX_ENABLED).toBe(false);
     expect(result.RAG_REINDEX_FORCE).toBe(true);
     expect(result.ARCHIVAL_ENABLED).toBe(true);
+    expect(result.NEWS_POLLING_ENABLED).toBe(false);
     expect(result.CHAT_COMPACTION_ENABLED).toBe(false);
     expect(result.CONFIRMATION_BLOCK_LIVE).toBe(false);
     expect(result.MCP_SERVER_ENABLED).toBe(true);

@@ -23,6 +23,7 @@ import { mcpConfig } from './mcp.config';
 import { marketProviderConfig } from './market-provider.config';
 import { researchConfig } from './research.config';
 import { encryptionConfig } from './encryption.config';
+import { newsConfig } from './news.config';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { encryptionConfig } from './encryption.config';
         marketProviderConfig,
         researchConfig,
         encryptionConfig,
+        newsConfig,
       ],
     }),
   ],

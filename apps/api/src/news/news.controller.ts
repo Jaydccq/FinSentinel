@@ -6,6 +6,7 @@ import {
   Query,
   Sse,
   UseGuards,
+  Logger,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { newsItems, desc, asc, eq, and, sql, gte, gt } from '@finsentinel/db';
@@ -16,7 +17,10 @@ import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import { RateLimit } from '../common/decorators/rate-limit.decorator';
 import { parseIntParam } from '../common/utils/parse-int-param';
 import { OnDemandNewsService } from './on-demand-news.service';
+import { NewsFetcherService } from './news-fetcher.service';
 import { RagReindexService } from '../rag/rag-reindex.service';
+
+const NEWS_FEED_STALE_MS = 60 * 60 * 1000;
 
 /**
  * News controller — list, filter, ticker-specific, summary, stats, and SSE stream.
@@ -24,10 +28,13 @@ import { RagReindexService } from '../rag/rag-reindex.service';
 @Controller('news')
 @UseGuards(JwtGuard)
 export class NewsController {
+  private readonly logger = new Logger(NewsController.name);
+
   constructor(
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     private readonly onDemandNewsService: OnDemandNewsService,
     private readonly ragReindexService: RagReindexService,
+    private readonly newsFetcherService: NewsFetcherService,
   ) {}
 
   /** GET /news — list news with optional source filter + pagination. */
@@ -44,17 +51,22 @@ export class NewsController {
     const conditions: Array<ReturnType<typeof eq>> = [];
     if (source) conditions.push(eq(newsItems.source, source));
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    let rows = await this.queryNewsRows(whereClause, size, offset);
 
-    const [rows, countResult] = await Promise.all([
-      whereClause
-        ? this.db.select().from(newsItems).where(whereClause)
-            .orderBy(desc(newsItems.publishedAt)).limit(size).offset(offset)
-        : this.db.select().from(newsItems)
-            .orderBy(desc(newsItems.publishedAt)).limit(size).offset(offset),
-      whereClause
-        ? this.db.select({ count: sql<number>`count(*)` }).from(newsItems).where(whereClause)
-        : this.db.select({ count: sql<number>`count(*)` }).from(newsItems),
-    ]);
+    if (page === 0 && this.needsRefresh(rows[0]?.publishedAt)) {
+      try {
+        await this.newsFetcherService.pollAll();
+        rows = await this.queryNewsRows(whereClause, size, offset);
+      } catch (error) {
+        this.logger.warn(
+          `Global news refresh failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+
+    const countResult = whereClause
+      ? await this.db.select({ count: sql<number>`count(*)` }).from(newsItems).where(whereClause)
+      : await this.db.select({ count: sql<number>`count(*)` }).from(newsItems);
 
     const totalElements = Number(countResult[0]?.count ?? 0);
     return { content: rows, totalPages: Math.ceil(totalElements / size), totalElements, number: page };
@@ -134,16 +146,22 @@ export class NewsController {
       .limit(size)
       .offset(offset);
 
-    // On-demand fetch if empty (first page only)
-    if (rows.length === 0 && page === 0) {
-      await this.onDemandNewsService.fetchForTickers([upperTicker]);
-      rows = await this.db
-        .select()
-        .from(newsItems)
-        .where(tickerWhere)
-        .orderBy(desc(newsItems.publishedAt))
-        .limit(size)
-        .offset(offset);
+    // On-demand fetch if empty or stale (first page only)
+    if (page === 0 && this.needsRefresh(rows[0]?.publishedAt)) {
+      try {
+        await this.onDemandNewsService.fetchForTickers([upperTicker]);
+        rows = await this.db
+          .select()
+          .from(newsItems)
+          .where(tickerWhere)
+          .orderBy(desc(newsItems.publishedAt))
+          .limit(size)
+          .offset(offset);
+      } catch (error) {
+        this.logger.warn(
+          `Ticker news refresh failed for ${upperTicker}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     }
 
     const countResult = await this.db
@@ -231,5 +249,26 @@ export class NewsController {
 
       return () => clearInterval(timer);
     });
+  }
+
+  private needsRefresh(publishedAt: Date | string | null | undefined): boolean {
+    if (!publishedAt) {
+      return true;
+    }
+
+    const publishedAtMs = new Date(publishedAt).getTime();
+    if (Number.isNaN(publishedAtMs)) {
+      return true;
+    }
+
+    return Date.now() - publishedAtMs >= NEWS_FEED_STALE_MS;
+  }
+
+  private queryNewsRows(whereClause: ReturnType<typeof and> | undefined, size: number, offset: number) {
+    return whereClause
+      ? this.db.select().from(newsItems).where(whereClause)
+          .orderBy(desc(newsItems.publishedAt)).limit(size).offset(offset)
+      : this.db.select().from(newsItems)
+          .orderBy(desc(newsItems.publishedAt)).limit(size).offset(offset);
   }
 }
