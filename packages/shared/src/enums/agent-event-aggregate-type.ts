@@ -6,6 +6,8 @@ export const AgentEventAggregateType = {
   SCHEDULE: 'SCHEDULE',
   HEARTBEAT: 'HEARTBEAT',
   SYSTEM: 'SYSTEM',
+  ANALYSIS_RUN: 'ANALYSIS_RUN',
+  ANALYSIS_APPROVAL: 'ANALYSIS_APPROVAL',
 } as const;
 
 export type AgentEventAggregateType = (typeof AgentEventAggregateType)[keyof typeof AgentEventAggregateType];

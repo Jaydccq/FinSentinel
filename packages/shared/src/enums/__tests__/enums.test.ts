@@ -102,8 +102,8 @@ describe('StorageTier', () => {
 });
 
 describe('AgentEventType', () => {
-  it('has exactly 21 values', () => {
-    expect(Object.values(AgentEventType)).toHaveLength(21);
+  it('has exactly 48 values', () => {
+    expect(Object.values(AgentEventType)).toHaveLength(48);
   });
   it('contains chat event types', () => {
     expect(AgentEventType.CHAT_SESSION_STARTED).toBe('CHAT_SESSION_STARTED');
@@ -141,8 +141,8 @@ describe('AgentEventType', () => {
 });
 
 describe('AgentEventAggregateType', () => {
-  it('has exactly 7 values', () => {
-    expect(Object.values(AgentEventAggregateType)).toHaveLength(7);
+  it('has exactly 9 values', () => {
+    expect(Object.values(AgentEventAggregateType)).toHaveLength(9);
   });
   it('contains all aggregate types', () => {
     expect(AgentEventAggregateType.CHAT_SESSION).toBe('CHAT_SESSION');
@@ -152,6 +152,8 @@ describe('AgentEventAggregateType', () => {
     expect(AgentEventAggregateType.SCHEDULE).toBe('SCHEDULE');
     expect(AgentEventAggregateType.HEARTBEAT).toBe('HEARTBEAT');
     expect(AgentEventAggregateType.SYSTEM).toBe('SYSTEM');
+    expect(AgentEventAggregateType.ANALYSIS_RUN).toBe('ANALYSIS_RUN');
+    expect(AgentEventAggregateType.ANALYSIS_APPROVAL).toBe('ANALYSIS_APPROVAL');
   });
 });
 
