@@ -181,6 +181,9 @@ export const envSchema = z.object({
   // ── Chat Auto-Upgrade ───────────────────────────────────────────────
   CHAT_AUTO_UPGRADE_ENABLED: envBoolean.default(false),
 
+  // ── Approval Auto-Dispatch ───────────────────────────────────────────
+  APPROVAL_AUTO_DISPATCH_ENABLED: envBoolean.default(false),
+
   // ── Server ────────────────────────────────────────────────────────
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z

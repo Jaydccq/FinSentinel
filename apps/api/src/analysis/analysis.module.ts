@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AgentModule } from '../agent/agent.module';
 import { AuthModule } from '../auth/auth.module';
 import { CommonModule } from '../common/common.module';
@@ -6,6 +7,7 @@ import { EventsModule } from '../events/events.module';
 import { RagModule } from '../rag/rag.module';
 import { QueueModule } from '../queue/queue.module';
 import { TradingModule } from '../trading/trading.module';
+import { APPROVAL_AUTO_DISPATCH_FLAG_TOKEN } from './analysis-approval.service';
 
 import { AnalysisController } from './analysis.controller';
 import { AnalysisRunController } from './analysis-run.controller';
@@ -60,6 +62,13 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
     AnalysisRunService,
     AnalysisCheckpointService,
     AnalysisApprovalService,
+    {
+      provide: APPROVAL_AUTO_DISPATCH_FLAG_TOKEN,
+      useFactory: (config: ConfigService) => ({
+        enabled: config.get<boolean>('APPROVAL_AUTO_DISPATCH_ENABLED', false),
+      }),
+      inject: [ConfigService],
+    },
     ContextComplexityService,
     PreflightPlannerService,
     RunOrchestratorService,

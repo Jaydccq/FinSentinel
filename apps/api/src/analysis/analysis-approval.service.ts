@@ -17,6 +17,9 @@ import { AgentEventService } from '../events/agent-event.service';
 import { AnalysisRunService } from './analysis-run.service';
 import { AnalysisCheckpointService } from './analysis-checkpoint.service';
 import { OrderDraftMapper } from '../trading/order-draft-mapper.service';
+import { UnifiedTradingService } from '../trading/unified-trading.service';
+
+export const APPROVAL_AUTO_DISPATCH_FLAG_TOKEN = 'APPROVAL_AUTO_DISPATCH_FLAG';
 
 export type ApprovalDecision = 'APPROVE' | 'REJECT';
 
@@ -35,6 +38,9 @@ export class AnalysisApprovalService {
     private readonly runs: AnalysisRunService,
     private readonly checkpoints: AnalysisCheckpointService,
     private readonly mapper: OrderDraftMapper,
+    private readonly trading: UnifiedTradingService,
+    @Inject(APPROVAL_AUTO_DISPATCH_FLAG_TOKEN)
+    private readonly autoDispatchFlag: { enabled: boolean },
   ) {}
 
   async request(args: {
@@ -112,6 +118,28 @@ export class AnalysisApprovalService {
         payload: { orderDrafts: payload.orderDrafts, stageRequests: mappedRequests },
       });
       await this.runs.markCompleted(args.userId, existing.runId);
+
+      if (this.autoDispatchFlag.enabled) {
+        try {
+          for (const req of mappedRequests) {
+            await this.trading.stage(args.userId, req);
+          }
+          await this.trading.commit(args.userId, `auto:run ${existing.runId}`);
+          await this.trading.execute(args.userId);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          // Don't revert the approval — the run is already marked complete.
+          // Surface the dispatch failure via event log for operator follow-up.
+          await this.events.append(
+            args.userId,
+            AgentEventAggregateType.ANALYSIS_APPROVAL,
+            existing.id,
+            AgentEventType.EXECUTION_REJECTED,
+            { autoDispatchError: message },
+            null,
+          );
+        }
+      }
     } else {
       // REJECT: cancel the run (should be WAITING_APPROVAL at this point).
       try {

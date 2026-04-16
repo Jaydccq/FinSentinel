@@ -57,6 +57,12 @@ function makeDb(approvalRow: Record<string, unknown> | null = null) {
 const runsStub = { markCompleted: vi.fn().mockResolvedValue(undefined), cancel: vi.fn().mockResolvedValue(undefined) };
 const checkpointsStub = { writeExecutionPayload: vi.fn().mockResolvedValue({ id: 'art-exec' }) };
 const mapperStub = { toUnifiedStageRequest: vi.fn().mockReturnValue({ action: 'BUY', symbol: 'AAPL', qty: '100' }) };
+const tradingStub = {
+  stage: vi.fn().mockResolvedValue(undefined),
+  commit: vi.fn().mockResolvedValue({ hash: 'h', count: 1 }),
+  execute: vi.fn().mockResolvedValue({ report: 'ok', results: [] }),
+};
+const defaultAutoDispatchFlag = { enabled: false };
 
 describe('AnalysisApprovalService', () => {
   let events: { append: ReturnType<typeof vi.fn> };
@@ -68,7 +74,7 @@ describe('AnalysisApprovalService', () => {
 
   it('request() creates a PENDING approval and emits EXECUTION_APPROVAL_REQUIRED', async () => {
     const db = makeDb();
-    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never);
+    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never, tradingStub as never, defaultAutoDispatchFlag);
     const row = await svc.request({
       userId: 'u1',
       runId: 'r1',
@@ -92,7 +98,7 @@ describe('AnalysisApprovalService', () => {
 
   it('request() rejects payloads that fail OrderDraft schema', async () => {
     const db = makeDb();
-    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never);
+    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never, tradingStub as never, defaultAutoDispatchFlag);
     await expect(
       svc.request({ userId: 'u1', runId: 'r1', payload: { orderDrafts: [{}] } as never }),
     ).rejects.toThrow();
@@ -100,7 +106,7 @@ describe('AnalysisApprovalService', () => {
 
   it('resolve(APPROVE) flips status and emits EXECUTION_APPROVED', async () => {
     const db = makeDb({ id: 'appr-1', runId: 'r1', status: 'PENDING', requestedPayloadJson: payload });
-    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never);
+    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never, tradingStub as never, defaultAutoDispatchFlag);
     await svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' });
     expect(db.state.lastUpdateSet).toMatchObject({ status: 'APPROVED' });
     expect(events.append).toHaveBeenCalledWith(
@@ -115,7 +121,7 @@ describe('AnalysisApprovalService', () => {
 
   it('resolve() on non-PENDING row throws', async () => {
     const db = makeDb({ id: 'appr-1', runId: 'r1', status: 'APPROVED', requestedPayloadJson: payload });
-    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never);
+    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never, tradingStub as never, defaultAutoDispatchFlag);
     await expect(
       svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' }),
     ).rejects.toThrow(/already resolved/i);
@@ -140,11 +146,41 @@ describe('AnalysisApprovalService.resolve(APPROVE) follow-through', () => {
       runsLocal as never,
       checkpointsLocal as never,
       mapperLocal as never,
+      tradingStub as never,
+      defaultAutoDispatchFlag,
     );
     await svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' });
     expect(checkpointsLocal.writeExecutionPayload).toHaveBeenCalledWith(
       expect.objectContaining({ runId: 'r1' }),
     );
     expect(runsLocal.markCompleted).toHaveBeenCalledWith('u1', 'r1');
+  });
+});
+
+describe('AnalysisApprovalService.resolve(APPROVE) with auto-dispatch', () => {
+  it('stages/commits/executes via UnifiedTradingService when flag enabled', async () => {
+    const db = makeDb({ id: 'appr-1', runId: 'r1', status: 'PENDING', requestedPayloadJson: payload });
+    const events = { append: vi.fn().mockResolvedValue({}) };
+    const runsStub = { markCompleted: vi.fn().mockResolvedValue(undefined), cancel: vi.fn() };
+    const checkpointsStub = { writeExecutionPayload: vi.fn().mockResolvedValue({ id: 'art' }) };
+    const mapperStub = { toUnifiedStageRequest: vi.fn().mockReturnValue({ action: 'BUY', symbol: 'AAPL', qty: '100' }) };
+    const tradingStub = {
+      stage: vi.fn().mockResolvedValue(undefined),
+      commit: vi.fn().mockResolvedValue({ hash: 'h', count: 1 }),
+      execute: vi.fn().mockResolvedValue({ report: 'ok', results: [] }),
+    };
+    const svc = new AnalysisApprovalService(
+      db as never,
+      events as never,
+      runsStub as never,
+      checkpointsStub as never,
+      mapperStub as never,
+      tradingStub as never,
+      { enabled: true },
+    );
+    await svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' });
+    expect(tradingStub.stage).toHaveBeenCalled();
+    expect(tradingStub.commit).toHaveBeenCalledWith('u1', expect.stringContaining('auto:run'));
+    expect(tradingStub.execute).toHaveBeenCalledWith('u1');
   });
 });

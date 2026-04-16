@@ -100,6 +100,9 @@ describe('envSchema', () => {
 
     // Chat Auto-Upgrade
     expect(result.CHAT_AUTO_UPGRADE_ENABLED).toBe(false);
+
+    // Approval Auto-Dispatch
+    expect(result.APPROVAL_AUTO_DISPATCH_ENABLED).toBe(false);
   });
 
   it('accepts valid complete config with all optional fields', () => {
@@ -196,6 +199,8 @@ describe('envSchema', () => {
       ANALYSIS_RUNS_ENABLED: 'true',
       // Chat Auto-Upgrade
       CHAT_AUTO_UPGRADE_ENABLED: 'true',
+      // Approval Auto-Dispatch
+      APPROVAL_AUTO_DISPATCH_ENABLED: 'true',
     });
     expect(result.success).toBe(true);
   });
@@ -231,6 +236,7 @@ describe('envSchema', () => {
       OKX_WEBSOCKET_ENABLED: 'false',
       ANALYSIS_RUNS_ENABLED: 'true',
       CHAT_AUTO_UPGRADE_ENABLED: 'false',
+      APPROVAL_AUTO_DISPATCH_ENABLED: 'true',
     });
     expect(result.APP_CRYPTO_NEWS_ENABLED).toBe(true);
     expect(result.APP_TWITTER_6551_ENABLED).toBe(false);
@@ -250,6 +256,7 @@ describe('envSchema', () => {
     expect(result.OKX_WEBSOCKET_ENABLED).toBe(false);
     expect(result.ANALYSIS_RUNS_ENABLED).toBe(true);
     expect(result.CHAT_AUTO_UPGRADE_ENABLED).toBe(false);
+    expect(result.APPROVAL_AUTO_DISPATCH_ENABLED).toBe(true);
   });
 
   it('coerces new string numbers to numbers', () => {
