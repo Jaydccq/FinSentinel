@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../../web/out",
     "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "pnpm --filter @finsentinel/web dev",
-    "beforeBuildCommand": "pnpm --filter @finsentinel/web build"
+    "beforeDevCommand": "NEXT_PUBLIC_TAURI=1 pnpm --filter @finsentinel/web dev",
+    "beforeBuildCommand": "NEXT_PUBLIC_TAURI=1 pnpm --filter @finsentinel/web build"
   },
   "app": {
     "windows": [
