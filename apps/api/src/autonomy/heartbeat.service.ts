@@ -1,5 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { agentHeartbeatConfigs, eq } from '@finsentinel/db';
+import { sql } from 'drizzle-orm';
 import type { DrizzleDB } from '@finsentinel/db';
 
 /**
@@ -87,5 +88,24 @@ export class HeartbeatService {
   async getHeartbeatConfig(userId: string): Promise<string> {
     const config = await this.getOrCreateConfig(userId);
     return JSON.stringify(config, null, 2);
+  }
+
+  async listDueHeartbeats(now: Date = new Date()) {
+    return this.db
+      .select()
+      .from(agentHeartbeatConfigs)
+      .where(
+        sql`${agentHeartbeatConfigs.enabled} = true AND (
+          ${agentHeartbeatConfigs.lastBeatAt} IS NULL OR
+          ${agentHeartbeatConfigs.lastBeatAt} + (${agentHeartbeatConfigs.intervalSeconds} * interval '1 second') <= ${now}
+        )`,
+      );
+  }
+
+  async markBeat(userId: string, beatAt: Date): Promise<void> {
+    await this.db
+      .update(agentHeartbeatConfigs)
+      .set({ lastBeatAt: beatAt, updatedAt: new Date() })
+      .where(eq(agentHeartbeatConfigs.userId, userId));
   }
 }
