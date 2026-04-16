@@ -104,6 +104,20 @@ export class AnalysisCheckpointService {
     );
   }
 
+  async findByStage(runId: string, stageKey: AnalysisStageKey): Promise<{
+    structuredOutputJson: Record<string, unknown> | null;
+  } | null> {
+    const [row] = await this.db
+      .select()
+      .from(analysisStages)
+      .where(
+        and(eq(analysisStages.runId, runId), eq(analysisStages.stageKey, stageKey)),
+      )
+      .limit(1);
+    if (!row) return null;
+    return row as { structuredOutputJson: Record<string, unknown> | null };
+  }
+
   async markStageFailed(
     userId: string,
     runId: string,
