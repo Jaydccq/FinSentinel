@@ -1,0 +1,1 @@
+export { PrivateDocsPanel } from './PrivateDocsPanel';
