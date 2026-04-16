@@ -27,9 +27,7 @@ export async function apiFetch<T>(
   })
   if (!res.ok) {
     if (res.status === 401) {
-      localStorage.removeItem('auth_user')
-      window.location.href = '/login'
-      throw new ApiError(401, 'Session expired')
+      throw new ApiError(401, 'Unauthorized')
     }
     const text = await res.text()
     let message = text

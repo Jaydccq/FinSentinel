@@ -5,11 +5,7 @@ export async function downloadPdf(reportId: string): Promise<void> {
     credentials: 'include',
     headers: { ...authHeaders() },
   })
-  if (res.status === 401) {
-    localStorage.removeItem('auth_user')
-    window.location.href = '/login'
-    throw new Error('Session expired')
-  }
+  if (res.status === 401) throw new Error('Unauthorized')
   if (!res.ok) throw new Error(`${res.status}`)
   const blob = await res.blob()
   const url = URL.createObjectURL(blob)

@@ -2,9 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useAuth } from '../hooks/useAuth'
 import { useI18n } from '../hooks/useI18n'
 import LanguageToggle from './LanguageToggle'
 import {
@@ -15,12 +14,10 @@ import {
   FileText,
   FileDown,
   Newspaper,
-  LogOut,
   Menu,
   X,
   Shield,
   ChevronRight,
-  UserCircle2,
   Settings,
   TrendingUp,
   Bot,
@@ -77,18 +74,11 @@ function routeMeta(pathname: string): {
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { user, logout } = useAuth()
   const { t } = useI18n()
-  const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const meta = useMemo(() => routeMeta(pathname), [pathname])
-
-  const handleLogout = () => {
-    logout()
-    router.push('/login')
-  }
 
   const sidebarContent = (
     <>
@@ -128,19 +118,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </nav>
 
       <div className="px-2 pb-3 border-t border-[color:var(--border-subtle)] pt-2">
-        <div className="flex items-center gap-2 px-3 py-2 text-[var(--text-muted)]">
-          <UserCircle2 size={14} aria-hidden="true" />
-          <p className="text-xs font-medium truncate">{user?.username}</p>
-        </div>
-
-        <button
-          onClick={handleLogout}
-          className="w-full btn-ghost px-3 py-2 text-sm"
-          aria-label={t('layout.user.logout')}
-        >
-          <LogOut size={14} aria-hidden="true" />
-          {t('layout.user.logout')}
-        </button>
+        <LanguageToggle />
       </div>
     </>
   )

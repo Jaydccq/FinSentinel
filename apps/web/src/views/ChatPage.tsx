@@ -63,9 +63,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
-  const [sessionId, setSessionId] = useState<string | undefined>(() =>
-    localStorage.getItem('chat_session_id') ?? undefined
-  )
+  const [sessionId, setSessionId] = useState<string | undefined>(undefined)
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([])
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [sessionsLoading, setSessionsLoading] = useState(true)
@@ -78,6 +76,12 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Restore sessionId from localStorage after hydration
+  useEffect(() => {
+    const stored = localStorage.getItem('chat_session_id')
+    if (stored) setSessionId(stored)
+  }, [])
 
   // Persist sessionId to localStorage
   useEffect(() => {

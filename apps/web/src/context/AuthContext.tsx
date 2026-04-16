@@ -2,18 +2,21 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { AuthContext, type AuthUser } from './auth'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    if (typeof window === 'undefined') return null
+  // Initial state is always null so SSR/prerender HTML matches the first
+  // client render (prevents hydration mismatch). localStorage is read in
+  // the effect below, which fires after hydration.
+  const [user, setUser] = useState<AuthUser | null>(null)
+
+  useEffect(() => {
     const stored = localStorage.getItem('auth_user')
-    if (!stored) return null
+    if (!stored) return
     try {
       localStorage.removeItem('jwt_token')
-      return JSON.parse(stored) as AuthUser
+      setUser(JSON.parse(stored) as AuthUser)
     } catch {
       localStorage.removeItem('auth_user')
-      return null
     }
-  })
+  }, [])
 
   useEffect(() => {
     if (user) {
