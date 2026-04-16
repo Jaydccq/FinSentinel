@@ -16,6 +16,10 @@ import { chatSessionMemories } from './chat-session-memories';
 import { apiKeys } from './api-keys';
 import { watchlistCategories } from './watchlist-categories';
 import { watchlistItems } from './watchlist-items';
+import { analysisRuns } from './analysis-runs';
+import { analysisStages } from './analysis-stages';
+import { analysisArtifacts } from './analysis-artifacts';
+import { analysisApprovals } from './analysis-approvals';
 
 // ── users ───────────────────────────────────────────────────────────────────
 export const usersRelations = relations(users, ({ many, one }) => ({
@@ -31,6 +35,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   apiKeys: many(apiKeys),
   watchlistCategories: many(watchlistCategories),
   watchlistItems: many(watchlistItems),
+  analysisRuns: many(analysisRuns),
 }));
 
 // ── portfolios ──────────────────────────────────────────────────────────────
@@ -113,5 +118,46 @@ export const watchlistItemsRelations = relations(watchlistItems, ({ one }) => ({
   category: one(watchlistCategories, {
     fields: [watchlistItems.categoryId],
     references: [watchlistCategories.id],
+  }),
+}));
+
+// ── analysis_runs ──────────────────────────────────────────────────────────
+export const analysisRunsRelations = relations(analysisRuns, ({ one, many }) => ({
+  user: one(users, { fields: [analysisRuns.userId], references: [users.id] }),
+  stages: many(analysisStages),
+  artifacts: many(analysisArtifacts),
+  approvals: many(analysisApprovals),
+}));
+
+// ── analysis_stages ────────────────────────────────────────────────────────
+export const analysisStagesRelations = relations(analysisStages, ({ one, many }) => ({
+  run: one(analysisRuns, {
+    fields: [analysisStages.runId],
+    references: [analysisRuns.id],
+  }),
+  artifacts: many(analysisArtifacts),
+}));
+
+// ── analysis_artifacts ─────────────────────────────────────────────────────
+export const analysisArtifactsRelations = relations(analysisArtifacts, ({ one }) => ({
+  run: one(analysisRuns, {
+    fields: [analysisArtifacts.runId],
+    references: [analysisRuns.id],
+  }),
+  stage: one(analysisStages, {
+    fields: [analysisArtifacts.stageId],
+    references: [analysisStages.id],
+  }),
+}));
+
+// ── analysis_approvals ─────────────────────────────────────────────────────
+export const analysisApprovalsRelations = relations(analysisApprovals, ({ one }) => ({
+  run: one(analysisRuns, {
+    fields: [analysisApprovals.runId],
+    references: [analysisRuns.id],
+  }),
+  resolvedBy: one(users, {
+    fields: [analysisApprovals.resolvedByUserId],
+    references: [users.id],
   }),
 }));

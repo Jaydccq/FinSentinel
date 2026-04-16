@@ -21,6 +21,10 @@ export type { RelationType } from './knowledge-relations';
 export { chunkEntityLinks } from './chunk-entity-links';
 export { watchlistCategories } from './watchlist-categories';
 export { watchlistItems } from './watchlist-items';
+export { analysisRuns } from './analysis-runs';
+export { analysisStages } from './analysis-stages';
+export { analysisArtifacts } from './analysis-artifacts';
+export { analysisApprovals } from './analysis-approvals';
 
 // Relations
 export {
@@ -39,4 +43,8 @@ export {
   apiKeysRelations,
   watchlistCategoriesRelations,
   watchlistItemsRelations,
+  analysisRunsRelations,
+  analysisStagesRelations,
+  analysisArtifactsRelations,
+  analysisApprovalsRelations,
 } from './relations';
