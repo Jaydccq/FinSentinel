@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppConfigModule, DatabaseModule } from './config';
 import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
@@ -27,6 +28,7 @@ import { McpModule } from './mcp/mcp.module';
   imports: [
     AppConfigModule,
     DatabaseModule,
+    ScheduleModule.forRoot(),
     AuthModule,
     CommonModule,
     MarketModule,
