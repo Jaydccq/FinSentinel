@@ -54,16 +54,21 @@ function makeDb(approvalRow: Record<string, unknown> | null = null) {
   };
 }
 
+const runsStub = { markCompleted: vi.fn().mockResolvedValue(undefined), cancel: vi.fn().mockResolvedValue(undefined) };
+const checkpointsStub = { writeExecutionPayload: vi.fn().mockResolvedValue({ id: 'art-exec' }) };
+const mapperStub = { toUnifiedStageRequest: vi.fn().mockReturnValue({ action: 'BUY', symbol: 'AAPL', qty: '100' }) };
+
 describe('AnalysisApprovalService', () => {
   let events: { append: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     events = { append: vi.fn().mockResolvedValue({ id: 'evt-1' }) };
+    vi.clearAllMocks();
   });
 
   it('request() creates a PENDING approval and emits EXECUTION_APPROVAL_REQUIRED', async () => {
     const db = makeDb();
-    const svc = new AnalysisApprovalService(db as never, events as never);
+    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never);
     const row = await svc.request({
       userId: 'u1',
       runId: 'r1',
@@ -87,7 +92,7 @@ describe('AnalysisApprovalService', () => {
 
   it('request() rejects payloads that fail OrderDraft schema', async () => {
     const db = makeDb();
-    const svc = new AnalysisApprovalService(db as never, events as never);
+    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never);
     await expect(
       svc.request({ userId: 'u1', runId: 'r1', payload: { orderDrafts: [{}] } as never }),
     ).rejects.toThrow();
@@ -95,7 +100,7 @@ describe('AnalysisApprovalService', () => {
 
   it('resolve(APPROVE) flips status and emits EXECUTION_APPROVED', async () => {
     const db = makeDb({ id: 'appr-1', runId: 'r1', status: 'PENDING', requestedPayloadJson: payload });
-    const svc = new AnalysisApprovalService(db as never, events as never);
+    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never);
     await svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' });
     expect(db.state.lastUpdateSet).toMatchObject({ status: 'APPROVED' });
     expect(events.append).toHaveBeenCalledWith(
@@ -110,9 +115,36 @@ describe('AnalysisApprovalService', () => {
 
   it('resolve() on non-PENDING row throws', async () => {
     const db = makeDb({ id: 'appr-1', runId: 'r1', status: 'APPROVED', requestedPayloadJson: payload });
-    const svc = new AnalysisApprovalService(db as never, events as never);
+    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never);
     await expect(
       svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' }),
     ).rejects.toThrow(/already resolved/i);
+  });
+});
+
+describe('AnalysisApprovalService.resolve(APPROVE) follow-through', () => {
+  it('writes EXECUTION_PAYLOAD artifact and marks run COMPLETED', async () => {
+    const db = makeDb({
+      id: 'appr-1',
+      runId: 'r1',
+      status: 'PENDING',
+      requestedPayloadJson: payload,
+    });
+    const events = { append: vi.fn().mockResolvedValue({}) };
+    const runsLocal = { markCompleted: vi.fn().mockResolvedValue(undefined), cancel: vi.fn().mockResolvedValue(undefined) };
+    const checkpointsLocal = { writeExecutionPayload: vi.fn().mockResolvedValue({ id: 'art-exec' }) };
+    const mapperLocal = { toUnifiedStageRequest: vi.fn().mockReturnValue({ action: 'BUY', symbol: 'AAPL', qty: '100' }) };
+    const svc = new AnalysisApprovalService(
+      db as never,
+      events as never,
+      runsLocal as never,
+      checkpointsLocal as never,
+      mapperLocal as never,
+    );
+    await svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' });
+    expect(checkpointsLocal.writeExecutionPayload).toHaveBeenCalledWith(
+      expect.objectContaining({ runId: 'r1' }),
+    );
+    expect(runsLocal.markCompleted).toHaveBeenCalledWith('u1', 'r1');
   });
 });

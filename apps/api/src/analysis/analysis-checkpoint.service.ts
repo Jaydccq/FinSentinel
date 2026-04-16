@@ -137,6 +137,23 @@ export class AnalysisCheckpointService {
     return row as { id: string };
   }
 
+  async writeExecutionPayload(args: {
+    runId: string;
+    payload: Record<string, unknown>;
+  }): Promise<{ id: string }> {
+    const [row] = await this.db
+      .insert(analysisArtifacts)
+      .values({
+        runId: args.runId,
+        artifactKind: 'EXECUTION_PAYLOAD',
+        artifactName: 'execution-payload.json',
+        mimeType: 'application/json',
+        payloadJson: args.payload,
+      })
+      .returning();
+    return row as { id: string };
+  }
+
   async markStageFailed(
     userId: string,
     runId: string,

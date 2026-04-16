@@ -14,6 +14,9 @@ import {
   type OrderDraftsPayload,
 } from '@finsentinel/shared';
 import { AgentEventService } from '../events/agent-event.service';
+import { AnalysisRunService } from './analysis-run.service';
+import { AnalysisCheckpointService } from './analysis-checkpoint.service';
+import { OrderDraftMapper } from '../trading/order-draft-mapper.service';
 
 export type ApprovalDecision = 'APPROVE' | 'REJECT';
 
@@ -29,6 +32,9 @@ export class AnalysisApprovalService {
   constructor(
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     private readonly events: AgentEventService,
+    private readonly runs: AnalysisRunService,
+    private readonly checkpoints: AnalysisCheckpointService,
+    private readonly mapper: OrderDraftMapper,
   ) {}
 
   async request(args: {
@@ -95,6 +101,26 @@ export class AnalysisApprovalService {
       { note: args.note ?? null },
       null,
     );
+
+    if (args.decision === 'APPROVE') {
+      const payload = existing.requestedPayloadJson as { orderDrafts: unknown[] };
+      const mappedRequests = (payload.orderDrafts as never[]).map((d) =>
+        this.mapper.toUnifiedStageRequest(d as never),
+      );
+      await this.checkpoints.writeExecutionPayload({
+        runId: existing.runId,
+        payload: { orderDrafts: payload.orderDrafts, stageRequests: mappedRequests },
+      });
+      await this.runs.markCompleted(args.userId, existing.runId);
+    } else {
+      // REJECT: cancel the run (should be WAITING_APPROVAL at this point).
+      try {
+        await this.runs.cancel(args.userId, existing.runId);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!msg.toLowerCase().includes('already')) throw err;
+      }
+    }
   }
 
   async listForRun(runId: string): Promise<ApprovalRow[]> {
