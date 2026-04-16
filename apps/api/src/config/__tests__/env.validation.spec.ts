@@ -94,6 +94,12 @@ describe('envSchema', () => {
     // Market / Research
     expect(result.MARKET_DEFAULT_PROVIDER).toBe('polygon');
     expect(result.RESEARCH_DEFAULT_PROVIDER).toBe('polygon');
+
+    // Analysis Runs
+    expect(result.ANALYSIS_RUNS_ENABLED).toBe(false);
+
+    // Chat Auto-Upgrade
+    expect(result.CHAT_AUTO_UPGRADE_ENABLED).toBe(false);
   });
 
   it('accepts valid complete config with all optional fields', () => {
@@ -186,6 +192,10 @@ describe('envSchema', () => {
       RESEARCH_DEFAULT_PROVIDER: 'fmp',
       // Encryption
       ENCRYPTION_AES_KEY: 'dGVzdC1rZXktMzItYnl0ZXMtYmFzZTY0LWVuY29kZWQ=',
+      // Analysis Runs
+      ANALYSIS_RUNS_ENABLED: 'true',
+      // Chat Auto-Upgrade
+      CHAT_AUTO_UPGRADE_ENABLED: 'true',
     });
     expect(result.success).toBe(true);
   });
@@ -219,6 +229,8 @@ describe('envSchema', () => {
       CONFIRMATION_BLOCK_LIVE: 'false',
       MCP_SERVER_ENABLED: 'true',
       OKX_WEBSOCKET_ENABLED: 'false',
+      ANALYSIS_RUNS_ENABLED: 'true',
+      CHAT_AUTO_UPGRADE_ENABLED: 'false',
     });
     expect(result.APP_CRYPTO_NEWS_ENABLED).toBe(true);
     expect(result.APP_TWITTER_6551_ENABLED).toBe(false);
@@ -236,6 +248,8 @@ describe('envSchema', () => {
     expect(result.CONFIRMATION_BLOCK_LIVE).toBe(false);
     expect(result.MCP_SERVER_ENABLED).toBe(true);
     expect(result.OKX_WEBSOCKET_ENABLED).toBe(false);
+    expect(result.ANALYSIS_RUNS_ENABLED).toBe(true);
+    expect(result.CHAT_AUTO_UPGRADE_ENABLED).toBe(false);
   });
 
   it('coerces new string numbers to numbers', () => {

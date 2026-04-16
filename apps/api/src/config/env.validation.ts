@@ -175,6 +175,12 @@ export const envSchema = z.object({
   LOCAL_USER_PASSWORD: z.string().optional(),
   LOCAL_USER_EMAIL: z.string().default('local@finsentinel.local'),
 
+  // ── Analysis Runs ────────────────────────────────────────────────────
+  ANALYSIS_RUNS_ENABLED: envBoolean.default(false),
+
+  // ── Chat Auto-Upgrade ───────────────────────────────────────────────
+  CHAT_AUTO_UPGRADE_ENABLED: envBoolean.default(false),
+
   // ── Server ────────────────────────────────────────────────────────
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z
