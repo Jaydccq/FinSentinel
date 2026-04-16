@@ -19,11 +19,13 @@ import { NewsEnrichConsumer } from './news-enrich.consumer';
 import { GraphEnrichProducer } from './graph-enrich.producer';
 import { GraphEnrichConsumer } from './graph-enrich.consumer';
 import { AnalysisRunProducer } from './analysis-run.producer';
+import { AnalysisRunConsumer } from './analysis-run.consumer';
 import { DocumentModule } from '../document/document.module';
 import { StorageModule } from '../storage/storage.module';
 import { NewsModule } from '../news/news.module';
 import { ScraperModule } from '../scraper/scraper.module';
 import { CommonModule } from '../common/common.module';
+import { AnalysisModule } from '../analysis/analysis.module';
 
 /**
  * BullMQ queue infrastructure module.
@@ -46,6 +48,7 @@ import { CommonModule } from '../common/common.module';
     StorageModule,
     forwardRef(() => NewsModule),
     ScraperModule,
+    forwardRef(() => AnalysisModule),
   ],
   providers: [
     // ── BullMQ connection (shared by all queues and workers) ──────────
@@ -106,6 +109,7 @@ import { CommonModule } from '../common/common.module';
     VectorizeConsumer,
     NewsEnrichConsumer,
     GraphEnrichConsumer,
+    AnalysisRunConsumer,
   ],
   exports: [VectorizeProducer, NewsEnrichProducer, GraphEnrichProducer, AnalysisRunProducer],
 })
