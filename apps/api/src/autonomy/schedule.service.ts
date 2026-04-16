@@ -2,6 +2,7 @@ import { Injectable, Inject, BadRequestException, NotFoundException } from '@nes
 import { agentSchedules, eq, and, desc } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import { sql } from 'drizzle-orm';
+import parser from 'cron-parser';
 
 /** Maximum number of schedules per user. */
 const MAX_SCHEDULES_PER_USER = 20;
@@ -31,6 +32,11 @@ export class ScheduleService {
   constructor(
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
   ) {}
+
+  private computeNextRunAt(cronExpression: string, from: Date = new Date()): Date {
+    const it = parser.parseExpression(cronExpression, { currentDate: from });
+    return it.next().toDate();
+  }
 
   /** List all schedules for a user, newest first. */
   async listByUser(userId: string) {
@@ -71,6 +77,7 @@ export class ScheduleService {
       );
     }
 
+    const nextRunAt = this.computeNextRunAt(cronExpression);
     const [created] = await this.db
       .insert(agentSchedules)
       .values({
@@ -80,6 +87,7 @@ export class ScheduleService {
         taskType,
         taskPayload: payload,
         enabled,
+        nextRunAt,
       })
       .returning();
 
@@ -121,9 +129,14 @@ export class ScheduleService {
       );
     }
 
+    const updateFields: typeof fields & { nextRunAt?: Date } = { ...fields };
+    if (fields.cronExpression) {
+      updateFields.nextRunAt = this.computeNextRunAt(fields.cronExpression);
+    }
+
     const [updated] = await this.db
       .update(agentSchedules)
-      .set({ ...fields, updatedAt: new Date() })
+      .set({ ...updateFields, updatedAt: new Date() })
       .where(eq(agentSchedules.id, scheduleId))
       .returning();
 
@@ -205,5 +218,28 @@ export class ScheduleService {
   async deleteCronTask(userId: string, scheduleId: string): Promise<string> {
     await this.delete(userId, scheduleId);
     return `Deleted cron task ${scheduleId}.`;
+  }
+
+  async listDueSchedules(now: Date = new Date()) {
+    return this.db
+      .select()
+      .from(agentSchedules)
+      .where(
+        and(
+          eq(agentSchedules.enabled, true),
+          sql`${agentSchedules.nextRunAt} <= ${now}`,
+        ),
+      );
+  }
+
+  async markScheduleRan(
+    scheduleId: string,
+    lastRunAt: Date,
+    nextRunAt: Date,
+  ): Promise<void> {
+    await this.db
+      .update(agentSchedules)
+      .set({ lastRunAt, nextRunAt, updatedAt: new Date() })
+      .where(eq(agentSchedules.id, scheduleId));
   }
 }
