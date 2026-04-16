@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@finsentinel/shared": "workspace:*",
+    "@tauri-apps/api": "^2.10.1",
     "framer-motion": "^12.38.0",
     "lightweight-charts": "^5.1.0",
     "lucide-react": "^1.7.0",
