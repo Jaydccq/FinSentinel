@@ -59,6 +59,13 @@ export class ChatController {
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Nginx buffering off
 
+    if (result.runId) {
+      res.setHeader('X-Analysis-Run-Id', result.runId);
+    }
+    if (result.upgradeReason) {
+      res.setHeader('X-Analysis-Upgrade-Reason', result.upgradeReason);
+    }
+
     // Pipe the ReadableStream to the response
     const reader = result.stream.getReader();
     try {

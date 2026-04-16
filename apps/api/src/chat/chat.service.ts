@@ -17,6 +17,7 @@ import type {
 import { AgentService } from '../agent/agent.service';
 import { ChatCompactionService } from './chat-compaction.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
+import { ChatUpgradePlannerService } from './chat-upgrade-planner.service';
 
 interface ChatMessageRow {
   id: string;
@@ -34,6 +35,7 @@ export class ChatService {
     private readonly agentService: AgentService,
     private readonly chatCompactionService: ChatCompactionService,
     private readonly portfolioService: PortfolioService,
+    private readonly upgradePlanner: ChatUpgradePlannerService,
   ) {}
 
   async streamChat(
@@ -41,8 +43,50 @@ export class ChatService {
     userId: string,
     sessionId?: string,
     portfolioId?: string,
-  ): Promise<{ sessionId: string; stream: ReadableStream<Uint8Array> }> {
+  ): Promise<{
+    sessionId: string;
+    stream: ReadableStream<Uint8Array>;
+    runId?: string;
+    upgradeReason?: string;
+  }> {
     const resolvedSessionId = sessionId ?? randomUUID();
+
+    const upgrade = await this.upgradePlanner.maybeUpgrade({
+      userId,
+      sessionId: resolvedSessionId,
+      prompt: message,
+    });
+    if (upgrade.upgraded && upgrade.runId) {
+      await this.persistMessage(userId, resolvedSessionId, 'user', message);
+      const summary =
+        `This request was upgraded to a tracked analysis run (${upgrade.upgradeReason ?? 'auto'}). ` +
+        `Open Run ${upgrade.runId} to follow progress.`;
+      await this.persistMessage(userId, resolvedSessionId, 'assistant', summary);
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          const payload = {
+            content: summary,
+            sessionId: resolvedSessionId,
+            runId: upgrade.runId,
+            upgradeReason: upgrade.upgradeReason,
+          };
+          controller.enqueue(
+            encoder.encode(`event: message\ndata: ${JSON.stringify(payload)}\n\n`),
+          );
+          controller.enqueue(encoder.encode('event: done\ndata: [DONE]\n\n'));
+          controller.close();
+        },
+      });
+      return {
+        sessionId: resolvedSessionId,
+        stream,
+        runId: upgrade.runId,
+        upgradeReason: upgrade.upgradeReason,
+      };
+    }
+
+    // Existing path — unchanged from here on:
     const history = await this.getHistoryRows(userId, resolvedSessionId);
     const augmentedMessage = await this.chatCompactionService.augmentPrompt(
       userId,
