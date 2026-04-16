@@ -8,6 +8,7 @@ import {
   HttpStatus,
   BadRequestException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { JwtGuard } from '../auth/jwt.guard';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
@@ -28,7 +29,10 @@ const TICKER_REGEX = /^[A-Za-z0-9\-]{1,10}$/;
 @Controller('analysis')
 @UseGuards(JwtGuard)
 export class AnalysisController {
-  constructor(private readonly stockAnalysisService: StockAnalysisService) {}
+  constructor(
+    private readonly stockAnalysisService: StockAnalysisService,
+    private readonly config: ConfigService,
+  ) {}
 
   @Post('stream/:ticker')
   @HttpCode(HttpStatus.OK)
@@ -39,6 +43,12 @@ export class AnalysisController {
     @CurrentUser() _user: CurrentUserPayload,
     @Res() res: Response,
   ) {
+    if (this.config.get<boolean>('ANALYSIS_RUNS_ENABLED', false)) {
+      throw new BadRequestException(
+        'Legacy /analysis/stream is disabled when ANALYSIS_RUNS_ENABLED=true. Use POST /analysis/runs.',
+      );
+    }
+
     const upperTicker = ticker.toUpperCase();
 
     if (!TICKER_REGEX.test(ticker)) {

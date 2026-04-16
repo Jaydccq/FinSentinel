@@ -46,6 +46,36 @@ export class AnalysisRunController {
     return row;
   }
 
+  @Get(':id/stages')
+  async listStages(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    const run = await this.runs.getForUser(user.userId, id);
+    if (!run) throw new NotFoundException(`Run ${id} not found`);
+    return this.runs.listStagesForRun(id);
+  }
+
+  @Get(':id/artifacts')
+  async listArtifacts(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    const run = await this.runs.getForUser(user.userId, id);
+    if (!run) throw new NotFoundException(`Run ${id} not found`);
+    return this.runs.listArtifactsForRun(id);
+  }
+
+  @Get(':id/approvals')
+  async listApprovals(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    const run = await this.runs.getForUser(user.userId, id);
+    if (!run) throw new NotFoundException(`Run ${id} not found`);
+    return this.runs.listApprovalsForRun(id);
+  }
+
   @Post(':id/pause')
   async pause(
     @Param('id', new ParseUUIDPipe()) id: string,

@@ -9,6 +9,9 @@ describe('AnalysisRunController', () => {
     pause: ReturnType<typeof vi.fn>;
     resume: ReturnType<typeof vi.fn>;
     cancel: ReturnType<typeof vi.fn>;
+    listStagesForRun: ReturnType<typeof vi.fn>;
+    listArtifactsForRun: ReturnType<typeof vi.fn>;
+    listApprovalsForRun: ReturnType<typeof vi.fn>;
   };
   let producer: { enqueuePreflight: ReturnType<typeof vi.fn> };
   let ctrl: AnalysisRunController;
@@ -23,6 +26,9 @@ describe('AnalysisRunController', () => {
       pause: vi.fn(),
       resume: vi.fn(),
       cancel: vi.fn(),
+      listStagesForRun: vi.fn().mockResolvedValue([]),
+      listArtifactsForRun: vi.fn().mockResolvedValue([]),
+      listApprovalsForRun: vi.fn().mockResolvedValue([]),
     };
     producer = { enqueuePreflight: vi.fn().mockResolvedValue(undefined) };
     ctrl = new AnalysisRunController(runs as never, producer as never);
@@ -46,5 +52,38 @@ describe('AnalysisRunController', () => {
   it('POST /analysis/runs/:id/pause delegates to service', async () => {
     await ctrl.pause('r1', user);
     expect(runs.pause).toHaveBeenCalledWith('u1', 'r1');
+  });
+
+  it('GET :id/stages 404s when run not owned', async () => {
+    runs.getForUser.mockResolvedValue(null);
+    await expect(ctrl.listStages('r1', user)).rejects.toThrow(/not found/i);
+  });
+
+  it('GET :id/stages delegates to listStagesForRun', async () => {
+    runs.getForUser.mockResolvedValue({ id: 'r1', userId: 'u1', status: 'RUNNING' });
+    await ctrl.listStages('r1', user);
+    expect(runs.listStagesForRun).toHaveBeenCalledWith('r1');
+  });
+
+  it('GET :id/artifacts 404s when run not owned', async () => {
+    runs.getForUser.mockResolvedValue(null);
+    await expect(ctrl.listArtifacts('r1', user)).rejects.toThrow(/not found/i);
+  });
+
+  it('GET :id/artifacts delegates to listArtifactsForRun', async () => {
+    runs.getForUser.mockResolvedValue({ id: 'r1', userId: 'u1', status: 'RUNNING' });
+    await ctrl.listArtifacts('r1', user);
+    expect(runs.listArtifactsForRun).toHaveBeenCalledWith('r1');
+  });
+
+  it('GET :id/approvals 404s when run not owned', async () => {
+    runs.getForUser.mockResolvedValue(null);
+    await expect(ctrl.listApprovals('r1', user)).rejects.toThrow(/not found/i);
+  });
+
+  it('GET :id/approvals delegates to listApprovalsForRun', async () => {
+    runs.getForUser.mockResolvedValue({ id: 'r1', userId: 'u1', status: 'RUNNING' });
+    await ctrl.listApprovals('r1', user);
+    expect(runs.listApprovalsForRun).toHaveBeenCalledWith('r1');
   });
 });

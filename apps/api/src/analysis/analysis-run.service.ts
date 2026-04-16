@@ -5,8 +5,8 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { analysisRuns } from '@finsentinel/db';
-import { eq, and, desc } from 'drizzle-orm';
+import { analysisRuns, analysisStages, analysisArtifacts, analysisApprovals } from '@finsentinel/db';
+import { eq, and, desc, asc } from 'drizzle-orm';
 import type { DrizzleDB } from '@finsentinel/db';
 import {
   AgentEventAggregateType,
@@ -206,5 +206,29 @@ export class AnalysisRunService {
       .update(analysisRuns)
       .set({ status, updatedAt: new Date() })
       .where(and(eq(analysisRuns.id, runId), eq(analysisRuns.userId, userId)));
+  }
+
+  async listStagesForRun(runId: string) {
+    return this.db
+      .select()
+      .from(analysisStages)
+      .where(eq(analysisStages.runId, runId))
+      .orderBy(asc(analysisStages.startedAt));
+  }
+
+  async listArtifactsForRun(runId: string) {
+    return this.db
+      .select()
+      .from(analysisArtifacts)
+      .where(eq(analysisArtifacts.runId, runId))
+      .orderBy(desc(analysisArtifacts.createdAt));
+  }
+
+  async listApprovalsForRun(runId: string) {
+    return this.db
+      .select()
+      .from(analysisApprovals)
+      .where(eq(analysisApprovals.runId, runId))
+      .orderBy(desc(analysisApprovals.requestedAt));
   }
 }
