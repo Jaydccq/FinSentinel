@@ -54,9 +54,10 @@ export class RoleExecutorService {
     roleKey: RoleKey;
     systemPrompt: string;
     userInput: RoleInput;
+    userId?: string;
   }): Promise<RoleOutput> {
     const scope = ROLE_TOOL_SCOPE[args.roleKey];
-    const fullTools = this.getAllTools();
+    const fullTools = this.getAllTools(args.userId);
     const scopedTools: Record<string, unknown> = {};
     for (const name of scope) {
       if (fullTools[name]) scopedTools[name] = fullTools[name];
@@ -75,23 +76,23 @@ export class RoleExecutorService {
     return { roleKey: args.roleKey, structured, rawMarkdown: text };
   }
 
-  private getAllTools(): Record<string, unknown> {
+  private getAllTools(userId?: string): Record<string, unknown> {
     const registry = this.toolRegistry as unknown as Record<string, unknown>;
     // Try known method names in priority order.
     // buildTools is the full-set method; buildStockAnalysisTools is the lightweight subset.
     // Test fakes may use buildToolSet — check it first so tests work against hand-rolled fakes.
     for (const m of [
       'buildToolSet',
-      'buildTools',
       'buildStockAnalysisTools',
       'buildAll',
+      'buildTools',
       'getAll',
       'getTools',
     ]) {
       const fn = registry[m];
       if (typeof fn === 'function') {
         try {
-          const result = (fn as () => unknown).call(this.toolRegistry);
+          const result = (fn as (u?: string) => unknown).call(this.toolRegistry, userId);
           if (result && typeof result === 'object') {
             return result as Record<string, unknown>;
           }
