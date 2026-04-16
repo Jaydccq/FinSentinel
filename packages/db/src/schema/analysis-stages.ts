@@ -13,7 +13,6 @@ import { analysisRuns } from './analysis-runs';
 import type {
   AnalysisStageKey,
   StageStatus,
-  StageStructuredOutput,
 } from '@finsentinel/shared';
 
 export const analysisStages = pgTable(
@@ -33,7 +32,7 @@ export const analysisStages = pgTable(
     checkpointVersion: integer('checkpoint_version').notNull().default(0),
     parallelGroupKey: varchar('parallel_group_key', { length: 40 }),
     structuredOutputJson: jsonb('structured_output_json')
-      .$type<StageStructuredOutput | null>(),
+      .$type<Record<string, unknown> | null>(),
     humanReportMarkdown: text('human_report_markdown'),
     errorJson: jsonb('error_json').$type<Record<string, unknown> | null>(),
     startedAt: timestamp('started_at', { withTimezone: true }),
