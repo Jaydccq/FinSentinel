@@ -29,6 +29,13 @@ export async function apiFetch<T>(
     if (res.status === 401) {
       throw new ApiError(401, 'Unauthorized')
     }
+    // When the backend is unreachable, Next.js rewrites return an HTML
+    // 404 page. Don't stuff that into the error message — it pollutes
+    // the console with kilobytes of markup. Short-circuit on non-JSON.
+    const contentType = res.headers.get('content-type') ?? ''
+    if (!contentType.includes('application/json')) {
+      throw new ApiError(res.status, `Backend unreachable (HTTP ${res.status})`)
+    }
     const text = await res.text()
     let message = text
     try {
