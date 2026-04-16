@@ -79,6 +79,11 @@ export class RunOrchestratorService {
     try {
       await this.checkpoints.startStage(data.runId, data.stageKey);
       await executor({ runId: data.runId, userId: data.userId });
+      const run = await this.runs.getForUser(data.userId, data.runId);
+      if (data.stageKey === 'HUMAN_APPROVAL' || run?.status === 'WAITING_APPROVAL') {
+        // Hard stop — approval resolution re-enqueues via AnalysisApprovalService.
+        return;
+      }
       const next = this.nextStage(data.stageKey);
       if (next === null) {
         await this.runs.markCompleted(data.userId, data.runId);

@@ -141,6 +141,18 @@ export class AnalysisRunService {
     );
   }
 
+  async transitionToWaitingApproval(userId: string, runId: string): Promise<void> {
+    await this.transitionStatus(userId, runId, 'WAITING_APPROVAL');
+    await this.events.append(
+      userId,
+      AgentEventAggregateType.ANALYSIS_RUN,
+      runId,
+      AgentEventType.EXECUTION_APPROVAL_REQUIRED,
+      {},
+      null,
+    );
+  }
+
   async markFailed(userId: string, runId: string, error: string): Promise<void> {
     await this.transitionStatus(userId, runId, 'FAILED');
     await this.events.append(
