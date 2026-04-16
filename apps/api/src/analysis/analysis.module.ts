@@ -5,6 +5,7 @@ import { CommonModule } from '../common/common.module';
 import { EventsModule } from '../events/events.module';
 import { RagModule } from '../rag/rag.module';
 import { QueueModule } from '../queue/queue.module';
+import { TradingModule } from '../trading/trading.module';
 
 import { AnalysisController } from './analysis.controller';
 import { AnalysisRunController } from './analysis-run.controller';
@@ -16,6 +17,13 @@ import { ContextComplexityService } from './context-complexity.service';
 import { PreflightPlannerService } from './preflight-planner.service';
 import { ContextFabricService } from './context-fabric.service';
 import { RunOrchestratorService } from './run-orchestrator.service';
+import { TeamRegistry } from './team-registry';
+import { RoleExecutorService } from './teams/role-executor.service';
+import { IntelligenceTeamService } from './teams/intelligence-team.service';
+import { ThesisTeamService } from './teams/thesis-team.service';
+import { RiskTeamService } from './teams/risk-team.service';
+import { ExecutionPrepTeamService } from './teams/execution-prep-team.service';
+import { HumanApprovalGateService } from './teams/human-approval-gate.service';
 
 import { UserInvestmentProfileService } from '../agent/user-investment-profile.service';
 import { AgentBrainService } from '../agent/agent-brain.service';
@@ -45,6 +53,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
     EventsModule,
     forwardRef(() => RagModule),
     forwardRef(() => QueueModule),
+    TradingModule,
   ],
   controllers: [AnalysisController, AnalysisRunController, AnalysisApprovalController],
   providers: [
@@ -117,6 +126,13 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
         RagRetrievalService,
       ],
     },
+    RoleExecutorService,
+    IntelligenceTeamService,
+    ThesisTeamService,
+    RiskTeamService,
+    ExecutionPrepTeamService,
+    HumanApprovalGateService,
+    TeamRegistry,
   ],
   exports: [
     AnalysisRunService,
