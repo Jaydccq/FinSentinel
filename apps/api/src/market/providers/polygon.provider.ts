@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { MarketQuote, MarketBar } from '@finsentinel/shared';
+import { Contract, SecurityType } from '@finsentinel/shared';
 import type { MarketDataProvider } from '../interfaces/market-data-provider';
 
 /** Shape of a single bar from the Polygon /v2/aggs response. */
@@ -82,6 +83,8 @@ export class PolygonMarketDataProvider implements MarketDataProvider {
   // ── Internal ────────────────────────────────────────────────────────────
 
   private async fetchBars(ticker: string, days: number): Promise<PolygonBar[]> {
+    const polygonTicker = this.normalizeTicker(ticker);
+
     // Use UTC calendar math so CI and local machines produce the same Polygon range.
     const now = new Date();
     const to = new Date(
@@ -94,7 +97,7 @@ export class PolygonMarketDataProvider implements MarketDataProvider {
     const toStr = this.formatDate(to);
 
     const url =
-      `${PolygonMarketDataProvider.BASE_URL}/v2/aggs/ticker/${ticker}` +
+      `${PolygonMarketDataProvider.BASE_URL}/v2/aggs/ticker/${polygonTicker}` +
       `/range/1/day/${fromStr}/${toStr}?apiKey=${this.apiKey}`;
 
     this.logger.debug(`Polygon request: ${url.replace(this.apiKey, '***')}`);
@@ -119,5 +122,18 @@ export class PolygonMarketDataProvider implements MarketDataProvider {
   /** Format a Date as YYYY-MM-DD for Polygon's API. */
   private formatDate(date: Date): string {
     return date.toISOString().split('T')[0]!;
+  }
+
+  private normalizeTicker(ticker: string): string {
+    if (ticker.startsWith('X:')) {
+      return ticker;
+    }
+
+    const contract = Contract.fromString(ticker);
+    if (contract.secType === SecurityType.CRYPTO) {
+      return `X:${contract.symbol}${contract.currency}`;
+    }
+
+    return ticker;
   }
 }

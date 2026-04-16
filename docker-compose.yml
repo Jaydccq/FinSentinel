@@ -77,12 +77,6 @@ services:
       REDIS_URL: redis://redis:6379/0
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
-      STORAGE_PROVIDER: rustfs
-      STORAGE_ENDPOINT: http://rustfs:9000
-      STORAGE_ACCESS_KEY: rustfsadmin
-      STORAGE_SECRET_KEY: rustfsadmin
-      STORAGE_BUCKET: finsentinel
-      STORAGE_REGION: us-east-1
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       AI_MODEL: ${AI_MODEL:-google/gemini-3-flash-preview}
       POLYGON_API_KEY: ${POLYGON_API_KEY}

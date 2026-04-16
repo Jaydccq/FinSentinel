@@ -96,6 +96,25 @@ describe('PolygonMarketDataProvider', () => {
         /No data/,
       );
     });
+
+    it('maps crypto spot tickers to Polygon native symbols', async () => {
+      const polygonResponse = {
+        resultsCount: 1,
+        results: [
+          { o: 65000.0, h: 66000.0, l: 64000.0, c: 65500.0, v: 1200, t: 1700245600000 },
+        ],
+      };
+
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue(polygonResponse),
+      });
+
+      await provider.getQuote('BTC-USD');
+
+      const url = fetchMock.mock.calls[0]![0] as string;
+      expect(url).toContain('/v2/aggs/ticker/X:BTCUSD/range/1/day/');
+    });
   });
 
   // ── getHistoricalBars ─────────────────────────────────────────────────
