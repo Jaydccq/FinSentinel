@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { join } from 'node:path';
 
 import { envSchema } from './env.validation';
 import { databaseConfig } from './database.config';
@@ -27,6 +28,13 @@ import { encryptionConfig } from './encryption.config';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      // pnpm --filter runs with cwd = apps/api/, so ../../.env is the
+      // monorepo-root .env (single source of truth for dev credentials).
+      // Local apps/api/.env wins if present (overrides).
+      envFilePath: [
+        join(process.cwd(), '.env'),
+        join(process.cwd(), '../../.env'),
+      ],
       validate: (config: Record<string, unknown>) => envSchema.parse(config),
       load: [
         databaseConfig,
