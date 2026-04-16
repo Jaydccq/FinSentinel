@@ -6,6 +6,7 @@ import { TechnicalIndicatorsService } from '../../market/technical-indicators.se
 import { NewsAnalysisService } from '../news-analysis.service';
 import { TwitterToolsService } from '../twitter-tools.service';
 import { CryptoToolsService } from '../crypto-tools.service';
+import { WatchlistService } from '../../watchlist/watchlist.service';
 
 describe('ToolRegistry', () => {
   let registry: ToolRegistry;
@@ -14,6 +15,7 @@ describe('ToolRegistry', () => {
   let mockNewsAnalysisService: Partial<NewsAnalysisService>;
   let mockTwitterToolsService: Partial<TwitterToolsService>;
   let mockCryptoToolsService: Partial<CryptoToolsService>;
+  let mockWatchlistService: Partial<WatchlistService>;
 
   beforeEach(async () => {
     mockMarketDataService = {
@@ -54,6 +56,12 @@ describe('ToolRegistry', () => {
       setLeverage: vi.fn(),
     };
 
+    mockWatchlistService = {
+      saveWatchlistItems: vi.fn(),
+      getWatchlist: vi.fn(),
+      organizeWatchlistCategory: vi.fn(),
+    };
+
     const module = await Test.createTestingModule({
       providers: [
         ToolRegistry,
@@ -62,6 +70,7 @@ describe('ToolRegistry', () => {
         { provide: NewsAnalysisService, useValue: mockNewsAnalysisService },
         { provide: TwitterToolsService, useValue: mockTwitterToolsService },
         { provide: CryptoToolsService, useValue: mockCryptoToolsService },
+        { provide: WatchlistService, useValue: mockWatchlistService },
       ],
     }).compile();
 
@@ -112,6 +121,11 @@ describe('ToolRegistry', () => {
       expect(keys).toContain('getFundingRate');
       expect(keys).toContain('analyzePosition');
       expect(keys).toContain('setLeverage');
+
+      // Watchlist persistence
+      expect(keys).toContain('saveWatchlistItems');
+      expect(keys).toContain('getWatchlist');
+      expect(keys).toContain('organizeWatchlistCategory');
     });
 
     it('tools have correct structure (description, inputSchema, execute)', () => {
@@ -198,6 +212,31 @@ describe('ToolRegistry', () => {
 
       expect(mockTechnicalIndicatorsService.calculateRSI).toHaveBeenCalledWith('[]', 14);
       expect(result).toContain('RSI');
+    });
+
+    it('saveWatchlistItems delegates to WatchlistService', async () => {
+      (mockWatchlistService.saveWatchlistItems as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'watchlist-category-1',
+        name: '电',
+        key: '电',
+        description: '',
+        summary: '',
+        itemCount: 1,
+        items: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      const tools = registry.buildTools('user-1');
+      await (tools['saveWatchlistItems'] as any).execute({
+        categoryName: '电',
+        items: [{ symbol: 'CEG' }],
+      });
+
+      expect(mockWatchlistService.saveWatchlistItems).toHaveBeenCalledWith('user-1', {
+        categoryName: '电',
+        items: [{ symbol: 'CEG' }],
+      });
     });
   });
 });

@@ -33,6 +33,7 @@ export { createBrainTools } from './brain.tool';
 export { createUserProfileTools } from './user-profile.tool';
 export { createPortfolioAnalysisTools } from './portfolio-analysis.tool';
 export { createAutonomyTools } from './autonomy.tool';
+export { createWatchlistTools } from './watchlist.tool';
 
 // Group D — optional/conditional
 export { createCryptoNewsTools } from './crypto-news.tool';

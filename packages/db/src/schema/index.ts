@@ -19,6 +19,8 @@ export { knowledgeEntities } from './knowledge-entities';
 export { knowledgeRelations, RELATION_TYPES } from './knowledge-relations';
 export type { RelationType } from './knowledge-relations';
 export { chunkEntityLinks } from './chunk-entity-links';
+export { watchlistCategories } from './watchlist-categories';
+export { watchlistItems } from './watchlist-items';
 
 // Relations
 export {
@@ -35,4 +37,6 @@ export {
   agentHeartbeatConfigsRelations,
   chatSessionMemoriesRelations,
   apiKeysRelations,
+  watchlistCategoriesRelations,
+  watchlistItemsRelations,
 } from './relations';

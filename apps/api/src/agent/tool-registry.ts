@@ -10,6 +10,7 @@ import { UnifiedTradingService } from '../trading/unified-trading.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
 import { ScheduleService } from '../autonomy/schedule.service';
 import { HeartbeatService } from '../autonomy/heartbeat.service';
+import { WatchlistService } from '../watchlist/watchlist.service';
 import {
   createStockMarketTools,
   createTechnicalIndicatorTools,
@@ -30,6 +31,7 @@ import {
   createCryptoNewsTools,
   createTwitterTools,
   createCryptoAnalyticsTools,
+  createWatchlistTools,
 } from './tools';
 import { AgentBrainService } from './agent-brain.service';
 import { UserInvestmentProfileService } from './user-investment-profile.service';
@@ -74,6 +76,8 @@ export class ToolRegistry {
     private readonly twitterToolsService?: TwitterToolsService,
     @Optional()
     private readonly cryptoToolsService?: CryptoToolsService,
+    @Optional()
+    private readonly watchlistService?: WatchlistService,
   ) {}
 
   /**
@@ -163,6 +167,9 @@ export class ToolRegistry {
         : {}),
       ...(this.portfolioService
         ? createPortfolioAnalysisTools(this.portfolioService, userId)
+        : {}),
+      ...(this.watchlistService
+        ? createWatchlistTools(this.watchlistService, userId)
         : {}),
       ...(this.scheduleService && this.heartbeatService
         ? createAutonomyTools(this.scheduleService, this.heartbeatService, userId)

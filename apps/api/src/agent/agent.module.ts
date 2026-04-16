@@ -9,6 +9,7 @@ import { NewsModule } from '../news/news.module';
 import { RagModule } from '../rag/rag.module';
 import { TwitterModule } from '../twitter/twitter.module';
 import { OkxModule } from '../okx/okx.module';
+import { WatchlistModule } from '../watchlist/watchlist.module';
 import { AgentService } from './agent.service';
 import { AgentBrainService } from './agent-brain.service';
 import { StockAnalysisService } from './stock-analysis.service';
@@ -30,6 +31,7 @@ import { CryptoToolsService } from './crypto-tools.service';
     RagModule,
     TwitterModule,
     OkxModule,
+    WatchlistModule,
   ],
   providers: [
     ToolRegistry,

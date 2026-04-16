@@ -12,3 +12,4 @@ export * from './research';
 export * from './api-key';
 export * from './event';
 export * from './portfolio-insight';
+export * from './watchlist';

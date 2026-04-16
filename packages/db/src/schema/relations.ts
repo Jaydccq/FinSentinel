@@ -14,6 +14,8 @@ import { agentSchedules } from './agent-schedules';
 import { agentHeartbeatConfigs } from './agent-heartbeat-configs';
 import { chatSessionMemories } from './chat-session-memories';
 import { apiKeys } from './api-keys';
+import { watchlistCategories } from './watchlist-categories';
+import { watchlistItems } from './watchlist-items';
 
 // ── users ───────────────────────────────────────────────────────────────────
 export const usersRelations = relations(users, ({ many, one }) => ({
@@ -27,6 +29,8 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   heartbeatConfig: one(agentHeartbeatConfigs),
   chatSessionMemories: many(chatSessionMemories),
   apiKeys: many(apiKeys),
+  watchlistCategories: many(watchlistCategories),
+  watchlistItems: many(watchlistItems),
 }));
 
 // ── portfolios ──────────────────────────────────────────────────────────────
@@ -95,4 +99,19 @@ export const chatSessionMemoriesRelations = relations(chatSessionMemories, ({ on
 // ── api_keys ────────────────────────────────────────────────────────────────
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
   user: one(users, { fields: [apiKeys.userId], references: [users.id] }),
+}));
+
+// ── watchlist_categories ───────────────────────────────────────────────────
+export const watchlistCategoriesRelations = relations(watchlistCategories, ({ one, many }) => ({
+  user: one(users, { fields: [watchlistCategories.userId], references: [users.id] }),
+  items: many(watchlistItems),
+}));
+
+// ── watchlist_items ────────────────────────────────────────────────────────
+export const watchlistItemsRelations = relations(watchlistItems, ({ one }) => ({
+  user: one(users, { fields: [watchlistItems.userId], references: [users.id] }),
+  category: one(watchlistCategories, {
+    fields: [watchlistItems.categoryId],
+    references: [watchlistCategories.id],
+  }),
 }));
