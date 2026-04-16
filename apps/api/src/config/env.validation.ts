@@ -160,6 +160,16 @@ export const envSchema = z.object({
   // ── Encryption ────────────────────────────────────────────────────
   ENCRYPTION_AES_KEY: z.string().optional(),
 
+  // ── Single-user seed (desktop mode) ───────────────────────────────
+  // When APP_SEED_LOCAL_USER=true, the API ensures a `local` user
+  // exists at startup so desktop/dev clients can auto-login without
+  // going through a registration flow. Intended for single-machine
+  // desktop deployments; DO NOT enable in multi-tenant production.
+  APP_SEED_LOCAL_USER: envBoolean.default(false),
+  LOCAL_USER_USERNAME: z.string().default('local'),
+  LOCAL_USER_PASSWORD: z.string().optional(),
+  LOCAL_USER_EMAIL: z.string().default('local@finsentinel.local'),
+
   // ── Server ────────────────────────────────────────────────────────
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z

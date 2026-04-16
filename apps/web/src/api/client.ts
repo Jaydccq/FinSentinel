@@ -1,3 +1,9 @@
+import {
+  clearCachedToken,
+  ensureLocalToken,
+  getCachedToken,
+} from '../lib/auth/local-login'
+
 export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) {
@@ -8,14 +14,23 @@ export class ApiError extends Error {
 
 const BASE = '/api'
 
+/**
+ * Synchronous auth headers — reads only from the local-login cache so
+ * callers that use `{ ...authHeaders() }` without await still work.
+ * The cache is primed on app boot via ensureLocalToken() in Providers.
+ */
 function authHeaders(): Record<string, string> {
-  return {}
+  const token = getCachedToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-export async function apiFetch<T>(
+async function buildRequest(
   path: string,
-  options: RequestInit = {}
-): Promise<T> {
+  options: RequestInit,
+): Promise<Response> {
+  // For apiFetch we can afford to await the login in case the cache is
+  // empty (e.g. a direct API call before <Providers> mounts).
+  await ensureLocalToken()
   const res = await fetch(`${BASE}${path}`, {
     ...options,
     credentials: 'include',
@@ -25,6 +40,22 @@ export async function apiFetch<T>(
       ...(options.headers as Record<string, string> | undefined),
     },
   })
+  return res
+}
+
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {}
+): Promise<T> {
+  let res = await buildRequest(path, options)
+
+  // On a stale/expired token, drop the cache and retry once with a fresh
+  // login. Prevents users from being stuck after server restarts.
+  if (res.status === 401) {
+    clearCachedToken()
+    res = await buildRequest(path, options)
+  }
+
   if (!res.ok) {
     if (res.status === 401) {
       throw new ApiError(401, 'Unauthorized')
