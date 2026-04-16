@@ -154,6 +154,19 @@ All config is supplied via environment variables:
 
 Next.js App Router frontend with typed API modules, auth/i18n providers, and trading/news/portfolio views.
 
+### Desktop (`apps/desktop`)
+
+Tauri 2.x shell that loads `apps/web` as a static export and adds a Rust-native
+private-document indexer (SQLite + sqlite-vec + fastembed-rs, fully offline). Private
+documents are indexed locally and never synced to the cloud. Frontend uses
+`hybridSearch()` in `apps/web/src/lib/rag/` to merge local and cloud RAG results with
+provenance tagging.
+
+Build flag: `NEXT_PUBLIC_TAURI=1` makes `apps/web` emit `output: 'export'` and disables
+`rewrites()` (static export is incompatible with rewrites). In browser dev/prod,
+`NEXT_PUBLIC_TAURI` is unset and the app uses `output: 'standalone'` with the existing
+rewrite to NestJS.
+
 ### Docker
 
 `docker-compose.yml` orchestrates the active TypeScript stack: API, web, PostgreSQL, Redis, RustFS, Prometheus, and Grafana.
