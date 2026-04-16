@@ -13,3 +13,6 @@ export const GRAPH_ENRICH_QUEUE = 'finsentinel-graph-enrich';
 export const VECTORIZE_QUEUE_TOKEN = 'VECTORIZE_QUEUE';
 export const NEWS_ENRICH_QUEUE_TOKEN = 'NEWS_ENRICH_QUEUE';
 export const GRAPH_ENRICH_QUEUE_TOKEN = 'GRAPH_ENRICH_QUEUE';
+
+export const ANALYSIS_RUN_QUEUE = 'finsentinel-analysis-run';
+export const ANALYSIS_RUN_QUEUE_TOKEN = 'ANALYSIS_RUN_QUEUE';
