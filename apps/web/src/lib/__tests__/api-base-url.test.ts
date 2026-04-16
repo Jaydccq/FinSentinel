@@ -1,17 +1,11 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
+import { describe, expect, it, afterEach } from 'vitest';
 import { getApiBaseUrl } from '../api-base-url';
 
 describe('getApiBaseUrl', () => {
   const originalEnv = { ...process.env };
-  const originalWindow = globalThis.window;
-
-  beforeEach(() => {
-    vi.resetModules();
-  });
 
   afterEach(() => {
     process.env = { ...originalEnv };
-    globalThis.window = originalWindow;
   });
 
   it('returns NEXT_PUBLIC_API_BASE_URL when set (Tauri build)', () => {
