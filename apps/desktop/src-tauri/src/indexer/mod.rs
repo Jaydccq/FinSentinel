@@ -1,12 +1,16 @@
 pub mod chunker;
 pub mod extractor;
 pub mod pipeline;
+pub mod retrieval;
 
 #[cfg(test)]
 mod chunker_test;
 
 #[cfg(test)]
 mod pipeline_test;
+
+#[cfg(test)]
+mod retrieval_test;
 
 #[cfg(test)]
 mod extractor_test {
