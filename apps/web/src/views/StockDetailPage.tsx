@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { ArrowLeft, TrendingUp, TrendingDown, ExternalLink, Sparkles, ChevronDown, ChevronUp } from 'lucide-react'
@@ -71,8 +71,8 @@ function formatRatio(n: number | null | undefined): string {
 }
 
 export default function StockDetailPage() {
-  const params = useParams<{ ticker: string }>()
-  const ticker = params.ticker as string | undefined
+  const searchParams = useSearchParams()
+  const ticker = searchParams.get('ticker') ?? undefined
   const isCrypto = ticker?.includes('-')
   const requestVersionRef = useRef(0)
   const [quote, setQuote] = useState<QuoteData | null>(null)

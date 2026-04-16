@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useI18n } from '../hooks/useI18n'
 import LanguageToggle from './LanguageToggle'
@@ -39,13 +39,13 @@ const NAV = [
   { to: '/settings', labelKey: 'layout.nav.settings', icon: Settings },
 ] as const
 
-function routeMeta(pathname: string): {
+function routeMeta(pathname: string, searchTicker: string | null): {
   titleKey: MessageKey
   subtitleKey: MessageKey
   params?: Record<string, string>
 } {
-  if (pathname.startsWith('/stock/')) {
-    const ticker = pathname.split('/').at(-1)?.toUpperCase() ?? 'Ticker'
+  if (pathname === '/stock') {
+    const ticker = searchTicker?.toUpperCase() ?? 'Ticker'
     return {
       titleKey: 'layout.meta.stockSnapshot.title',
       subtitleKey: 'layout.meta.stockSnapshot.subtitle',
@@ -76,9 +76,14 @@ function routeMeta(pathname: string): {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useI18n()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const tickerParam = searchParams.get('ticker')
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  const meta = useMemo(() => routeMeta(pathname), [pathname])
+  const meta = useMemo(
+    () => routeMeta(pathname, tickerParam),
+    [pathname, tickerParam],
+  )
 
   const sidebarContent = (
     <>

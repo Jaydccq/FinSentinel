@@ -330,7 +330,7 @@ export default function DashboardPage() {
                     </button>
                   )}
                   <Link
-                    href={editing ? '#' : `/stock/${ticker}`}
+                    href={editing ? '#' : `/stock?ticker=${encodeURIComponent(ticker)}`}
                     onClick={e => editing && e.preventDefault()}
                     className={`surface-panel rounded p-2.5 block ${editing ? 'ring-1 ring-blue-400/25' : 'surface-panel-hover'}`}
                   >

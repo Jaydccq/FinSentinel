@@ -464,7 +464,7 @@ export default function PortfolioPage() {
                               className={`border-b border-[color:var(--border-subtle)] hover:bg-white/5 transition-colors ${idx % 2 === 1 ? 'bg-slate-900/15' : ''}`}
                             >
                               <td className="px-3 py-2">
-                                <Link href={`/stock/${holding.symbol}`} className="font-data font-bold text-blue-100 hover:text-blue-300 transition-colors">
+                                <Link href={`/stock?ticker=${encodeURIComponent(holding.symbol)}`} className="font-data font-bold text-blue-100 hover:text-blue-300 transition-colors">
                                   {holding.symbol}
                                 </Link>
                               </td>
