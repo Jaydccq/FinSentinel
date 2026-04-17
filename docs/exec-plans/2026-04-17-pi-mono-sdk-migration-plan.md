@@ -575,7 +575,7 @@ Expected: PASS.
 - Create: `packages/ai-runtime/src/tools.spec.ts`
 - Modify: `packages/ai-runtime/src/index.ts`
 
-- [ ] **Step 1: Write adapter tests**
+- [x] **Step 1: Write adapter tests**
 
 Create `packages/ai-runtime/src/tools.spec.ts`:
 
@@ -631,7 +631,7 @@ describe('defineZodTool', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -641,7 +641,7 @@ pnpm --filter @finsentinel/ai-runtime test -- src/tools.spec.ts
 
 Expected: FAIL because the adapter does not exist.
 
-- [ ] **Step 3: Implement adapter**
+- [x] **Step 3: Implement adapter**
 
 Create `packages/ai-runtime/src/tools.ts`:
 
@@ -694,7 +694,7 @@ export function toAgentTools(toolSet: FinToolSet): AgentTool[] {
 }
 ```
 
-- [ ] **Step 4: Export adapter**
+- [x] **Step 4: Export adapter**
 
 Update `packages/ai-runtime/src/index.ts`:
 
@@ -703,7 +703,7 @@ export * from './model';
 export * from './tools';
 ```
 
-- [ ] **Step 5: Verify adapter**
+- [x] **Step 5: Verify adapter**
 
 Run:
 
@@ -712,6 +712,11 @@ pnpm --filter @finsentinel/ai-runtime test -- src/tools.spec.ts
 ```
 
 Expected: PASS.
+
+**Progress log**
+
+- 2026-04-17: Added `packages/ai-runtime/src/tools.spec.ts` and `packages/ai-runtime/src/tools.ts` to bridge legacy Zod tools into Pi-Mono agent tools without touching app tool factories yet.
+- 2026-04-17: Verified Task 3 with `pnpm --filter @finsentinel/ai-runtime test -- src/tools.spec.ts` and `pnpm --filter @finsentinel/ai-runtime typecheck`.
 
 ### Task 4: Add Pi Agent Text Runtime
 
