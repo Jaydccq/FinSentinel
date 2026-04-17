@@ -16,7 +16,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { eq } from 'drizzle-orm';
 import * as schema from '@finsentinel/db';
-import { analysisStages, analysisRuns } from '@finsentinel/db';
+import { users, analysisStages, analysisRuns } from '@finsentinel/db';
 import { AnalysisCheckpointService } from '../analysis-checkpoint.service';
 
 // ── DB URL ────────────────────────────────────────────────────────────────────
@@ -26,8 +26,8 @@ const DB_URL =
   process.env['DATABASE_URL'] ??
   'postgresql://postgres:123456@localhost:5432/finsentinel';
 
-// Seeded local user that exists in the test database (LOCAL_USER seed).
-const SEEDED_USER_ID = 'a0000000-0000-0000-0000-000000000001';
+// Test user ID generated per test run — no pre-seeded data required.
+let testUserId: string;
 
 // ── Skip guard ────────────────────────────────────────────────────────────────
 // Skip in environments where Postgres is definitely unavailable (CI without a
@@ -50,9 +50,22 @@ maybeDescribe('AnalysisCheckpointService.startStage (idempotent)', () => {
     // Stub AgentEventService — startStage does not call it.
     const stubEvents = { append: async () => ({ id: 'stub' }) } as never;
     svc = new AnalysisCheckpointService(db as never, stubEvents);
+
+    // Self-seed a test user so this spec has no dependency on pre-existing DB state.
+    testUserId = randomUUID();
+    await db.insert(users).values({
+      id: testUserId,
+      username: `ts-${testUserId.slice(0, 8)}`,
+      email: `test-startstage-${testUserId}@finsentinel.test`,
+      password: 'test-placeholder-not-used',
+      displayName: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
   });
 
   afterAll(async () => {
+    await db.delete(users).where(eq(users.id, testUserId));
     await client.end();
   });
 
@@ -63,7 +76,7 @@ maybeDescribe('AnalysisCheckpointService.startStage (idempotent)', () => {
     // service file comments).
     await db.insert(analysisRuns).values({
       id: runId,
-      userId: SEEDED_USER_ID,
+      userId: testUserId,
       sourceMode: 'CHAT',
       status: 'QUEUED',
       inputSnapshotJson: {},
