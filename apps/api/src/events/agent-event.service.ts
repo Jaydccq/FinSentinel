@@ -1,4 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import {
   agentEvents,
   eq,
@@ -58,16 +59,23 @@ export class AgentEventService {
       }
     }
 
-    // Insert new event
+    // Insert new event.
+    // Supply id + createdAt explicitly. Drizzle+postgres.js (0.44.7 / 3.4.8)
+    // scrambles bind parameters when INSERT mixes `default` keywords with `$N`
+    // placeholders for non-generated columns — setting them here avoids that
+    // codegen path. seq_no stays `default` because it's GENERATED ALWAYS AS
+    // IDENTITY and cannot be set from client code.
     const [created] = await this.db
       .insert(agentEvents)
       .values({
+        id: randomUUID(),
         userId,
         aggregateType,
         aggregateId: aggregateId ?? undefined,
         eventType,
         payloadJson: payload ?? {},
         idempotencyKey: idempotencyKey ?? undefined,
+        createdAt: new Date(),
       })
       .returning();
 

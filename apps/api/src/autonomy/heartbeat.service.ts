@@ -91,13 +91,15 @@ export class HeartbeatService {
   }
 
   async listDueHeartbeats(now: Date = new Date()) {
+    // postgres.js (3.4.8) rejects Date bind parameters — pass ISO string instead.
+    const nowIso = now.toISOString();
     return this.db
       .select()
       .from(agentHeartbeatConfigs)
       .where(
         sql`${agentHeartbeatConfigs.enabled} = true AND (
           ${agentHeartbeatConfigs.lastBeatAt} IS NULL OR
-          ${agentHeartbeatConfigs.lastBeatAt} + (${agentHeartbeatConfigs.intervalSeconds} * interval '1 second') <= ${now}
+          ${agentHeartbeatConfigs.lastBeatAt} + (${agentHeartbeatConfigs.intervalSeconds} * interval '1 second') <= ${nowIso}::timestamptz
         )`,
       );
   }

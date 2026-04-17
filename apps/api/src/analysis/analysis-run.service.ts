@@ -35,9 +35,13 @@ export class AnalysisRunService {
 
   async createQueued(userId: string, req: CreateRunRequest): Promise<AnalysisRunRow> {
     const idempotencyKey = `run:create:${userId}:${randomUUID()}`;
+    // Supply id + timestamps explicitly to avoid the Drizzle+postgres.js
+    // mixed-default bind bug (see agent-event.service.ts for details).
+    const now = new Date();
     const [created] = await this.db
       .insert(analysisRuns)
       .values({
+        id: randomUUID(),
         userId,
         sourceMode: req.sourceMode,
         status: 'QUEUED',
@@ -49,6 +53,8 @@ export class AnalysisRunService {
           enabledTeams: req.enabledTeams,
           researchDepth: req.researchDepth ?? 'STANDARD',
         },
+        createdAt: now,
+        updatedAt: now,
       })
       .returning();
     const row = created as AnalysisRunRow;

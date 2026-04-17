@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { analysisApprovals } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
@@ -52,10 +53,12 @@ export class AnalysisApprovalService {
     const [row] = await this.db
       .insert(analysisApprovals)
       .values({
+        id: randomUUID(),
         runId: args.runId,
         approvalType: 'EXECUTION_APPROVAL',
         status: 'PENDING',
         requestedPayloadJson: parsed as unknown as Record<string, unknown>,
+        requestedAt: new Date(),
       })
       .returning();
     const created = row as ApprovalRow;

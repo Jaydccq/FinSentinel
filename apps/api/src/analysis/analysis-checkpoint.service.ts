@@ -1,4 +1,5 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { eq, and } from 'drizzle-orm';
 import { analysisStages, analysisArtifacts } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
@@ -32,9 +33,11 @@ export class AnalysisCheckpointService {
   ) {}
 
   async startStage(runId: string, stageKey: AnalysisStageKey): Promise<string> {
+    // Supply id explicitly to avoid Drizzle+postgres.js mixed-default bind bug.
     const [stage] = await this.db
       .insert(analysisStages)
       .values({
+        id: randomUUID(),
         runId,
         stageKey,
         status: 'RUNNING',
@@ -78,20 +81,24 @@ export class AnalysisCheckpointService {
       .where(eq(analysisStages.id, row.id));
 
     await this.db.insert(analysisArtifacts).values({
+      id: randomUUID(),
       runId: args.runId,
       stageId: row.id,
       artifactKind: 'STAGE_STRUCTURED_OUTPUT',
       artifactName: `${args.stageKey.toLowerCase()}-structured.json`,
       mimeType: 'application/json',
       payloadJson: parsed as Record<string, unknown>,
+      createdAt: new Date(),
     });
     await this.db.insert(analysisArtifacts).values({
+      id: randomUUID(),
       runId: args.runId,
       stageId: row.id,
       artifactKind: 'STAGE_HUMAN_REPORT',
       artifactName: `${args.stageKey.toLowerCase()}-report.md`,
       mimeType: 'text/markdown',
       payloadJson: { markdown: args.humanReportMarkdown },
+      createdAt: new Date(),
     });
 
     await this.events.append(
@@ -126,12 +133,14 @@ export class AnalysisCheckpointService {
     const [row] = await this.db
       .insert(analysisArtifacts)
       .values({
+        id: randomUUID(),
         runId: args.runId,
         stageId: args.stageId ?? undefined,
         artifactKind: 'ORDER_DRAFTS',
         artifactName: 'order-drafts.json',
         mimeType: 'application/json',
         payloadJson: args.payload as Record<string, unknown>,
+        createdAt: new Date(),
       })
       .returning();
     return row as { id: string };
@@ -144,11 +153,13 @@ export class AnalysisCheckpointService {
     const [row] = await this.db
       .insert(analysisArtifacts)
       .values({
+        id: randomUUID(),
         runId: args.runId,
         artifactKind: 'EXECUTION_PAYLOAD',
         artifactName: 'execution-payload.json',
         mimeType: 'application/json',
         payloadJson: args.payload,
+        createdAt: new Date(),
       })
       .returning();
     return row as { id: string };

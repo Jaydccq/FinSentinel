@@ -37,7 +37,7 @@ function makeDb(approvalRow: Record<string, unknown> | null = null) {
     insert: () => ({
       values: (v: Record<string, unknown>) => {
         state.lastInsert = v;
-        return { returning: async () => [{ id: 'appr-1', ...v }] };
+        return { returning: async () => [{ ...v, id: 'appr-1' }] };
       },
     }),
     select: () => ({
@@ -48,7 +48,7 @@ function makeDb(approvalRow: Record<string, unknown> | null = null) {
     update: () => ({
       set: (v: Record<string, unknown>) => {
         state.lastUpdateSet = v;
-        return { where: () => ({ returning: async () => [{ id: 'appr-1', ...v }] }) };
+        return { where: () => ({ returning: async () => [{ ...v, id: 'appr-1' }] }) };
       },
     }),
   };
