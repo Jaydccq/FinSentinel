@@ -1004,7 +1004,7 @@ Expected: PASS. If `Agent.subscribe()` cannot safely throw from a listener, repl
 - Create: `packages/ai-runtime/src/embeddings.spec.ts`
 - Modify: `packages/ai-runtime/src/index.ts`
 
-- [ ] **Step 1: Write embedding tests**
+- [x] **Step 1: Write embedding tests**
 
 Create `packages/ai-runtime/src/embeddings.spec.ts`:
 
@@ -1082,7 +1082,7 @@ describe('OpenRouterEmbeddingClient', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -1092,7 +1092,7 @@ pnpm --filter @finsentinel/ai-runtime test -- src/embeddings.spec.ts
 
 Expected: FAIL because the embedding client does not exist.
 
-- [ ] **Step 3: Implement embedding client**
+- [x] **Step 3: Implement embedding client**
 
 Create `packages/ai-runtime/src/embeddings.ts`:
 
@@ -1161,7 +1161,7 @@ export class OpenRouterEmbeddingClient {
 }
 ```
 
-- [ ] **Step 4: Export embedding client**
+- [x] **Step 4: Export embedding client**
 
 Update `packages/ai-runtime/src/index.ts`:
 
@@ -1172,7 +1172,7 @@ export * from './text-runtime';
 export * from './tools';
 ```
 
-- [ ] **Step 5: Verify embeddings**
+- [x] **Step 5: Verify embeddings**
 
 Run:
 
@@ -1181,6 +1181,12 @@ pnpm --filter @finsentinel/ai-runtime test -- src/embeddings.spec.ts
 ```
 
 Expected: PASS.
+
+**Progress log**
+
+- 2026-04-17: Added `packages/ai-runtime/src/embeddings.spec.ts` first, verified the expected red state when `./embeddings` was missing, then implemented `OpenRouterEmbeddingClient` with request validation, empty-input short-circuiting, count checks, and malformed embedding guards.
+- 2026-04-17: Verified Task 5 with `pnpm --filter @finsentinel/ai-runtime test -- src/embeddings.spec.ts` and `pnpm --filter @finsentinel/ai-runtime typecheck`.
+- 2026-04-17: Tightened embedding client error handling so non-2xx and invalid-JSON responses now use bounded body snippets instead of full response text; added tests for truncation and kept the package typecheck green.
 
 ### Task 6: Migrate No-Tool Text Services
 
