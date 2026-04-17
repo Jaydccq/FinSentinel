@@ -6,24 +6,18 @@ import { UserInvestmentProfileService } from '../user-investment-profile.service
 import { aiConfig } from '../../config/ai.config';
 import { personaConfig } from '../../config/persona.config';
 
-// ── Mock the 'ai' module ────────────────────────────────────────────────────
-// We mock streamText to avoid real LLM calls.
-const mockStreamText = vi.fn();
-vi.mock('ai', () => ({
-  streamText: (...args: unknown[]) => mockStreamText(...args),
-  tool: vi.fn((def: unknown) => def),
-  stepCountIs: vi.fn((n: number) => `stepCountIs(${n})`),
-}));
+const mockStreamAgentTextFromMessages = vi.fn();
+const mockCreateOpenRouterModel = vi.fn();
 
-vi.mock('@ai-sdk/openai', () => ({
-  createOpenAI: vi.fn(() => vi.fn(() => 'mock-model')),
+vi.mock('@finsentinel/ai-runtime', () => ({
+  createOpenRouterModel: (...args: unknown[]) => mockCreateOpenRouterModel(...args),
+  streamAgentTextFromMessages: (...args: unknown[]) => mockStreamAgentTextFromMessages(...args),
 }));
 
 describe('AgentService', () => {
   let service: AgentService;
   let mockToolRegistry: {
     buildTools: Mock;
-    buildStockAnalysisTools: Mock;
   };
   let mockUserInvestmentProfileService: {
     getProfileSummary: Mock;
@@ -36,26 +30,18 @@ describe('AgentService', () => {
 
     mockToolRegistry = {
       buildTools: vi.fn().mockReturnValue(mockTools),
-      buildStockAnalysisTools: vi.fn().mockReturnValue(mockTools),
     };
     mockUserInvestmentProfileService = {
       getProfileSummary: vi.fn().mockResolvedValue('Risk tolerance: MODERATE'),
     };
 
-    // Default mock: streamText returns a result with a textStream
-    mockStreamText.mockReturnValue({
-      textStream: (async function* () {
+    mockCreateOpenRouterModel.mockReturnValue('mock-model');
+    mockStreamAgentTextFromMessages.mockReturnValue(
+      (async function* () {
         yield 'Hello ';
         yield 'World';
       })(),
-      fullStream: (async function* () {
-        yield { type: 'text-delta', textDelta: 'Hello ' };
-        yield { type: 'text-delta', textDelta: 'World' };
-      })(),
-      text: Promise.resolve('Hello World'),
-      finishReason: Promise.resolve('stop'),
-      usage: Promise.resolve({ promptTokens: 10, completionTokens: 20 }),
-    });
+    );
 
     const module = await Test.createTestingModule({
       providers: [
@@ -65,15 +51,21 @@ describe('AgentService', () => {
           provide: UserInvestmentProfileService,
           useValue: mockUserInvestmentProfileService,
         },
-        { provide: aiConfig.KEY, useValue: { openrouterApiKey: 'test-key', model: 'google/gemini-3-flash-preview' } },
+        {
+          provide: aiConfig.KEY,
+          useValue: {
+            openrouterApiKey: 'test-key',
+            openrouterBaseUrl: 'https://openrouter.example/api/v1',
+            model: 'google/gemini-3-flash-preview',
+            embeddingModel: 'text-embedding-3-small',
+          },
+        },
         { provide: personaConfig.KEY, useValue: { active: 'default' } },
       ],
     }).compile();
 
     service = module.get(AgentService);
   });
-
-  // ── System prompt composition ──────────────────────────────────────────────
 
   describe('system prompt composition', () => {
     it('composes system prompt with profile + persona', async () => {
@@ -86,14 +78,11 @@ describe('AgentService', () => {
 
       expect(stream).toBeInstanceOf(ReadableStream);
 
-      // streamText should have been called with system prompt containing persona
-      expect(mockStreamText).toHaveBeenCalledTimes(1);
-      const callArgs = mockStreamText.mock.calls[0]![0];
-      expect(callArgs.system).toBeDefined();
-      expect(callArgs.system).toContain('Risk tolerance: MODERATE');
-      // Persona prompt should be included (default persona has RISEN sections)
-      expect(callArgs.system).toContain('[R] Role');
-      expect(callArgs.system).toContain('[I] Instructions');
+      expect(mockStreamAgentTextFromMessages).toHaveBeenCalledTimes(1);
+      const callArgs = mockStreamAgentTextFromMessages.mock.calls[0]![0];
+      expect(callArgs.systemPrompt).toContain('Risk tolerance: MODERATE');
+      expect(callArgs.systemPrompt).toContain('[R] Role');
+      expect(callArgs.systemPrompt).toContain('[I] Instructions');
     });
 
     it('composes system prompt without profile (new user)', async () => {
@@ -108,17 +97,14 @@ describe('AgentService', () => {
 
       expect(stream).toBeInstanceOf(ReadableStream);
 
-      const callArgs = mockStreamText.mock.calls[0]![0];
-      // Even without a profile, the persona prompt should be present
-      expect(callArgs.system).toContain('[R] Role');
-      expect(callArgs.system).not.toContain('Risk tolerance: MODERATE');
+      const callArgs = mockStreamAgentTextFromMessages.mock.calls[0]![0];
+      expect(callArgs.systemPrompt).toContain('[R] Role');
+      expect(callArgs.systemPrompt).not.toContain('Risk tolerance: MODERATE');
     });
   });
 
-  // ── Model configuration ────────────────────────────────────────────────────
-
   describe('model configuration', () => {
-    it('uses correct model from config', async () => {
+    it('uses the configured OpenRouter model', async () => {
       await service.streamChat(
         'test',
         'user-1',
@@ -126,16 +112,16 @@ describe('AgentService', () => {
         'session-789',
       );
 
-      const callArgs = mockStreamText.mock.calls[0]![0];
-      // The model should be the result of calling the OpenAI provider function
-      expect(callArgs.model).toBeDefined();
+      expect(mockCreateOpenRouterModel).toHaveBeenCalledWith({
+        modelId: 'google/gemini-3-flash-preview',
+        baseUrl: 'https://openrouter.example/api/v1',
+      });
+      expect(mockStreamAgentTextFromMessages.mock.calls[0]![0].model).toBe('mock-model');
     });
   });
 
-  // ── streamText parameters ──────────────────────────────────────────────────
-
-  describe('streamText parameters', () => {
-    it('calls streamText with correct parameters', async () => {
+  describe('streamAgentTextFromMessages parameters', () => {
+    it('calls the runtime with correct parameters', async () => {
       await service.streamChat(
         'Analyze AAPL',
         'user-1',
@@ -147,21 +133,16 @@ describe('AgentService', () => {
         'session-abc',
       );
 
-      expect(mockStreamText).toHaveBeenCalledTimes(1);
-      const callArgs = mockStreamText.mock.calls[0]![0];
+      expect(mockStreamAgentTextFromMessages).toHaveBeenCalledTimes(1);
+      const callArgs = mockStreamAgentTextFromMessages.mock.calls[0]![0];
 
-      // Check messages mapping
       expect(callArgs.messages).toEqual([
         { role: 'user', content: 'Hello' },
         { role: 'assistant', content: 'Hi' },
         { role: 'user', content: 'Analyze AAPL' },
       ]);
-
-      // Check tools passed
       expect(callArgs.tools).toBe(mockTools);
-
-      // Check stopWhen is set (replaces maxSteps: 10)
-      expect(callArgs.stopWhen).toBeDefined();
+      expect(callArgs.maxTurns).toBe(10);
     });
 
     it('passes userId to toolRegistry.buildTools', async () => {
@@ -188,8 +169,6 @@ describe('AgentService', () => {
     });
   });
 
-  // ── SSE output format ──────────────────────────────────────────────────────
-
   describe('SSE output format', () => {
     it('produces SSE events in correct format', async () => {
       const stream = await service.streamChat(
@@ -199,7 +178,6 @@ describe('AgentService', () => {
         'session-sse',
       );
 
-      // Read all chunks from the stream
       const reader = stream.getReader();
       const decoder = new TextDecoder();
       const chunks: string[] = [];
@@ -215,40 +193,20 @@ describe('AgentService', () => {
 
       const output = chunks.join('');
 
-      // Must contain message events with JSON data
       expect(output).toContain('event: message');
       expect(output).toContain('"content"');
       expect(output).toContain('"sessionId":"session-sse"');
-
-      // Must end with a done event
       expect(output).toContain('event: done');
       expect(output).toContain('data: [DONE]');
     });
 
     it('produces error SSE event on stream error', async () => {
-      // Override mock to produce an error in the text stream.
-      // Use .catch(noop) on rejected promises to avoid unhandled rejection noise.
-      const noop = () => {};
-      const rejectedText = Promise.reject(new Error('LLM connection failed'));
-      const rejectedFinish = Promise.reject(new Error('LLM connection failed'));
-      const rejectedUsage = Promise.reject(new Error('LLM connection failed'));
-      rejectedText.catch(noop);
-      rejectedFinish.catch(noop);
-      rejectedUsage.catch(noop);
-
-      mockStreamText.mockReturnValue({
-        textStream: (async function* () {
+      mockStreamAgentTextFromMessages.mockReturnValue(
+        (async function* () {
           yield 'start';
           throw new Error('LLM connection failed');
         })(),
-        fullStream: (async function* () {
-          yield { type: 'text-delta', textDelta: 'start' };
-          throw new Error('LLM connection failed');
-        })(),
-        text: rejectedText,
-        finishReason: rejectedFinish,
-        usage: rejectedUsage,
-      });
+      );
 
       const stream = await service.streamChat(
         'Hello',
@@ -272,7 +230,6 @@ describe('AgentService', () => {
 
       const output = chunks.join('');
 
-      // Should contain the error event
       expect(output).toContain('event: error');
       expect(output).toContain('LLM connection failed');
     });

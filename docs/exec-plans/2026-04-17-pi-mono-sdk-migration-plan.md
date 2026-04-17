@@ -1548,7 +1548,7 @@ Expected: PASS.
   - `apps/api/src/agent/__tests__/agent.service.spec.ts`
   - add or update stock/OKX service tests if missing
 
-- [ ] **Step 1: Update `AgentService` tests**
+- [x] **Step 1: Update `AgentService` tests**
 
 Replace AI SDK mocks in `agent.service.spec.ts` with:
 
@@ -1597,7 +1597,7 @@ pnpm --filter @finsentinel/api test -- src/agent/__tests__/agent.service.spec.ts
 
 Expected: FAIL because service still imports Vercel AI SDK.
 
-- [ ] **Step 3: Migrate `AgentService`**
+- [x] **Step 3: Migrate `AgentService`**
 
 Replace Vercel imports with:
 
@@ -1635,7 +1635,7 @@ Return:
 return this.toFinSentinelSSE(textStream, sessionId);
 ```
 
-- [ ] **Step 4: Migrate `StockAnalysisService`**
+- [x] **Step 4: Migrate `StockAnalysisService`**
 
 Use the same runtime imports and replace `getModel()` with:
 
@@ -1663,7 +1663,7 @@ const textStream = streamAgentTextFromMessages({
 });
 ```
 
-- [ ] **Step 5: Migrate `OkxAnalysisService`**
+- [x] **Step 5: Migrate `OkxAnalysisService`**
 
 Use the runtime imports and replace `streamText` with:
 
@@ -1677,7 +1677,7 @@ const textStream = streamAgentTextFromMessages({
 });
 ```
 
-- [ ] **Step 6: Verify streaming services**
+- [x] **Step 6: Verify streaming services**
 
 Run:
 
@@ -1687,6 +1687,10 @@ pnpm --filter @finsentinel/api typecheck
 ```
 
 Expected: PASS.
+
+**Progress log**
+
+- 2026-04-17: Completed Task 9 by migrating `AgentService`, `StockAnalysisService`, and `OkxAnalysisService` to `@finsentinel/ai-runtime`, adding narrow streaming-service coverage for stock and OKX, and updating `agent.service.spec.ts` to assert runtime arguments and SSE behavior. Verified with `pnpm --filter @finsentinel/api exec vitest run src/agent/__tests__/agent.service.spec.ts src/agent/__tests__/stock-analysis.service.spec.ts src/okx/__tests__/okx-analysis.service.spec.ts` and `pnpm --filter @finsentinel/api typecheck`.
 
 ### Task 10: Migrate Role Executor
 

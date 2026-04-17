@@ -1,7 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
-import { streamText, stepCountIs } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import {
+  createOpenRouterModel,
+  streamAgentTextFromMessages,
+} from '@finsentinel/ai-runtime';
 import { ToolRegistry } from './tool-registry';
 import { getPersonaPrompt } from './personas';
 import { aiConfig } from '../config/ai.config';
@@ -26,11 +28,10 @@ export class AgentService {
     @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
     @Inject(personaConfig.KEY) private readonly persona: ConfigType<typeof personaConfig>,
   ) {
-    const openrouter = createOpenAI({
-      baseURL: 'https://openrouter.ai/api/v1',
-      apiKey: this.aiCfg.openrouterApiKey,
+    this.model = createOpenRouterModel({
+      modelId: this.aiCfg.model,
+      baseUrl: this.aiCfg.openrouterBaseUrl,
     });
-    this.model = openrouter(this.aiCfg.model);
   }
 
   /**
@@ -59,22 +60,19 @@ export class AgentService {
     const tools = this.toolRegistry.buildTools(userId, portfolioId);
 
     // 4. Stream from LLM
-    const result = streamText({
+    const textStream = streamAgentTextFromMessages({
       model: this.model,
-      system: systemPrompt,
+      systemPrompt,
       messages: messages.map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
       tools,
-      stopWhen: stepCountIs(10),
-      onError: ({ error }) => {
-        this.logger.error('streamText error', error);
-      },
+      maxTurns: 10,
     });
 
     // 5. Transform into FinSentinel SSE format
-    return this.toFinSentinelSSE(result.textStream, sessionId);
+    return this.toFinSentinelSSE(textStream, sessionId);
   }
 
   // ── Internal ──────────────────────────────────────────────────────────────
