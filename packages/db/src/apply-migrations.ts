@@ -142,16 +142,19 @@ export async function printStatus(): Promise<void> {
   }
 }
 
-// Entrypoint — works under both CJS (require.main) and ESM (import.meta.url)
-const isMain =
-  typeof require !== 'undefined'
-    ? require.main === module
-    : import.meta.url === `file://${process.argv[1]}`;
-
-if (isMain) {
+if (require.main === module) {
   const arg = process.argv[2];
   const bootstrapArg = process.argv.find(a => a.startsWith('--bootstrap-from='));
-  const bootstrapFrom = bootstrapArg ? Number(bootstrapArg.split('=')[1]) : undefined;
+  let bootstrapFrom: number | undefined;
+  if (bootstrapArg !== undefined) {
+    const raw = bootstrapArg.split('=')[1];
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1) {
+      console.error(`[migrate] --bootstrap-from requires a positive integer; got: ${JSON.stringify(raw)}`);
+      process.exit(1);
+    }
+    bootstrapFrom = n;
+  }
   const cmd = arg === 'status' ? printStatus() : runMigrations({ bootstrapFrom });
   cmd.catch(err => {
     console.error('[migrate] FAILED:', err);

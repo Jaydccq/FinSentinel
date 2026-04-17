@@ -20,7 +20,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/apply-migrations.ts",
     "db:migrate:status": "tsx src/apply-migrations.ts status",
-    "db:migrate:bootstrap": "tsx src/apply-migrations.ts --bootstrap-from=11",
+    "db:migrate:bootstrap": "tsx src/apply-migrations.ts --bootstrap-from=12",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

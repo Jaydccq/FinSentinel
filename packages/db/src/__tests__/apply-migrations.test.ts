@@ -11,7 +11,7 @@ describe('apply-migrations', () => {
     expect(() => parseMigrationFilename('0000_little_sharon_carter.sql')).toThrow();
   });
 
-  it('listPendingMigrations sorts by version ascending and excludes applied', () => {
+  it('listPendingMigrations excludes already-applied versions', () => {
     const all = [
       { version: 3, filename: 'V3__x.sql' },
       { version: 12, filename: 'V12__y.sql' },
