@@ -952,6 +952,7 @@ These are not part of wave 1 but should be reconsidered after the pilot extracti
 - 2026-04-17: Ran banned-pattern scan against this plan; no prohibited filler patterns were found.
 - 2026-04-17: Ran `git check-ignore` and updated `.gitignore` so this plan can be tracked despite the broader `docs/` ignore rule.
 - 2026-04-17: Ran `pnpm typecheck`; it failed in existing workspace build before this plan is implemented because `packages/db/src/apply-migrations.ts` uses `import.meta` while `packages/db/tsconfig.build.json` compiles as CommonJS.
+- 2026-04-17: Completed the linked SDK migration workstream in `2026-04-17-pi-mono-sdk-migration-plan.md`; Vercel AI SDK imports and direct API dependencies were replaced by the internal `@finsentinel/ai-runtime` package.
 
 ## Key Decisions
 

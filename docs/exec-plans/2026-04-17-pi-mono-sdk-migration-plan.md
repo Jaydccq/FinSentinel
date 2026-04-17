@@ -1898,7 +1898,7 @@ Expected: no matches for `@ai-sdk/openai` or `ai@6`. If transitive packages stil
 - Modify: `docs/exec-plans/2026-04-17-pi-mono-refactor-plan.md`
 - Modify: `README.md` or `docs/architecture/package-boundaries.md` if those files exist after the package-boundary plan is implemented
 
-- [ ] **Step 1: Run targeted tests**
+- [x] **Step 1: Run targeted tests**
 
 Run:
 
@@ -1913,7 +1913,7 @@ pnpm --filter @finsentinel/api test -- src/analysis/__tests__/role-executor.serv
 
 Expected: PASS.
 
-- [ ] **Step 2: Run workspace checks**
+- [x] **Step 2: Run workspace checks**
 
 Run:
 
@@ -1925,7 +1925,7 @@ pnpm typecheck
 
 Expected: PASS.
 
-- [ ] **Step 3: Update plan outcome**
+- [x] **Step 3: Update plan outcome**
 
 Update this plan's progress log and final outcome with:
 
@@ -1938,7 +1938,7 @@ Update this plan's progress log and final outcome with:
 - Remaining follow-up: optional TypeBox-native tool schemas after the SDK migration has stabilized.
 ```
 
-- [ ] **Step 4: Link this plan from the broader Pi-Mono refactor plan**
+- [x] **Step 4: Link this plan from the broader Pi-Mono refactor plan**
 
 Add one line to `docs/exec-plans/2026-04-17-pi-mono-refactor-plan.md` under linked artifacts or related plans:
 
@@ -1977,10 +1977,17 @@ Do not remove `ai` or `@ai-sdk/openai` until all application source imports have
 ## Progress Log
 
 - 2026-04-17: Created the Pi-Mono SDK migration plan after inspecting current Vercel AI SDK imports, existing AI services, tool factories, tests, and Pi-Mono public docs/source.
+- 2026-04-17: Completed final verification for the SDK migration. `pnpm --filter @finsentinel/ai-runtime test` passed with 4 files and 24 tests. A combined API Vitest run covering agent streaming, tools, tool registry, chat compaction, chat compaction benchmark, RAG query rewrite, RAG embeddings, and role executor passed with 9 files and 112 tests. `pnpm check:no-vercel-ai-sdk`, `pnpm --filter @finsentinel/api typecheck`, `pnpm typecheck`, and `git diff --check` all passed. The workspace typecheck completed with Turbo reporting 9 successful tasks; the existing desktop script printed its known `no src-tauri yet, skipping typecheck` message while exiting successfully.
 
 ## Final Outcome
 
-Planning only. No production code has been changed yet.
+- Vercel AI SDK imports were removed from application source.
+- Direct `ai` and `@ai-sdk/openai` dependencies were removed from `apps/api`.
+- `@finsentinel/ai-runtime` now owns Pi-Mono model, tool, text, stream, and embedding adapters.
+- Chat compaction, query rewrite, RAG embeddings, streaming agent services, stock analysis, OKX analysis, tool factories, tool registry, and role executor now route through the internal runtime package.
+- A mechanical `pnpm check:no-vercel-ai-sdk` check now blocks reintroducing static Vercel AI SDK imports under `apps` and `packages`.
+- Targeted tests and workspace typecheck passed on 2026-04-17.
+- Remaining follow-up: optional TypeBox-native tool schemas after the SDK migration has stabilized.
 
 ## GSTACK REVIEW REPORT
 
