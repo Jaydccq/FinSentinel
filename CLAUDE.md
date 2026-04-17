@@ -41,11 +41,14 @@ User query → Persona prompt → tool orchestration
 
 ```
 agent/              → agent orchestration, tools, personas
+analysis/           → multi-agent runtime: runs, stages, teams, orchestrator
 auth/               → JWT auth, guards, decorators, controller/service
-chat/               → chat APIs and orchestration
+autonomy/           → schedule + heartbeat runtime ticks (@nestjs/schedule)
+chat/               → chat APIs, orchestration, auto-upgrade planner
 common/             → shared modules, filters, guards, services, controllers
 config/             → typed runtime configuration
 document/           → upload, parsing, chunking, vectorization
+events/             → append-only agent_events log
 market/             → market calendar and market-domain services
 news/               → fetchers, enrichment, news APIs
 okx/                → OKX integrations
@@ -54,9 +57,37 @@ queue/              → async producers and queue integration
 rag/                → retrieval, embeddings, backfill, reindexing
 research/           → research providers and APIs
 storage/            → RustFS / hybrid storage
-trading/            → brokers, engines, unified trading
+trading/            → brokers, engines, unified trading, order-draft boundary
 twitter/            → X/Twitter integrations
 ```
+
+### Multi-Agent Runtime (v1)
+
+Research flow behind `ANALYSIS_RUNS_ENABLED`:
+
+```
+POST /analysis/runs → AnalysisRunService.createQueued → enqueuePreflight
+  → RunOrchestratorService.step(PREFLIGHT) → step(EXECUTE_STAGE)
+    → IntelligenceTeam → ThesisTeam (Positive ∥ Negative → Lead)
+    → RiskTeam → ExecutionPrepTeam
+  → HumanApprovalGate (WAITING_APPROVAL)
+  → AnalysisApprovalService.resolve(APPROVE)
+  → EXECUTION_PAYLOAD artifact + markCompleted
+  (+ optional UnifiedTradingService dispatch if APPROVAL_AUTO_DISPATCH_ENABLED)
+```
+
+Key surfaces:
+- Broker-neutral `orderDraftSchema` in `packages/shared/src/schemas/order-draft.ts` —
+  strict validation blocks broker-specific field leakage.
+- Four materialized tables under `analysis_*` (V11 migration) plus append-only
+  `agent_events` (aggregate types `ANALYSIS_RUN`, `ANALYSIS_APPROVAL`).
+- Role tool scope per team in `apps/api/src/analysis/contracts/role-tool-scope.ts`.
+- Workspace UI at `apps/web/src/views/AnalysisPage.tsx` with `?runId=` deep links.
+- Chat auto-upgrade through `ChatUpgradePlannerService` (gated by
+  `CHAT_AUTO_UPGRADE_ENABLED`) — thresholds: 6 tool calls / 3 rounds / 20 s,
+  or explicit intent phrasing (`complete analysis`, `order draft`, etc.).
+- Rollout runbook: `docs/runbooks/2026-04-16-multi-agent-runtime-rollout.md`.
+- Sub-plans: `docs/superpowers/plans/2026-04-16-runtime-{a,b,c,d}-*.md`.
 
 ### Trading Subsystem
 
