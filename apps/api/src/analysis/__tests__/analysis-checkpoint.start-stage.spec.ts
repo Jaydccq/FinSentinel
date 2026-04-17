@@ -30,11 +30,16 @@ const DB_URL =
 let testUserId: string;
 
 // ── Skip guard ────────────────────────────────────────────────────────────────
-// Skip in environments where Postgres is definitely unavailable (CI without a
-// DB service container).  The env var CI_SKIP_DB_TESTS acts as an explicit
-// escape hatch; otherwise we optimistically attempt the connection.
-const maybeDescribe =
-  process.env['CI_SKIP_DB_TESTS'] === '1' ? describe.skip : describe;
+// Skip when Postgres is definitely unavailable:
+//   - explicit opt-out: CI_SKIP_DB_TESTS=1
+//   - CI without DATABASE_URL: auto-skip so GitHub Actions doesn't fail on the
+//     hardcoded fallback URL. When CI adds a Postgres service container and
+//     exports DATABASE_URL, these tests will run automatically.
+// Local dev still uses the fallback URL above.
+const skipDbTests =
+  process.env['CI_SKIP_DB_TESTS'] === '1' ||
+  (process.env['CI'] === 'true' && !process.env['DATABASE_URL']);
+const maybeDescribe = skipDbTests ? describe.skip : describe;
 
 // ── Test suite ────────────────────────────────────────────────────────────────
 maybeDescribe('AnalysisCheckpointService.startStage (idempotent)', () => {
