@@ -726,7 +726,7 @@ Expected: PASS.
 - Create: `packages/ai-runtime/src/text-runtime.spec.ts`
 - Modify: `packages/ai-runtime/src/index.ts`
 
-- [ ] **Step 1: Write runtime tests**
+- [x] **Step 1: Write runtime tests**
 
 Create `packages/ai-runtime/src/text-runtime.spec.ts`:
 
@@ -806,7 +806,7 @@ describe('text runtime', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -816,7 +816,7 @@ pnpm --filter @finsentinel/ai-runtime test -- src/text-runtime.spec.ts
 
 Expected: FAIL because `text-runtime.ts` does not exist.
 
-- [ ] **Step 3: Implement runtime**
+- [x] **Step 3: Implement runtime**
 
 Create `packages/ai-runtime/src/text-runtime.ts`:
 
@@ -967,7 +967,7 @@ async function runWithTurnLimit(
 }
 ```
 
-- [ ] **Step 4: Export runtime**
+- [x] **Step 4: Export runtime**
 
 Update `packages/ai-runtime/src/index.ts`:
 
@@ -977,7 +977,7 @@ export * from './text-runtime';
 export * from './tools';
 ```
 
-- [ ] **Step 5: Verify runtime**
+- [x] **Step 5: Verify runtime**
 
 Run:
 
@@ -986,6 +986,15 @@ pnpm --filter @finsentinel/ai-runtime test -- src/text-runtime.spec.ts
 ```
 
 Expected: PASS. If `Agent.subscribe()` cannot safely throw from a listener, replace the max-turn implementation with an `agent_end` error check and keep the max-turn test as the contract.
+
+**Progress log**
+
+- 2026-04-17: Added `packages/ai-runtime/src/text-runtime.spec.ts` covering single-prompt text generation, streamed history replay, tool-call continuation, and async text collection with `@mariozechner/pi-ai` faux providers.
+- 2026-04-17: Implemented `packages/ai-runtime/src/text-runtime.ts` with Pi Agent text generation/streaming, message conversion with timestamps, max-turn guarding, and text-delta-only collection.
+- 2026-04-17: Added a max-turn overflow test that confirms the guard aborts a tool-driven loop before the final answer is produced.
+- 2026-04-17: Tightened `streamAgentTextFromMessages` so assistant-tail or empty history returns no chunks and does not issue a provider call; added a regression test for the assistant-tail case.
+- 2026-04-17: Added early-close cancellation coverage that verifies `Agent.abort()` is invoked when the text stream is closed before the runner settles.
+- 2026-04-17: Exported the runtime from `packages/ai-runtime/src/index.ts` and verified Task 4 with `pnpm --filter @finsentinel/ai-runtime test -- src/text-runtime.spec.ts` and `pnpm --filter @finsentinel/ai-runtime typecheck`.
 
 ### Task 5: Add OpenRouter-Compatible Embedding Client
 
