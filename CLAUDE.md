@@ -243,3 +243,36 @@ Available skills:
 - `/guard` — guard against regressions
 - `/unfreeze` — unfreeze deployments
 - `/gstack-upgrade` — upgrade gstack
+
+## Database conventions & gotchas
+
+### Local Postgres: native (Homebrew) vs Docker
+The team's dev DB is the **Homebrew-native** Postgres on `localhost:5432`.
+Docker's `postgres` service is configured on port `5433` to avoid collision —
+it is a scratch instance used only by `docker compose up` integration runs
+and does NOT carry the hand-applied migration history. Always set
+`DATABASE_URL=postgresql://.../finsentinel@localhost:5432/...` for local dev.
+
+### Migrations are hand-written, not drizzle-kit
+The authoritative migrations live in `packages/db/migrations/V*.sql` and are
+applied by `pnpm --filter @finsentinel/db db:migrate` (see
+`packages/db/src/apply-migrations.ts`). The `packages/db/drizzle/` directory
+is stale output from an earlier drizzle-kit generate and should not be used.
+State is tracked in the `schema_versions` table.
+
+When adding a new migration:
+1. Create `V{next}__<slug>.sql` in `packages/db/migrations/`.
+2. Update the corresponding Drizzle schema in `packages/db/src/schema/`.
+3. Run `pnpm --filter @finsentinel/db db:migrate` against the local DB.
+4. If the migration adds enum values to `agent_events.event_type` or
+   `aggregate_type`, also update `packages/shared/src/enums/` — the SQL
+   CHECK must mirror the TS enum exactly.
+
+### Postgres.js mixed-default INSERT bug — always specify every column
+Known bug in Drizzle 0.44.x + postgres.js 3.4.9: `.insert(table).values({ …partial… })`
+can mis-bind parameters when some columns have DB defaults. Rule:
+**every `.insert()` call must explicitly set every column on the table**,
+using `null` for nullables and the DB default value for others. See
+`apps/api/src/analysis/analysis-checkpoint.service.ts:40-52` for the
+reference pattern. If you cannot follow this rule, use raw SQL via
+`this.db.execute(sql`…`)` instead.
