@@ -26,21 +26,27 @@ export function extractStructuredJson(text: string): unknown {
     }
   }
 
-  const fencedAny = /```\s*([\s\S]+?)\s*```/.exec(text);
-  if (fencedAny?.[1]) {
-    try {
-      return JSON.parse(fencedAny[1]);
-    } catch {
-      // fall through
+  const fenceAnyRe = /```(?!json\b)([\w]*)\s*([\s\S]+?)\s*```/gi;
+  let fenceAnyMatch: RegExpExecArray | null;
+  while ((fenceAnyMatch = fenceAnyRe.exec(text)) !== null) {
+    const body = fenceAnyMatch[2];
+    if (body) {
+      try {
+        return JSON.parse(body);
+      } catch {
+        // try next fence
+      }
     }
   }
 
-  const firstBrace = text.indexOf('{');
-  if (firstBrace >= 0) {
+  let searchStart = 0;
+  while (true) {
+    const openIdx = text.indexOf('{', searchStart);
+    if (openIdx < 0) break;
     let depth = 0;
     let inString = false;
     let escape = false;
-    for (let i = firstBrace; i < text.length; i++) {
+    for (let i = openIdx; i < text.length; i++) {
       const ch = text[i];
       if (escape) { escape = false; continue; }
       if (ch === '\\' && inString) { escape = true; continue; }
@@ -50,15 +56,18 @@ export function extractStructuredJson(text: string): unknown {
       else if (ch === '}') {
         depth--;
         if (depth === 0) {
-          const candidate = text.slice(firstBrace, i + 1);
+          const candidate = text.slice(openIdx, i + 1);
           try {
             return JSON.parse(candidate);
           } catch {
-            break;
+            // candidate was balanced but invalid JSON; try next '{'
           }
+          break;
         }
       }
     }
+    // advance past this '{' whether balanced-but-invalid or unbalanced
+    searchStart = openIdx + 1;
   }
 
   const snippet = text.slice(0, 200).replace(/\s+/g, ' ');

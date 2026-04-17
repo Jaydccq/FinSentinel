@@ -45,4 +45,22 @@ describe('extractStructuredJson', () => {
       expect((err as Error).message).toMatch(raw.slice(0, 40));
     }
   });
+
+  it('falls through to brace scanner when ```json fence contains malformed JSON, and later bare JSON is valid', () => {
+    const goodPayload = { summary: 'real' };
+    const text = '```json\n{bad-json-here}\n```\nActual: ' + JSON.stringify(goodPayload);
+    expect(extractStructuredJson(text)).toEqual(goodPayload);
+  });
+
+  it('extracts from unlabeled fence even when a malformed ```json fence exists earlier', () => {
+    const goodPayload = { summary: 'unlabeled' };
+    const text = '```json\n{broken\n```\n\n```\n' + JSON.stringify(goodPayload) + '\n```';
+    expect(extractStructuredJson(text)).toEqual(goodPayload);
+  });
+
+  it('skips narrative-{placeholder} tokens and finds later valid JSON', () => {
+    const payload = { key: 1 };
+    const text = `Use {placeholder} here: ${JSON.stringify(payload)}`;
+    expect(extractStructuredJson(text)).toEqual(payload);
+  });
 });
