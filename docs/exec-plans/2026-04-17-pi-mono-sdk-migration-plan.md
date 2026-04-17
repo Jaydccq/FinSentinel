@@ -1798,10 +1798,11 @@ Expected: PASS.
 
 - Modify: `apps/api/package.json`
 - Modify: `package.json`
+- Modify: `apps/api/src/chat/__tests__/chat-compaction.benchmark.spec.ts`
 - Create: `scripts/check-no-vercel-ai-sdk.mjs`
 - Modify: `pnpm-lock.yaml`
 
-- [ ] **Step 1: Create no-import checker**
+- [x] **Step 1: Create no-import checker**
 
 Create `scripts/check-no-vercel-ai-sdk.mjs`:
 
@@ -1841,7 +1842,7 @@ if (failed) {
 }
 ```
 
-- [ ] **Step 2: Add root script**
+- [x] **Step 2: Add root script**
 
 Update root `package.json`:
 
@@ -1855,7 +1856,7 @@ Update root `package.json`:
 
 Keep existing scripts unchanged.
 
-- [ ] **Step 3: Remove Vercel dependencies**
+- [x] **Step 3: Remove Vercel dependencies**
 
 Run:
 
@@ -1865,7 +1866,7 @@ pnpm --filter @finsentinel/api remove ai @ai-sdk/openai
 
 Expected: `apps/api/package.json` no longer lists either package.
 
-- [ ] **Step 4: Verify the regression check**
+- [x] **Step 4: Verify the regression check**
 
 Run:
 
@@ -1875,7 +1876,7 @@ pnpm check:no-vercel-ai-sdk
 
 Expected: PASS with no output.
 
-- [ ] **Step 5: Verify lockfile no longer resolves Vercel AI SDK packages**
+- [x] **Step 5: Verify lockfile no longer resolves Vercel AI SDK packages**
 
 Run:
 
@@ -1884,6 +1885,10 @@ rg -n "'?(@ai-sdk/openai|ai)@|@ai-sdk/openai|ai@6" pnpm-lock.yaml
 ```
 
 Expected: no matches for `@ai-sdk/openai` or `ai@6`. If transitive packages still include `@ai-sdk/*`, confirm they come from another dependency before accepting.
+
+**Progress log**
+
+- 2026-04-17: Completed Task 11 by adding `scripts/check-no-vercel-ai-sdk.mjs`, wiring `pnpm check:no-vercel-ai-sdk`, replacing the lingering `@ai-sdk/openai` benchmark mock in `chat-compaction.benchmark.spec.ts` with an `@finsentinel/ai-runtime` mock, and removing direct `ai` / `@ai-sdk/openai` dependencies from `apps/api/package.json` with `pnpm --store-dir /Users/hongxichen/Library/pnpm/store/v10 --filter @finsentinel/api remove ai @ai-sdk/openai`. The first `pnpm remove` failed because pnpm wanted a different store location; the store-dir rerun succeeded after sandbox escalation. Verified with `pnpm check:no-vercel-ai-sdk` (passed), `pnpm --filter @finsentinel/api exec vitest run src/chat/__tests__/chat-compaction.benchmark.spec.ts` (1 file, 2 tests passed), and `pnpm --filter @finsentinel/api typecheck` (passed). Lockfile verification with `rg -n "'?(@ai-sdk/openai|ai)@|@ai-sdk/openai|ai@6" pnpm-lock.yaml` returned only unrelated package-name substrings such as `@google/genai`, `@mariozechner/pi-ai`, `@mistralai/mistralai`, `chai`, and transitive `openai@6`; there were no `@ai-sdk/openai` or direct `ai@6` lockfile entries.
 
 ### Task 12: Final Verification And Documentation
 
