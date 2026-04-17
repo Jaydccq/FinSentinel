@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
+import { Injectable, Inject, Optional } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { generateText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
@@ -29,7 +29,6 @@ export const ROLE_EXECUTOR_LLM_TOKEN = 'ROLE_EXECUTOR_LLM';
 
 @Injectable()
 export class RoleExecutorService {
-  private readonly logger = new Logger(RoleExecutorService.name);
   private readonly model: unknown;
 
   constructor(
@@ -77,32 +76,11 @@ export class RoleExecutorService {
   }
 
   private getAllTools(userId?: string): Record<string, unknown> {
-    const registry = this.toolRegistry as unknown as Record<string, unknown>;
-    // Try known method names in priority order.
-    // buildTools is the full-set method; buildStockAnalysisTools is the lightweight subset.
-    // Test fakes may use buildToolSet — check it first so tests work against hand-rolled fakes.
-    for (const m of [
-      'buildToolSet',
-      'buildStockAnalysisTools',
-      'buildAll',
-      'buildTools',
-      'getAll',
-      'getTools',
-    ]) {
-      const fn = registry[m];
-      if (typeof fn === 'function') {
-        try {
-          const result = (fn as (u?: string) => unknown).call(this.toolRegistry, userId);
-          if (result && typeof result === 'object') {
-            return result as Record<string, unknown>;
-          }
-        } catch {
-          // ignore and try next
-        }
-      }
-    }
-    this.logger.warn('ToolRegistry: no known tool-builder method found; returning empty tool set');
-    return {};
+    const registry = this.toolRegistry as unknown as {
+      buildTools(userId?: string): Record<string, unknown>;
+    };
+    if (typeof registry.buildTools !== 'function') return {};
+    return registry.buildTools(userId) ?? {};
   }
 
   private buildUserPrompt(input: RoleInput): string {

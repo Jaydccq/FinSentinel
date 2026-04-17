@@ -4,7 +4,7 @@ import { ROLE_TOOL_SCOPE } from '../contracts/role-tool-scope';
 
 describe('RoleExecutorService.run', () => {
   let mockStream: ReturnType<typeof vi.fn>;
-  let toolRegistry: { buildToolSet: ReturnType<typeof vi.fn> };
+  let toolRegistry: { buildTools: ReturnType<typeof vi.fn> };
   let svc: RoleExecutorService;
 
   beforeEach(() => {
@@ -12,7 +12,7 @@ describe('RoleExecutorService.run', () => {
       text: `\`\`\`json\n{"summary":"s","thesis":"t","risks":[],"openQuestions":[],"citations":[],"confidence":0.7}\n\`\`\``,
     });
     toolRegistry = {
-      buildToolSet: vi.fn().mockReturnValue({ getStockQuote: {}, stageOrder: {} }),
+      buildTools: vi.fn().mockReturnValue({ getStockQuote: {}, stageOrder: {} }),
     };
     svc = new RoleExecutorService(toolRegistry as never, { generate: mockStream } as never);
   });
