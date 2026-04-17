@@ -15,6 +15,7 @@ import {
   type HeartbeatConfigRequest,
 } from '../api/autonomy'
 import { eventsApi, type AgentEvent } from '../api/events'
+import { analysisRunsApi, type AnalysisRunResponse } from '../api/analysis-runs'
 import EmptyState from '../components/EmptyState'
 
 /* ------------------------------------------------------------------ */
@@ -174,6 +175,9 @@ export default function AutonomyPage() {
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
   const [hasMoreEvents, setHasMoreEvents] = useState(true)
 
+  /* --- Recent runs state --- */
+  const [recentRuns, setRecentRuns] = useState<AnalysisRunResponse[]>([])
+
   /* ---- Loaders ---- */
   const refreshSchedules = () =>
     autonomyApi.listSchedules().then(setSchedules).catch(() => toast.error('Failed to load schedules.')).finally(() => setSchedulesLoading(false))
@@ -198,6 +202,7 @@ export default function AutonomyPage() {
     refreshSchedules()
     loadHeartbeat()
     loadEvents()
+    analysisRunsApi.list().then(setRecentRuns).catch(() => setRecentRuns([]))
   }, [])
 
   /* ---- Schedule CRUD ---- */
@@ -518,6 +523,28 @@ export default function AutonomyPage() {
             )}
           </div>
         )}
+      </section>
+
+      {/* ============================================================ */}
+      {/*  Section 4: Recent Runs                                       */}
+      {/* ============================================================ */}
+      <section className="surface-panel rounded p-4 mt-4">
+        <h2 className="text-base font-semibold">Recent Runs</h2>
+        <ul className="space-y-1 mt-2 text-sm">
+          {recentRuns
+            .filter((r) => r.sourceMode !== 'CHAT')
+            .slice(0, 15)
+            .map((r) => (
+              <li key={r.id}>
+                <a href={`/analysis?runId=${r.id}`} className="underline text-slate-300">
+                  {r.id.slice(0, 8)} · {r.status} · {r.sourceMode} · {new Date(r.createdAt).toLocaleString()}
+                </a>
+              </li>
+            ))}
+          {recentRuns.length === 0 && (
+            <li className="text-slate-500">No runs yet.</li>
+          )}
+        </ul>
       </section>
 
       {/* ============================================================ */}

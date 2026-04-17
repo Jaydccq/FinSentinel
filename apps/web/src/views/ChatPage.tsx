@@ -69,6 +69,8 @@ export default function ChatPage() {
   const [sessionsLoading, setSessionsLoading] = useState(true)
   const [portfolios, setPortfolios] = useState<PortfolioResponse[]>([])
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>('')
+  const [upgradeRunId, setUpgradeRunId] = useState<string | null>(null)
+  const [upgradeReason, setUpgradeReason] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { ensureCursorStyle() }, [])
@@ -149,6 +151,8 @@ export default function ChatPage() {
     const userMessage = input.trim()
 
     setInput('')
+    setUpgradeRunId(null)
+    setUpgradeReason(null)
     setMessages(prev => [...prev, { role: 'user', content: userMessage, timestamp: nowTime() }])
     setStreaming(true)
 
@@ -197,6 +201,10 @@ export default function ChatPage() {
           }
           return copy
         })
+      },
+      (runId: string, reason?: string) => {
+        setUpgradeRunId(runId)
+        if (reason) setUpgradeReason(reason)
       },
     )
     } finally {
@@ -321,6 +329,16 @@ export default function ChatPage() {
           </header>
 
           <section className="overflow-y-auto px-4 py-4 md:px-5" aria-live="polite">
+            {upgradeRunId && (
+              <div className="glass-panel rounded p-3 my-2 flex items-center justify-between">
+                <span className="text-sm">
+                  This chat was upgraded to a tracked run{upgradeReason ? ` (${upgradeReason})` : ''}.
+                </span>
+                <a className="btn-primary px-3 py-1 text-xs" href={`/analysis?runId=${upgradeRunId}`}>
+                  Open Run
+                </a>
+              </div>
+            )}
             {messages.length === 0 && (
               <motion.div
                 initial={{ opacity: 0 }}

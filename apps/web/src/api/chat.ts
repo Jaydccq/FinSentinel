@@ -49,7 +49,8 @@ export const chatApi = {
     sessionId: string | undefined,
     onChunk: (text: string, sessionId: string) => void,
     onDone: () => void,
-    onError: (err: string) => void
+    onError: (err: string) => void,
+    onUpgrade?: (runId: string, reason?: string) => void
   ): Promise<void> => {
     try {
       const res = await fetch(`${BASE}/chat/stream`, {
@@ -65,6 +66,12 @@ export const chatApi = {
       if (!res.ok) {
         onError(`HTTP ${res.status}`)
         return
+      }
+
+      const runId = res.headers.get('X-Analysis-Run-Id')
+      const upgradeReason = res.headers.get('X-Analysis-Upgrade-Reason')
+      if (runId && onUpgrade) {
+        onUpgrade(runId, upgradeReason ?? undefined)
       }
 
       const reader = res.body!.getReader()

@@ -59,12 +59,13 @@ describe('chatApi', () => {
   });
 
   describe('stream', () => {
-    function mockSSEResponse(events: string) {
+    function mockSSEResponse(events: string, extraHeaders: Record<string, string> = {}) {
       const encoder = new TextEncoder();
       let sent = false;
       return {
         ok: true,
         status: 200,
+        headers: { get: (key: string) => extraHeaders[key] ?? null },
         body: {
           getReader: () => ({
             read: () => {
@@ -119,6 +120,56 @@ describe('chatApi', () => {
       const [url] = mockFetch.mock.calls[0];
       expect(url).not.toContain('?');
       expect(url).toMatch(/\/chat\/stream$/);
+    });
+
+    it('calls onUpgrade with runId and reason when X-Analysis-Run-Id header is present', async () => {
+      const sseData = 'event:done\ndata:{}\n\n';
+      mockFetch.mockResolvedValueOnce(
+        mockSSEResponse(sseData, {
+          'X-Analysis-Run-Id': 'run-abc-123',
+          'X-Analysis-Upgrade-Reason': 'complexity threshold exceeded',
+        }),
+      );
+
+      const onChunk = vi.fn();
+      const onDone = vi.fn();
+      const onError = vi.fn();
+      const onUpgrade = vi.fn();
+
+      await chatApi.stream('hello', undefined, 'sess-4', onChunk, onDone, onError, onUpgrade);
+
+      expect(onUpgrade).toHaveBeenCalledTimes(1);
+      expect(onUpgrade).toHaveBeenCalledWith('run-abc-123', 'complexity threshold exceeded');
+    });
+
+    it('does not call onUpgrade when X-Analysis-Run-Id header is absent', async () => {
+      const sseData = 'event:done\ndata:{}\n\n';
+      mockFetch.mockResolvedValueOnce(mockSSEResponse(sseData));
+
+      const onChunk = vi.fn();
+      const onDone = vi.fn();
+      const onError = vi.fn();
+      const onUpgrade = vi.fn();
+
+      await chatApi.stream('hello', undefined, 'sess-5', onChunk, onDone, onError, onUpgrade);
+
+      expect(onUpgrade).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when onUpgrade is omitted and upgrade headers are present', async () => {
+      const sseData = 'event:done\ndata:{}\n\n';
+      mockFetch.mockResolvedValueOnce(
+        mockSSEResponse(sseData, { 'X-Analysis-Run-Id': 'run-xyz-999' }),
+      );
+
+      const onChunk = vi.fn();
+      const onDone = vi.fn();
+      const onError = vi.fn();
+
+      // onUpgrade not passed — should not throw
+      await expect(
+        chatApi.stream('hello', undefined, 'sess-6', onChunk, onDone, onError),
+      ).resolves.toBeUndefined();
     });
   });
 });
