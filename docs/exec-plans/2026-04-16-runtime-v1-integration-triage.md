@@ -124,3 +124,59 @@ Option 1 is lowest risk. Options 2/3 are structural.
   postgres.js / Drizzle that doesn't have the scramble. Track the
   versions in staging before flipping `ANALYSIS_RUNS_ENABLED=true`.
 - Local dev smoke test remains blocked until the driver upgrade lands.
+
+## Smoke Test Progress (post postgres 3.4.9 upgrade)
+
+**Status:** Pipeline reaches the LLM stage but LLM response parsing + retry idempotency remain as v1.1 gaps.
+
+### What the postgres 3.4.9 upgrade actually fixed
+- The "Date binding" theory was partially right but the real culprit
+  was the `agent_events.seq_no` column in the *native* Postgres (not
+  Docker): it was `NOT NULL bigint` without `GENERATED ALWAYS AS
+  IDENTITY`, so every insert hit a null-constraint violation. Fixed
+  by `ALTER TABLE agent_events ALTER COLUMN seq_no ADD GENERATED
+  ALWAYS AS IDENTITY`.
+- Old CHECK constraints on `agent_events` pinned the v0 enum set
+  (CHAT_SESSION, TRADE_WALLET, etc.) and rejected our new
+  `ANALYSIS_RUN` aggregate + `RUN_QUEUED` events. Dropped both.
+- postgres.js 3.4.9 (from 3.4.8) reduced but did not fully eliminate
+  the mixed-default scramble. Supplying every nullable column
+  explicitly in our INSERTs (AnalysisRunService, AnalysisCheckpointService,
+  AgentEventService) is still required.
+- BullMQ v5 rejects `:` in job IDs — switched to `-`.
+- **Gotcha:** two Postgres instances on localhost:5432 (native
+  Homebrew + Docker). The API connects to the native one; psql via
+  `docker compose exec` hits the other. All debugging must use
+  `psql "postgresql://postgres:123456@localhost:5432/finsentinel"`
+  directly.
+
+### Confirmed working end-to-end on localhost
+- `POST /api/analysis/runs` → 201 with run row in `analysis_runs`
+- `agent_events.RUN_QUEUED` insert succeeds
+- Preflight job picks up, `markRunning` transitions the run
+- `EXECUTE_STAGE(INTELLIGENCE)` job fires; `startStage` inserts row
+- ContextFabric adapters (user profile / brain / rag) gracefully
+  degrade — empty strings when their own service-level inserts fail.
+  Not blocking.
+- `IntelligenceTeamService.execute` starts, calls OpenRouter
+
+### Remaining v1.1 gaps (not blockers for architecture, but blockers for full E2E)
+1. **Role output parsing too strict.** `RoleExecutorService.parseStructured`
+   only looks for a fenced ```json block. With our default OpenRouter
+   model, the response is free-form text. Options:
+   - Use `generateObject` + Zod schema (AI SDK supports structured output).
+   - Fall back to extracting the first top-level `{...}` when no fence.
+   - Force the model via `response_format: { type: 'json_object' }` in
+     the OpenAI-compatible API call.
+2. **Retry idempotency.** BullMQ retries `execute-stage` up to 3×.
+   `startStage` inserts into `analysis_stages(run_id, stage_key)` which
+   has a unique index, so the retry fails on conflict. Options:
+   - `ON CONFLICT (run_id, stage_key) DO UPDATE SET status='RUNNING', started_at=NOW()`
+   - Or check `findByStage` first and UPDATE if exists.
+3. **Failing runs don't get rescheduled cleanly.** After 3 attempts,
+   the run is stuck in `FAILED` status with no path to retry.
+
+### Decision
+These are discovered-during-real-runtime gaps, not v1 regressions.
+Ship v1 code as-is behind `ANALYSIS_RUNS_ENABLED=false`; schedule a
+v1.1 milestone to address the 3 gaps above.
