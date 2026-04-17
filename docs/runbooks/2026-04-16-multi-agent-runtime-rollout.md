@@ -63,3 +63,24 @@
 - `orderDrafts` quantity modes `PERCENT_NAV` and `CONTRACTS` are rejected by the mapper. v2 will resolve NAV / product-multiplier.
 - Chat auto-upgrade thresholds are rule-based (`6 tool calls / 3 rounds / 20 s` or explicit intent phrasing). No learned policy.
 - `ContextFabricService` session-layer is stubbed (empty summary) because wiring `ChatCompactionService` here would create a circular module dep. Session summaries still flow via `ChatCompactionService.augmentPrompt` at the chat entry.
+
+## v1.1 hardening status (2026-04-17)
+
+Tasks completed:
+- V12 migration widens `agent_events_event_type_check` and adds
+  `agent_events_aggregate_type_check` (covers all v1 runtime event/aggregate types).
+- V13 migration adds `schema_versions`. New `pnpm db:migrate` runner replaces the
+  stale drizzle-kit workflow.
+- `RoleExecutorService.parseStructured` now tolerates un-fenced JSON output via
+  a 3-strategy extractor (```json fence → bare ``` fence → balanced `{...}` scan).
+- `AnalysisCheckpointService.startStage` is idempotent via `ON CONFLICT DO UPDATE`.
+- Integration test `runtime-happy-path.integration.spec.ts` runs the pipeline
+  service-level end-to-end: QUEUED → WAITING_APPROVAL → COMPLETED/CANCELED paths,
+  plus idempotent-preflight coverage.
+- `CLAUDE.md` now documents dual-Postgres trap + insert-all-columns convention.
+- docker-compose Postgres moved to host port 5433 to avoid 5432 collision.
+
+Deferred to v1.2 (tracked in `docs/exec-plans/tech-debt-tracker.md`):
+- Staging deploy (needs creds not on this session).
+- Retroactive split of the 117-commit v1 push into per-plan PRs.
+- Driver evaluation: postgres.js vs node-postgres.
