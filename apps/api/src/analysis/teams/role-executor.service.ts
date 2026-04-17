@@ -16,12 +16,71 @@ import type {
   RoleOutput,
 } from '../contracts/role-contract';
 
+export function extractStructuredJson(text: string): unknown {
+  const fencedJson = /```json\s*([\s\S]+?)\s*```/i.exec(text);
+  if (fencedJson?.[1]) {
+    try {
+      return JSON.parse(fencedJson[1]);
+    } catch {
+      // fall through
+    }
+  }
+
+  const fenceAnyRe = /```(?!json\b)([\w]*)\s*([\s\S]+?)\s*```/gi;
+  let fenceAnyMatch: RegExpExecArray | null;
+  while ((fenceAnyMatch = fenceAnyRe.exec(text)) !== null) {
+    const body = fenceAnyMatch[2];
+    if (body) {
+      try {
+        return JSON.parse(body);
+      } catch {
+        // try next fence
+      }
+    }
+  }
+
+  let searchStart = 0;
+  while (true) {
+    const openIdx = text.indexOf('{', searchStart);
+    if (openIdx < 0) break;
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    for (let i = openIdx; i < text.length; i++) {
+      const ch = text[i];
+      if (escape) { escape = false; continue; }
+      if (ch === '\\' && inString) { escape = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === '{') depth++;
+      else if (ch === '}') {
+        depth--;
+        if (depth === 0) {
+          const candidate = text.slice(openIdx, i + 1);
+          try {
+            return JSON.parse(candidate);
+          } catch {
+            // candidate was balanced but invalid JSON; try next '{'
+          }
+          break;
+        }
+      }
+    }
+    // advance past this '{' whether balanced-but-invalid or unbalanced
+    searchStart = openIdx + 1;
+  }
+
+  const snippet = text.slice(0, 200).replace(/\s+/g, ' ');
+  throw new Error(`Role output contains no JSON object. Raw (first 200 chars): ${snippet}`);
+}
+
 export interface LlmRunner {
   generate(args: {
     model: unknown;
     system: string;
     prompt: string;
     tools: Record<string, unknown>;
+    roleKey?: RoleKey;
   }): Promise<{ text: string }>;
 }
 
@@ -69,6 +128,7 @@ export class RoleExecutorService {
       system: args.systemPrompt,
       prompt: userPrompt,
       tools: scopedTools,
+      roleKey: args.roleKey,
     });
 
     const structured = this.parseStructured(text);
@@ -108,9 +168,7 @@ export class RoleExecutorService {
   }
 
   private parseStructured(text: string): StageStructuredOutput {
-    const match = text.match(/```json\s*([\s\S]+?)\s*```/);
-    if (!match?.[1]) throw new Error('Role output contains no JSON block');
-    const obj = JSON.parse(match[1]) as unknown;
+    const obj = extractStructuredJson(text);
     return stageStructuredOutputSchema.parse(obj);
   }
 

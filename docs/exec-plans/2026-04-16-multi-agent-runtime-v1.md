@@ -359,3 +359,20 @@ This plan is complete when the repo supports the following end-to-end path:
 6. User approves execution in the approval rail
 7. Broker adapter generates real execution payloads
 8. Run and artifacts remain queryable for long-term retention and manual archive
+
+## 2026-04-17 — v1.1 hardening closed
+
+Status: CLOSED
+
+Changes shipped under `docs/superpowers/plans/2026-04-17-runtime-v1_1-hardening.md`:
+- V12, V13 migrations + hand-written migration runner
+- `parseStructured` tolerant JSON extraction (3-strategy, hardened against bad
+  fences and placeholder braces)
+- `startStage` upsert idempotency
+- runtime happy-path integration test unskipped (service-level) and passing
+  with 3 test cases (happy, reject, idempotent-preflight)
+- docs: dual-Postgres trap + insert-all-columns rule in root CLAUDE.md
+- docker-compose: Postgres moved to host port 5433
+
+Open items carried forward: see `docs/exec-plans/tech-debt-tracker.md` entries
+dated 2026-04-17.

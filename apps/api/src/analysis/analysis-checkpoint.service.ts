@@ -1,6 +1,6 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { analysisStages, analysisArtifacts } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import {
@@ -35,6 +35,12 @@ export class AnalysisCheckpointService {
   async startStage(runId: string, stageKey: AnalysisStageKey): Promise<string> {
     // Supply every nullable column explicitly to avoid the Drizzle+postgres.js
     // mixed-default bind bug (see agent-event.service.ts + local-user.seeder.ts).
+    //
+    // ON CONFLICT: BullMQ retries (default 3 attempts) call startStage again on
+    // the same (runId, stageKey). The UNIQUE constraint uk_analysis_stages_run_stage_key
+    // would throw on the second attempt. The upsert resets the row to RUNNING,
+    // bumps checkpointVersion, and clears prior error state so the retry proceeds.
+    const now = new Date();
     const [stage] = await this.db
       .insert(analysisStages)
       .values({
@@ -47,8 +53,18 @@ export class AnalysisCheckpointService {
         structuredOutputJson: null,
         humanReportMarkdown: null,
         errorJson: null,
-        startedAt: new Date(),
+        startedAt: now,
         completedAt: null,
+      })
+      .onConflictDoUpdate({
+        target: [analysisStages.runId, analysisStages.stageKey],
+        set: {
+          status: 'RUNNING',
+          checkpointVersion: sql`${analysisStages.checkpointVersion} + 1`,
+          errorJson: null,
+          startedAt: now,
+          completedAt: null,
+        },
       })
       .returning();
     return (stage as StageRow).id;

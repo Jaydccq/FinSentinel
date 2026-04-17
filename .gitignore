@@ -61,6 +61,12 @@ phase5_notes.md
 
 CLAUDE.md
 docs/
+!docs/exec-plans/
+!docs/exec-plans/2026-04-16-multi-agent-runtime-rollout.md
+!docs/exec-plans/2026-04-16-multi-agent-runtime-v1.md
+!docs/exec-plans/tech-debt-tracker.md
+!docs/runbooks/
+!docs/runbooks/2026-04-16-multi-agent-runtime-rollout.md
 work-log/
 work-logs/
 
