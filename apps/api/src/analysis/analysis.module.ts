@@ -8,6 +8,8 @@ import { RagModule } from '../rag/rag.module';
 import { QueueModule } from '../queue/queue.module';
 import { TradingModule } from '../trading/trading.module';
 import { APPROVAL_AUTO_DISPATCH_FLAG_TOKEN } from './analysis-approval.service';
+import type { DrizzleDB } from '@finsentinel/db';
+import { chatSessionMemories, eq, and } from '@finsentinel/db';
 
 import { AnalysisController } from './analysis.controller';
 import { AnalysisRunController } from './analysis-run.controller';
@@ -44,8 +46,8 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
  *   AnalysisModule therefore uses a plain import of AgentModule and RagModule.
  *   ChatModule is intentionally excluded to avoid a TS-level circular import
  *   (ChatModule → AgentModule → RagModule → QueueModule → AnalysisModule).
- *   The session-context adapter is stubbed; ChatCompactionService.augmentPrompt
- *   already prepends summaries in the chat flow, so no re-load is needed here.
+ *   Session context is loaded via a direct Drizzle read against chat_session_memories,
+ *   bypassing ChatCompactionService entirely.
  */
 @Module({
   imports: [
@@ -75,6 +77,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
     {
       provide: ContextFabricService,
       useFactory: (
+        db: DrizzleDB,
         profile: UserInvestmentProfileService,
         brain: AgentBrainService,
         rag: RagRetrievalService,
@@ -93,17 +96,30 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
           },
         };
 
-        // Session: ChatCompactionService is excluded (would create a TS circular
-        // import via ChatModule → AgentModule → RagModule → QueueModule → AnalysisModule).
-        // The compaction summary is already prepended to the user prompt by
-        // ChatCompactionService.augmentPrompt() in the chat flow; re-loading it
-        // here is unnecessary for the analysis pipeline.
+        // Session: read directly from chat_session_memories via Drizzle.
+        // Avoids the ChatModule circular dependency while still surfacing
+        // compaction summaries for analysis runs that originate from a chat session.
         const sessionAdapter = {
           load: async (
-            _userId: string,
-            _sessionId: string | undefined,
+            userId: string,
+            sessionId: string | undefined,
           ): Promise<{ summary: string; count: number }> => {
-            return { summary: '', count: 0 };
+            if (!sessionId) return { summary: '', count: 0 };
+            const [row] = await db
+              .select()
+              .from(chatSessionMemories)
+              .where(
+                and(
+                  eq(chatSessionMemories.userId, userId),
+                  eq(chatSessionMemories.sessionId, sessionId),
+                ),
+              )
+              .limit(1);
+            if (!row) return { summary: '', count: 0 };
+            return {
+              summary: row.summaryText ?? '',
+              count: row.compactedMessageCount ?? 0,
+            };
           },
         };
 
@@ -130,6 +146,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
         );
       },
       inject: [
+        'DRIZZLE_DB',
         UserInvestmentProfileService,
         AgentBrainService,
         RagRetrievalService,
