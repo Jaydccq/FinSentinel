@@ -1,4 +1,4 @@
-import { Agent, type AgentMessage } from '@mariozechner/pi-agent-core';
+import type { Agent, AgentMessage } from '@mariozechner/pi-agent-core';
 import type { Model } from '@mariozechner/pi-ai';
 import { toAgentTools, type FinToolSet } from './tools';
 
@@ -68,7 +68,8 @@ function toAgentMessages(messages: ChatMessageInput[], model: Model<any>): Agent
   });
 }
 
-function createAgent(options: AgentTextOptions, messages?: ChatMessageInput[]): Agent {
+async function createAgent(options: AgentTextOptions, messages?: ChatMessageInput[]): Promise<Agent> {
+  const { Agent } = await import('@mariozechner/pi-agent-core');
   const agent = new Agent({
     initialState: {
       systemPrompt: options.systemPrompt,
@@ -140,6 +141,23 @@ function runAgentText(
   let turnCount = 0;
   let maxTurnsExceeded = false;
   let runnerSettled = false;
+  let terminalError: Error | undefined;
+
+  const recordTerminalError = (message: AgentMessage) => {
+    if (message.role !== 'assistant') {
+      return;
+    }
+
+    if (message.stopReason !== 'error' && message.stopReason !== 'aborted') {
+      return;
+    }
+
+    if (maxTurnsExceeded && message.stopReason === 'aborted') {
+      return;
+    }
+
+    terminalError = new Error(message.errorMessage ?? `Agent stopped with ${message.stopReason}`);
+  };
 
   const unsubscribe = agent.subscribe((event) => {
     if (event.type === 'turn_start') {
@@ -153,6 +171,16 @@ function runAgentText(
 
     if (event.type === 'message_update' && event.assistantMessageEvent.type === 'text_delta') {
       textStream.push(event.assistantMessageEvent.delta);
+    }
+
+    if (event.type === 'message_end' || event.type === 'turn_end') {
+      recordTerminalError(event.message);
+    }
+
+    if (event.type === 'agent_end') {
+      for (const message of event.messages) {
+        recordTerminalError(message);
+      }
     }
   });
 
@@ -186,6 +214,9 @@ function runAgentText(
         if (maxTurnsExceeded) {
           throw maxTurnsError;
         }
+        if (terminalError) {
+          throw terminalError;
+        }
       } catch (error) {
         throw error;
       } finally {
@@ -215,7 +246,7 @@ export async function generateAgentText(options: GenerateAgentTextOptions): Prom
 export async function* streamAgentTextFromMessages(
   options: StreamAgentTextOptions,
 ): AsyncIterable<string> {
-  const agent = createAgent(options, options.messages);
+  const agent = await createAgent(options, options.messages);
   const maxTurns = options.maxTurns ?? 10;
   const lastMessage = options.messages[options.messages.length - 1];
 

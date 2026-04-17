@@ -12,15 +12,19 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "smoke:dist": "pnpm run build && node -e \"import('./dist/index.js').then(() => console.log('ok'))\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@mariozechner/pi-agent-core": "^0.67.6",
     "@mariozechner/pi-ai": "^0.67.6",
+    "@sinclair/typebox": "^0.34.49",
     "zod": "^3.25.76",
     "zod-to-json-schema": "^3.24.6"
   },

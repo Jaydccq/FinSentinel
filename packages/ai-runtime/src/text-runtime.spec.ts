@@ -106,6 +106,32 @@ describe('generateAgentText', () => {
       provider.unregister();
     }
   });
+
+  it('throws when the provider returns an error assistant message', async () => {
+    const provider = registerFauxProvider({
+      models: [{ id: 'test-model' }],
+    });
+
+    try {
+      provider.setResponses([
+        fauxAssistantMessage('', {
+          stopReason: 'error',
+          errorMessage: 'provider failed',
+        }),
+      ]);
+
+      await expect(
+        generateAgentText({
+          model: provider.getModel(),
+          systemPrompt: 'You are concise.',
+          tools: {},
+          prompt: 'Say hello',
+        }),
+      ).rejects.toThrow('provider failed');
+    } finally {
+      provider.unregister();
+    }
+  });
 });
 
 describe('streamAgentTextFromMessages', () => {
@@ -203,6 +229,32 @@ describe('streamAgentTextFromMessages', () => {
       expect(provider.state.callCount).toBe(1);
     } finally {
       abortSpy.mockRestore();
+      provider.unregister();
+    }
+  });
+
+  it('throws when the streaming provider terminates with an error', async () => {
+    const provider = registerFauxProvider({
+      models: [{ id: 'test-model' }],
+    });
+
+    try {
+      provider.setResponses([
+        fauxAssistantMessage('', {
+          stopReason: 'error',
+          errorMessage: 'stream failed',
+        }),
+      ]);
+
+      const stream = streamAgentTextFromMessages({
+        model: provider.getModel(),
+        systemPrompt: 'You are concise.',
+        tools: {},
+        messages: [{ role: 'user', content: 'Say hello' }],
+      });
+
+      await expect(collectAsyncText(stream)).rejects.toThrow('stream failed');
+    } finally {
       provider.unregister();
     }
   });

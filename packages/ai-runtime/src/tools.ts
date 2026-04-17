@@ -1,4 +1,4 @@
-import { Type, type TSchema } from '@mariozechner/pi-ai';
+import { Type, type TSchema } from '@sinclair/typebox';
 import type { AgentTool, AgentToolResult } from '@mariozechner/pi-agent-core';
 import { z, type ZodTypeAny } from 'zod';
 import zodToJsonSchema from 'zod-to-json-schema';

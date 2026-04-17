@@ -1,4 +1,4 @@
-import { getModel, type Model } from '@mariozechner/pi-ai';
+import type { Model } from '@mariozechner/pi-ai';
 import { describe, expect, it } from 'vitest';
 import { createOpenRouterModel } from './model';
 
@@ -30,27 +30,7 @@ describe('createOpenRouterModel', () => {
     });
   });
 
-  it('uses registry metadata for known OpenRouter models', () => {
-    const registered = getModel('openrouter', 'google/gemini-3-flash-preview' as never) as Model<'openai-completions'> | undefined;
-
-    expect(registered).toBeDefined();
-
-    const model = createOpenRouterModel({ modelId: 'google/gemini-3-flash-preview' });
-
-    expect(model.contextWindow).toBe(registered!.contextWindow);
-    expect(model.maxTokens).toBe(registered!.maxTokens);
-    expect(model.reasoning).toBe(registered!.reasoning);
-    expect(model.input).toEqual(registered!.input);
-    expect(model.cost).toEqual(registered!.cost);
-    expect(model.compat).toMatchObject({
-      ...registered!.compat,
-      thinkingFormat: 'openrouter',
-      supportsStore: false,
-    });
-  });
-
-  it('ignores fallback metadata overrides for known OpenRouter models', () => {
-    const registered = getModel('openrouter', 'google/gemini-3-flash-preview' as never) as Model<'openai-completions'> | undefined;
+  it('honors explicit metadata for configured OpenRouter models', () => {
     const customCost: Model<'openai-completions'>['cost'] = {
       input: 100,
       output: 200,
@@ -58,22 +38,20 @@ describe('createOpenRouterModel', () => {
       cacheWrite: 400,
     };
 
-    expect(registered).toBeDefined();
-
     const model = createOpenRouterModel({
       modelId: 'google/gemini-3-flash-preview',
       contextWindow: 1,
       maxTokens: 2,
-      reasoning: !registered!.reasoning,
+      reasoning: true,
       input: ['text'],
       cost: customCost,
     });
 
-    expect(model.contextWindow).toBe(registered!.contextWindow);
-    expect(model.maxTokens).toBe(registered!.maxTokens);
-    expect(model.reasoning).toBe(registered!.reasoning);
-    expect(model.input).toEqual(registered!.input);
-    expect(model.cost).toEqual(registered!.cost);
+    expect(model.contextWindow).toBe(1);
+    expect(model.maxTokens).toBe(2);
+    expect(model.reasoning).toBe(true);
+    expect(model.input).toEqual(['text']);
+    expect(model.cost).toEqual(customCost);
   });
 
   it('honors fallback metadata for unknown models', () => {

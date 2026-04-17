@@ -1,4 +1,4 @@
-import { getModel, type Model } from '@mariozechner/pi-ai';
+import type { Model } from '@mariozechner/pi-ai';
 
 export interface OpenRouterModelOptions {
   modelId: string;
@@ -19,22 +19,18 @@ const FALLBACK_COST: Model<'openai-completions'>['cost'] = {
 };
 
 export function createOpenRouterModel(options: OpenRouterModelOptions): Model<'openai-completions'> {
-  const registered = getModel('openrouter', options.modelId as never) as Model<'openai-completions'> | undefined;
-  const isRegistered = registered !== undefined;
-
   return {
-    id: registered?.id ?? options.modelId,
-    name: registered?.name ?? options.modelId,
+    id: options.modelId,
+    name: options.modelId,
     api: 'openai-completions',
     provider: 'openrouter',
-    baseUrl: options.baseUrl ?? registered?.baseUrl ?? DEFAULT_BASE_URL,
-    reasoning: registered?.reasoning ?? options.reasoning ?? false,
-    input: isRegistered ? registered.input : options.input ?? ['text'],
-    cost: isRegistered ? registered.cost : options.cost ?? FALLBACK_COST,
-    contextWindow: registered?.contextWindow ?? options.contextWindow ?? 128000,
-    maxTokens: registered?.maxTokens ?? options.maxTokens ?? 8192,
+    baseUrl: options.baseUrl ?? DEFAULT_BASE_URL,
+    reasoning: options.reasoning ?? false,
+    input: options.input ?? ['text'],
+    cost: options.cost ?? FALLBACK_COST,
+    contextWindow: options.contextWindow ?? 128000,
+    maxTokens: options.maxTokens ?? 8192,
     compat: {
-      ...registered?.compat,
       thinkingFormat: 'openrouter',
       supportsStore: false,
     },
