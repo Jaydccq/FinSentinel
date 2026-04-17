@@ -5,5 +5,6 @@
     "module": "CommonJS",
     "moduleResolution": "Node",
     "verbatimModuleSyntax": false
-  }
+  },
+  "exclude": ["node_modules", "dist", "src/__tests__"]
 }

@@ -1,8 +1,7 @@
 /* eslint-disable no-console */
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 import postgres from 'postgres';
 
 export interface MigrationFile {
@@ -10,12 +9,7 @@ export interface MigrationFile {
   filename: string;
 }
 
-const _dirname =
-  typeof __dirname !== 'undefined'
-    ? __dirname
-    : dirname(fileURLToPath(import.meta.url));
-
-const MIGRATIONS_DIR = resolve(_dirname, '../migrations');
+const MIGRATIONS_DIR = resolve(__dirname, '../migrations');
 const FILENAME_RE = /^V(\d+)__[A-Za-z0-9_]+\.sql$/;
 
 export function parseMigrationFilename(filename: string): MigrationFile {
