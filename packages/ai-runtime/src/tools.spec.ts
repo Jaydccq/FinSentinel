@@ -48,6 +48,27 @@ describe('toAgentTools', () => {
     expect(result.content).toEqual([{ type: 'text', text: 'echo:ok' }]);
   });
 
+  it('serializes structured tool results for Pi text content', async () => {
+    const [tool] = toAgentTools({
+      lookup: defineZodTool({
+        description: 'Lookup a value',
+        inputSchema: z.object({ value: z.string() }),
+        execute: async ({ value }) => ({ value, found: true }),
+      }),
+    });
+
+    const result = await tool!.execute(
+      'call-1',
+      { value: 'AAPL' },
+      new AbortController().signal,
+      () => {},
+    );
+
+    expect(result.content).toEqual([
+      { type: 'text', text: JSON.stringify({ value: 'AAPL', found: true }) },
+    ]);
+  });
+
   it('throws when schema validation fails so the agent records a tool error', async () => {
     const [tool] = toAgentTools({
       echo: defineZodTool({

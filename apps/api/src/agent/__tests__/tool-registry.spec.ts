@@ -1,5 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
+
+vi.mock('@finsentinel/ai-runtime', () => ({
+  defineZodTool: (definition: {
+    description: string;
+    inputSchema: unknown;
+    execute: (...args: any[]) => unknown;
+  }) => ({
+    ...definition,
+    parameters: definition.inputSchema,
+  }),
+}));
+
 import { ToolRegistry } from '../tool-registry';
 import { MarketDataService } from '../../market/market-data.service';
 import { TechnicalIndicatorsService } from '../../market/technical-indicators.service';
@@ -132,14 +144,14 @@ describe('ToolRegistry', () => {
       const tools = registry.buildTools('user-1');
 
       for (const [name, t] of Object.entries(tools)) {
-        expect(t).toHaveProperty('description');
-        expect(typeof (t as any).description).toBe('string');
-        expect((t as any).description.length).toBeGreaterThan(0);
-
-        expect(t).toHaveProperty('inputSchema');
-
-        expect(t).toHaveProperty('execute');
-        expect(typeof (t as any).execute).toBe('function');
+        const toolObj = t as Record<string, unknown>;
+        expect(toolObj, `${name} missing description`).toHaveProperty('description');
+        expect(typeof toolObj.description, `${name} description not string`).toBe('string');
+        expect((toolObj.description as string).length, `${name} description empty`).toBeGreaterThan(0);
+        expect(toolObj, `${name} missing inputSchema`).toHaveProperty('inputSchema');
+        expect(toolObj, `${name} missing parameters`).toHaveProperty('parameters');
+        expect(toolObj, `${name} missing execute`).toHaveProperty('execute');
+        expect(typeof toolObj.execute, `${name} execute not function`).toBe('function');
       }
     });
 
@@ -177,10 +189,15 @@ describe('ToolRegistry', () => {
     it('tools have correct structure', () => {
       const tools = registry.buildStockAnalysisTools();
 
-      for (const [, t] of Object.entries(tools)) {
-        expect(t).toHaveProperty('description');
-        expect(t).toHaveProperty('inputSchema');
-        expect(t).toHaveProperty('execute');
+      for (const [name, t] of Object.entries(tools)) {
+        const toolObj = t as Record<string, unknown>;
+        expect(toolObj, `${name} missing description`).toHaveProperty('description');
+        expect(typeof toolObj.description, `${name} description not string`).toBe('string');
+        expect((toolObj.description as string).length, `${name} description empty`).toBeGreaterThan(0);
+        expect(toolObj, `${name} missing inputSchema`).toHaveProperty('inputSchema');
+        expect(toolObj, `${name} missing parameters`).toHaveProperty('parameters');
+        expect(toolObj, `${name} missing execute`).toHaveProperty('execute');
+        expect(typeof toolObj.execute, `${name} execute not function`).toBe('function');
       }
     });
   });

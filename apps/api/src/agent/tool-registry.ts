@@ -1,5 +1,5 @@
 import { Injectable, Optional } from '@nestjs/common';
-import type { ToolSet } from 'ai';
+import type { FinToolSet } from '@finsentinel/ai-runtime';
 import { MarketDataService } from '../market/market-data.service';
 import { TechnicalIndicatorsService } from '../market/technical-indicators.service';
 import { MarketCalendarService } from '../market/market-calendar.service';
@@ -85,7 +85,7 @@ export class ToolRegistry {
    * @param userId  The authenticated user's ID (injected into user-scoped tools via closure)
    * @param portfolioId  Optional portfolio ID for portfolio-scoped tools
    */
-  buildTools(userId: string, portfolioId?: string): ToolSet {
+  buildTools(userId: string, portfolioId?: string): FinToolSet {
     return {
       // Group A — fully wired to existing services
       ...createStockMarketTools(this.marketDataService),
@@ -190,7 +190,7 @@ export class ToolRegistry {
    * Build the lightweight tool subset for the secondary stock-analysis agent.
    * Only market data + technical indicators — no user-scoped tools.
    */
-  buildStockAnalysisTools(): ToolSet {
+  buildStockAnalysisTools(): FinToolSet {
     return {
       ...createStockMarketTools(this.marketDataService),
       ...createTechnicalIndicatorTools(this.technicalIndicatorsService),

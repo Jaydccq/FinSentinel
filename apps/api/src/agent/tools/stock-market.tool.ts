@@ -1,4 +1,4 @@
-import { tool } from 'ai';
+import { defineZodTool as tool } from '@finsentinel/ai-runtime';
 import { z } from 'zod';
 import type { MarketDataService } from '../../market/market-data.service';
 

@@ -1456,7 +1456,7 @@ Expected: PASS.
   - `apps/api/src/agent/tools/__tests__/tools.spec.ts`
   - `apps/api/src/agent/__tests__/tool-registry.spec.ts`
 
-- [ ] **Step 1: Update tests to assert Pi-compatible structure**
+- [x] **Step 1: Update tests to assert Pi-compatible structure**
 
 In tool tests, update the structure assertion to require both legacy and Pi fields:
 
@@ -1475,7 +1475,7 @@ function assertToolStructure(tools: Record<string, unknown>) {
 }
 ```
 
-- [ ] **Step 2: Run tool tests to verify they fail after import target changes**
+- [x] **Step 2: Run tool tests to verify they fail after import target changes**
 
 Run:
 
@@ -1485,7 +1485,7 @@ pnpm --filter @finsentinel/api test -- src/agent/tools/__tests__/tools.spec.ts s
 
 Expected: FAIL until tool factories use the runtime adapter.
 
-- [ ] **Step 3: Update `ToolRegistry` type import**
+- [x] **Step 3: Update `ToolRegistry` type import**
 
 Replace:
 
@@ -1506,7 +1506,7 @@ buildTools(userId: string, portfolioId?: string): FinToolSet
 buildStockAnalysisTools(): FinToolSet
 ```
 
-- [ ] **Step 4: Replace tool imports mechanically**
+- [x] **Step 4: Replace tool imports mechanically**
 
 For each `apps/api/src/agent/tools/*.tool.ts`, replace:
 
@@ -1522,7 +1522,7 @@ import { defineZodTool as tool } from '@finsentinel/ai-runtime';
 
 Keep every existing `tool({ description, inputSchema, execute })` body unchanged.
 
-- [ ] **Step 5: Verify tool factories**
+- [x] **Step 5: Verify tool factories**
 
 Run:
 
@@ -1531,6 +1531,11 @@ pnpm --filter @finsentinel/api test -- src/agent/tools/__tests__/tools.spec.ts s
 ```
 
 Expected: PASS.
+
+**Progress log**
+
+- 2026-04-17: Completed Task 8 by swapping agent tool factories to `@finsentinel/ai-runtime`, updating `ToolRegistry` to return `FinToolSet`, and tightening tool-structure tests to require `description`, `inputSchema`, `parameters`, and `execute`. Verified with `pnpm --filter @finsentinel/api exec vitest run src/agent/tools/__tests__/tools.spec.ts src/agent/__tests__/tool-registry.spec.ts`, `pnpm --filter @finsentinel/api typecheck`, and `rg -n "import \\{ tool \\} from 'ai'|import type \\{ ToolSet \\} from 'ai'" apps/api/src/agent`.
+- 2026-04-17: Widened `FinTool.execute` to preserve existing structured tool return values, and added adapter coverage that serializes non-string tool results at the Pi Agent boundary. Verified with `pnpm --filter @finsentinel/ai-runtime exec vitest run src/tools.spec.ts`.
 
 ### Task 9: Migrate Streaming Agent Services
 

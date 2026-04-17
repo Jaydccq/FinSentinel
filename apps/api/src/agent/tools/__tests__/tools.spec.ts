@@ -1,5 +1,16 @@
 import { describe, it, expect, vi } from 'vitest';
 
+vi.mock('@finsentinel/ai-runtime', () => ({
+  defineZodTool: (definition: {
+    description: string;
+    inputSchema: unknown;
+    execute: (...args: any[]) => unknown;
+  }) => ({
+    ...definition,
+    parameters: definition.inputSchema,
+  }),
+}));
+
 import { createStockMarketTools } from '../stock-market.tool';
 import { createTechnicalIndicatorTools } from '../technical-indicator.tool';
 import { createThinkingTools } from '../thinking.tool';
@@ -28,8 +39,8 @@ function assertToolStructure(tools: Record<string, unknown>) {
     expect(toolObj, `${name} missing description`).toHaveProperty('description');
     expect(typeof toolObj.description, `${name} description not string`).toBe('string');
     expect((toolObj.description as string).length, `${name} description empty`).toBeGreaterThan(0);
-    // AI SDK tool() with inputSchema produces 'inputSchema' on the output object
     expect(toolObj, `${name} missing inputSchema`).toHaveProperty('inputSchema');
+    expect(toolObj, `${name} missing parameters`).toHaveProperty('parameters');
     expect(toolObj, `${name} missing execute`).toHaveProperty('execute');
     expect(typeof toolObj.execute, `${name} execute not function`).toBe('function');
   }

@@ -12,7 +12,7 @@ export interface FinTool<TSchemaDef extends ZodTypeAny = ZodTypeAny> {
   description: string;
   inputSchema: TSchemaDef;
   parameters: TSchema;
-  execute: (args: z.infer<TSchemaDef>) => Promise<string> | string;
+  execute: (args: z.infer<TSchemaDef>) => Promise<unknown> | unknown;
 }
 
 export type FinToolSet = Record<string, FinTool<any>>;
@@ -20,7 +20,7 @@ export type FinToolSet = Record<string, FinTool<any>>;
 export function defineZodTool<TSchemaDef extends ZodTypeAny>(definition: {
   description: string;
   inputSchema: TSchemaDef;
-  execute: (args: z.infer<TSchemaDef>) => Promise<string> | string;
+  execute: (args: z.infer<TSchemaDef>) => Promise<unknown> | unknown;
 }): FinTool<TSchemaDef> {
   return {
     ...definition,
@@ -36,10 +36,10 @@ export function toAgentTools(toolSet: FinToolSet): AgentTool[] {
     parameters: tool.parameters,
     execute: async (_toolCallId, params, _signal, _onUpdate): Promise<AgentToolResult<{}>> => {
       const parsed = tool.inputSchema.parse(params);
-      const text = await tool.execute(parsed);
+      const result = await tool.execute(parsed);
 
       return {
-        content: [{ type: 'text', text }],
+        content: [{ type: 'text', text: stringifyToolResult(result) }],
         details: {},
       };
     },
@@ -50,4 +50,12 @@ function toPiParameters(inputSchema: ZodTypeAny): TSchema {
   const jsonSchema = convertZodToJsonSchema(inputSchema, { target: 'jsonSchema7' });
 
   return Type.Unsafe(jsonSchema as Record<string, unknown>);
+}
+
+function stringifyToolResult(result: unknown): string {
+  if (typeof result === 'string') {
+    return result;
+  }
+
+  return JSON.stringify(result);
 }
