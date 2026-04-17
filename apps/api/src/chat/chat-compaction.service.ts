@@ -1,8 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ConfigType } from '@nestjs/config';
-import { generateText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
 import { chatMessages, chatSessionMemories, eq, and, asc } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import { sql } from 'drizzle-orm';
@@ -41,11 +40,10 @@ export class ChatCompactionService {
     this.recentWindow = configService.get<number>('chat.compaction.recentWindow', 10);
     this.maxSummaryChars = configService.get<number>('chat.compaction.maxSummaryChars', 1200);
 
-    const openrouter = createOpenAI({
-      baseURL: 'https://openrouter.ai/api/v1',
-      apiKey: this.aiCfg.openrouterApiKey,
+    this.model = createOpenRouterModel({
+      modelId: this.aiCfg.model,
+      baseUrl: this.aiCfg.openrouterBaseUrl,
     });
-    this.model = openrouter(this.aiCfg.model);
   }
 
   /**
@@ -144,14 +142,15 @@ export class ChatCompactionService {
       .join('\n');
 
     try {
-      const { text } = await generateText({
+      const text = await generateAgentText({
         model: this.model,
-        system:
+        systemPrompt:
           `You are a financial assistant summarizer. Produce a concise summary ` +
           `of the conversation below, capturing key topics, tickers, decisions, ` +
           `and any action items. Keep it under ${this.maxSummaryChars} characters. ` +
           `Return only the summary text, no extra commentary.`,
         prompt: conversationText,
+        tools: {},
       });
 
       return text.substring(0, this.maxSummaryChars);

@@ -3,6 +3,11 @@ import type { AgentTool, AgentToolResult } from '@mariozechner/pi-agent-core';
 import { z, type ZodTypeAny } from 'zod';
 import zodToJsonSchema from 'zod-to-json-schema';
 
+const convertZodToJsonSchema = zodToJsonSchema as unknown as (
+  schema: ZodTypeAny,
+  options: { target: 'jsonSchema7' },
+) => unknown;
+
 export interface FinTool<TSchemaDef extends ZodTypeAny = ZodTypeAny> {
   description: string;
   inputSchema: TSchemaDef;
@@ -19,9 +24,7 @@ export function defineZodTool<TSchemaDef extends ZodTypeAny>(definition: {
 }): FinTool<TSchemaDef> {
   return {
     ...definition,
-    parameters: Type.Unsafe(
-      zodToJsonSchema(definition.inputSchema, { target: 'jsonSchema7' }) as TSchema,
-    ),
+    parameters: toPiParameters(definition.inputSchema),
   };
 }
 
@@ -41,4 +44,10 @@ export function toAgentTools(toolSet: FinToolSet): AgentTool[] {
       };
     },
   }));
+}
+
+function toPiParameters(inputSchema: ZodTypeAny): TSchema {
+  const jsonSchema = convertZodToJsonSchema(inputSchema, { target: 'jsonSchema7' });
+
+  return Type.Unsafe(jsonSchema as Record<string, unknown>);
 }

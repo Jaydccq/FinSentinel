@@ -1199,7 +1199,7 @@ Expected: PASS.
   - `apps/api/src/chat/__tests__/chat-compaction.service.spec.ts`
   - `apps/api/src/rag/__tests__/query-rewrite.service.spec.ts`
 
-- [ ] **Step 1: Add base URL config**
+- [x] **Step 1: Add base URL config**
 
 Update `apps/api/src/config/ai.config.ts`:
 
@@ -1214,7 +1214,7 @@ export const aiConfig = registerAs('ai', () => ({
 }));
 ```
 
-- [ ] **Step 2: Update tests to mock runtime package**
+- [x] **Step 2: Update tests to mock runtime package**
 
 In `chat-compaction.service.spec.ts`, replace `vi.mock('ai', ...)` and `vi.mock('@ai-sdk/openai', ...)` with:
 
@@ -1240,7 +1240,7 @@ Update each `mockAiConfig` object to include:
 openrouterBaseUrl: 'https://openrouter.ai/api/v1',
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 Run:
 
@@ -1250,7 +1250,7 @@ pnpm --filter @finsentinel/api test -- src/chat/__tests__/chat-compaction.servic
 
 Expected: FAIL because services still import Vercel AI SDK.
 
-- [ ] **Step 4: Migrate `ChatCompactionService`**
+- [x] **Step 4: Migrate `ChatCompactionService`**
 
 Replace Vercel imports in `apps/api/src/chat/chat-compaction.service.ts` with:
 
@@ -1282,7 +1282,7 @@ const text = await generateAgentText({
 });
 ```
 
-- [ ] **Step 5: Migrate `QueryRewriteService`**
+- [x] **Step 5: Migrate `QueryRewriteService`**
 
 Replace Vercel imports in `apps/api/src/rag/query-rewrite.service.ts` with:
 
@@ -1314,7 +1314,7 @@ const text = await generateAgentText({
 });
 ```
 
-- [ ] **Step 6: Verify no-tool services**
+- [x] **Step 6: Verify no-tool services**
 
 Run:
 
@@ -1323,6 +1323,12 @@ pnpm --filter @finsentinel/api test -- src/chat/__tests__/chat-compaction.servic
 ```
 
 Expected: PASS.
+
+**Progress log**
+
+- 2026-04-17: Updated `apps/api/src/config/ai.config.ts`, `apps/api/src/chat/chat-compaction.service.ts`, `apps/api/src/rag/query-rewrite.service.ts`, and the two service specs to use `@finsentinel/ai-runtime` for no-tool text generation.
+- 2026-04-17: Resolved the verification blocker by narrowing the `zod-to-json-schema` type boundary in `packages/ai-runtime/src/tools.ts`, excluding specs from the `@finsentinel/ai-runtime` build output, and adding `import`/`require` package export entries for TypeScript package resolution.
+- 2026-04-17: Verified Task 6 with `pnpm --filter @finsentinel/api exec vitest run src/chat/__tests__/chat-compaction.service.spec.ts src/rag/__tests__/query-rewrite.service.spec.ts`, `pnpm --filter @finsentinel/api typecheck`, `pnpm --filter @finsentinel/ai-runtime build`, and `pnpm --filter @finsentinel/ai-runtime test`.
 
 ### Task 7: Migrate Embedding Service
 

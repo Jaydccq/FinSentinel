@@ -4,19 +4,14 @@ import { ConfigService } from '@nestjs/config';
 import { QueryRewriteService } from '../query-rewrite.service';
 import { aiConfig } from '../../config/ai.config';
 
-// Mock the AI SDK generateText to avoid real API calls
-vi.mock('ai', () => ({
-  generateText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => ({
-    text: prompt.trim(),
-  })),
-}));
-
-vi.mock('@ai-sdk/openai', () => ({
-  createOpenAI: vi.fn().mockReturnValue(() => 'mock-model'),
+vi.mock('@finsentinel/ai-runtime', () => ({
+  createOpenRouterModel: vi.fn(() => 'mock-model'),
+  generateAgentText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => prompt.trim()),
 }));
 
 const mockAiConfig = {
   openrouterApiKey: 'test-key',
+  openrouterBaseUrl: 'https://openrouter.ai/api/v1',
   model: 'google/gemini-3-flash-preview',
   embeddingModel: 'text-embedding-3-small',
 };

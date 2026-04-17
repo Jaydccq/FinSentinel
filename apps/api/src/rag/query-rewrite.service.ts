@@ -1,8 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ConfigType } from '@nestjs/config';
-import { generateText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
 import { aiConfig } from '../config/ai.config';
 
 /**
@@ -29,11 +28,10 @@ export class QueryRewriteService {
     this.enabled = configService.get<boolean>('rag.retrieval.queryRewriteEnabled', true);
     this.maxLength = configService.get<number>('rag.retrieval.queryRewriteMaxLength', 80);
 
-    const openrouter = createOpenAI({
-      baseURL: 'https://openrouter.ai/api/v1',
-      apiKey: this.aiCfg.openrouterApiKey,
+    this.model = createOpenRouterModel({
+      modelId: this.aiCfg.model,
+      baseUrl: this.aiCfg.openrouterBaseUrl,
     });
-    this.model = openrouter(this.aiCfg.model);
   }
 
   /**
@@ -72,14 +70,15 @@ export class QueryRewriteService {
    */
   async generateRewrite(query: string): Promise<string> {
     try {
-      const { text } = await generateText({
+      const text = await generateAgentText({
         model: this.model,
-        system:
+        systemPrompt:
           `You are a financial search query optimizer. Rewrite the following ` +
           `query to be more specific and effective for searching a financial ` +
           `document database (SEC filings, research reports, market news). ` +
           `Keep it under ${this.maxLength} characters. Return only the rewritten query.`,
         prompt: query,
+        tools: {},
       });
 
       return text.substring(0, this.maxLength);

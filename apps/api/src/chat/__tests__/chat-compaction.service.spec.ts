@@ -4,19 +4,14 @@ import { ConfigService } from '@nestjs/config';
 import { ChatCompactionService } from '../chat-compaction.service';
 import { aiConfig } from '../../config/ai.config';
 
-// Mock the AI SDK generateText to return concatenated conversation (fallback behavior)
-vi.mock('ai', () => ({
-  generateText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => ({
-    text: prompt,
-  })),
-}));
-
-vi.mock('@ai-sdk/openai', () => ({
-  createOpenAI: vi.fn().mockReturnValue(() => 'mock-model'),
+vi.mock('@finsentinel/ai-runtime', () => ({
+  createOpenRouterModel: vi.fn(() => 'mock-model'),
+  generateAgentText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => prompt),
 }));
 
 const mockAiConfig = {
   openrouterApiKey: 'test-key',
+  openrouterBaseUrl: 'https://openrouter.ai/api/v1',
   model: 'google/gemini-3-flash-preview',
   embeddingModel: 'text-embedding-3-small',
 };
