@@ -40,7 +40,6 @@ function createMockDb() {
   return {
     select: vi.fn().mockReturnValue(selectChain),
     insert: vi.fn().mockReturnValue(insertChain),
-    // For countByUser — uses db.select({ count: ... })
     _selectChain: selectChain,
     _insertChain: insertChain,
     _countChain: countChain,

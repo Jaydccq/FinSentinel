@@ -62,9 +62,9 @@ export class AgentEventService {
     // Insert new event.
     // Supply id + createdAt explicitly. Drizzle+postgres.js (0.44.7 / 3.4.8)
     // scrambles bind parameters when INSERT mixes `default` keywords with `$N`
-    // placeholders for non-generated columns — setting them here avoids that
-    // codegen path. seq_no stays `default` because it's GENERATED ALWAYS AS
-    // IDENTITY and cannot be set from client code.
+    // placeholders for non-generated columns — setting them here reduces (but
+    // does not eliminate) the mixed-default codegen path. seq_no stays
+    // `default` because it's GENERATED ALWAYS AS IDENTITY and cannot be set.
     const [created] = await this.db
       .insert(agentEvents)
       .values({
