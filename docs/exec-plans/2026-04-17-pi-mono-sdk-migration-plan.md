@@ -458,6 +458,8 @@ Expected: PASS.
 **Progress log**
 
 - 2026-04-17: Added the `@finsentinel/ai-runtime` workspace package skeleton and API dependency. Repo-root `pnpm install` initially failed in the sandbox due registry DNS access, then passed after explicit network approval. Verified the package skeleton with `pnpm --filter @finsentinel/ai-runtime typecheck`.
+- 2026-04-17: Completed Task 2 by adding `createOpenRouterModel`, exporting it from `@finsentinel/ai-runtime`, and verifying the package with `pnpm --filter @finsentinel/ai-runtime test -- src/model.spec.ts` and `pnpm --filter @finsentinel/ai-runtime typecheck`.
+- 2026-04-17: Hardened Task 2 so the OpenRouter model factory now prefers Pi-Mono registry metadata for known models and only falls back for unknown model IDs; updated tests to lock registry-derived metadata, compat, and fallback overrides.
 
 ### Task 2: Add OpenRouter Model Factory
 
@@ -467,7 +469,7 @@ Expected: PASS.
 - Create: `packages/ai-runtime/src/model.spec.ts`
 - Modify: `packages/ai-runtime/src/index.ts`
 
-- [ ] **Step 1: Write model factory tests**
+- [x] **Step 1: Write model factory tests**
 
 Create `packages/ai-runtime/src/model.spec.ts`:
 
@@ -497,7 +499,7 @@ describe('createOpenRouterModel', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -507,7 +509,7 @@ pnpm --filter @finsentinel/ai-runtime test -- src/model.spec.ts
 
 Expected: FAIL because `createOpenRouterModel` does not exist.
 
-- [ ] **Step 3: Implement model factory**
+- [x] **Step 3: Implement model factory**
 
 Create `packages/ai-runtime/src/model.ts`:
 
@@ -547,7 +549,7 @@ export function createOpenRouterModel(options: OpenRouterModelOptions): Model<'o
 }
 ```
 
-- [ ] **Step 4: Export model factory**
+- [x] **Step 4: Export model factory**
 
 Update `packages/ai-runtime/src/index.ts`:
 
@@ -555,7 +557,7 @@ Update `packages/ai-runtime/src/index.ts`:
 export * from './model';
 ```
 
-- [ ] **Step 5: Verify model factory**
+- [x] **Step 5: Verify model factory**
 
 Run:
 
