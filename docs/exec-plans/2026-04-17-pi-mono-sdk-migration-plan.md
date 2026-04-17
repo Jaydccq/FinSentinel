@@ -346,7 +346,7 @@ Critical gaps before implementation:
 - Create: `packages/ai-runtime/src/index.ts`
 - Modify: `apps/api/package.json`
 
-- [ ] **Step 1: Create package metadata**
+- [x] **Step 1: Create package metadata**
 
 Create `packages/ai-runtime/package.json`:
 
@@ -383,7 +383,7 @@ Create `packages/ai-runtime/package.json`:
 }
 ```
 
-- [ ] **Step 2: Create TypeScript configs**
+- [x] **Step 2: Create TypeScript configs**
 
 Create `packages/ai-runtime/tsconfig.json`:
 
@@ -413,7 +413,7 @@ Create `packages/ai-runtime/tsconfig.build.json`:
 }
 ```
 
-- [ ] **Step 3: Create empty public entrypoint**
+- [x] **Step 3: Create empty public entrypoint**
 
 Create `packages/ai-runtime/src/index.ts`:
 
@@ -421,7 +421,7 @@ Create `packages/ai-runtime/src/index.ts`:
 export {};
 ```
 
-- [ ] **Step 4: Add API dependency on the workspace package**
+- [x] **Step 4: Add API dependency on the workspace package**
 
 Add `@finsentinel/ai-runtime` to `apps/api/package.json` dependencies:
 
@@ -435,7 +435,7 @@ Add `@finsentinel/ai-runtime` to `apps/api/package.json` dependencies:
 
 Keep existing dependencies unchanged in this step.
 
-- [ ] **Step 5: Install and update the lockfile**
+- [x] **Step 5: Install and update the lockfile**
 
 Run:
 
@@ -445,7 +445,7 @@ pnpm install
 
 Expected: package resolution succeeds and `pnpm-lock.yaml` records `@mariozechner/pi-ai`, `@mariozechner/pi-agent-core`, and `zod-to-json-schema`.
 
-- [ ] **Step 6: Verify package skeleton**
+- [x] **Step 6: Verify package skeleton**
 
 Run:
 
@@ -454,6 +454,10 @@ pnpm --filter @finsentinel/ai-runtime typecheck
 ```
 
 Expected: PASS.
+
+**Progress log**
+
+- 2026-04-17: Added the `@finsentinel/ai-runtime` workspace package skeleton and API dependency. Repo-root `pnpm install` initially failed in the sandbox due registry DNS access, then passed after explicit network approval. Verified the package skeleton with `pnpm --filter @finsentinel/ai-runtime typecheck`.
 
 ### Task 2: Add OpenRouter Model Factory
 
