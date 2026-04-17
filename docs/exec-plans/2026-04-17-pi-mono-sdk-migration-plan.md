@@ -1337,7 +1337,7 @@ Expected: PASS.
 - Modify: `apps/api/src/rag/rag-embedding.service.ts`
 - Create: `apps/api/src/rag/__tests__/rag-embedding.service.spec.ts`
 
-- [ ] **Step 1: Add service test**
+- [x] **Step 1: Add service test**
 
 Create `apps/api/src/rag/__tests__/rag-embedding.service.spec.ts`:
 
@@ -1386,7 +1386,7 @@ describe('RagEmbeddingService', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -1396,7 +1396,7 @@ pnpm --filter @finsentinel/api test -- src/rag/__tests__/rag-embedding.service.s
 
 Expected: FAIL because the service still imports Vercel AI SDK.
 
-- [ ] **Step 3: Migrate service**
+- [x] **Step 3: Migrate service**
 
 Replace `apps/api/src/rag/rag-embedding.service.ts` with:
 
@@ -1430,7 +1430,7 @@ export class RagEmbeddingService {
 }
 ```
 
-- [ ] **Step 4: Verify embedding service**
+- [x] **Step 4: Verify embedding service**
 
 Run:
 
@@ -1439,6 +1439,12 @@ pnpm --filter @finsentinel/api test -- src/rag/__tests__/rag-embedding.service.s
 ```
 
 Expected: PASS.
+
+**Progress log**
+
+- 2026-04-17: Added `apps/api/src/rag/__tests__/rag-embedding.service.spec.ts` to verify `RagEmbeddingService` constructs `OpenRouterEmbeddingClient` from AI config and delegates query/chunk embedding calls, including `[]` input.
+- 2026-04-17: Migrated `apps/api/src/rag/rag-embedding.service.ts` to `@finsentinel/ai-runtime` and removed service-level embedding branching.
+- 2026-04-17: Verified Task 7 with `pnpm --filter @finsentinel/api exec vitest run src/rag/__tests__/rag-embedding.service.spec.ts` and `pnpm --filter @finsentinel/api typecheck`.
 
 ### Task 8: Migrate Tool Type Imports And Tool Factories
 

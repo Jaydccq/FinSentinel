@@ -1,45 +1,27 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
-import { embed, embedMany } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import { OpenRouterEmbeddingClient } from '@finsentinel/ai-runtime';
 import { aiConfig } from '../config/ai.config';
-
-type EmbeddingModel = Parameters<typeof embed>[0]['model'];
 
 @Injectable()
 export class RagEmbeddingService {
-  private readonly embeddingModel: EmbeddingModel;
+  private readonly embeddingClient: OpenRouterEmbeddingClient;
 
   constructor(
     @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
   ) {
-    const openrouter = createOpenAI({
-      baseURL: 'https://openrouter.ai/api/v1',
+    this.embeddingClient = new OpenRouterEmbeddingClient({
       apiKey: this.aiCfg.openrouterApiKey,
+      baseUrl: this.aiCfg.openrouterBaseUrl,
+      model: this.aiCfg.embeddingModel,
     });
-
-    this.embeddingModel = openrouter.embedding(this.aiCfg.embeddingModel);
   }
 
   async embedQuery(value: string): Promise<number[]> {
-    const result = await embed({
-      model: this.embeddingModel,
-      value,
-    });
-
-    return result.embedding;
+    return this.embeddingClient.embedQuery(value);
   }
 
   async embedChunks(values: string[]): Promise<number[][]> {
-    if (values.length === 0) {
-      return [];
-    }
-
-    const result = await embedMany({
-      model: this.embeddingModel,
-      values,
-    });
-
-    return result.embeddings;
+    return this.embeddingClient.embedChunks(values);
   }
 }
