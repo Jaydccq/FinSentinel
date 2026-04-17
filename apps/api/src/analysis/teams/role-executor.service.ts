@@ -16,6 +16,55 @@ import type {
   RoleOutput,
 } from '../contracts/role-contract';
 
+export function extractStructuredJson(text: string): unknown {
+  const fencedJson = /```json\s*([\s\S]+?)\s*```/i.exec(text);
+  if (fencedJson?.[1]) {
+    try {
+      return JSON.parse(fencedJson[1]);
+    } catch {
+      // fall through
+    }
+  }
+
+  const fencedAny = /```\s*([\s\S]+?)\s*```/.exec(text);
+  if (fencedAny?.[1]) {
+    try {
+      return JSON.parse(fencedAny[1]);
+    } catch {
+      // fall through
+    }
+  }
+
+  const firstBrace = text.indexOf('{');
+  if (firstBrace >= 0) {
+    let depth = 0;
+    let inString = false;
+    let escape = false;
+    for (let i = firstBrace; i < text.length; i++) {
+      const ch = text[i];
+      if (escape) { escape = false; continue; }
+      if (ch === '\\' && inString) { escape = true; continue; }
+      if (ch === '"') { inString = !inString; continue; }
+      if (inString) continue;
+      if (ch === '{') depth++;
+      else if (ch === '}') {
+        depth--;
+        if (depth === 0) {
+          const candidate = text.slice(firstBrace, i + 1);
+          try {
+            return JSON.parse(candidate);
+          } catch {
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  const snippet = text.slice(0, 200).replace(/\s+/g, ' ');
+  throw new Error(`Role output contains no JSON object. Raw (first 200 chars): ${snippet}`);
+}
+
 export interface LlmRunner {
   generate(args: {
     model: unknown;
@@ -108,9 +157,7 @@ export class RoleExecutorService {
   }
 
   private parseStructured(text: string): StageStructuredOutput {
-    const match = text.match(/```json\s*([\s\S]+?)\s*```/);
-    if (!match?.[1]) throw new Error('Role output contains no JSON block');
-    const obj = JSON.parse(match[1]) as unknown;
+    const obj = extractStructuredJson(text);
     return stageStructuredOutputSchema.parse(obj);
   }
 

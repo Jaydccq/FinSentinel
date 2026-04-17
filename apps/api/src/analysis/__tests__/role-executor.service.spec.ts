@@ -48,6 +48,6 @@ describe('RoleExecutorService.run', () => {
         systemPrompt: 'sys',
         userInput: { prompt: 'x', contextText: '', priorStageOutputs: {} },
       }),
-    ).rejects.toThrow(/no JSON block/i);
+    ).rejects.toThrow(/no JSON/i);
   });
 });

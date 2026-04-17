@@ -1,0 +1,48 @@
+import { describe, it, expect } from 'vitest';
+import { extractStructuredJson } from '../role-executor.service';
+
+describe('extractStructuredJson', () => {
+  const payload = { summary: 'ok', confidence: 0.8, signals: [] };
+  const json = JSON.stringify(payload);
+
+  it('extracts from ```json fenced block', () => {
+    const text = `Here is the analysis:\n\`\`\`json\n${json}\n\`\`\`\nEnd.`;
+    expect(extractStructuredJson(text)).toEqual(payload);
+  });
+
+  it('extracts from unlabeled ``` fenced block', () => {
+    const text = `prelude\n\`\`\`\n${json}\n\`\`\``;
+    expect(extractStructuredJson(text)).toEqual(payload);
+  });
+
+  it('extracts bare JSON object with no fence', () => {
+    const text = `Analysis follows. ${json} Done.`;
+    expect(extractStructuredJson(text)).toEqual(payload);
+  });
+
+  it('extracts JSON even when response is pure JSON with whitespace', () => {
+    expect(extractStructuredJson(`  \n${json}\n  `)).toEqual(payload);
+  });
+
+  it('prefers fenced JSON over bare JSON when both are present', () => {
+    const fenced = { summary: 'fenced' };
+    const bare = { summary: 'bare' };
+    const text = `${JSON.stringify(bare)}\n\`\`\`json\n${JSON.stringify(fenced)}\n\`\`\``;
+    expect(extractStructuredJson(text)).toEqual(fenced);
+  });
+
+  it('throws when no JSON object is present', () => {
+    expect(() => extractStructuredJson('no json here')).toThrow(/no JSON/i);
+  });
+
+  it('throws with a snippet of raw text when extraction fails', () => {
+    const raw = 'this is a long message with nothing useful'.repeat(10);
+    try {
+      extractStructuredJson(raw);
+      throw new Error('should have thrown');
+    } catch (err) {
+      expect((err as Error).message).toMatch(/no JSON/i);
+      expect((err as Error).message).toMatch(raw.slice(0, 40));
+    }
+  });
+});
