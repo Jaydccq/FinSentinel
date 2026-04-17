@@ -51,6 +51,7 @@ import { CryptoToolsService } from './crypto-tools.service';
     NewsAnalysisService,
     TwitterToolsService,
     CryptoToolsService,
+    ToolRegistry,
   ],
 })
 export class AgentModule {}
