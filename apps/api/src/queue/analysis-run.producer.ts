@@ -27,7 +27,7 @@ export class AnalysisRunProducer {
       'preflight',
       { ...args, stepKind: 'PREFLIGHT' },
       {
-        jobId: `analysis:${args.runId}:preflight`,
+        jobId: `analysis-${args.runId}-preflight`,
         attempts: 3,
         backoff: { type: 'exponential', delay: 2_000 },
         removeOnComplete: 100,
@@ -46,7 +46,7 @@ export class AnalysisRunProducer {
       'execute-stage',
       { ...args, stepKind: 'EXECUTE_STAGE' },
       {
-        jobId: `analysis:${args.runId}:stage:${args.stageKey}`,
+        jobId: `analysis-${args.runId}-stage-${args.stageKey}`,
         attempts: 3,
         backoff: { type: 'exponential', delay: 5_000 },
         removeOnComplete: 100,
@@ -61,7 +61,7 @@ export class AnalysisRunProducer {
       'resume',
       { ...args, stepKind: 'RESUME' },
       {
-        jobId: `analysis:${args.runId}:resume`,
+        jobId: `analysis-${args.runId}-resume`,
         attempts: 2,
         backoff: { type: 'exponential', delay: 1_000 },
         removeOnComplete: 50,

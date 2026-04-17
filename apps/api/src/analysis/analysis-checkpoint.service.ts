@@ -33,7 +33,8 @@ export class AnalysisCheckpointService {
   ) {}
 
   async startStage(runId: string, stageKey: AnalysisStageKey): Promise<string> {
-    // Supply id explicitly to avoid Drizzle+postgres.js mixed-default bind bug.
+    // Supply every nullable column explicitly to avoid the Drizzle+postgres.js
+    // mixed-default bind bug (see agent-event.service.ts + local-user.seeder.ts).
     const [stage] = await this.db
       .insert(analysisStages)
       .values({
@@ -41,8 +42,13 @@ export class AnalysisCheckpointService {
         runId,
         stageKey,
         status: 'RUNNING',
-        startedAt: new Date(),
         checkpointVersion: 0,
+        parallelGroupKey: null,
+        structuredOutputJson: null,
+        humanReportMarkdown: null,
+        errorJson: null,
+        startedAt: new Date(),
+        completedAt: null,
       })
       .returning();
     return (stage as StageRow).id;

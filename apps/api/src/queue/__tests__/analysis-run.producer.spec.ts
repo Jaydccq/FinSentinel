@@ -33,7 +33,7 @@ describe('AnalysisRunProducer', () => {
     expect(mockQueue.add).toHaveBeenCalledWith(
       'preflight',
       { runId: 'r1', userId: 'u1', stepKind: 'PREFLIGHT' },
-      expect.objectContaining({ jobId: 'analysis:r1:preflight' }),
+      expect.objectContaining({ jobId: 'analysis-r1-preflight' }),
     );
   });
 
@@ -51,7 +51,7 @@ describe('AnalysisRunProducer', () => {
         stepKind: 'EXECUTE_STAGE',
         stageKey: 'INTELLIGENCE',
       },
-      expect.objectContaining({ jobId: 'analysis:r1:stage:INTELLIGENCE' }),
+      expect.objectContaining({ jobId: 'analysis-r1-stage-INTELLIGENCE' }),
     );
   });
 
@@ -60,7 +60,7 @@ describe('AnalysisRunProducer', () => {
     expect(mockQueue.add).toHaveBeenCalledWith(
       'resume',
       { runId: 'r1', userId: 'u1', stepKind: 'RESUME' },
-      expect.objectContaining({ jobId: 'analysis:r1:resume' }),
+      expect.objectContaining({ jobId: 'analysis-r1-resume' }),
     );
   });
 });

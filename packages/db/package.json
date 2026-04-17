@@ -23,7 +23,7 @@
   "dependencies": {
     "@finsentinel/shared": "workspace:*",
     "drizzle-orm": "^0.44.0",
-    "postgres": "^3.4.0"
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
     "drizzle-kit": "^0.31.0",
