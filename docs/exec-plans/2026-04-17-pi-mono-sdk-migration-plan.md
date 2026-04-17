@@ -1700,7 +1700,7 @@ Expected: PASS.
 - Modify: `apps/api/src/analysis/__tests__/role-executor.service.spec.ts`
 - Modify: `apps/api/src/analysis/teams/__tests__/role-executor.parse-structured.spec.ts` if imports or mocks require updates
 
-- [ ] **Step 1: Update LLM runner contract**
+- [x] **Step 1: Update LLM runner contract**
 
 Change the `LlmRunner.generate` argument type from:
 
@@ -1720,7 +1720,7 @@ Import:
 import type { FinToolSet } from '@finsentinel/ai-runtime';
 ```
 
-- [ ] **Step 2: Update tests to mock runtime**
+- [x] **Step 2: Update tests to mock runtime**
 
 Where tests mock `ai` or `@ai-sdk/openai`, replace them with:
 
@@ -1733,7 +1733,7 @@ vi.mock('@finsentinel/ai-runtime', () => ({
 
 Use the exact JSON shape expected by `stageStructuredOutputSchema` in this repository; if that schema differs, use the minimal valid object from `packages/shared/src/schemas/analysis.ts`.
 
-- [ ] **Step 3: Run role executor tests to verify failure**
+- [x] **Step 3: Run role executor tests to verify failure**
 
 Run:
 
@@ -1743,7 +1743,7 @@ pnpm --filter @finsentinel/api test -- src/analysis/__tests__/role-executor.serv
 
 Expected: FAIL until service imports runtime package.
 
-- [ ] **Step 4: Migrate default LLM**
+- [x] **Step 4: Migrate default LLM**
 
 Replace Vercel imports with:
 
@@ -1778,7 +1778,7 @@ private defaultLlm(): LlmRunner {
 }
 ```
 
-- [ ] **Step 5: Verify role executor**
+- [x] **Step 5: Verify role executor**
 
 Run:
 
@@ -1787,6 +1787,10 @@ pnpm --filter @finsentinel/api test -- src/analysis/__tests__/role-executor.serv
 ```
 
 Expected: PASS.
+
+**Progress log**
+
+- 2026-04-17: Completed Task 10 by migrating `RoleExecutorService` from `ai` / `@ai-sdk/openai` to `@finsentinel/ai-runtime`, changing `LlmRunner.generate.tools` and scoped role tools to `FinToolSet`, preserving `ROLE_TOOL_SCOPE` filtering, and adding narrow runtime mocks to role executor tests so injected-runner and JSON parsing coverage stays isolated from Pi-Mono package resolution. Initial targeted role executor verification failed before test collection with `No "exports" main defined ... @mariozechner/pi-ai/package.json`; after adding the focused runtime mocks and migrating the service, verified with `pnpm --filter @finsentinel/api exec vitest run src/analysis/__tests__/role-executor.service.spec.ts src/analysis/teams/__tests__/role-executor.parse-structured.spec.ts` (2 files, 13 tests passed), `pnpm --filter @finsentinel/api typecheck` (passed), and `rg -n "generateText|createOpenAI|@ai-sdk/openai|from 'ai'|from \"ai\"" apps/api/src/analysis/teams/role-executor.service.ts apps/api/src/analysis/__tests__/role-executor.service.spec.ts apps/api/src/analysis/teams/__tests__/role-executor.parse-structured.spec.ts` (no matches; exit 1).
 
 ### Task 11: Remove Vercel AI SDK Dependencies And Add Regression Check
 

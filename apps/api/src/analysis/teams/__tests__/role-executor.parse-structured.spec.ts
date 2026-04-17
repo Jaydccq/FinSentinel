@@ -1,5 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { extractStructuredJson } from '../role-executor.service';
+
+vi.mock('@finsentinel/ai-runtime', () => ({
+  createOpenRouterModel: vi.fn(() => 'mock-model'),
+  generateAgentText: vi.fn().mockResolvedValue(
+    '{"summary":"s","thesis":"t","risks":[],"openQuestions":[],"citations":[],"confidence":0.7}',
+  ),
+}));
 
 describe('extractStructuredJson', () => {
   const payload = { summary: 'ok', confidence: 0.8, signals: [] };
