@@ -80,6 +80,7 @@ export interface LlmRunner {
     system: string;
     prompt: string;
     tools: Record<string, unknown>;
+    roleKey?: RoleKey;
   }): Promise<{ text: string }>;
 }
 
@@ -127,6 +128,7 @@ export class RoleExecutorService {
       system: args.systemPrompt,
       prompt: userPrompt,
       tools: scopedTools,
+      roleKey: args.roleKey,
     });
 
     const structured = this.parseStructured(text);

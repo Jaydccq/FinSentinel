@@ -57,8 +57,9 @@ import { OrderDraftValidator } from '../../trading/order-draft-validator.service
 import { OrderDraftMapper } from '../../trading/order-draft-mapper.service';
 import { AgentEventService } from '../../events/agent-event.service';
 import type { AnalysisRunJobData } from '../../queue/analysis-run.producer';
-import type { AnalysisStageKey } from '@finsentinel/shared';
+import type { AnalysisStageKey, CreateRunRequest } from '@finsentinel/shared';
 import { AgentEventType } from '@finsentinel/shared';
+import type { LlmRunner } from '../teams/role-executor.service';
 
 // ── Database URL ──────────────────────────────────────────────────────────────
 
@@ -109,20 +110,44 @@ function makeStructuredOutput(extra: Record<string, unknown> = {}): string {
 
 // ── Stub LLM runner ───────────────────────────────────────────────────────────
 // Injected into RoleExecutorService via the optional constructor arg.
-// Returns deterministic JSON in a fenced code block.
-// When the role is EXECUTION_DRAFT_BUILDER, includes a valid orderDrafts array.
+// Dispatches on `roleKey` (threaded from RoleExecutorService.run) — never on
+// prompt text — so a prompt rename cannot cause silent mis-detection.
+// Throws if roleKey is absent or unrecognised so the test fails loudly instead
+// of silently returning the wrong payload.
 
-function makeLlmStub(): { generate: (args: { system: string; prompt: string; model: unknown; tools: Record<string, unknown> }) => Promise<{ text: string }> } {
+function makeLlmStub(): LlmRunner {
   return {
     async generate(args) {
-      const isBuilder =
-        args.system.toLowerCase().includes('execution') ||
-        args.system.toLowerCase().includes('draft') ||
-        args.system.toLowerCase().includes('builder');
+      const roleKey = args.roleKey;
+      if (!roleKey) {
+        throw new Error(
+          'LLM stub: roleKey was not threaded through — update RoleExecutorService.run() to pass roleKey to llm.generate()',
+        );
+      }
 
-      const extra: Record<string, unknown> = isBuilder
-        ? { orderDrafts: [VALID_DRAFT] }
-        : {};
+      let extra: Record<string, unknown>;
+      switch (roleKey) {
+        case 'EXECUTION_DRAFT_BUILDER':
+          extra = { orderDrafts: [VALID_DRAFT] };
+          break;
+        case 'MARKET_ANALYST':
+        case 'NEWS_ANALYST':
+        case 'FUNDAMENTALS_ANALYST':
+        case 'SENTIMENT_ANALYST':
+        case 'POSITIVE_CASE':
+        case 'NEGATIVE_CASE':
+        case 'THESIS_LEAD':
+        case 'RISK_REVIEWER':
+        case 'PORTFOLIO_MANAGER':
+        case 'TRADE_PLANNER':
+          extra = {};
+          break;
+        default: {
+          // TypeScript exhaustiveness guard — also a runtime safety net
+          const _exhaustive: never = roleKey;
+          throw new Error(`LLM stub: unrecognised roleKey '${String(_exhaustive)}'`);
+        }
+      }
 
       return {
         text: `\`\`\`json\n${makeStructuredOutput(extra)}\n\`\`\``,
@@ -326,27 +351,15 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
   }, 30_000);
 
   beforeEach(async () => {
-    runId = randomUUID();
-    // Insert parent analysis_run row with all non-nullable columns explicit
-    // (avoids the Drizzle+postgres.js mixed-default bind bug).
-    await db.insert(analysisRuns).values({
-      id: runId,
-      userId: testUserId,
+    // Use createQueued() so RUN_QUEUED is emitted into agent_events — mirrors
+    // the real production path and satisfies the plan-spec requirement.
+    const req: CreateRunRequest = {
+      prompt: 'analyze AAPL for a swing trade',
       sourceMode: 'WORKSPACE',
-      status: 'QUEUED',
-      inputSnapshotJson: { prompt: 'analyze AAPL for a swing trade', ticker: 'AAPL' },
-      currentStageKey: null,
-      complexityScore: null,
-      upgradeReason: null,
-      parentChatSessionId: null,
-      sharedContextJson: null,
-      decisionObjectJson: null,
-      finalReportMarkdown: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      completedAt: null,
-      archivedAt: null,
-    });
+      ticker: 'AAPL',
+    };
+    const created = await runsSvc.createQueued(testUserId, req);
+    runId = created.id;
   });
 
   afterEach(async () => {
@@ -442,6 +455,7 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
       const eventTypes = new Set(events.map((e) => e.eventType));
 
       const expectedLifecycle: AgentEventType[] = [
+        AgentEventType.RUN_QUEUED,
         AgentEventType.RUN_STARTED,
         AgentEventType.INTELLIGENCE_TEAM_COMPLETED,
         AgentEventType.THESIS_TEAM_COMPLETED,
