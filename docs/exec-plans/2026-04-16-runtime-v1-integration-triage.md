@@ -75,3 +75,52 @@ exports: [
 
 - Baseline run log: `/tmp/integration-baseline.log` (86 files pass, 0 failures)
 - Current HEAD run log: `/tmp/integration-current.log` (3 files fail, 105 files pass)
+
+## Local Smoke Test Follow-up (Task 2)
+
+**Status:** PARTIAL — blocked by pre-existing repo-level bug.
+
+Date: 2026-04-17
+Attempted commits: 7509fab (ToolRegistry export) + 286c2fd (Date/INSERT hygiene) + 203b959 (revert raw-SQL)
+
+### What worked
+- V11 migration applied to local PG (4 new tables confirmed).
+- API boots cleanly with `ANALYSIS_RUNS_ENABLED=true CHAT_AUTO_UPGRADE_ENABLED=true`.
+- All analysis routes mapped (`POST /api/analysis/runs`, `:id/stages`, `:id/artifacts`, `:id/approvals`).
+- `TeamRegistry` wires 5 team executors on boot (confirmed in logs).
+- `AnalysisRunConsumer` + `ScheduleRuntimeService` + `HeartbeatRuntimeService` register.
+- Login to `/api/auth/login` returns a JWT.
+- HeartbeatRuntime tick no longer blows up (Date ISO fix in commit `286c2fd`).
+- Unit test suite stays green at 853/855 (unchanged).
+
+### What's blocked
+- `POST /api/analysis/runs` returns 500.
+- Root cause: Drizzle 0.44.7 + postgres.js 3.4.8 scramble bind parameters
+  on every INSERT that mixes `default` keywords with `$N` placeholders.
+  This breaks `agent_events` (seq_no is GENERATED ALWAYS AS IDENTITY so
+  we can't remove the last `default`) AND `news_items` (observed in
+  parallel crash), AND the `LocalUserSeeder` (confirmed via hard deletion
+  + restart showing the seeder logs "Refreshed" while the DB row doesn't
+  exist — the INSERT silently failed).
+- Even the workaround path `db.execute(sql\`...\`)` in raw mode produced
+  the same bind error — Drizzle still routes through postgres.js prepared
+  statements.
+- This is a REPO-WIDE issue, not a v1 regression. The `LocalUserSeeder`
+  file carries a comment documenting it.
+
+### Required next step (not done in v1)
+Either:
+1. Pin/upgrade postgres.js to a version that accepts Date/mixed-default
+   without scrambling (likely 3.5+).
+2. Swap Drizzle's postgres.js driver for `pg` (node-postgres).
+3. Write every mutation via raw Postgres client bypassing Drizzle's
+   prepared-statement layer entirely.
+
+Option 1 is lowest risk. Options 2/3 are structural.
+
+### Takeaway for v1 ship decision
+- V1 code on `main` is type-correct and unit-tested.
+- Staging deploys won't hit this bug IF staging uses a version of
+  postgres.js / Drizzle that doesn't have the scramble. Track the
+  versions in staging before flipping `ANALYSIS_RUNS_ENABLED=true`.
+- Local dev smoke test remains blocked until the driver upgrade lands.
