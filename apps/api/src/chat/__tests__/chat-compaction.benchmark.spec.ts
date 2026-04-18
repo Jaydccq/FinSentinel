@@ -17,28 +17,24 @@ import { ConfigService } from '@nestjs/config';
 import { ChatCompactionService } from '../chat-compaction.service';
 import { aiConfig } from '../../config/ai.config';
 
-// ── Mock AI SDK ──────────────────────────────────────────────────────────────
+// ── Mock AI runtime ──────────────────────────────────────────────────────────
 
-// Mock generateText to return a realistic-length summary
+// Mock generateAgentText to return a realistic-length summary
 // (production summaries are typically 200-400 chars for 20+ messages)
-vi.mock('ai', () => ({
-  generateText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
+vi.mock('@finsentinel/ai-runtime', () => ({
+  createOpenRouterModel: vi.fn(() => 'mock-model'),
+  generateAgentText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
     // Simulate LLM compression: return a summary ~15-20% the length of input
     const summaryLength = Math.min(1200, Math.floor(prompt.length * 0.18));
-    return {
-      text: 'Discussion covered portfolio risk analysis for AAPL and TSLA, '
-        + 'including technical indicator review (RSI, MACD), sector allocation '
-        + 'concerns in Technology overweight, and a recommendation to hedge '
-        + 'with put options. User expressed moderate risk tolerance. '
-        + 'Key action items: rebalance tech exposure below 40%, set stop-loss '
-        + 'at 5% drawdown, and monitor Q3 earnings for both positions.'
-        .substring(0, summaryLength),
-    };
+    return (
+      'Discussion covered portfolio risk analysis for AAPL and TSLA, ' +
+      'including technical indicator review (RSI, MACD), sector allocation ' +
+      'concerns in Technology overweight, and a recommendation to hedge ' +
+      'with put options. User expressed moderate risk tolerance. ' +
+      'Key action items: rebalance tech exposure below 40%, set stop-loss ' +
+      'at 5% drawdown, and monitor Q3 earnings for both positions.'
+    ).substring(0, summaryLength);
   }),
-}));
-
-vi.mock('@ai-sdk/openai', () => ({
-  createOpenAI: vi.fn().mockReturnValue(() => 'mock-model'),
 }));
 
 // ── Token estimation ─────────────────────────────────────────────────────────
@@ -142,7 +138,14 @@ describe('Chat compaction — token reduction benchmark', () => {
             },
           },
         },
-        { provide: aiConfig.KEY, useValue: { openrouterApiKey: 'test', model: 'test' } },
+        {
+          provide: aiConfig.KEY,
+          useValue: {
+            openrouterApiKey: 'test',
+            openrouterBaseUrl: 'https://openrouter.example/api/v1',
+            model: 'test',
+          },
+        },
       ],
     }).compile();
 

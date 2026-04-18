@@ -1,14 +1,16 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
-import { streamText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import {
+  createOpenRouterModel,
+  streamAgentTextFromMessages,
+} from '@finsentinel/ai-runtime';
 import { aiConfig } from '../config/ai.config';
 import type { OkxApiClient } from './okx-api.client';
 
 /**
  * AI-powered analysis for OKX crypto derivatives.
  *
- * Uses Vercel AI SDK `streamText` to generate streaming analysis of
+ * Uses the shared AI runtime to generate streaming analysis of
  * perpetual swap instruments, including funding rate context.
  *
  * Produces SSE events in the FinSentinel format (same pattern as AgentService).
@@ -22,11 +24,10 @@ export class OkxAnalysisService {
   constructor(
     @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
   ) {
-    const openrouter = createOpenAI({
-      baseURL: 'https://openrouter.ai/api/v1',
-      apiKey: this.aiCfg.openrouterApiKey,
+    this.model = createOpenRouterModel({
+      modelId: this.aiCfg.model,
+      baseUrl: this.aiCfg.openrouterBaseUrl,
     });
-    this.model = openrouter(this.aiCfg.model);
   }
 
   /**
@@ -84,17 +85,16 @@ export class OkxAnalysisService {
       ? `Analyze the current state of ${instId}:\n${marketContext}`
       : `Provide a general analysis framework for ${instId}. No live data is currently available.`;
 
-    const result = streamText({
+    const textStream = streamAgentTextFromMessages({
       model: this.model,
-      system: systemPrompt,
+      systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
-      onError: ({ error }) => {
-        this.logger.error('streamText error in OKX analysis', error);
-      },
+      tools: {},
+      maxTurns: 1,
     });
 
     // 3. Transform to FinSentinel SSE format
-    return this.toFinSentinelSSE(result.textStream, sessionId);
+    return this.toFinSentinelSSE(textStream, sessionId);
   }
 
   // ── Internal ──────────────────────────────────────────────────────────────

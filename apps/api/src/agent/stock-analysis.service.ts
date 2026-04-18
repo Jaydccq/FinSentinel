@@ -1,7 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
-import { streamText, stepCountIs } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import {
+  createOpenRouterModel,
+  streamAgentTextFromMessages,
+} from '@finsentinel/ai-runtime';
 import { ToolRegistry } from './tool-registry';
 import { aiConfig } from '../config/ai.config';
 
@@ -42,31 +44,27 @@ export class StockAnalysisService {
   ): Promise<ReadableStream<Uint8Array>> {
     const tools = this.toolRegistry.buildStockAnalysisTools();
 
-    const result = streamText({
+    const textStream = streamAgentTextFromMessages({
       model: this.getModel(),
-      system: STOCK_ANALYSIS_SYSTEM_PROMPT,
+      systemPrompt: STOCK_ANALYSIS_SYSTEM_PROMPT,
       messages: messages.map((m) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
       tools,
-      stopWhen: stepCountIs(10),
-      onError: ({ error }) => {
-        this.logger.error('Stock analysis streamText error', error);
-      },
+      maxTurns: 10,
     });
 
-    return this.toFinSentinelSSE(result.textStream, sessionId);
+    return this.toFinSentinelSSE(textStream, sessionId);
   }
 
   // ── Internal ──────────────────────────────────────────────────────────────
 
   private getModel() {
-    const openrouter = createOpenAI({
-      baseURL: 'https://openrouter.ai/api/v1',
-      apiKey: this.aiCfg.openrouterApiKey,
+    return createOpenRouterModel({
+      modelId: this.aiCfg.model,
+      baseUrl: this.aiCfg.openrouterBaseUrl,
     });
-    return openrouter(this.aiCfg.model);
   }
 
   private toFinSentinelSSE(

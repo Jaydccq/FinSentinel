@@ -2,6 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RoleExecutorService } from '../teams/role-executor.service';
 import { ROLE_TOOL_SCOPE } from '../contracts/role-tool-scope';
 
+vi.mock('@finsentinel/ai-runtime', () => ({
+  createOpenRouterModel: vi.fn(() => 'mock-model'),
+  generateAgentText: vi.fn().mockResolvedValue(
+    '{"summary":"s","thesis":"t","risks":[],"openQuestions":[],"citations":[],"confidence":0.7}',
+  ),
+}));
+
 describe('RoleExecutorService.run', () => {
   let mockStream: ReturnType<typeof vi.fn>;
   let toolRegistry: { buildTools: ReturnType<typeof vi.fn> };

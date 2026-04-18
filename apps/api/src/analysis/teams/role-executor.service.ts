@@ -1,7 +1,7 @@
 import { Injectable, Inject, Optional } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
-import { generateText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
+import type { FinToolSet } from '@finsentinel/ai-runtime';
 import {
   stageStructuredOutputSchema,
   type StageStructuredOutput,
@@ -79,7 +79,7 @@ export interface LlmRunner {
     model: unknown;
     system: string;
     prompt: string;
-    tools: Record<string, unknown>;
+    tools: FinToolSet;
     roleKey?: RoleKey;
   }): Promise<{ text: string }>;
 }
@@ -98,11 +98,10 @@ export class RoleExecutorService {
     aiCfg?: ConfigType<typeof aiConfig>,
   ) {
     if (aiCfg) {
-      const openrouter = createOpenAI({
-        baseURL: 'https://openrouter.ai/api/v1',
-        apiKey: aiCfg.openrouterApiKey,
+      this.model = createOpenRouterModel({
+        modelId: aiCfg.model,
+        baseUrl: aiCfg.openrouterBaseUrl,
       });
-      this.model = openrouter(aiCfg.model);
     } else {
       this.model = undefined;
     }
@@ -116,7 +115,7 @@ export class RoleExecutorService {
   }): Promise<RoleOutput> {
     const scope = ROLE_TOOL_SCOPE[args.roleKey];
     const fullTools = this.getAllTools(args.userId);
-    const scopedTools: Record<string, unknown> = {};
+    const scopedTools: FinToolSet = {};
     for (const name of scope) {
       if (fullTools[name]) scopedTools[name] = fullTools[name];
     }
@@ -135,9 +134,9 @@ export class RoleExecutorService {
     return { roleKey: args.roleKey, structured, rawMarkdown: text };
   }
 
-  private getAllTools(userId?: string): Record<string, unknown> {
+  private getAllTools(userId?: string): FinToolSet {
     const registry = this.toolRegistry as unknown as {
-      buildTools(userId?: string): Record<string, unknown>;
+      buildTools(userId?: string): FinToolSet;
     };
     if (typeof registry.buildTools !== 'function') return {};
     return registry.buildTools(userId) ?? {};
@@ -174,13 +173,15 @@ export class RoleExecutorService {
 
   private defaultLlm(): LlmRunner {
     return {
-      generate: async (args) =>
-        generateText({
+      generate: async (args) => ({
+        text: await generateAgentText({
           model: args.model as never,
-          system: args.system,
+          systemPrompt: args.system,
           prompt: args.prompt,
-          tools: args.tools as never,
+          tools: args.tools,
+          maxTurns: 10,
         }),
+      }),
     };
   }
 }
