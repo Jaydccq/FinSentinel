@@ -11,9 +11,12 @@ import type { DrizzleDB } from '@finsentinel/db';
 import {
   AgentEventAggregateType,
   AgentEventType,
+  type AnalysisStageKey,
   type AnalysisRunSourceMode,
   type AnalysisRunStatus,
   type CreateRunRequest,
+  type DecisionObject,
+  type SharedContext,
 } from '@finsentinel/shared';
 import { AgentEventService } from '../events/agent-event.service';
 
@@ -147,6 +150,33 @@ export class AnalysisRunService {
     );
   }
 
+  async retryStage(
+    userId: string,
+    runId: string,
+    stageKey: AnalysisStageKey,
+  ): Promise<void> {
+    const row = await this.requireRun(userId, runId);
+    if (!['FAILED', 'PAUSED', 'WAITING_APPROVAL'].includes(row.status)) {
+      throw new BadRequestException(`Cannot retry run in status ${row.status}`);
+    }
+    await this.db
+      .update(analysisRuns)
+      .set({
+        status: 'RUNNING',
+        currentStageKey: stageKey,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(analysisRuns.id, runId), eq(analysisRuns.userId, userId)));
+    await this.events.append(
+      userId,
+      AgentEventAggregateType.ANALYSIS_RUN,
+      runId,
+      AgentEventType.RUN_RESUMED,
+      { retry: true, stageKey },
+      null,
+    );
+  }
+
   async transitionToWaitingApproval(userId: string, runId: string): Promise<void> {
     await this.transitionStatus(userId, runId, 'WAITING_APPROVAL');
     await this.events.append(
@@ -180,6 +210,34 @@ export class AnalysisRunService {
       userId,
       AgentEventAggregateType.ANALYSIS_RUN,
       runId,
+      AgentEventType.RUN_COMPLETED,
+      {},
+      null,
+    );
+  }
+
+  async completeWithOutputs(args: {
+    userId: string;
+    runId: string;
+    sharedContext: SharedContext | null;
+    decisionObject: DecisionObject | null;
+    finalReportMarkdown: string;
+  }): Promise<void> {
+    await this.db
+      .update(analysisRuns)
+      .set({
+        status: 'COMPLETED',
+        sharedContextJson: args.sharedContext,
+        decisionObjectJson: args.decisionObject,
+        finalReportMarkdown: args.finalReportMarkdown,
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(analysisRuns.id, args.runId), eq(analysisRuns.userId, args.userId)));
+    await this.events.append(
+      args.userId,
+      AgentEventAggregateType.ANALYSIS_RUN,
+      args.runId,
       AgentEventType.RUN_COMPLETED,
       {},
       null,

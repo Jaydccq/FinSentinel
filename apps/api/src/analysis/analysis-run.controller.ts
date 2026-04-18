@@ -17,6 +17,7 @@ import type { CreateRunRequest } from '@finsentinel/shared';
 import { AnalysisRunService } from './analysis-run.service';
 import { AnalysisRunProducer } from '../queue/analysis-run.producer';
 import { ContextJournalService } from './context-journal.service';
+import { RuntimeControlService } from './runtime-control.service';
 
 @Controller('analysis/runs')
 @UseGuards(JwtGuard)
@@ -25,6 +26,7 @@ export class AnalysisRunController {
     private readonly runs: AnalysisRunService,
     private readonly producer: AnalysisRunProducer,
     private readonly contextJournal: ContextJournalService,
+    private readonly runtimeControl: RuntimeControlService,
   ) {}
 
   @Post()
@@ -85,7 +87,7 @@ export class AnalysisRunController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    await this.runs.pause(user.userId, id);
+    await this.runtimeControl.pause(user.userId, id);
     return { ok: true };
   }
 
@@ -94,7 +96,7 @@ export class AnalysisRunController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    await this.runs.resume(user.userId, id);
+    await this.runtimeControl.resume(user.userId, id);
     return { ok: true };
   }
 
@@ -103,7 +105,22 @@ export class AnalysisRunController {
     @Param('id', new ParseUUIDPipe()) id: string,
     @CurrentUser() user: CurrentUserPayload,
   ) {
-    await this.runs.cancel(user.userId, id);
+    await this.runtimeControl.cancel(user.userId, id);
+    return { ok: true };
+  }
+
+  @Post(':id/stages/:stageKey/retry')
+  async retryStage(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('stageKey') stageKey: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
+    const parsedStageKey = analysisStageKeySchema.safeParse(stageKey);
+    if (!parsedStageKey.success) {
+      throw new BadRequestException(`Invalid stage key: ${stageKey}`);
+    }
+
+    await this.runtimeControl.retryStage(user.userId, id, parsedStageKey.data);
     return { ok: true };
   }
 

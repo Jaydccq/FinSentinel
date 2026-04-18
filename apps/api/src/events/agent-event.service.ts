@@ -1,5 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import { Observable, Subject, filter } from 'rxjs';
 import {
   agentEvents,
   eq,
@@ -15,6 +16,18 @@ import type {
   AgentEventType,
 } from '@finsentinel/shared';
 
+interface AgentEventRow {
+  id: string;
+  seqNo: number | null;
+  userId: string;
+  aggregateType: AgentEventAggregateType;
+  aggregateId: string | null;
+  eventType: AgentEventType;
+  payloadJson: Record<string, unknown>;
+  idempotencyKey: string | null;
+  createdAt: Date;
+}
+
 /**
  * Append-only event log with idempotency keys, sequence numbers, and typed events.
  *
@@ -23,6 +36,8 @@ import type {
  */
 @Injectable()
 export class AgentEventService {
+  private readonly liveEvents = new Subject<AgentEventRow>();
+
   constructor(
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
   ) {}
@@ -79,7 +94,9 @@ export class AgentEventService {
       })
       .returning();
 
-    return created;
+    const row = created as AgentEventRow;
+    this.liveEvents.next(row);
+    return row;
   }
 
   /**
@@ -116,6 +133,43 @@ export class AgentEventService {
         ),
       )
       .orderBy(asc(agentEvents.seqNo));
+  }
+
+  async listByAggregateAfter(
+    userId: string,
+    aggregateType: AgentEventAggregateType,
+    aggregateId: string,
+    afterSeqNo: number | null,
+  ) {
+    const filters = [
+      eq(agentEvents.userId, userId),
+      eq(agentEvents.aggregateType, aggregateType),
+      eq(agentEvents.aggregateId, aggregateId),
+    ];
+    if (afterSeqNo != null) {
+      filters.push(gt(agentEvents.seqNo, afterSeqNo));
+    }
+
+    return this.db
+      .select()
+      .from(agentEvents)
+      .where(and(...filters))
+      .orderBy(asc(agentEvents.seqNo));
+  }
+
+  watchAggregate(
+    userId: string,
+    aggregateType: AgentEventAggregateType,
+    aggregateId: string,
+  ): Observable<AgentEventRow> {
+    return this.liveEvents.pipe(
+      filter(
+        (event) =>
+          event.userId === userId &&
+          event.aggregateType === aggregateType &&
+          event.aggregateId === aggregateId,
+      ),
+    );
   }
 
   /**

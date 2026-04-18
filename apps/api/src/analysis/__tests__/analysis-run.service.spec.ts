@@ -45,6 +45,31 @@ describe('AnalysisRunService', () => {
     );
   });
 
+  it('completeWithOutputs persists materialized outputs and emits RUN_COMPLETED', async () => {
+    await svc.completeWithOutputs({
+      userId: 'u1',
+      runId: 'run-1',
+      sharedContext: null,
+      decisionObject: null,
+      finalReportMarkdown: '# Final',
+    });
+
+    expect(db.__lastUpdate.set).toMatchObject({
+      status: 'COMPLETED',
+      sharedContextJson: null,
+      decisionObjectJson: null,
+      finalReportMarkdown: '# Final',
+    });
+    expect(events.append).toHaveBeenCalledWith(
+      'u1',
+      AgentEventAggregateType.ANALYSIS_RUN,
+      'run-1',
+      AgentEventType.RUN_COMPLETED,
+      {},
+      null,
+    );
+  });
+
   it('pause rejects when status is not RUNNING', async () => {
     db.__selectReturns([{ id: 'run-1', userId: 'u1', status: 'COMPLETED' }]);
     await expect(svc.pause('u1', 'run-1')).rejects.toThrow(/cannot pause/i);
@@ -61,6 +86,31 @@ describe('AnalysisRunService', () => {
       'run-1',
       AgentEventType.RUN_PAUSED,
       expect.any(Object),
+      null,
+    );
+  });
+
+  it('retryStage rejects active runs', async () => {
+    db.__selectReturns([{ id: 'run-1', userId: 'u1', status: 'RUNNING' }]);
+    await expect(svc.retryStage('u1', 'run-1', 'RISK')).rejects.toThrow(/cannot retry/i);
+  });
+
+  it('retryStage transitions FAILED -> RUNNING at the requested stage', async () => {
+    db.__selectReturns([{ id: 'run-1', userId: 'u1', status: 'FAILED' }]);
+    db.__updateReturns([{ id: 'run-1', status: 'RUNNING', currentStageKey: 'RISK' }]);
+
+    await svc.retryStage('u1', 'run-1', 'RISK');
+
+    expect(db.__lastUpdate.set).toMatchObject({
+      status: 'RUNNING',
+      currentStageKey: 'RISK',
+    });
+    expect(events.append).toHaveBeenCalledWith(
+      'u1',
+      AgentEventAggregateType.ANALYSIS_RUN,
+      'run-1',
+      AgentEventType.RUN_RESUMED,
+      { retry: true, stageKey: 'RISK' },
       null,
     );
   });

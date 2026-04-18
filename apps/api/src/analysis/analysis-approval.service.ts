@@ -3,6 +3,7 @@ import {
   Inject,
   BadRequestException,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
@@ -17,6 +18,8 @@ import {
 import { AgentEventService } from '../events/agent-event.service';
 import { AnalysisRunService } from './analysis-run.service';
 import { AnalysisCheckpointService } from './analysis-checkpoint.service';
+import { ContextJournalService } from './context-journal.service';
+import { RunReportAssembler } from './run-report-assembler.service';
 import { OrderDraftMapper } from '../trading/order-draft-mapper.service';
 import { UnifiedTradingService } from '../trading/unified-trading.service';
 
@@ -42,6 +45,8 @@ export class AnalysisApprovalService {
     private readonly trading: UnifiedTradingService,
     @Inject(APPROVAL_AUTO_DISPATCH_FLAG_TOKEN)
     private readonly autoDispatchFlag: { enabled: boolean },
+    @Optional() private readonly contextJournal?: ContextJournalService,
+    @Optional() private readonly reportAssembler?: RunReportAssembler,
   ) {}
 
   async request(args: {
@@ -120,7 +125,11 @@ export class AnalysisApprovalService {
         runId: existing.runId,
         payload: { orderDrafts: payload.orderDrafts, stageRequests: mappedRequests },
       });
-      await this.runs.markCompleted(args.userId, existing.runId);
+      await this.completeApprovedRun({
+        userId: args.userId,
+        runId: existing.runId,
+        executionPayload: { orderDrafts: payload.orderDrafts, stageRequests: mappedRequests },
+      });
 
       if (this.autoDispatchFlag.enabled) {
         try {
@@ -159,5 +168,35 @@ export class AnalysisApprovalService {
       .select()
       .from(analysisApprovals)
       .where(eq(analysisApprovals.runId, runId))) as ApprovalRow[];
+  }
+
+  private async completeApprovedRun(args: {
+    userId: string;
+    runId: string;
+    executionPayload: Record<string, unknown>;
+  }): Promise<void> {
+    if (!this.contextJournal || !this.reportAssembler) {
+      await this.runs.markCompleted(args.userId, args.runId);
+      return;
+    }
+
+    const sharedContext = await this.contextJournal.getRunContext(args.userId, args.runId);
+    const stages = await this.runs.listStagesForRun(args.runId);
+    const assembled = this.reportAssembler.build({
+      sharedContext,
+      stages: stages.map((stage) => ({
+        stageKey: stage.stageKey,
+        humanReportMarkdown: stage.humanReportMarkdown,
+        structuredOutput: stage.structuredOutputJson,
+      })),
+      executionPayload: args.executionPayload,
+    });
+    await this.runs.completeWithOutputs({
+      userId: args.userId,
+      runId: args.runId,
+      sharedContext,
+      decisionObject: assembled.decisionObject,
+      finalReportMarkdown: assembled.finalReportMarkdown,
+    });
   }
 }

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { AgentEventService } from '../agent-event.service';
 import { AgentEventAggregateType, AgentEventType } from '@finsentinel/shared';
+import { firstValueFrom, take } from 'rxjs';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const TEST_USER_ID = '11111111-1111-1111-1111-111111111111';
@@ -208,6 +209,70 @@ describe('AgentEventService', () => {
       expect(mockDb._selectChain.from).toHaveBeenCalled();
       expect(mockDb._selectChain.where).toHaveBeenCalled();
       expect(mockDb._selectChain.orderBy).toHaveBeenCalled();
+    });
+  });
+
+  describe('listByAggregateAfter', () => {
+    it('returns aggregate events after the cursor in ascending order', async () => {
+      const events = [
+        { id: 'e6', seqNo: 6, eventType: AgentEventType.RUN_STARTED },
+        { id: 'e7', seqNo: 7, eventType: AgentEventType.RUN_COMPLETED },
+      ];
+      mockDb._selectChain.orderBy.mockReturnValueOnce(events);
+
+      const result = await service.listByAggregateAfter(
+        TEST_USER_ID,
+        AgentEventAggregateType.ANALYSIS_RUN,
+        TEST_AGGREGATE_ID,
+        5,
+      );
+
+      expect(result).toEqual(events);
+      expect(mockDb._selectChain.where).toHaveBeenCalled();
+      expect(mockDb._selectChain.orderBy).toHaveBeenCalled();
+    });
+  });
+
+  describe('watchAggregate', () => {
+    it('emits newly appended matching aggregate events', async () => {
+      const nextEvent = firstValueFrom(
+        service
+          .watchAggregate(
+            TEST_USER_ID,
+            AgentEventAggregateType.ANALYSIS_RUN,
+            TEST_AGGREGATE_ID,
+          )
+          .pipe(take(1)),
+      );
+
+      mockDb._insertChain.returning.mockResolvedValueOnce([
+        {
+          id: TEST_EVENT_ID,
+          seqNo: 9,
+          userId: TEST_USER_ID,
+          aggregateType: AgentEventAggregateType.ANALYSIS_RUN,
+          aggregateId: TEST_AGGREGATE_ID,
+          eventType: AgentEventType.RUN_STARTED,
+          payloadJson: {},
+          idempotencyKey: null,
+          createdAt: new Date('2026-03-30T00:00:00Z'),
+        },
+      ]);
+
+      await service.append(
+        TEST_USER_ID,
+        AgentEventAggregateType.ANALYSIS_RUN,
+        TEST_AGGREGATE_ID,
+        AgentEventType.RUN_STARTED,
+        {},
+        null,
+      );
+
+      await expect(nextEvent).resolves.toMatchObject({
+        seqNo: 9,
+        aggregateType: AgentEventAggregateType.ANALYSIS_RUN,
+        aggregateId: TEST_AGGREGATE_ID,
+      });
     });
   });
 

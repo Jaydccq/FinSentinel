@@ -42,6 +42,9 @@ OpenAlice 的关键差距集中在运行时真相链：上下文谱系、run tim
 
 - 2026-04-17: 初版计划从 OpenAlice gap PRD 拆出 runtime foundation workstream。
 - 2026-04-17: 按现有代码修正 Drizzle 输出路径、`payloadJson` 映射、`ContextFabricService` 参数、`ChatCompactionService` optional journal 注入和 `AgentEventService` stream fan-out 位置。
+- 2026-04-18: Task 1 and Task 2 completed via context journal contracts, DB schema, journal service, chat compaction writes, run context APIs, and team context wiring.
+- 2026-04-18: Task 3 completed via queue-aware `RuntimeControlService`, run stream SSE, aggregate event replay/fan-out, retry-stage endpoint, and orchestrator pause/cancel gates.
+- 2026-04-18: Task 4 completed via deterministic `RunReportAssembler`, `completeWithOutputs`, approval completion materialization, and optional orchestrator terminal materialization.
 
 ## Key Decisions
 
@@ -57,7 +60,7 @@ OpenAlice 的关键差距集中在运行时真相链：上下文谱系、run tim
 
 ## Final Outcome
 
-本计划处于待执行状态；本轮只修正计划和版本化规则，未修改 runtime 业务代码。
+Task 1 through Task 4 have been implemented on the runtime foundation workstream. Remaining follow-up work should move to the operator console, frontend timeline/replay UI, cross-instance stream delivery, and richer final report generation.
 
 ## Planned File Map
 
