@@ -20,17 +20,23 @@ export interface RetrievalLoader {
   ): Promise<Array<{ id: string; snippet: string }>>;
 }
 
+export interface JournalContextLoader {
+  getRunContext(userId: string, runId: string): Promise<SharedContext>;
+}
+
 interface AssembleArgs {
   userId: string;
   sessionId?: string;
+  runId?: string;
   prompt: string;
   portfolioId?: string;
 }
 
 /**
- * Why 4 interfaces as constructor args: Plan A keeps the concrete wiring (adapter
- * factories to UserInvestmentProfileService / AgentBrainService / ChatCompactionService /
- * RagRetrievalService) in AnalysisModule so test doubles stay trivial.
+ * Why adapter interfaces as constructor args: Plan A keeps the concrete wiring
+ * (adapter factories to UserInvestmentProfileService / AgentBrainService /
+ * ChatCompactionService / RagRetrievalService / ContextJournalService) in
+ * AnalysisModule so test doubles stay trivial.
  */
 @Injectable()
 export class ContextFabricService {
@@ -41,9 +47,14 @@ export class ContextFabricService {
     private readonly midTerm: MidTermLoader,
     private readonly session: SessionLoader,
     private readonly retrieval: RetrievalLoader,
+    private readonly journal?: JournalContextLoader,
   ) {}
 
   async assemble(args: AssembleArgs): Promise<SharedContext> {
+    if (args.runId && this.journal) {
+      return this.journal.getRunContext(args.userId, args.runId);
+    }
+
     const [longSummary, midSummary, sessionSummary, retrieved] = await Promise.all([
       this.safeLoadLong(args.userId),
       this.safeLoadMid(args.userId, args.portfolioId),

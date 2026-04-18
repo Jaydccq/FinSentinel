@@ -48,4 +48,35 @@ describe('ContextFabricService.assemble', () => {
     expect(text).toMatch(/## Short-term session/);
     expect(text).toMatch(/## Retrieved evidence/);
   });
+
+  it('uses journal materialization when a run id is provided', async () => {
+    const journalContext = {
+      longTermPreferenceContext: { summary: '', sourceIds: [] },
+      midTermStrategyContext: { summary: '', sourceIds: [] },
+      shortTermSessionContext: { summary: 'journal session', sourceIds: ['ctx-1'] },
+      retrievalContext: { summary: 'journal retrieval', sourceIds: ['rag-1'] },
+    };
+    const journal = {
+      getRunContext: vi.fn().mockResolvedValue(journalContext),
+    };
+    const profile = { load: vi.fn().mockResolvedValue('adapter long') };
+    const svc = new ContextFabricService(
+      profile as never,
+      { load: vi.fn().mockResolvedValue('adapter mid') } as never,
+      { load: vi.fn().mockResolvedValue({ summary: 'adapter session', count: 1 }) } as never,
+      { retrieve: vi.fn().mockResolvedValue([]) } as never,
+      journal as never,
+    );
+
+    const ctx = await svc.assemble({
+      userId: 'u1',
+      runId: 'r1',
+      sessionId: 's1',
+      prompt: 'x',
+    });
+
+    expect(ctx).toEqual(journalContext);
+    expect(journal.getRunContext).toHaveBeenCalledWith('u1', 'r1');
+    expect(profile.load).not.toHaveBeenCalled();
+  });
 });
