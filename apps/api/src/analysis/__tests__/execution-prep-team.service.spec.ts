@@ -136,4 +136,11 @@ describe('ExecutionPrepTeamService.execute', () => {
     );
     await expect(svc.execute({ runId: 'r1', userId: 'u1' })).rejects.toThrow(/orderDrafts/);
   });
+
+  it('passes runId into context fabric assembly', async () => {
+    await svc.execute({ runId: 'r1', userId: 'u1' });
+    expect(fabric.assemble).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u1', runId: 'r1', prompt: 'x' }),
+    );
+  });
 });

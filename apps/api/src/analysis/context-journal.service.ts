@@ -240,17 +240,25 @@ export class ContextJournalService {
       return this.emptyLayer();
     }
 
-    const summaries = rows
-      .map((row) => this.firstString(row.payloadJson, summaryFields))
+    const rowSummaries = rows.map((row) => ({
+      row,
+      summary: this.firstString(row.payloadJson, summaryFields),
+    }));
+    const summaries = rowSummaries
+      .map(({ summary }) => summary)
       .filter((summary): summary is string => summary.length > 0);
     const summary = summaries.join('\n---\n');
     if (!summary) {
       return this.emptyLayer();
     }
 
+    const sourceIds = rowSummaries
+      .filter(({ summary }) => summary.length > 0)
+      .map(({ row }) => row.id);
+
     return {
       summary,
-      sourceIds: rows.map((row) => row.id),
+      sourceIds,
       updatedAt: this.latestCreatedAt(rows),
     };
   }

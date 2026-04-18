@@ -67,4 +67,11 @@ describe('IntelligenceTeamService.execute', () => {
     const firstCall = roleExec.run.mock.calls[0]?.[0];
     expect(firstCall.userId).toBe('u1');
   });
+
+  it('passes runId into context fabric assembly', async () => {
+    await svc.execute({ runId: 'r1', userId: 'u1' });
+    expect(fabric.assemble).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u1', runId: 'r1', prompt: 'analyze AAPL' }),
+    );
+  });
 });

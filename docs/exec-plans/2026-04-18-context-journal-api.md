@@ -48,6 +48,7 @@ Add a minimal `ContextJournalService`, wire chat compaction writes into it, allo
 - 2026-04-18: Created plan and inspected existing analysis/chat services and tests.
 - 2026-04-18: Implemented `ContextJournalService`, wired it into `AnalysisModule`, added optional chat compaction writes, added journal-backed analysis context assembly, and exposed run context / stage input read endpoints on `AnalysisRunController`.
 - 2026-04-18: Hardened journal writes with explicit UUID inserts, made stage-input lineage authoritative in `getRunContext`, added journal fallback behavior in `ContextFabricService`, and validated stage keys / snapshot reads on the run controller.
+- 2026-04-18: Updated the four analysis team services to pass `runId` into `ContextFabricService.assemble(...)` so journal-backed run context is reachable from the real runtime path, and added coverage for the team call shape plus source-id filtering in `ContextJournalService`.
 - 2026-04-18: Verified the Task 2 Vitest slice with `pnpm --filter @finsentinel/api exec vitest run src/analysis/__tests__/context-journal.service.spec.ts src/analysis/__tests__/analysis-run.controller.spec.ts src/chat/__tests__/chat-compaction.service.spec.ts src/analysis/__tests__/context-fabric.service.spec.ts` and `pnpm --filter @finsentinel/api typecheck`.
 
 ## Key Decisions

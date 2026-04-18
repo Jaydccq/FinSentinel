@@ -48,7 +48,11 @@ export class ExecutionPrepTeamService implements TeamService {
       }
     }
 
-    const ctx = await this.fabric.assemble({ userId: args.userId, prompt: input.prompt });
+    const ctx = await this.fabric.assemble({
+      userId: args.userId,
+      runId: args.runId,
+      prompt: input.prompt,
+    });
     const contextText = this.fabric.toPromptReady(ctx);
 
     const planner = await this.roleExecutor.run({
