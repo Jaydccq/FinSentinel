@@ -134,6 +134,31 @@ describe('ChatCompactionService', () => {
     });
   });
 
+  it('returns the augmented prompt when journal writes fail after storing the summary', async () => {
+    mockDb._selectChain.where.mockResolvedValueOnce([{ count: 30 }]);
+
+    const oldMessages = Array.from({ length: 20 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `Message ${i}`,
+    }));
+    mockDb._selectChain.limit.mockResolvedValueOnce(oldMessages);
+    contextJournal.append.mockRejectedValueOnce(new Error('boundary write failed'));
+
+    const result = await service.augmentPrompt(USER_ID, SESSION_ID, 'What is AAPL?');
+
+    expect(result).toContain('[Previous context summary:');
+    expect(result).toContain('What is AAPL?');
+    expect(mockDb.insert).toHaveBeenCalled();
+    expect(contextJournal.append).toHaveBeenCalledWith({
+      userId: USER_ID,
+      sessionId: SESSION_ID,
+      entryType: 'COMPACTION_BOUNDARY',
+      sourceType: 'CHAT',
+      sourceRef: `chat_messages/${SESSION_ID}`,
+      payload: { threshold: 24, recentWindow: 10, compactedCount: 20 },
+    });
+  });
+
   // ── augmentPrompt: disabled ─────────────────────────────────────────────
 
   it('returns original message when compaction is disabled', async () => {

@@ -88,27 +88,35 @@ export class ChatCompactionService {
     // 4. Store summary in chatSessionMemories
     await this.storeSummary(userId, sessionId, summary, oldMessages.length);
 
-    await this.contextJournal?.append({
-      userId,
-      sessionId,
-      entryType: 'COMPACTION_BOUNDARY',
-      sourceType: 'CHAT',
-      sourceRef: `chat_messages/${sessionId}`,
-      payload: {
-        threshold: this.threshold,
-        recentWindow: this.recentWindow,
-        compactedCount: oldMessages.length,
-      },
-    });
+    try {
+      await this.contextJournal?.append({
+        userId,
+        sessionId,
+        entryType: 'COMPACTION_BOUNDARY',
+        sourceType: 'CHAT',
+        sourceRef: `chat_messages/${sessionId}`,
+        payload: {
+          threshold: this.threshold,
+          recentWindow: this.recentWindow,
+          compactedCount: oldMessages.length,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`context journal compaction boundary append failed: ${error}`);
+    }
 
-    await this.contextJournal?.appendCompactionSummary({
-      userId,
-      sessionId,
-      payload: {
-        summaryText: summary,
-        compactedMessageCount: oldMessages.length,
-      },
-    });
+    try {
+      await this.contextJournal?.appendCompactionSummary({
+        userId,
+        sessionId,
+        payload: {
+          summaryText: summary,
+          compactedMessageCount: oldMessages.length,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`context journal compaction summary append failed: ${error}`);
+    }
 
     this.logger.log(
       `Compacted ${oldMessages.length} messages into summary (${summary.length} chars) ` +

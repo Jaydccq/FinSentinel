@@ -52,6 +52,8 @@ Add a minimal `ContextJournalService`, wire chat compaction writes into it, allo
 - 2026-04-18: Verified the Task 2 Vitest slice with `pnpm --filter @finsentinel/api exec vitest run src/analysis/__tests__/context-journal.service.spec.ts src/analysis/__tests__/analysis-run.controller.spec.ts src/chat/__tests__/chat-compaction.service.spec.ts src/analysis/__tests__/context-fabric.service.spec.ts` and `pnpm --filter @finsentinel/api typecheck`.
 - 2026-04-18: Clarified the journal merge rule for ContextFabricService: adapter context stays the baseline, and journal layers override only when their own layer is useful.
 - 2026-04-18: Fixed the remaining Task 2 code-quality issues by merging journal layers over adapter context instead of replacing the whole fabric result, and by constraining journal layer `updatedAt` to contributing rows only.
+- 2026-04-18: Recorded the follow-up that chat compaction journal writes are best-effort; failures in `ContextJournalService.append(...)` or `appendCompactionSummary(...)` must be logged and must not break `augmentPrompt()`.
+- 2026-04-18: Added coverage for best-effort compaction journaling and for whitespace-only journal text being treated as empty while building context layers.
 
 ## Key Decisions
 
@@ -59,6 +61,7 @@ Add a minimal `ContextJournalService`, wire chat compaction writes into it, allo
 - Preserve the adapter-based context fabric path unless a `runId` is present and the journal loader is available.
 - When journal context is useful, merge it layer-by-layer over adapter context instead of replacing the whole shared context.
 - Keep chat compaction journal writes optional so isolated unit tests and partial module construction continue to work.
+- Treat chat compaction journal writes as best-effort after primary summary storage; journal failures should warn and return the augmented prompt unchanged.
 - Compaction rows are only discoverable through run-context assembly when stage snapshots keep their entry IDs. Task 3+ must preserve those references; otherwise journal-backed run context intentionally stays narrow instead of falling back to unrelated rows.
 
 ## Risks And Blockers

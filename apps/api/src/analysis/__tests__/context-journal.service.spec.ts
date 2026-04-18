@@ -185,6 +185,55 @@ describe('ContextJournalService', () => {
     expect(context.shortTermSessionContext.updatedAt).toBe('2026-04-18T12:01:00.000Z');
   });
 
+  it('ignores whitespace-only summary text when building journal layers', async () => {
+    const rows = [
+      {
+        id: 'ctx-whitespace',
+        entryType: 'COMPACTION_SUMMARY',
+        payloadJson: { summaryText: '   ' },
+        sourceRef: 'chat_session_memories/session-1',
+        createdAt: new Date('2026-04-18T12:01:30.000Z'),
+      },
+      {
+        id: 'ctx-text',
+        entryType: 'COMPACTION_SUMMARY',
+        payloadJson: { summaryText: 'prior chat summary' },
+        sourceRef: 'chat_session_memories/session-1',
+        createdAt: new Date('2026-04-18T12:01:00.000Z'),
+      },
+      {
+        id: 'stage-1',
+        entryType: 'STAGE_INPUT',
+        payloadJson: {
+          contextEntryIds: ['ctx-whitespace', 'ctx-text'],
+          priorStageKeys: ['INTELLIGENCE'],
+          evidenceEntryIds: [],
+          promptHash: 'hash-1',
+          tokenBudget: 12000,
+          truncationApplied: false,
+        },
+        sourceRef: 'analysis_runs/22222222-2222-2222-2222-222222222222',
+        createdAt: new Date('2026-04-18T12:02:00.000Z'),
+      },
+    ];
+    const selectChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue(rows),
+    };
+    const db = {
+      insert: vi.fn(),
+      select: vi.fn().mockReturnValue(selectChain),
+    } as never;
+    const service = new ContextJournalService(db);
+
+    const context = await service.getRunContext(USER_ID, RUN_ID);
+
+    expect(context.shortTermSessionContext.summary).toBe('prior chat summary');
+    expect(context.shortTermSessionContext.sourceIds).toEqual(['ctx-text']);
+    expect(context.shortTermSessionContext.updatedAt).toBe('2026-04-18T12:01:00.000Z');
+  });
+
   it('does not fall back to unrelated rows when referenced rows are missing', async () => {
     const rows = [
       {

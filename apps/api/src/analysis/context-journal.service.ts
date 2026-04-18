@@ -246,13 +246,15 @@ export class ContextJournalService {
     }));
     const summaries = rowSummaries
       .map(({ summary }) => summary)
-      .filter((summary): summary is string => summary.length > 0);
+      .filter((summary): summary is string => summary.trim().length > 0);
     const summary = summaries.join('\n---\n');
     if (!summary) {
       return this.emptyLayer();
     }
 
-    const contributingRows = rowSummaries.filter(({ summary }) => summary.length > 0).map(({ row }) => row);
+    const contributingRows = rowSummaries
+      .filter(({ summary }) => summary.trim().length > 0)
+      .map(({ row }) => row);
     const sourceIds = contributingRows.map((row) => row.id);
 
     return {
@@ -274,7 +276,7 @@ export class ContextJournalService {
   private firstString(payload: Record<string, unknown>, keys: string[]): string {
     for (const key of keys) {
       const value = payload[key];
-      if (typeof value === 'string' && value.length > 0) {
+      if (typeof value === 'string' && value.trim().length > 0) {
         return value;
       }
     }
