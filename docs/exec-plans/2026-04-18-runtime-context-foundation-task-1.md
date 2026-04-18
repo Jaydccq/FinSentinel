@@ -1,10 +1,10 @@
 # Runtime & Context Foundation Task 1
 
 ## Background
-This workstream is adding the shared contracts and database schema that future runtime/context features will build on. Task 1 is limited to shared schemas and DB tables for context journal entries and runtime timeline events.
+This workstream is adding the shared contracts and database schema that future runtime/context features will build on. Task 1 is limited to shared schemas for context journal entries and runtime timeline events, plus the DB table for context journal entries.
 
 ## Goal
-Add versioned, test-covered contracts for context journal entries and runtime timeline events, plus the matching Drizzle schema and exports.
+Add versioned, test-covered contracts for context journal entries and runtime timeline events, plus the matching context journal DB schema and exports.
 
 ## Scope
 - Create shared Zod schemas for context journal entries and runtime timeline events.
