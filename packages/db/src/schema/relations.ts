@@ -20,6 +20,7 @@ import { analysisRuns } from './analysis-runs';
 import { analysisStages } from './analysis-stages';
 import { analysisArtifacts } from './analysis-artifacts';
 import { analysisApprovals } from './analysis-approvals';
+import { contextJournalEntries } from './context-journal-entries';
 
 // ── users ───────────────────────────────────────────────────────────────────
 export const usersRelations = relations(users, ({ many, one }) => ({
@@ -36,6 +37,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   watchlistCategories: many(watchlistCategories),
   watchlistItems: many(watchlistItems),
   analysisRuns: many(analysisRuns),
+  contextJournalEntries: many(contextJournalEntries),
 }));
 
 // ── portfolios ──────────────────────────────────────────────────────────────
@@ -127,6 +129,7 @@ export const analysisRunsRelations = relations(analysisRuns, ({ one, many }) => 
   stages: many(analysisStages),
   artifacts: many(analysisArtifacts),
   approvals: many(analysisApprovals),
+  contextJournalEntries: many(contextJournalEntries),
 }));
 
 // ── analysis_stages ────────────────────────────────────────────────────────
@@ -160,4 +163,10 @@ export const analysisApprovalsRelations = relations(analysisApprovals, ({ one })
     fields: [analysisApprovals.resolvedByUserId],
     references: [users.id],
   }),
+}));
+
+// ── context_journal_entries ────────────────────────────────────────────────
+export const contextJournalEntriesRelations = relations(contextJournalEntries, ({ one }) => ({
+  user: one(users, { fields: [contextJournalEntries.userId], references: [users.id] }),
+  run: one(analysisRuns, { fields: [contextJournalEntries.runId], references: [analysisRuns.id] }),
 }));

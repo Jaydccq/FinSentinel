@@ -1,10 +1,11 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ConfigType } from '@nestjs/config';
 import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
 import { chatMessages, chatSessionMemories, eq, and, asc } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import { sql } from 'drizzle-orm';
+import { ContextJournalService } from '../analysis/context-journal.service';
 import { aiConfig } from '../config/ai.config';
 
 /**
@@ -34,6 +35,7 @@ export class ChatCompactionService {
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     configService: ConfigService,
     @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
+    @Optional() private readonly contextJournal?: ContextJournalService,
   ) {
     this.enabled = configService.get<boolean>('chat.compaction.enabled', true);
     this.threshold = configService.get<number>('chat.compaction.threshold', 24);
@@ -85,6 +87,36 @@ export class ChatCompactionService {
 
     // 4. Store summary in chatSessionMemories
     await this.storeSummary(userId, sessionId, summary, oldMessages.length);
+
+    try {
+      await this.contextJournal?.append({
+        userId,
+        sessionId,
+        entryType: 'COMPACTION_BOUNDARY',
+        sourceType: 'CHAT',
+        sourceRef: `chat_messages/${sessionId}`,
+        payload: {
+          threshold: this.threshold,
+          recentWindow: this.recentWindow,
+          compactedCount: oldMessages.length,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`context journal compaction boundary append failed: ${error}`);
+    }
+
+    try {
+      await this.contextJournal?.appendCompactionSummary({
+        userId,
+        sessionId,
+        payload: {
+          summaryText: summary,
+          compactedMessageCount: oldMessages.length,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`context journal compaction summary append failed: ${error}`);
+    }
 
     this.logger.log(
       `Compacted ${oldMessages.length} messages into summary (${summary.length} chars) ` +

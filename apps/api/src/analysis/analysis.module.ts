@@ -20,6 +20,7 @@ import { AnalysisApprovalService } from './analysis-approval.service';
 import { ContextComplexityService } from './context-complexity.service';
 import { PreflightPlannerService } from './preflight-planner.service';
 import { ContextFabricService } from './context-fabric.service';
+import { ContextJournalService } from './context-journal.service';
 import { RunOrchestratorService } from './run-orchestrator.service';
 import { TeamRegistry } from './team-registry';
 import { RoleExecutorService } from './teams/role-executor.service';
@@ -72,6 +73,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
       inject: [ConfigService],
     },
     ContextComplexityService,
+    ContextJournalService,
     PreflightPlannerService,
     RunOrchestratorService,
     {
@@ -81,6 +83,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
         profile: UserInvestmentProfileService,
         brain: AgentBrainService,
         rag: RagRetrievalService,
+        journal: ContextJournalService,
       ) => {
         // Long-term: user investment profile summary (risk tolerance, sentiment, prefs).
         const longAdapter = {
@@ -143,6 +146,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
           midAdapter,
           sessionAdapter,
           ragAdapter,
+          journal,
         );
       },
       inject: [
@@ -150,6 +154,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
         UserInvestmentProfileService,
         AgentBrainService,
         RagRetrievalService,
+        ContextJournalService,
       ],
     },
     RoleExecutorService,
@@ -165,6 +170,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
     AnalysisCheckpointService,
     AnalysisApprovalService,
     ContextFabricService,
+    ContextJournalService,
     PreflightPlannerService,
     RunOrchestratorService,
   ],
