@@ -44,6 +44,7 @@ export class ThesisTeamService implements TeamService {
 
     const ctx = await this.fabric.assemble({
       userId: args.userId,
+      runId: args.runId,
       prompt: input.prompt,
     });
     const contextText = this.fabric.toPromptReady(ctx);

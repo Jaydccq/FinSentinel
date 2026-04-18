@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { ChatCompactionService } from '../chat-compaction.service';
 import { aiConfig } from '../../config/ai.config';
+import { ContextJournalService } from '../../analysis/context-journal.service';
 
 vi.mock('@finsentinel/ai-runtime', () => ({
   createOpenRouterModel: vi.fn(() => 'mock-model'),
@@ -58,9 +59,17 @@ function createConfigService(overrides: Record<string, unknown> = {}) {
 describe('ChatCompactionService', () => {
   let service: ChatCompactionService;
   let mockDb: ReturnType<typeof createMockDb>;
+  let contextJournal: {
+    append: ReturnType<typeof vi.fn>;
+    appendCompactionSummary: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     mockDb = createMockDb();
+    contextJournal = {
+      append: vi.fn().mockResolvedValue(undefined),
+      appendCompactionSummary: vi.fn().mockResolvedValue(undefined),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -68,6 +77,7 @@ describe('ChatCompactionService', () => {
         { provide: 'DRIZZLE_DB', useValue: mockDb },
         { provide: ConfigService, useValue: createConfigService() },
         { provide: aiConfig.KEY, useValue: mockAiConfig },
+        { provide: ContextJournalService, useValue: contextJournal },
       ],
     }).compile();
 
@@ -106,6 +116,47 @@ describe('ChatCompactionService', () => {
     expect(result).toContain('What is AAPL?');
     // Summary should be stored
     expect(mockDb.insert).toHaveBeenCalled();
+    expect(contextJournal.append).toHaveBeenCalledWith({
+      userId: USER_ID,
+      sessionId: SESSION_ID,
+      entryType: 'COMPACTION_BOUNDARY',
+      sourceType: 'CHAT',
+      sourceRef: `chat_messages/${SESSION_ID}`,
+      payload: { threshold: 24, recentWindow: 10, compactedCount: 20 },
+    });
+    expect(contextJournal.appendCompactionSummary).toHaveBeenCalledWith({
+      userId: USER_ID,
+      sessionId: SESSION_ID,
+      payload: {
+        summaryText: expect.stringContaining('Message 0'),
+        compactedMessageCount: 20,
+      },
+    });
+  });
+
+  it('returns the augmented prompt when journal writes fail after storing the summary', async () => {
+    mockDb._selectChain.where.mockResolvedValueOnce([{ count: 30 }]);
+
+    const oldMessages = Array.from({ length: 20 }, (_, i) => ({
+      role: i % 2 === 0 ? 'user' : 'assistant',
+      content: `Message ${i}`,
+    }));
+    mockDb._selectChain.limit.mockResolvedValueOnce(oldMessages);
+    contextJournal.append.mockRejectedValueOnce(new Error('boundary write failed'));
+
+    const result = await service.augmentPrompt(USER_ID, SESSION_ID, 'What is AAPL?');
+
+    expect(result).toContain('[Previous context summary:');
+    expect(result).toContain('What is AAPL?');
+    expect(mockDb.insert).toHaveBeenCalled();
+    expect(contextJournal.append).toHaveBeenCalledWith({
+      userId: USER_ID,
+      sessionId: SESSION_ID,
+      entryType: 'COMPACTION_BOUNDARY',
+      sourceType: 'CHAT',
+      sourceRef: `chat_messages/${SESSION_ID}`,
+      payload: { threshold: 24, recentWindow: 10, compactedCount: 20 },
+    });
   });
 
   // ── augmentPrompt: disabled ─────────────────────────────────────────────

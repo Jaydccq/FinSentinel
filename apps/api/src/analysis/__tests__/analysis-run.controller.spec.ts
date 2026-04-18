@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AnalysisRunController } from '../analysis-run.controller';
 
 describe('AnalysisRunController', () => {
@@ -14,6 +15,10 @@ describe('AnalysisRunController', () => {
     listApprovalsForRun: ReturnType<typeof vi.fn>;
   };
   let producer: { enqueuePreflight: ReturnType<typeof vi.fn> };
+  let contextJournal: {
+    getRunContext: ReturnType<typeof vi.fn>;
+    getStageInput: ReturnType<typeof vi.fn>;
+  };
   let ctrl: AnalysisRunController;
   // CurrentUserPayload uses userId + username (not sub + email)
   const user = { userId: 'u1', username: 'u@x.com' } as never;
@@ -31,7 +36,23 @@ describe('AnalysisRunController', () => {
       listApprovalsForRun: vi.fn().mockResolvedValue([]),
     };
     producer = { enqueuePreflight: vi.fn().mockResolvedValue(undefined) };
-    ctrl = new AnalysisRunController(runs as never, producer as never);
+    contextJournal = {
+      getRunContext: vi.fn().mockResolvedValue({
+        longTermPreferenceContext: { summary: '', sourceIds: [] },
+        midTermStrategyContext: { summary: '', sourceIds: [] },
+        shortTermSessionContext: { summary: 'session summary', sourceIds: ['ctx-1'] },
+        retrievalContext: { summary: '', sourceIds: [] },
+      }),
+      getStageInput: vi.fn().mockResolvedValue({
+        contextEntryIds: ['ctx-1'],
+        priorStageKeys: ['INTELLIGENCE'],
+        evidenceEntryIds: ['rag-1'],
+        promptHash: 'hash-1',
+        tokenBudget: 12000,
+        truncationApplied: false,
+      }),
+    };
+    ctrl = new AnalysisRunController(runs as never, producer as never, contextJournal as never);
   });
 
   it('POST /analysis/runs creates a run and enqueues preflight', async () => {
@@ -85,5 +106,44 @@ describe('AnalysisRunController', () => {
     runs.getForUser.mockResolvedValue({ id: 'r1', userId: 'u1', status: 'RUNNING' });
     await ctrl.listApprovals('r1', user);
     expect(runs.listApprovalsForRun).toHaveBeenCalledWith('r1');
+  });
+
+  it('GET /analysis/runs/:id/context returns the materialized context snapshot', async () => {
+    runs.getForUser.mockResolvedValue({ id: 'r1', userId: 'u1', status: 'RUNNING' });
+
+    const result = await ctrl.getContext('r1', user);
+
+    expect(contextJournal.getRunContext).toHaveBeenCalledWith('u1', 'r1');
+    expect(result.shortTermSessionContext.sourceIds.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('GET /analysis/runs/:id/context 404s when not owned', async () => {
+    runs.getForUser.mockResolvedValue(null);
+
+    await expect(ctrl.getContext('r1', user)).rejects.toThrow(/not found/i);
+  });
+
+  it('GET /analysis/runs/:id/stages/:stageKey/input returns stage input snapshot', async () => {
+    runs.getForUser.mockResolvedValue({ id: 'r1', userId: 'u1', status: 'RUNNING' });
+
+    const result = await ctrl.getStageInput('r1', 'THESIS', user);
+
+    expect(contextJournal.getStageInput).toHaveBeenCalledWith('u1', 'r1', 'THESIS');
+    expect(result?.contextEntryIds).toEqual(['ctx-1']);
+  });
+
+  it('GET /analysis/runs/:id/stages/:stageKey/input rejects invalid stage keys', async () => {
+    runs.getForUser.mockResolvedValue({ id: 'r1', userId: 'u1', status: 'RUNNING' });
+
+    await expect(ctrl.getStageInput('r1', 'NOT_A_STAGE', user)).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('GET /analysis/runs/:id/stages/:stageKey/input 404s when snapshot is missing', async () => {
+    runs.getForUser.mockResolvedValue({ id: 'r1', userId: 'u1', status: 'RUNNING' });
+    contextJournal.getStageInput.mockResolvedValue(null);
+
+    await expect(ctrl.getStageInput('r1', 'THESIS', user)).rejects.toThrow(NotFoundException);
   });
 });
