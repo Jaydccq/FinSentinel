@@ -1,7 +1,9 @@
-import { Injectable, Logger, forwardRef, Inject } from '@nestjs/common';
+import { Injectable, Logger, forwardRef, Inject, Optional } from '@nestjs/common';
 import type { AnalysisStageKey } from '@finsentinel/shared';
 import { AnalysisRunService } from './analysis-run.service';
 import { AnalysisCheckpointService } from './analysis-checkpoint.service';
+import { ContextJournalService } from './context-journal.service';
+import { RunReportAssembler } from './run-report-assembler.service';
 import { AnalysisRunProducer } from '../queue/analysis-run.producer';
 import type { AnalysisRunJobData } from '../queue/analysis-run.producer';
 
@@ -31,6 +33,8 @@ export class RunOrchestratorService {
     private readonly checkpoints: AnalysisCheckpointService,
     @Inject(forwardRef(() => AnalysisRunProducer))
     private readonly producer: AnalysisRunProducer,
+    @Optional() private readonly contextJournal?: ContextJournalService,
+    @Optional() private readonly reportAssembler?: RunReportAssembler,
   ) {}
 
   registerStageExecutor(
@@ -100,7 +104,7 @@ export class RunOrchestratorService {
       }
       const next = this.nextStage(data.stageKey);
       if (next === null) {
-        await this.runs.markCompleted(data.userId, data.runId);
+        await this.completeRun(data.userId, data.runId);
       } else {
         await this.runs.setCurrentStage(data.userId, data.runId, next);
         await this.producer.enqueueExecuteStage({
@@ -140,5 +144,36 @@ export class RunOrchestratorService {
     if (idx === -1) return null;
     const next = TEAM_STAGE_ORDER[idx + 1];
     return next ?? null;
+  }
+
+  private async completeRun(userId: string, runId: string): Promise<void> {
+    if (!this.contextJournal || !this.reportAssembler) {
+      await this.runs.markCompleted(userId, runId);
+      return;
+    }
+
+    const sharedContext = await this.contextJournal.getRunContext(userId, runId);
+    const stages = await this.runs.listStagesForRun(runId);
+    const artifacts = await this.runs.listArtifactsForRun(runId);
+    const executionArtifact = artifacts.find(
+      (artifact) => artifact.artifactKind === 'EXECUTION_PAYLOAD',
+    );
+    const assembled = this.reportAssembler.build({
+      sharedContext,
+      stages: stages.map((stage) => ({
+        stageKey: stage.stageKey,
+        humanReportMarkdown: stage.humanReportMarkdown,
+        structuredOutput: stage.structuredOutputJson,
+      })),
+      executionPayload: executionArtifact?.payloadJson ?? null,
+    });
+
+    await this.runs.completeWithOutputs({
+      userId,
+      runId,
+      sharedContext,
+      decisionObject: assembled.decisionObject,
+      finalReportMarkdown: assembled.finalReportMarkdown,
+    });
   }
 }

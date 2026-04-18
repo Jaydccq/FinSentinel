@@ -15,6 +15,8 @@ import {
   type AnalysisRunSourceMode,
   type AnalysisRunStatus,
   type CreateRunRequest,
+  type DecisionObject,
+  type SharedContext,
 } from '@finsentinel/shared';
 import { AgentEventService } from '../events/agent-event.service';
 
@@ -208,6 +210,34 @@ export class AnalysisRunService {
       userId,
       AgentEventAggregateType.ANALYSIS_RUN,
       runId,
+      AgentEventType.RUN_COMPLETED,
+      {},
+      null,
+    );
+  }
+
+  async completeWithOutputs(args: {
+    userId: string;
+    runId: string;
+    sharedContext: SharedContext | null;
+    decisionObject: DecisionObject | null;
+    finalReportMarkdown: string;
+  }): Promise<void> {
+    await this.db
+      .update(analysisRuns)
+      .set({
+        status: 'COMPLETED',
+        sharedContextJson: args.sharedContext,
+        decisionObjectJson: args.decisionObject,
+        finalReportMarkdown: args.finalReportMarkdown,
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(analysisRuns.id, args.runId), eq(analysisRuns.userId, args.userId)));
+    await this.events.append(
+      args.userId,
+      AgentEventAggregateType.ANALYSIS_RUN,
+      args.runId,
       AgentEventType.RUN_COMPLETED,
       {},
       null,

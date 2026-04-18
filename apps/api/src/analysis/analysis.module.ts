@@ -23,6 +23,7 @@ import { PreflightPlannerService } from './preflight-planner.service';
 import { ContextFabricService } from './context-fabric.service';
 import { ContextJournalService } from './context-journal.service';
 import { RuntimeControlService } from './runtime-control.service';
+import { RunReportAssembler } from './run-report-assembler.service';
 import { RunOrchestratorService } from './run-orchestrator.service';
 import { TeamRegistry } from './team-registry';
 import { RoleExecutorService } from './teams/role-executor.service';
@@ -71,6 +72,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
   providers: [
     AnalysisRunService,
     RuntimeControlService,
+    RunReportAssembler,
     AnalysisCheckpointService,
     AnalysisApprovalService,
     {
@@ -176,6 +178,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
   exports: [
     AnalysisRunService,
     RuntimeControlService,
+    RunReportAssembler,
     AnalysisCheckpointService,
     AnalysisApprovalService,
     ContextFabricService,

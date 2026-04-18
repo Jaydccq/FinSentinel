@@ -155,6 +155,72 @@ describe('AnalysisApprovalService.resolve(APPROVE) follow-through', () => {
     );
     expect(runsLocal.markCompleted).toHaveBeenCalledWith('u1', 'r1');
   });
+
+  it('materializes run outputs when context journal and assembler are available', async () => {
+    const db = makeDb({
+      id: 'appr-1',
+      runId: 'r1',
+      status: 'PENDING',
+      requestedPayloadJson: payload,
+    });
+    const events = { append: vi.fn().mockResolvedValue({}) };
+    const runsLocal = {
+      markCompleted: vi.fn().mockResolvedValue(undefined),
+      cancel: vi.fn().mockResolvedValue(undefined),
+      listStagesForRun: vi.fn().mockResolvedValue([
+        {
+          stageKey: 'RISK',
+          humanReportMarkdown: 'risk ok',
+          structuredOutputJson: {
+            portfolioDecision: 'BUY',
+            allocationGuidance: { notes: 'scale in', targets: [] },
+            riskLimits: { maxDrawdownPct: 8, stopLossTriggers: [] },
+            alertTriggers: [],
+            confidence: 0.72,
+          },
+        },
+      ]),
+      completeWithOutputs: vi.fn().mockResolvedValue(undefined),
+    };
+    const checkpointsLocal = { writeExecutionPayload: vi.fn().mockResolvedValue({ id: 'art-exec' }) };
+    const mapperLocal = { toUnifiedStageRequest: vi.fn().mockReturnValue({ action: 'BUY', symbol: 'AAPL', qty: '100' }) };
+    const contextJournal = {
+      getRunContext: vi.fn().mockResolvedValue({
+        longTermPreferenceContext: { summary: '', sourceIds: [] },
+        midTermStrategyContext: { summary: '', sourceIds: [] },
+        shortTermSessionContext: { summary: '', sourceIds: [] },
+        retrievalContext: { summary: '', sourceIds: [] },
+      }),
+    };
+    const assembler = {
+      build: vi.fn().mockReturnValue({
+        decisionObject: null,
+        finalReportMarkdown: '# Final',
+      }),
+    };
+    const svc = new AnalysisApprovalService(
+      db as never,
+      events as never,
+      runsLocal as never,
+      checkpointsLocal as never,
+      mapperLocal as never,
+      tradingStub as never,
+      defaultAutoDispatchFlag,
+      contextJournal as never,
+      assembler as never,
+    );
+
+    await svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' });
+
+    expect(runsLocal.markCompleted).not.toHaveBeenCalled();
+    expect(runsLocal.completeWithOutputs).toHaveBeenCalledWith({
+      userId: 'u1',
+      runId: 'r1',
+      sharedContext: expect.any(Object),
+      decisionObject: null,
+      finalReportMarkdown: '# Final',
+    });
+  });
 });
 
 describe('AnalysisApprovalService.resolve(APPROVE) with auto-dispatch', () => {
