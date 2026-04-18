@@ -1,0 +1,1139 @@
+# Autonomous Investment Platform 技术面试指南
+
+## 使用方式
+
+这份文档用于学习和防守简历中的项目：
+
+> Autonomous Investment Research & Risk Platform, Jan 2026 to Present.
+
+核心原则：仓库是唯一事实来源。能在代码、测试、迁移、执行计划或指标中找到证据的内容，可以作为面试回答的主干；找不到证据的数字或说法，要么补证据，要么在面试中说得更谨慎。
+
+建议按三轮学习：
+
+1. 先读「系统总览」和「代码地图」。
+2. 再按简历 bullet 逐个学习。
+3. 最后只看问题，闭卷讲出回答框架。
+
+## 当前仓库对齐风险
+
+这些点最容易被面试官深挖，也最需要你提前校准说法。
+
+| 简历说法 | 当前仓库事实 | 更稳的面试说法 |
+|---|---|---|
+| `Vercel AI SDK` | 当前代码已迁移掉 direct `ai` / `@ai-sdk/openai` import，使用内部 `@finsentinel/ai-runtime`。`pnpm check:no-vercel-ai-sdk` 会阻止重新引入。 | "早期实现使用 Vercel AI SDK 风格的 typed tool orchestration；当前版本把这层抽到内部 AI runtime，保留 typed tools、streaming 和 OpenRouter-compatible model 行为。" |
+| `20+ typed tools` | `apps/api/src/agent/tools` 下目前有 76 个 `tool({` 定义；运行时实际暴露哪些取决于服务注入和 role scope。 | "系统有超过 20 个 typed tools，统一由 ToolRegistry 组装，并通过 Zod schema 做参数校验。" |
+| `sub-300ms retrieval latency` | RAG 有 `rag_search_duration_seconds` Prometheus histogram，但本次检查没有找到专门的 RAG latency benchmark。 | "代码路径为低延迟设计，并有 Prometheus 指标。若要说具体 P95，需要带 benchmark 或 Grafana 证据。" |
+| `100+ concurrent streaming sessions` | `sse-concurrency.benchmark.spec.ts` 模拟 150 个并发 ReadableStream。它验证应用内 stream framing，不等于完整生产压测。 | "我用 in-process benchmark 验证了 150 个并发 SSE stream 的应用层路径；生产容量需要看部署环境压测。" |
+| `1k+ requests/min` | `rate-limiter.benchmark.spec.ts` 用 mock Redis 测 2000 次 check，并断言超过 1000 req/min。 | "这个 benchmark 证明 TypeScript guard 热路径开销很低；真实 Redis 和网络容量仍要用环境压测确认。" |
+
+## 系统总览
+
+```text
+用户 / 前端
+  |
+  |  POST /chat/stream, /analysis/runs, approval actions
+  v
+apps/api NestJS API
+  |
+  +-- ChatService
+  |     +-- ChatCompactionService
+  |     +-- ChatUpgradePlannerService
+  |     +-- AgentService
+  |
+  +-- AgentService / RoleExecutorService
+  |     +-- ToolRegistry
+  |     +-- @finsentinel/ai-runtime
+  |     +-- OpenRouter-compatible model / embeddings
+  |
+  +-- RAG
+  |     +-- QueryRewriteService
+  |     +-- RetrievalPlannerService
+  |     +-- RetrievalOrchestratorService
+  |     +-- RagChunkStoreService
+  |     +-- SparseSearchService
+  |     +-- RetrievalFusionService
+  |     +-- RerankService
+  |     +-- ContextPackerService
+  |
+  +-- Analysis Runtime
+  |     +-- AnalysisRunService
+  |     +-- AnalysisCheckpointService
+  |     +-- RunOrchestratorService
+  |     +-- TeamRegistry
+  |     +-- Intelligence -> Thesis -> Risk -> Execution Prep -> Human Approval
+  |
+  +-- Trading Runtime
+  |     +-- OrderDraftValidator
+  |     +-- OrderDraftMapper
+  |     +-- UnifiedTradingService
+  |     +-- BrokerRegistry
+  |
+  +-- Safety / Observability
+        +-- RateLimitGuard
+        +-- MetricsService
+        +-- AgentEventService
+
+PostgreSQL / pgvector: durable state, RAG chunks, analysis tables.
+Redis: BullMQ queues, rate-limit counters, trading staging/pending state.
+Prometheus: scrape /api/metrics.
+```
+
+## 代码地图
+
+| 主题 | 关键文件 |
+|---|---|
+| 仓库优先规范 | `AGENTS.md`, `CLAUDE.md`, `docs/exec-plans/*`, `scripts/check-no-vercel-ai-sdk.mjs` |
+| AI runtime | `packages/ai-runtime/src/tools.ts`, `packages/ai-runtime/src/text-runtime.ts`, `packages/ai-runtime/src/embeddings.ts` |
+| Tool registry | `apps/api/src/agent/tool-registry.ts`, `apps/api/src/agent/tools/*.tool.ts` |
+| Role tool scope | `apps/api/src/analysis/contracts/role-tool-scope.ts`, `apps/api/src/analysis/teams/role-executor.service.ts` |
+| RAG retrieval | `apps/api/src/rag/rag-retrieval.service.ts`, `retrieval-orchestrator.service.ts`, `retrieval-fusion.service.ts` |
+| RAG storage | `apps/api/src/rag/rag-chunk-store.service.ts`, `packages/db/src/schema/document-chunks.ts` |
+| BullMQ ingestion | `apps/api/src/queue/vectorize.producer.ts`, `vectorize.consumer.ts`, `queue.module.ts` |
+| Analysis runtime | `apps/api/src/analysis/run-orchestrator.service.ts`, `team-registry.ts`, `teams/*` |
+| Broker execution | `apps/api/src/trading/unified-trading.service.ts`, `broker-registry.service.ts` |
+| Order draft | `packages/shared/src/schemas/order-draft.ts`, `order-draft-validator.service.ts`, `order-draft-mapper.service.ts` |
+| SSE chat | `apps/api/src/chat/chat.controller.ts`, `chat.service.ts`, `apps/api/src/agent/agent.service.ts` |
+| Chat compaction | `apps/api/src/chat/chat-compaction.service.ts`, `chat-compaction.benchmark.spec.ts` |
+| Rate limit | `apps/api/src/common/services/rate-limiter.service.ts`, `rate-limit.guard.ts` |
+| Metrics | `apps/api/src/common/services/metrics.service.ts`, `metrics.controller.ts`, `observability/prometheus/prometheus.yml` |
+| Event log | `apps/api/src/events/agent-event.service.ts`, `packages/db/src/schema/agent-events.ts` |
+
+## 1. Repository-First Guardrails
+
+### 简历主张
+
+你说自己用 Claude Code harness-engineering principles 建立了：
+
+- repository-first specifications
+- explicit workflow contracts
+- validation layers
+- strict human control over financial logic
+
+### 仓库里的真实含义
+
+Repository-first 不是说"我在聊天里告诉 AI 怎么写"，而是把关键约束写进仓库：
+
+- `AGENTS.md`：本 workspace 的开发规则。
+- `docs/exec-plans/`：复杂任务的背景、目标、范围、假设、验证、进度、决策、风险。
+- `packages/shared/src/schemas/`：API、analysis、order draft、trading 等共享 Zod contract。
+- `packages/db/src/schema/` 和 `packages/db/migrations/`：数据库 schema 和迁移。
+- `scripts/check-no-vercel-ai-sdk.mjs`：把 "不要再直接引入 Vercel AI SDK" 变成可执行检查。
+
+一句面试回答：
+
+> 我把容易靠口头约定出错的地方尽量变成版本化 artifact 和机械检查。能用 schema、typecheck、test、migration、CI script 表达的规则，就不只写在 README 里。
+
+### 三层 guardrail
+
+**第一层：规范和计划**
+
+`docs/exec-plans/` 要求每个非平凡任务写清楚：
+
+- 背景
+- 目标
+- 范围
+- 假设
+- 实现步骤
+- 验证方式
+- 进度日志
+- 关键决策
+- 风险和 blocker
+- 最终结果
+
+这让开发过程可以被后续 agent 或人类复盘。
+
+**第二层：类型和 schema**
+
+`packages/shared/src/schemas/analysis.ts` 定义：
+
+- analysis run source mode
+- analysis run status
+- stage key
+- artifact kind
+- approval status
+- shared context
+- stage structured output
+- decision object
+- API request/response schema
+
+`packages/shared/src/schemas/order-draft.ts` 定义 broker-neutral order draft。
+
+**第三层：运行时 guard**
+
+- `JwtGuard` 控制身份。
+- `RateLimitGuard` 控制调用频率。
+- `ZodValidationPipe` 控制 body shape。
+- `OrderDraftValidator` 控制 LLM 输出不能塞 broker-specific 字段。
+- `AnalysisApprovalService` 和 `HumanApprovalGateService` 控制交易执行前必须有审批边界。
+
+### 深挖问题
+
+**Q: LLM 本身不确定，为什么你还说 deterministic guardrails？**
+
+答：
+
+> LLM 输出本身不确定，确定的是它外面的边界。比如 role 只能拿到 allow-list 里的 tools，tool 参数必须过 Zod，order drafts 必须是 broker-neutral schema，approval 必须落库，交易执行必须经过 Redis stage/commit/execute 状态机。LLM 可以建议和调用工具，但不能绕过这些确定性边界直接改 durable financial state。
+
+**Q: 如果 AI 生成的代码违反规范，怎么拦？**
+
+答：
+
+> 最理想是机械拦截。例如当前 `pnpm check:no-vercel-ai-sdk` 直接阻止 direct SDK import。不是所有规则都已经机械化，所以执行计划和 review 仍然存在。我的原则是重复出现的问题要升级成脚本、测试、schema 或 lint 规则，而不是只靠记忆。
+
+## 2. Multi-Stage RAG
+
+### 简历主张
+
+你说自己实现了：
+
+- SEC filings、research、market news 上的 RAG
+- hybrid dense + sparse retrieval
+- Reciprocal Rank Fusion
+- reranking
+- metadata-aware filtering
+- pgvector-backed retrieval
+- BullMQ 异步 ingestion 和 enrichment
+- 复杂约束查询下低延迟 retrieval
+
+### Ingestion 数据流
+
+```text
+Document / news source
+  |
+  v
+VectorizeProducer
+  |
+  v
+BullMQ queue: finsentinel-vectorize
+  |
+  v
+VectorizeConsumer
+  |
+  +-- load document row
+  +-- download content from storage
+  +-- parse to clean text
+  +-- chunk text
+  +-- embed chunks
+  +-- replace document_chunks rows
+  +-- rebuild search_vector
+  +-- optionally enqueue graph enrichment
+```
+
+关键代码：
+
+- `VectorizeProducer.send(docId)` 用稳定 job id：`vectorize:{docId}`。
+- `VectorizeConsumer.process()` 负责 parse -> chunk -> embed -> store。
+- `DocumentVectorService.vectorize()` 负责 chunk、embedding、metrics。
+- `RagChunkStoreService.replaceChunks()` 删除旧 chunks，插入新 chunks，并重建 `search_vector`。
+
+BullMQ 配置要点：
+
+- attempts: 3
+- exponential backoff
+- removeOnComplete: 100
+- removeOnFail: 500
+- consumer concurrency: 2
+
+面试解释：
+
+> 向量化是典型的异步任务：慢、可重试、可能调用外部 embedding API，不应该阻塞用户请求。BullMQ 复用了已有 Redis，支持 job id、retry、backoff 和 worker concurrency，足够支撑 v1 ingestion pipeline。
+
+### Query-time 数据流
+
+```text
+User query
+  |
+  v
+RagRetrievalService
+  |
+  +-- optional QueryRewriteService
+  +-- RetrievalPlannerService chooses lanes
+  +-- RetrievalOrchestratorService runs lanes
+       +-- dense lane: pgvector cosine distance
+       +-- sparse lane: PostgreSQL full-text search
+       +-- optional graph lane
+  +-- RetrievalFusionService applies RRF
+  +-- RerankService improves precision or falls back
+  +-- ContextPackerService dedupes and bounds prompt context
+```
+
+### Dense retrieval
+
+`RagChunkStoreService.search()` 用 pgvector：
+
+```sql
+1 - (embedding <=> query_vector::vector) AS similarity
+ORDER BY embedding <=> query_vector::vector
+```
+
+支持 metadata filter：
+
+- `docType`
+- `sector`
+- `regionId`
+- `afterDate`
+
+为什么重要：
+
+> 金融查询经常带强约束，例如 SEC filing、Technology sector、US region、某个日期之后。先用 metadata 缩小候选集，再做 vector ranking，比无约束全库向量扫描更可控。
+
+### Sparse retrieval
+
+`SparseSearchService.search()` 用 PostgreSQL full-text search：
+
+```sql
+search_vector @@ websearch_to_tsquery('simple', query)
+ts_rank_cd(search_vector, websearch_to_tsquery('simple', query))
+```
+
+它还用 source hit count 做 boost：
+
+```sql
+rank_score * (1 + 0.1 * ln(hit_count))
+```
+
+解释：
+
+> 如果同一份 filing 的多个 chunk 都命中关键词，说明整份文档和 query 的相关性更高，所以给这些 chunk 轻微 boost。
+
+`RagChunkStoreService.replaceChunks()` 中的 `search_vector` 加权：
+
+- title/source/entities 用 weight `A`
+- content 用 weight `B`
+- metadata 用 `simple` config，避免 ticker/entity 被错误 stem
+- content 用 `english` config，支持英文词形归一
+
+### Dense 和 sparse 的差别
+
+Dense retrieval 擅长语义问题：
+
+- "这家公司收入质量有没有恶化"
+- "管理层对未来需求怎么看"
+- "供应链风险是否变大"
+
+Sparse retrieval 擅长精确问题：
+
+- `10-Q`
+- `diluted EPS`
+- `risk factors`
+- `AAPL`
+- `Item 1A`
+- 公司名、ticker、会计术语
+
+面试回答：
+
+> 金融文档既有语义问题，也有大量精确术语。只用 embedding 容易漏掉 exact-match intent；只用 full-text 又不擅长概念型查询。所以用 dense + sparse，再用 RRF 合并。
+
+### RRF
+
+`RetrievalFusionService.fuse()` 公式：
+
+```text
+contribution = 1 / (k + rank + 1)
+default k = 60
+```
+
+重点不是背公式，而是讲出为什么用 RRF：
+
+> Dense 的 cosine similarity 和 sparse 的 full-text rank score 不在同一个量纲，直接 weighted sum 需要归一化和调参。RRF 只看各 lane 内部排名，天然避免不同 score scale 的比较问题。一个文档如果在 dense 和 sparse 都靠前，会自然排到前面。
+
+### Reranker fallback
+
+`RerankService` 调 sidecar：
+
+```text
+POST {RERANKER_URL}/rerank
+```
+
+传入 query 和 candidate text。如果 sidecar 不可用、超时或返回非 OK：
+
+- 记录 warning
+- 按 RRF score 排序
+- 返回 topK
+
+面试说法：
+
+> Reranker 是质量增强层，不是系统可用性的单点依赖。它挂了以后 retrieval 降级为 RRF 排序，而不是整体失败。
+
+### Context packing
+
+`ContextPackerService` 做三件事：
+
+- 按 chunkId 去重
+- 每个 source 最多保留 3 个 chunk
+- 总 token estimate 默认不超过 4096
+
+一句话：
+
+> RAG 的终点不是拿到候选文档，而是把证据压成一个 token-bounded、source-diverse 的 prompt context。
+
+### Latency 怎么回答
+
+代码里有低延迟设计：
+
+- SQL metadata pre-filter
+- bounded topK
+- dense/sparse lanes 并行执行
+- reranker timeout + fallback
+- context packing 限制 prompt size
+- Prometheus histogram: `rag_search_duration_seconds`
+
+但本次检查没有找到 RAG latency benchmark。更稳的回答：
+
+> 我不会空口说 P95。当前代码对 retrieval latency 做了 Prometheus instrumentation，并且查询路径通过 filter、并行 lanes 和 fallback 控制延迟。如果需要把 sub-300ms 写得很硬，我会带上 Grafana histogram 或代表性 corpus benchmark。
+
+## 3. LLM Tool Orchestration
+
+### 简历主张
+
+你说系统暴露 20+ typed tools，覆盖 market data、technical indicators、news、research、trading，把自然语言请求转成多步金融 workflow。
+
+### 当前 runtime 结构
+
+当前代码不是直接用 Vercel AI SDK，而是：
+
+```text
+apps/api service
+  |
+  v
+ToolRegistry builds FinToolSet
+  |
+  v
+@finsentinel/ai-runtime
+  |
+  +-- defineZodTool()
+  +-- Zod schema -> JSON schema / TypeBox boundary
+  +-- pi-agent-core AgentTool
+  +-- stream text deltas
+```
+
+`packages/ai-runtime/src/tools.ts` 做参数校验：
+
+1. tool call params 先经过原始 Zod schema parse
+2. parse 成功才执行 domain tool
+3. 非 string result 会 JSON.stringify
+
+面试重点：
+
+> 工具参数不是模型说什么就是什么。模型输出会经过 schema validation，再进入服务层。
+
+### ToolRegistry
+
+`ToolRegistry.buildTools(userId, portfolioId)` 动态组装工具：
+
+- always-on tools：market、technical indicators、thinking、confirmation
+- optional service tools：company research、news、screener、calendar、ownership、trading、brain、profile、portfolio、watchlist、autonomy、crypto、Twitter
+
+非常重要的一点：
+
+> `userId` 是通过 closure 注入工具，不是让模型作为参数传进来。身份和权限上下文不能由 LLM 生成。
+
+### Tool categories
+
+仓库目前有 76 个 `tool({` 定义，主要包括：
+
+- market quote and historical prices
+- RSI, MACD, Bollinger Bands, EMA, SMA, ATR, Stochastic, ADX, OBV
+- strategy template evaluation
+- company profile, financial statements, analyst rating
+- equity screeners and market movers
+- earnings, dividend, split calendars
+- institutional holders, insider transactions
+- short interest and fails-to-deliver
+- news and knowledge base search
+- portfolio analysis
+- watchlist management
+- user investment profile and agent brain
+- cron task and heartbeat tools
+- crypto news, funding rate, position analytics, leverage
+- Twitter search/profile/KOL signals
+- trading stage, commit, execute, positions, wallet, history, sync
+
+### Role-scoped tools
+
+`ROLE_TOOL_SCOPE` 把不同角色限制在不同工具集合：
+
+- `MARKET_ANALYST`: quote、historical bars、technical indicators、strategy eval、market hours
+- `NEWS_ANALYST`: news、knowledge base、Twitter
+- `FUNDAMENTALS_ANALYST`: company research、calendar、ownership、short interest
+- `SENTIMENT_ANALYST`: news、Twitter、KOL、knowledge base
+- `RISK_REVIEWER`: portfolio、knowledge base
+- `PORTFOLIO_MANAGER`: portfolio、positions、wallet
+- `TRADE_PLANNER`: portfolio、positions、quote
+- `EXECUTION_DRAFT_BUILDER`: quote、market hours
+
+一句面试回答：
+
+> Role scope 是 LLM tool orchestration 的 trust boundary。不是每个 agent 都能拿到所有工具，尤其是执行相关工具不能随便暴露给分析角色。
+
+### 多步 workflow 失败怎么办
+
+当前模式：
+
+- tool 内部通常 catch error 并返回 error string
+- agent 可以读到失败信息并改用替代工具或解释失败
+- runtime 有 maxTurns，避免无限工具循环
+
+更成熟的未来改进：
+
+- read-only tools 可重试
+- execution tools 不自动重试
+- tool error 用结构化格式返回，而不是普通字符串
+- tool call/result 写入 context journal 或 event log
+
+### Vercel AI SDK 被问到怎么办
+
+你要主动说清楚历史和当前：
+
+> 这个项目早期直接用过 Vercel AI SDK 的 stream/text/tool/embedding 风格。后来为了降低 SDK coupling，把这些能力迁移到内部 `@finsentinel/ai-runtime`。当前代码里不允许直接 import `ai` 或 `@ai-sdk/openai`，通过 `pnpm check:no-vercel-ai-sdk` 检查。简历如果保留 Vercel AI SDK，需要解释它是历史实现和设计风格，而不是当前 direct dependency。
+
+## 4. Broker-Agnostic Trade Execution
+
+### 简历主张
+
+你说交易层有：
+
+- dynamic broker routing
+- broker-agnostic execution
+- stage / commit / execute 三阶段生命周期
+- Redis Lua atomic state transitions
+- commit hashing
+- GETDEL safeguards
+- idempotent execution
+- retry 时避免 duplicate order commits
+
+### Broker abstraction
+
+核心文件：
+
+- `apps/api/src/trading/interfaces/broker.ts`
+- `apps/api/src/trading/broker-registry.service.ts`
+- `apps/api/src/trading/unified-trading.service.ts`
+
+`IBroker` 定义：
+
+- `brokerId()`
+- `displayName()`
+- `supportedSecurityTypes()`
+- `capabilities()`
+- `canHandle(contract)`
+- `placeOrder(contract, request)`
+- `getPositions()`
+- `getOrders()`
+- `getAccount()`
+- `cancelOrder()`
+- `syncOrders()`
+- `getMarketClock()`
+- `searchContracts()`
+
+`BrokerRegistry.resolve(contract, mode, initialCash)`：
+
+- PAPER mode: 返回 paper broker
+- LIVE mode: 在 live brokers 中找第一个 `canHandle(contract)` 的 broker
+- live broker priority: Alpaca > OKX > CCXT path
+
+### Stage
+
+Redis key：
+
+```text
+uta:staging:{userId}
+```
+
+`stage()` 用 Lua 脚本原子追加 JSON array：
+
+1. GET 当前 staging array
+2. decode
+3. 如果超过 max size，返回 -1
+4. append item
+5. SET array
+6. EXPIRE
+7. 返回新长度
+
+为什么需要 Lua：
+
+> 如果在 TypeScript 里做 GET -> parse -> append -> SET，两个并发请求可能都读到旧数组，然后互相覆盖。Redis Lua 在 Redis server 内单线程执行，可以避免 lost update。
+
+### Commit
+
+`commit(userId, message)`：
+
+1. message 不能为空
+2. staging area 不能为空
+3. 生成 timestamp
+4. hash input = `message | JSON.stringify(ops) | timestamp`
+5. SHA-256 生成 commit hash
+6. 写入：
+
+```text
+uta:pending:{userId}
+```
+
+7. clear staging
+
+Commit hash 的作用：
+
+- 审计标识
+- commit history 标识
+- execute 阶段 idempotency check
+
+### Execute
+
+`execute(userId)`：
+
+1. Redis `GETDEL uta:pending:{userId}` 原子读取并删除 pending commit
+2. pending 不存在则拒绝
+3. load/create wallet
+4. 如果 commit hash 已经在 wallet commitHistory 中，则拒绝
+5. 根据 contract 和 mode resolve broker
+6. 调 broker `placeOrder`
+7. 更新 wallet cash、positions、commitHistory
+8. 返回 report
+
+最重要的一句话：
+
+> `GETDEL` 是 atomic consume。两个 execute 请求同时来，只有一个能拿到 pending commit，另一个拿到 null。commitHistory hash check 是第二道 idempotency 防线。
+
+### Human approval
+
+Analysis runtime 不直接下单：
+
+```text
+LLM analysis
+  -> broker-neutral order drafts
+  -> strict validation
+  -> approval record
+  -> human approve/reject
+  -> mapped stage requests
+  -> trading stage/commit/execute
+```
+
+`ExecutionPrepTeamService` 生成 order drafts，并调用 `OrderDraftValidator`。
+
+`AnalysisApprovalService` 在 approve 后：
+
+- 把 drafts map 成 unified stage requests
+- 写 `EXECUTION_PAYLOAD` artifact
+- mark run completed
+- 如果 auto-dispatch flag enabled，才 stage/commit/execute
+
+面试中不要说默认完全自动交易。更稳：
+
+> 默认产品边界是 human-in-the-loop。模型可以起草，不默认越过审批。
+
+### 最危险失败场景
+
+服务器在 broker order submission 后、local persistence 前宕机：
+
+- pending commit 已被 `GETDEL` 删除
+- broker 可能已经收到订单
+- wallet 可能还没更新
+
+当前系统更偏向 at-most-once，优先避免重复下单。未来更强的方案是 saga：
+
+```text
+EXECUTION_STARTED
+BROKER_ORDER_SUBMITTED
+EXECUTION_COMPLETED
+RECONCILIATION_REQUIRED
+```
+
+恢复任务扫描 started-without-completed 的记录，向 broker 查 order/position 后补偿。
+
+## 5. Analysis Runtime
+
+### 简历中隐含的系统能力
+
+虽然简历 bullet 主要讲 tools 和 trading，但当前仓库已经有更完整的 team runtime：
+
+```text
+INTELLIGENCE
+  -> THESIS
+  -> RISK
+  -> EXECUTION_PREP
+  -> HUMAN_APPROVAL
+```
+
+`RunOrchestratorService` 是 state machine，BullMQ job 调 `step(data)`。
+
+### Team responsibilities
+
+| Stage | Service | 作用 |
+|---|---|---|
+| `INTELLIGENCE` | `IntelligenceTeamService` | 跑 market/news/fundamentals/sentiment roles，收集证据。 |
+| `THESIS` | `ThesisTeamService` | positive case 和 negative case 并行，然后 thesis lead 收敛。 |
+| `RISK` | `RiskTeamService` | 形成风险、组合决策、risk limits。 |
+| `EXECUTION_PREP` | `ExecutionPrepTeamService` | 生成 broker-neutral order drafts。 |
+| `HUMAN_APPROVAL` | `HumanApprovalGateService` | 把 run 停在审批状态。 |
+
+### Checkpoints
+
+`AnalysisCheckpointService` 写：
+
+- stage status
+- checkpointVersion
+- structuredOutputJson
+- humanReportMarkdown
+- errorJson
+- stage artifacts
+
+artifact types 包括：
+
+- `STAGE_STRUCTURED_OUTPUT`
+- `STAGE_HUMAN_REPORT`
+- `ORDER_DRAFTS`
+- `EXECUTION_PAYLOAD`
+
+面试回答：
+
+> v1 的 durability boundary 是 team stage，不是每个 token 或每次 tool call。这样能提供可恢复和可审计的结构，同时避免一开始就做过重的 workflow engine。
+
+### Context Fabric
+
+`ContextFabricService` 汇总四层上下文：
+
+- long-term preference context
+- mid-term strategy context
+- short-term session context
+- retrieval context
+
+并能输出 prompt-ready text。
+
+为什么重要：
+
+> Chat、workspace、schedule、heartbeat 不应该各自拼 prompt。ContextFabric 让不同入口共享一套上下文组装语义。
+
+## 6. SSE Streaming 和 Chat Compaction
+
+### SSE 路径
+
+`ChatController.stream()`：
+
+1. JWT guard
+2. Zod body validation
+3. RateLimitGuard
+4. 调 `ChatService.streamChat()`
+5. 设置 SSE headers
+6. 读取 `ReadableStream`
+7. `res.write(value)`
+8. `res.end()`
+
+headers：
+
+```text
+Content-Type: text/event-stream
+Cache-Control: no-cache
+Connection: keep-alive
+X-Accel-Buffering: no
+```
+
+`AgentService` 输出 frame：
+
+```text
+event: message
+data: {"content":"chunk","sessionId":"uuid"}
+
+event: done
+data: [DONE]
+
+event: error
+data: {"error":"message"}
+```
+
+### 为什么 SSE 而不是 WebSocket
+
+面试回答：
+
+> Chat streaming 是一次请求后服务端单向推 token，SSE 正好适合。它走普通 HTTP，容易经过 proxy 和 load balancer，回答结束后自然关闭。WebSocket 更适合持续双向通信，比如 order book、协作编辑、实时 cancel channel。当前 chat response 不需要先引入 WebSocket 复杂度。
+
+### 100+ concurrent sessions 怎么防守
+
+`sse-concurrency.benchmark.spec.ts`：
+
+- 模拟 150 个 concurrent stream
+- 每个 stream 10 个 message frame
+- 最后 done frame
+- 另一个测试模拟 100 个 stream，其中一半 error
+
+更稳的说法：
+
+> 我验证过应用层 ReadableStream 到 SSE frame 的并发路径，150 个 in-process stream 可以完成。这个测试不等于生产压测；生产并发还取决于 Node worker、proxy、容器 CPU 和连接限制。
+
+### Chat compaction
+
+`ChatCompactionService` 默认：
+
+- threshold: 24 messages
+- recentWindow: 10 messages
+- maxSummaryChars: 1200
+
+流程：
+
+1. count session messages
+2. 如果少于 threshold，原样返回
+3. 取最老的 `messageCount - recentWindow` 条
+4. LLM summarize
+5. upsert 到 `chat_session_memories`
+6. 把 summary prepend 到下一条 user prompt
+
+### 60% token reduction 怎么解释
+
+`chat-compaction.benchmark.spec.ts`：
+
+- 构造 realistic financial conversation
+- 用约 4 chars/token 估算
+- 30 条消息超过 threshold
+- compact 最老 20 条
+- 保留最近 10 条
+- 断言 token reduction >= 50%
+- 80 条消息 reduction > 75%
+
+面试说法：
+
+> 这个 benchmark 支持 "roughly 60%" 的量级，但它是估算型 benchmark，不是 tokenizer-exact production metric。数学上，compaction 后上下文大小接近 summary + recent window，基本固定；compaction 前随消息数线性增长，所以对话越长，节省越明显。
+
+### Compaction 的缺陷
+
+它是有损压缩。第 12 条消息里的具体数字可能被总结丢失。
+
+当前缓解：
+
+- 原始消息仍在 `chatMessages`
+- 最近 10 条保留原文
+- summary prompt 强调 tickers、decisions、action items
+
+未来更好方案：
+
+```text
+summary for broad context
+  +
+vector recall over old chatMessages for precise facts
+```
+
+回答模板：
+
+> Compaction 不是 lossless memory。更强方案是 summary + retrieval：summary 提供主题连续性，向量召回提供早期原文中的具体数字。
+
+## 7. Observability, Rate Limiting, Auditability
+
+### Metrics
+
+`MetricsService` 封装 `prom-client`：
+
+- Counter
+- Gauge
+- Histogram
+- default Node process metrics
+
+`MetricsController` 暴露：
+
+```text
+GET /api/metrics
+```
+
+Prometheus 配置：
+
+```text
+job_name: finsentinel-api
+metrics_path: /api/metrics
+target: api:3001
+```
+
+### RAG metrics
+
+`RagRetrievalService` 发：
+
+- `rag_search_requests_total`
+- `rag_search_results_total`
+- `rag_search_duration_seconds`
+- `rag_search_last_result_count`
+
+`DocumentVectorService` 发：
+
+- `rag_vectorizations_total`
+- `rag_vectorization_last_duration_ms`
+- `rag_vectorized_chunks_total`
+- `rag_vectorization_last_chunk_count`
+
+### RateLimit Guard
+
+`RateLimiterService` 用 Redis Lua fixed window：
+
+```lua
+INCR key
+if current == 1 then EXPIRE key
+TTL key
+return allowed, remaining, retryAfterMs
+```
+
+key：
+
+```text
+rl:{dimension}:{identifier}:{endpoint}
+```
+
+`RateLimitGuard`：
+
+- 有 user：按 user 限流
+- 没 user：按 IP 限流
+- 只有 direct IP 是 trusted proxy 时才信任 `X-Forwarded-For`
+
+发出的指标：
+
+- `rate_limit_check_duration_seconds`
+- `rate_limit_checks_total`
+- `rate_limit_remaining`
+
+### 为什么 fixed window
+
+优点：
+
+- Redis 操作少
+- 内存开销小
+- 一个 Lua script 就能原子完成
+- 对用户级 API limit 足够简单
+
+缺点：
+
+- window 边界可能 burst
+
+如果被问怎么改：
+
+> 可以升级 sliding window counter 或 token bucket，但当前 user-level API limit 的复杂度还不需要。真正的全局流量保护应该结合 gateway/proxy 层。
+
+### 1k+ requests/min 怎么防守
+
+`rate-limiter.benchmark.spec.ts`：
+
+- 2000 checks
+- mock Redis eval hot path
+- 断言 req/min > 1000
+- 还测试 sustained load 下 allowed/denied 数量正确
+
+谨慎说法：
+
+> 这个 benchmark 证明应用层 guard 路径不会成为 1k req/min 的瓶颈。真实部署还需要 Redis 网络延迟、容器 CPU 和 proxy 配置的压测结果。
+
+### Append-only event log
+
+`AgentEventService` 支持：
+
+- append
+- idempotency key 去重
+- recent events
+- list by aggregate
+- replay after seqNo
+- count by user
+
+`agent_events` schema：
+
+- `seq_no` 是 generated identity
+- `aggregate_type`
+- `aggregate_id`
+- `event_type`
+- `payload_json`
+- `idempotency_key`
+- user-scoped unique idempotency index
+
+回答重点：
+
+> 这里的 event log 主要是 audit/timeline/replay surface，不是所有业务状态的唯一 source of truth。钱包、analysis run、stage、approval 仍然有 materialized tables 作为主查询路径。
+
+## 8. 高频深挖问题
+
+### Q1: 用户要求完整投资分析时，端到端怎么走？
+
+答题结构：
+
+1. `ChatController` 收到请求。
+2. JWT、Zod、rate limit 生效。
+3. `ChatService` 判断是否 auto-upgrade 到 tracked analysis run。
+4. `AnalysisRunService` 创建 queued run。
+5. `AnalysisRunProducer` 进 BullMQ。
+6. `AnalysisRunConsumer` 调 `RunOrchestratorService.step()`。
+7. `TeamRegistry` 注册各 stage executor。
+8. Intelligence、Thesis、Risk、Execution Prep、Human Approval 依次执行。
+9. `AnalysisCheckpointService` 写 stage outputs 和 artifacts。
+10. Execution Prep 写 broker-neutral order drafts。
+11. Human Approval 阶段等待用户 approve/reject。
+
+### Q2: 模型为什么不能直接下单？
+
+答题结构：
+
+- role tool scope 限制能力
+- execution prep 只产 broker-neutral draft
+- draft 必须通过 strict Zod validation
+- approval request 落库
+- human approval gate 停住 run
+- trading service 是独立 stage/commit/execute 生命周期
+- auto-dispatch 是 flag-gated，不是默认路径
+
+### Q3: 为什么 hybrid RAG？
+
+答：
+
+> 金融文档既有语义查询，也有精确术语。Dense retrieval 对语义问题好，sparse retrieval 对 ticker、form、会计术语、risk factor、公司名好。RRF 让两种 ranked list 合并时不需要比较不同量纲的 raw scores。
+
+### Q4: RRF 公式是什么，为什么有用？
+
+答：
+
+```text
+score(doc) = sum over lanes of 1 / (k + rank + 1)
+```
+
+重点：
+
+- 只看 rank
+- 不比较 cosine 和 ts_rank_cd 的 raw score
+- 多个 lane 都靠前的文档自然更靠前
+- 默认 k=60 平滑排名差异
+
+### Q5: sub-300ms 怎么证明？
+
+答：
+
+> 我会先讲设计：metadata filter、bounded topK、parallel lanes、reranker fallback、context packing、Prometheus histogram。然后补证据：如果要说 P95 sub-300ms，需要贴 `rag_search_duration_seconds` 的 Grafana/Prometheus 数据或 benchmark output。没有证据时不要把数字说死。
+
+### Q6: reranker 挂了怎么办？
+
+答：
+
+> `RerankService` 有 timeout 和 fallback。如果 sidecar 不可用，就按 RRF score 返回 topK。质量可能下降，但 retrieval 不会整体失败。
+
+### Q7: 为什么 BullMQ，不用 Kafka？
+
+答：
+
+> v1 任务是 document vectorization、news enrichment、analysis stage execution。这些是 Redis-backed job queue 很适合的任务。项目已经依赖 Redis，BullMQ 有 retry/backoff/jobId/concurrency，复杂度低。Kafka 更适合事件流和多消费者日志，不是当前 ingestion v1 的必要复杂度。
+
+### Q8: 两个 execute 同时到达怎么防重？
+
+答：
+
+> pending commit 存在 Redis，execute 用 `GETDEL` 原子消费。两个请求同时来，只有一个拿到 commit。另一个拿到 null。之后 wallet commitHistory 还会检查 hash，防止 replay。
+
+### Q9: 交易执行最难的 failure mode 是什么？
+
+答：
+
+> broker order 已提交但服务在写本地 wallet/event 前宕机。这时系统避免了 double execution，但本地状态可能落后 broker。未来要用 saga 事件和 reconciliation job 修复 started-without-completed 的执行。
+
+### Q10: 为什么 SSE？
+
+答：
+
+> 因为 chat completion 是一次请求对应一个 server-to-client stream。SSE 简单、HTTP-friendly、proxy 兼容好、完成后自然关闭。WebSocket 适合持续双向通信，不是这个路径的最小需求。
+
+### Q11: compaction 丢数字怎么办？
+
+答：
+
+> 当前 compaction 是有损的。原文仍存在数据库，但 prompt 只带 summary 和 recent window。更强方案是 summary + vector recall，从老消息里召回和当前问题相关的原文。
+
+### Q12: event log 积累很多后怎么 replay？
+
+答：
+
+> 当前 event log 更偏 audit/timeline，不是唯一 primary state。正常读走 materialized tables。Replay 通过 user 和 seqNo 增量读取；如果未来需要大量事件恢复业务状态，应加 snapshot 或 aggregate projection。
+
+### Q13: 你会优先补哪些生产化能力？
+
+答：
+
+- RAG representative latency benchmark
+- real Redis rate-limit load test
+- broker saga reconciliation
+- multi-instance SSE pub/sub or durable replay
+- structured tool-call journal
+- package dependency boundary lint
+- benchmark evidence docs for resume数字
+
+### Q14: 最重要的工程取舍是什么？
+
+答：
+
+> stage-level checkpoint，而不是 tool-call-level checkpoint。它提供了足够的可恢复性和审计性，同时避免 v1 就构建过重 workflow engine。
+
+### Q15: 简历技术栈怎么更准确？
+
+当前简历写 `Vercel AI SDK` 有被追问风险。更准确版本：
+
+> TypeScript, NestJS, internal AI runtime with typed tool orchestration, PostgreSQL/pgvector, Redis, BullMQ, Docker, Node.js.
+
+如果想保留历史迁移亮点：
+
+> Migrated Vercel AI SDK-style typed tool orchestration into an internal `@finsentinel/ai-runtime` package with mechanical import guardrails.
+
+## 9. 学习 Drill
+
+### Drill 1: 画全链路
+
+闭卷画：
+
+```text
+Chat request
+  -> upgrade planner
+  -> analysis run
+  -> BullMQ
+  -> orchestrator
+  -> teams
+  -> checkpoints
+  -> order drafts
+  -> approval
+  -> trading stage/commit/execute
+```
+
+然后给每个节点标一个文件。
+
+### Drill 2: 60 秒解释 RAG
+
+背这个版本：
+
+> 我把金融文档切 chunk 后同时存 embedding 和 search_vector。查询时 dense lane 做语义召回，sparse lane 做精确术语召回，RRF 合并 ranked lists，reranker 可选提升精度，失败时回退到 RRF。最后 context packer 做去重、source diversity 和 token budget 控制。
+
+### Drill 3: 60 秒解释交易防重
+
+背这个版本：
+
+> Stage 用 Redis Lua 原子追加，避免并发写覆盖。Commit 把 staged ops 变成带 SHA-256 hash 的 pending commit。Execute 用 Redis GETDEL 原子消费 pending commit，只有一个请求能拿到。Wallet commitHistory 再用 hash 做 idempotency check。这个设计优先防止重复下单。
+
+### Drill 4: 主动讲一个缺陷
+
+任选一个：
+
+- RAG sub-300ms 需要 benchmark/Grafana 证据。
+- SSE 150 concurrency 是 in-process，不是生产压测。
+- Rate limit 1k/min 是 mock Redis benchmark。
+- Chat compaction 是有损的。
+- Broker execution 需要 saga reconciliation。
+
+回答公式：
+
+1. 当前怎么做。
+2. 局限在哪里。
+3. 下一步怎么补。
+
+### Drill 5: 代码定位
+
+能在 30 秒内找到：
+
+1. RRF 公式。
+2. Redis Lua rate limiter。
+3. Redis Lua trading stage append。
+4. Redis `GETDEL` execute。
+5. Role tool scope。
+6. Order draft schema。
+7. SSE frame。
+8. Chat compaction benchmark。
+9. Agent event idempotency index。
+10. No Vercel AI SDK import check。
+
+## 最终心智模型
+
+不要把这个项目讲成 "LLM 加几个金融 API"。
+
+更强的讲法是：
+
+> 这是一个 typed, auditable, human-in-the-loop financial workflow system。LLM 负责理解请求、收集证据、调用受限工具、生成结构化草案；真正影响 durable financial state 的路径由 schema、role scope、stage checkpoint、approval record、Redis atomic operation 和 append-only event log 控制。
