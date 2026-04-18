@@ -112,8 +112,7 @@ describe('context journal contracts', () => {
     ).toBe(false);
   });
 
-  it('rejects DB-aligned max-length violations', () => {
-    const overlong = 'x'.repeat(256);
+  it('rejects overlong roleKey values', () => {
     expect(
       contextJournalEntrySchema.safeParse({
         id: '11111111-1111-1111-1111-111111111111',
@@ -123,8 +122,44 @@ describe('context journal contracts', () => {
         stageKey: null,
         roleKey: 'y'.repeat(65),
         entryType: 'ASSISTANT_MESSAGE',
+        sourceType: 'CHAT',
+        sourceRef: null,
+        payload: {},
+        createdAt: new Date().toISOString(),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects overlong sourceType values', () => {
+    expect(
+      contextJournalEntrySchema.safeParse({
+        id: '11111111-1111-1111-1111-111111111111',
+        userId: '22222222-2222-2222-2222-222222222222',
+        sessionId: null,
+        runId: null,
+        stageKey: null,
+        roleKey: null,
+        entryType: 'ASSISTANT_MESSAGE',
         sourceType: 'z'.repeat(33),
-        sourceRef: overlong,
+        sourceRef: null,
+        payload: {},
+        createdAt: new Date().toISOString(),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects overlong sourceRef values', () => {
+    expect(
+      contextJournalEntrySchema.safeParse({
+        id: '11111111-1111-1111-1111-111111111111',
+        userId: '22222222-2222-2222-2222-222222222222',
+        sessionId: null,
+        runId: null,
+        stageKey: null,
+        roleKey: null,
+        entryType: 'ASSISTANT_MESSAGE',
+        sourceType: 'CHAT',
+        sourceRef: 'x'.repeat(256),
         payload: {},
         createdAt: new Date().toISOString(),
       }).success,
