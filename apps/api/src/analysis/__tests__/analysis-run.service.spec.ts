@@ -65,6 +65,31 @@ describe('AnalysisRunService', () => {
     );
   });
 
+  it('retryStage rejects active runs', async () => {
+    db.__selectReturns([{ id: 'run-1', userId: 'u1', status: 'RUNNING' }]);
+    await expect(svc.retryStage('u1', 'run-1', 'RISK')).rejects.toThrow(/cannot retry/i);
+  });
+
+  it('retryStage transitions FAILED -> RUNNING at the requested stage', async () => {
+    db.__selectReturns([{ id: 'run-1', userId: 'u1', status: 'FAILED' }]);
+    db.__updateReturns([{ id: 'run-1', status: 'RUNNING', currentStageKey: 'RISK' }]);
+
+    await svc.retryStage('u1', 'run-1', 'RISK');
+
+    expect(db.__lastUpdate.set).toMatchObject({
+      status: 'RUNNING',
+      currentStageKey: 'RISK',
+    });
+    expect(events.append).toHaveBeenCalledWith(
+      'u1',
+      AgentEventAggregateType.ANALYSIS_RUN,
+      'run-1',
+      AgentEventType.RUN_RESUMED,
+      { retry: true, stageKey: 'RISK' },
+      null,
+    );
+  });
+
   it('getForUser scopes by userId', async () => {
     db.__selectReturns([{ id: 'run-1', userId: 'u1' }]);
     const run = await svc.getForUser('u1', 'run-1');

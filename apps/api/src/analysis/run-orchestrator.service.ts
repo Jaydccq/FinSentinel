@@ -55,6 +55,10 @@ export class RunOrchestratorService {
   }
 
   private async handlePreflight(data: AnalysisRunJobData): Promise<void> {
+    const run = await this.runs.getForUser(data.userId, data.runId);
+    if (!run || run.status === 'CANCELED' || run.status === 'PAUSED') {
+      return;
+    }
     await this.runs.markRunning(data.userId, data.runId);
     const first = TEAM_STAGE_ORDER[0]!;
     await this.runs.setCurrentStage(data.userId, data.runId, first);
@@ -69,6 +73,10 @@ export class RunOrchestratorService {
     if (!data.stageKey) {
       throw new Error('execute-stage job missing stageKey');
     }
+    const runBeforeStage = await this.runs.getForUser(data.userId, data.runId);
+    if (!runBeforeStage || runBeforeStage.status !== 'RUNNING') {
+      return;
+    }
     const executor = this.stageExecutors.get(data.stageKey);
     if (!executor) {
       this.logger.warn(
@@ -80,8 +88,14 @@ export class RunOrchestratorService {
       await this.checkpoints.startStage(data.runId, data.stageKey);
       await executor({ runId: data.runId, userId: data.userId });
       const run = await this.runs.getForUser(data.userId, data.runId);
-      if (data.stageKey === 'HUMAN_APPROVAL' || run?.status === 'WAITING_APPROVAL') {
-        // Hard stop — approval resolution re-enqueues via AnalysisApprovalService.
+      if (
+        data.stageKey === 'HUMAN_APPROVAL' ||
+        run?.status === 'WAITING_APPROVAL' ||
+        run?.status === 'PAUSED' ||
+        run?.status === 'CANCELED' ||
+        run?.status === 'FAILED'
+      ) {
+        // Hard stop — control/approval paths re-enqueue explicitly when execution should continue.
         return;
       }
       const next = this.nextStage(data.stageKey);
@@ -107,6 +121,9 @@ export class RunOrchestratorService {
 
   private async handleResume(data: AnalysisRunJobData): Promise<void> {
     const run = await this.runs.getForUser(data.userId, data.runId);
+    if (!run || run.status !== 'RUNNING') {
+      return;
+    }
     if (!run?.currentStageKey) {
       await this.producer.enqueuePreflight({ runId: data.runId, userId: data.userId });
       return;

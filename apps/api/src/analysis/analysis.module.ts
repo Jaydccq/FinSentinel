@@ -13,6 +13,7 @@ import { chatSessionMemories, eq, and } from '@finsentinel/db';
 
 import { AnalysisController } from './analysis.controller';
 import { AnalysisRunController } from './analysis-run.controller';
+import { AnalysisStreamController } from './analysis-stream.controller';
 import { AnalysisApprovalController } from './analysis-approval.controller';
 import { AnalysisRunService } from './analysis-run.service';
 import { AnalysisCheckpointService } from './analysis-checkpoint.service';
@@ -21,6 +22,7 @@ import { ContextComplexityService } from './context-complexity.service';
 import { PreflightPlannerService } from './preflight-planner.service';
 import { ContextFabricService } from './context-fabric.service';
 import { ContextJournalService } from './context-journal.service';
+import { RuntimeControlService } from './runtime-control.service';
 import { RunOrchestratorService } from './run-orchestrator.service';
 import { TeamRegistry } from './team-registry';
 import { RoleExecutorService } from './teams/role-executor.service';
@@ -60,9 +62,15 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
     forwardRef(() => QueueModule),
     TradingModule,
   ],
-  controllers: [AnalysisController, AnalysisRunController, AnalysisApprovalController],
+  controllers: [
+    AnalysisController,
+    AnalysisRunController,
+    AnalysisStreamController,
+    AnalysisApprovalController,
+  ],
   providers: [
     AnalysisRunService,
+    RuntimeControlService,
     AnalysisCheckpointService,
     AnalysisApprovalService,
     {
@@ -167,6 +175,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
   ],
   exports: [
     AnalysisRunService,
+    RuntimeControlService,
     AnalysisCheckpointService,
     AnalysisApprovalService,
     ContextFabricService,

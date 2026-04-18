@@ -11,6 +11,7 @@ import type { DrizzleDB } from '@finsentinel/db';
 import {
   AgentEventAggregateType,
   AgentEventType,
+  type AnalysisStageKey,
   type AnalysisRunSourceMode,
   type AnalysisRunStatus,
   type CreateRunRequest,
@@ -143,6 +144,33 @@ export class AnalysisRunService {
       runId,
       AgentEventType.RUN_CANCELED,
       {},
+      null,
+    );
+  }
+
+  async retryStage(
+    userId: string,
+    runId: string,
+    stageKey: AnalysisStageKey,
+  ): Promise<void> {
+    const row = await this.requireRun(userId, runId);
+    if (!['FAILED', 'PAUSED', 'WAITING_APPROVAL'].includes(row.status)) {
+      throw new BadRequestException(`Cannot retry run in status ${row.status}`);
+    }
+    await this.db
+      .update(analysisRuns)
+      .set({
+        status: 'RUNNING',
+        currentStageKey: stageKey,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(analysisRuns.id, runId), eq(analysisRuns.userId, userId)));
+    await this.events.append(
+      userId,
+      AgentEventAggregateType.ANALYSIS_RUN,
+      runId,
+      AgentEventType.RUN_RESUMED,
+      { retry: true, stageKey },
       null,
     );
   }

@@ -15,6 +15,12 @@ describe('AnalysisRunController', () => {
     listApprovalsForRun: ReturnType<typeof vi.fn>;
   };
   let producer: { enqueuePreflight: ReturnType<typeof vi.fn> };
+  let runtimeControl: {
+    pause: ReturnType<typeof vi.fn>;
+    resume: ReturnType<typeof vi.fn>;
+    cancel: ReturnType<typeof vi.fn>;
+    retryStage: ReturnType<typeof vi.fn>;
+  };
   let contextJournal: {
     getRunContext: ReturnType<typeof vi.fn>;
     getStageInput: ReturnType<typeof vi.fn>;
@@ -36,6 +42,12 @@ describe('AnalysisRunController', () => {
       listApprovalsForRun: vi.fn().mockResolvedValue([]),
     };
     producer = { enqueuePreflight: vi.fn().mockResolvedValue(undefined) };
+    runtimeControl = {
+      pause: vi.fn().mockResolvedValue(undefined),
+      resume: vi.fn().mockResolvedValue(undefined),
+      cancel: vi.fn().mockResolvedValue(undefined),
+      retryStage: vi.fn().mockResolvedValue(undefined),
+    };
     contextJournal = {
       getRunContext: vi.fn().mockResolvedValue({
         longTermPreferenceContext: { summary: '', sourceIds: [] },
@@ -52,7 +64,12 @@ describe('AnalysisRunController', () => {
         truncationApplied: false,
       }),
     };
-    ctrl = new AnalysisRunController(runs as never, producer as never, contextJournal as never);
+    ctrl = new AnalysisRunController(
+      runs as never,
+      producer as never,
+      contextJournal as never,
+      runtimeControl as never,
+    );
   });
 
   it('POST /analysis/runs creates a run and enqueues preflight', async () => {
@@ -72,7 +89,26 @@ describe('AnalysisRunController', () => {
 
   it('POST /analysis/runs/:id/pause delegates to service', async () => {
     await ctrl.pause('r1', user);
-    expect(runs.pause).toHaveBeenCalledWith('u1', 'r1');
+    expect(runtimeControl.pause).toHaveBeenCalledWith('u1', 'r1');
+  });
+
+  it('POST /analysis/runs/:id/resume delegates to runtime control', async () => {
+    await ctrl.resume('r1', user);
+    expect(runtimeControl.resume).toHaveBeenCalledWith('u1', 'r1');
+  });
+
+  it('POST /analysis/runs/:id/cancel delegates to runtime control', async () => {
+    await ctrl.cancel('r1', user);
+    expect(runtimeControl.cancel).toHaveBeenCalledWith('u1', 'r1');
+  });
+
+  it('POST /analysis/runs/:id/stages/:stageKey/retry delegates to runtime control', async () => {
+    await ctrl.retryStage('r1', 'RISK', user);
+    expect(runtimeControl.retryStage).toHaveBeenCalledWith('u1', 'r1', 'RISK');
+  });
+
+  it('POST /analysis/runs/:id/stages/:stageKey/retry rejects invalid stage keys', async () => {
+    await expect(ctrl.retryStage('r1', 'NOPE', user)).rejects.toThrow(BadRequestException);
   });
 
   it('GET :id/stages 404s when run not owned', async () => {
