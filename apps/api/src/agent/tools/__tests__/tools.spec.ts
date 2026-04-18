@@ -13,6 +13,7 @@ vi.mock('@finsentinel/ai-runtime', () => ({
 
 import { createStockMarketTools } from '../stock-market.tool';
 import { createTechnicalIndicatorTools } from '../technical-indicator.tool';
+import { createStrategyTemplateTools } from '../strategy-template.tool';
 import { createThinkingTools } from '../thinking.tool';
 import { createConfirmationTools } from '../confirmation.tool';
 import { createNewsAnalysisTools } from '../news-analysis.tool';
@@ -171,6 +172,82 @@ describe('createTechnicalIndicatorTools', () => {
 
     expect(result).toContain('Error');
     expect(result).toContain('Parse error');
+  });
+});
+
+describe('createStrategyTemplateTools', () => {
+  const mockService = {
+    evaluate: vi.fn(),
+  } as any;
+
+  it('returns correct tool key', () => {
+    expect(Object.keys(createStrategyTemplateTools(mockService))).toEqual([
+      'evaluateStrategyTemplate',
+    ]);
+  });
+
+  it('tools have correct AI SDK structure', () => {
+    assertToolStructure(createStrategyTemplateTools(mockService));
+  });
+
+  it('evaluateStrategyTemplate delegates to service and returns JSON', async () => {
+    mockService.evaluate.mockReturnValue({
+      templateKey: 'RSI_70_MOMENTUM_CONTINUATION',
+      signal: 'ENTER_LONG',
+      confidence: 0.8,
+      recommendedNextStep: 'REVIEW_FOR_BACKTEST',
+      reasons: ['RSI is above 70.'],
+      warnings: [],
+      requiredBars: 15,
+      receivedBars: 80,
+      indicatorSnapshot: {
+        close: 125,
+        rsi14: 75,
+        stochasticK14: null,
+        stochasticD3: null,
+        ema200: null,
+        sma50: null,
+        sma200: null,
+      },
+      costProfile: {
+        makerFeeBps: 1.5,
+        takerFeeBps: 4.5,
+        estimatedRoundTripBps: 6,
+        expectedAnnualTrades: 36,
+        feeDragWarning: false,
+      },
+    });
+
+    const tools = createStrategyTemplateTools(mockService);
+    const result = await (tools.evaluateStrategyTemplate as any).execute({
+      barsJson: '[]',
+      expectedAnnualTrades: 36,
+      templateKey: 'RSI_70_MOMENTUM_CONTINUATION',
+    });
+
+    expect(mockService.evaluate).toHaveBeenCalledWith({
+      barsJson: '[]',
+      expectedAnnualTrades: 36,
+      makerFeeBps: undefined,
+      takerFeeBps: undefined,
+      templateKey: 'RSI_70_MOMENTUM_CONTINUATION',
+    });
+    expect(result).toContain('"signal": "ENTER_LONG"');
+  });
+
+  it('returns error string on service failure, never throws', async () => {
+    mockService.evaluate.mockImplementation(() => {
+      throw new Error('Invalid bars');
+    });
+
+    const tools = createStrategyTemplateTools(mockService);
+    const result = await (tools.evaluateStrategyTemplate as any).execute({
+      barsJson: 'invalid',
+      templateKey: 'RSI_70_MOMENTUM_CONTINUATION',
+    });
+
+    expect(result).toContain('Error');
+    expect(result).toContain('Invalid bars');
   });
 });
 
@@ -733,6 +810,7 @@ describe('total tool count across all factories', () => {
     const allTools = {
       ...createStockMarketTools(allStub),                          // 2
       ...createTechnicalIndicatorTools(allStub),                   // 9
+      ...createStrategyTemplateTools(allStub),                     // 1
       ...createNewsAnalysisTools(allStub),                         // 2
       ...createQuantAnalysisTools(allStub),                        // 3
       ...createCompanyResearchTools(allStub),                      // 3

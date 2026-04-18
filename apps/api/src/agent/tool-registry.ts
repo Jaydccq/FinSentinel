@@ -2,6 +2,7 @@ import { Injectable, Optional } from '@nestjs/common';
 import type { FinToolSet } from '@finsentinel/ai-runtime';
 import { MarketDataService } from '../market/market-data.service';
 import { TechnicalIndicatorsService } from '../market/technical-indicators.service';
+import { StrategyTemplateService } from '../market/strategy-template.service';
 import { MarketCalendarService } from '../market/market-calendar.service';
 import { OwnershipDataService } from '../market/ownership-data.service';
 import { CompanyResearchService } from '../research/company-research.service';
@@ -14,6 +15,7 @@ import { WatchlistService } from '../watchlist/watchlist.service';
 import {
   createStockMarketTools,
   createTechnicalIndicatorTools,
+  createStrategyTemplateTools,
   createThinkingTools,
   createConfirmationTools,
   createNewsAnalysisTools,
@@ -50,6 +52,8 @@ export class ToolRegistry {
   constructor(
     private readonly marketDataService: MarketDataService,
     private readonly technicalIndicatorsService: TechnicalIndicatorsService,
+    @Optional()
+    private readonly strategyTemplateService?: StrategyTemplateService,
     @Optional()
     private readonly companyResearchService?: CompanyResearchService,
     @Optional()
@@ -90,6 +94,9 @@ export class ToolRegistry {
       // Group A — fully wired to existing services
       ...createStockMarketTools(this.marketDataService),
       ...createTechnicalIndicatorTools(this.technicalIndicatorsService),
+      ...(this.strategyTemplateService
+        ? createStrategyTemplateTools(this.strategyTemplateService)
+        : {}),
 
       // Group B — no-service tools (always available)
       ...createThinkingTools(),
@@ -194,6 +201,9 @@ export class ToolRegistry {
     return {
       ...createStockMarketTools(this.marketDataService),
       ...createTechnicalIndicatorTools(this.technicalIndicatorsService),
+      ...(this.strategyTemplateService
+        ? createStrategyTemplateTools(this.strategyTemplateService)
+        : {}),
     };
   }
 }

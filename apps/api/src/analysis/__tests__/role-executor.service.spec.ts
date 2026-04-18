@@ -19,7 +19,11 @@ describe('RoleExecutorService.run', () => {
       text: `\`\`\`json\n{"summary":"s","thesis":"t","risks":[],"openQuestions":[],"citations":[],"confidence":0.7}\n\`\`\``,
     });
     toolRegistry = {
-      buildTools: vi.fn().mockReturnValue({ getStockQuote: {}, stageOrder: {} }),
+      buildTools: vi.fn().mockReturnValue({
+        evaluateStrategyTemplate: {},
+        getStockQuote: {},
+        stageOrder: {},
+      }),
     };
     svc = new RoleExecutorService(toolRegistry as never, { generate: mockStream } as never);
   });
@@ -33,6 +37,7 @@ describe('RoleExecutorService.run', () => {
     const invoked = mockStream.mock.calls[0]?.[0]?.tools;
     expect(invoked).toBeDefined();
     expect(Object.keys(invoked)).toContain('getStockQuote');
+    expect(Object.keys(invoked)).toContain('evaluateStrategyTemplate');
     expect(Object.keys(invoked)).not.toContain('stageOrder');
     expect(ROLE_TOOL_SCOPE.MARKET_ANALYST.includes('stageOrder' as never)).toBe(false);
   });

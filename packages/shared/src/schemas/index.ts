@@ -16,3 +16,4 @@ export * from './watchlist';
 export * from './order-draft';
 export * from './analysis';
 export * from './context-journal';
+export * from './strategy';

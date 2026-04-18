@@ -15,6 +15,7 @@ vi.mock('@finsentinel/ai-runtime', () => ({
 import { ToolRegistry } from '../tool-registry';
 import { MarketDataService } from '../../market/market-data.service';
 import { TechnicalIndicatorsService } from '../../market/technical-indicators.service';
+import { StrategyTemplateService } from '../../market/strategy-template.service';
 import { NewsAnalysisService } from '../news-analysis.service';
 import { TwitterToolsService } from '../twitter-tools.service';
 import { CryptoToolsService } from '../crypto-tools.service';
@@ -24,6 +25,7 @@ describe('ToolRegistry', () => {
   let registry: ToolRegistry;
   let mockMarketDataService: Partial<MarketDataService>;
   let mockTechnicalIndicatorsService: Partial<TechnicalIndicatorsService>;
+  let mockStrategyTemplateService: Partial<StrategyTemplateService>;
   let mockNewsAnalysisService: Partial<NewsAnalysisService>;
   let mockTwitterToolsService: Partial<TwitterToolsService>;
   let mockCryptoToolsService: Partial<CryptoToolsService>;
@@ -46,6 +48,10 @@ describe('ToolRegistry', () => {
       calculateStochastic: vi.fn(),
       calculateADX: vi.fn(),
       calculateOBV: vi.fn(),
+    };
+
+    mockStrategyTemplateService = {
+      evaluate: vi.fn(),
     };
 
     mockNewsAnalysisService = {
@@ -79,6 +85,7 @@ describe('ToolRegistry', () => {
         ToolRegistry,
         { provide: MarketDataService, useValue: mockMarketDataService },
         { provide: TechnicalIndicatorsService, useValue: mockTechnicalIndicatorsService },
+        { provide: StrategyTemplateService, useValue: mockStrategyTemplateService },
         { provide: NewsAnalysisService, useValue: mockNewsAnalysisService },
         { provide: TwitterToolsService, useValue: mockTwitterToolsService },
         { provide: CryptoToolsService, useValue: mockCryptoToolsService },
@@ -110,6 +117,7 @@ describe('ToolRegistry', () => {
       expect(keys).toContain('calculateStochastic');
       expect(keys).toContain('calculateADX');
       expect(keys).toContain('calculateOBV');
+      expect(keys).toContain('evaluateStrategyTemplate');
 
       // Thinking tools (from createThinkingTools — always included)
       expect(keys).toContain('analyzeMarket');
@@ -177,6 +185,7 @@ describe('ToolRegistry', () => {
       expect(keys).toContain('calculateRSI');
       expect(keys).toContain('calculateMACD');
       expect(keys).toContain('calculateBollingerBands');
+      expect(keys).toContain('evaluateStrategyTemplate');
 
       // Must NOT include user-scoped tools or thinking/confirmation tools
       expect(keys).not.toContain('analyzePortfolio');
@@ -254,6 +263,50 @@ describe('ToolRegistry', () => {
         categoryName: '电',
         items: [{ symbol: 'CEG' }],
       });
+    });
+
+    it('evaluateStrategyTemplate delegates to StrategyTemplateService', async () => {
+      (mockStrategyTemplateService.evaluate as ReturnType<typeof vi.fn>).mockReturnValue({
+        templateKey: 'RSI_70_MOMENTUM_CONTINUATION',
+        signal: 'ENTER_LONG',
+        confidence: 0.8,
+        recommendedNextStep: 'REVIEW_FOR_BACKTEST',
+        reasons: ['RSI is above 70.'],
+        warnings: [],
+        requiredBars: 15,
+        receivedBars: 80,
+        indicatorSnapshot: {
+          close: 125,
+          rsi14: 75,
+          stochasticK14: null,
+          stochasticD3: null,
+          ema200: null,
+          sma50: null,
+          sma200: null,
+        },
+        costProfile: {
+          makerFeeBps: 1.5,
+          takerFeeBps: 4.5,
+          estimatedRoundTripBps: 6,
+          expectedAnnualTrades: 36,
+          feeDragWarning: false,
+        },
+      });
+
+      const tools = registry.buildTools('user-1');
+      const result = await (tools['evaluateStrategyTemplate'] as any).execute({
+        barsJson: '[]',
+        templateKey: 'RSI_70_MOMENTUM_CONTINUATION',
+      });
+
+      expect(mockStrategyTemplateService.evaluate).toHaveBeenCalledWith({
+        barsJson: '[]',
+        expectedAnnualTrades: undefined,
+        makerFeeBps: undefined,
+        takerFeeBps: undefined,
+        templateKey: 'RSI_70_MOMENTUM_CONTINUATION',
+      });
+      expect(result).toContain('ENTER_LONG');
     });
   });
 });
