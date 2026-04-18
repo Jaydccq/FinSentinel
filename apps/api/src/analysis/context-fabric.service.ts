@@ -51,17 +51,22 @@ export class ContextFabricService {
   ) {}
 
   async assemble(args: AssembleArgs): Promise<SharedContext> {
+    const adapterContext = await this.buildAdapterContext(args);
     if (args.runId && this.journal) {
       try {
         const journalContext = await this.journal.getRunContext(args.userId, args.runId);
         if (this.hasUsefulContext(journalContext)) {
-          return journalContext;
+          return this.mergeContexts(adapterContext, journalContext);
         }
       } catch (err) {
         this.logger.warn(`journal context load failed: ${err}`);
       }
     }
 
+    return adapterContext;
+  }
+
+  private async buildAdapterContext(args: AssembleArgs): Promise<SharedContext> {
     const [longSummary, midSummary, sessionSummary, retrieved] = await Promise.all([
       this.safeLoadLong(args.userId),
       this.safeLoadMid(args.userId, args.portfolioId),
@@ -106,6 +111,28 @@ export class ContextFabricService {
     return { summary, sourceIds, updatedAt };
   }
 
+  private mergeContexts(adapter: SharedContext, journal: SharedContext): SharedContext {
+    return {
+      longTermPreferenceContext: this.mergeLayer(
+        adapter.longTermPreferenceContext,
+        journal.longTermPreferenceContext,
+      ),
+      midTermStrategyContext: this.mergeLayer(
+        adapter.midTermStrategyContext,
+        journal.midTermStrategyContext,
+      ),
+      shortTermSessionContext: this.mergeLayer(
+        adapter.shortTermSessionContext,
+        journal.shortTermSessionContext,
+      ),
+      retrievalContext: this.mergeLayer(adapter.retrievalContext, journal.retrievalContext),
+    };
+  }
+
+  private mergeLayer(adapter: ContextLayer, journal: ContextLayer): ContextLayer {
+    return this.hasUsefulLayer(journal) ? journal : adapter;
+  }
+
   private hasUsefulContext(ctx: SharedContext): boolean {
     return [
       ctx.longTermPreferenceContext,
@@ -113,6 +140,10 @@ export class ContextFabricService {
       ctx.shortTermSessionContext,
       ctx.retrievalContext,
     ].some((layer) => layer.summary.trim().length > 0 || layer.sourceIds.length > 0);
+  }
+
+  private hasUsefulLayer(layer: ContextLayer): boolean {
+    return layer.summary.trim().length > 0 || layer.sourceIds.length > 0;
   }
 
   private async safeLoadLong(userId: string): Promise<string> {

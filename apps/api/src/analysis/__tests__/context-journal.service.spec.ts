@@ -129,7 +129,7 @@ describe('ContextJournalService', () => {
     expect(context.retrievalContext.sourceIds).toEqual([]);
   });
 
-  it('only includes source ids for rows that contribute summary text', async () => {
+  it('only includes source ids and updatedAt for rows that contribute summary text', async () => {
     const rows = [
       {
         id: 'ctx-empty',
@@ -144,6 +144,13 @@ describe('ContextJournalService', () => {
         payloadJson: { summaryText: 'prior chat summary' },
         sourceRef: 'chat_session_memories/session-1',
         createdAt: new Date('2026-04-18T12:01:00.000Z'),
+      },
+      {
+        id: 'ctx-empty-late',
+        entryType: 'COMPACTION_SUMMARY',
+        payloadJson: { summaryText: '' },
+        sourceRef: 'chat_session_memories/session-1',
+        createdAt: new Date('2026-04-18T12:02:00.000Z'),
       },
       {
         id: 'stage-1',
@@ -175,6 +182,7 @@ describe('ContextJournalService', () => {
 
     expect(context.shortTermSessionContext.summary).toBe('prior chat summary');
     expect(context.shortTermSessionContext.sourceIds).toEqual(['ctx-text']);
+    expect(context.shortTermSessionContext.updatedAt).toBe('2026-04-18T12:01:00.000Z');
   });
 
   it('does not fall back to unrelated rows when referenced rows are missing', async () => {

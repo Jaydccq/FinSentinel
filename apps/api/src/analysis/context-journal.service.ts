@@ -252,14 +252,13 @@ export class ContextJournalService {
       return this.emptyLayer();
     }
 
-    const sourceIds = rowSummaries
-      .filter(({ summary }) => summary.length > 0)
-      .map(({ row }) => row.id);
+    const contributingRows = rowSummaries.filter(({ summary }) => summary.length > 0).map(({ row }) => row);
+    const sourceIds = contributingRows.map((row) => row.id);
 
     return {
       summary,
       sourceIds,
-      updatedAt: this.latestCreatedAt(rows),
+      updatedAt: this.latestCreatedAt(contributingRows),
     };
   }
 

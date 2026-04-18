@@ -50,11 +50,14 @@ Add a minimal `ContextJournalService`, wire chat compaction writes into it, allo
 - 2026-04-18: Hardened journal writes with explicit UUID inserts, made stage-input lineage authoritative in `getRunContext`, added journal fallback behavior in `ContextFabricService`, and validated stage keys / snapshot reads on the run controller.
 - 2026-04-18: Updated the four analysis team services to pass `runId` into `ContextFabricService.assemble(...)` so journal-backed run context is reachable from the real runtime path, and added coverage for the team call shape plus source-id filtering in `ContextJournalService`.
 - 2026-04-18: Verified the Task 2 Vitest slice with `pnpm --filter @finsentinel/api exec vitest run src/analysis/__tests__/context-journal.service.spec.ts src/analysis/__tests__/analysis-run.controller.spec.ts src/chat/__tests__/chat-compaction.service.spec.ts src/analysis/__tests__/context-fabric.service.spec.ts` and `pnpm --filter @finsentinel/api typecheck`.
+- 2026-04-18: Clarified the journal merge rule for ContextFabricService: adapter context stays the baseline, and journal layers override only when their own layer is useful.
+- 2026-04-18: Fixed the remaining Task 2 code-quality issues by merging journal layers over adapter context instead of replacing the whole fabric result, and by constraining journal layer `updatedAt` to contributing rows only.
 
 ## Key Decisions
 
 - Keep journal context materialization simple: map journal rows into existing `SharedContext` layers by entry type and source ids.
 - Preserve the adapter-based context fabric path unless a `runId` is present and the journal loader is available.
+- When journal context is useful, merge it layer-by-layer over adapter context instead of replacing the whole shared context.
 - Keep chat compaction journal writes optional so isolated unit tests and partial module construction continue to work.
 - Compaction rows are only discoverable through run-context assembly when stage snapshots keep their entry IDs. Task 3+ must preserve those references; otherwise journal-backed run context intentionally stays narrow instead of falling back to unrelated rows.
 
@@ -66,4 +69,4 @@ Add a minimal `ContextJournalService`, wire chat compaction writes into it, allo
 
 ## Final Outcome
 
-Implemented and verified in the openalice runtime foundation worktree. The API now writes compaction events and summaries to the context journal with explicit UUIDs, materializes run context from journal data when a run id is present only when that context is useful, falls back to adapters when journal data is empty, and exposes validated read endpoints for run context and stage input snapshots.
+Implemented and verified in the openalice runtime foundation worktree. The API now writes compaction events and summaries to the context journal with explicit UUIDs, materializes run context from journal data when a run id is present only when that context is useful, merges useful journal layers over adapter context instead of replacing it wholesale, keeps journal layer timestamps aligned to contributing rows, falls back to adapters when journal data is empty, and exposes validated read endpoints for run context and stage input snapshots.

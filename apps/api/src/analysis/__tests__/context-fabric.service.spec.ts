@@ -49,7 +49,7 @@ describe('ContextFabricService.assemble', () => {
     expect(text).toMatch(/## Retrieved evidence/);
   });
 
-  it('uses journal materialization when a run id is provided', async () => {
+  it('merges useful journal layers onto adapter context', async () => {
     const journalContext = {
       longTermPreferenceContext: { summary: '', sourceIds: [] },
       midTermStrategyContext: { summary: '', sourceIds: [] },
@@ -60,11 +60,14 @@ describe('ContextFabricService.assemble', () => {
       getRunContext: vi.fn().mockResolvedValue(journalContext),
     };
     const profile = { load: vi.fn().mockResolvedValue('adapter long') };
+    const strategy = { load: vi.fn().mockResolvedValue('adapter mid') };
+    const session = { load: vi.fn().mockResolvedValue({ summary: 'adapter session', count: 1 }) };
+    const retrieval = { retrieve: vi.fn().mockResolvedValue([]) };
     const svc = new ContextFabricService(
       profile as never,
-      { load: vi.fn().mockResolvedValue('adapter mid') } as never,
-      { load: vi.fn().mockResolvedValue({ summary: 'adapter session', count: 1 }) } as never,
-      { retrieve: vi.fn().mockResolvedValue([]) } as never,
+      strategy as never,
+      session as never,
+      retrieval as never,
       journal as never,
     );
 
@@ -75,9 +78,15 @@ describe('ContextFabricService.assemble', () => {
       prompt: 'x',
     });
 
-    expect(ctx).toEqual(journalContext);
+    expect(ctx.longTermPreferenceContext.summary).toBe('adapter long');
+    expect(ctx.midTermStrategyContext.summary).toBe('adapter mid');
+    expect(ctx.shortTermSessionContext.summary).toBe('journal session');
+    expect(ctx.retrievalContext.summary).toBe('journal retrieval');
     expect(journal.getRunContext).toHaveBeenCalledWith('u1', 'r1');
-    expect(profile.load).not.toHaveBeenCalled();
+    expect(profile.load).toHaveBeenCalledWith('u1');
+    expect(strategy.load).toHaveBeenCalledWith('u1', undefined);
+    expect(session.load).toHaveBeenCalledWith('u1', 's1');
+    expect(retrieval.retrieve).toHaveBeenCalledWith('x', { userId: 'u1', limit: 8 });
   });
 
   it('falls back to adapters when journal context is empty', async () => {
