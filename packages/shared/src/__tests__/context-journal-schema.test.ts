@@ -44,4 +44,90 @@ describe('context journal contracts', () => {
 
     expect(event.eventType).toBe('ROLE_COMPLETED');
   });
+
+  it('rejects invalid UUIDs', () => {
+    expect(
+      contextJournalEntrySchema.safeParse({
+        id: 'not-a-uuid',
+        userId: '22222222-2222-2222-2222-222222222222',
+        sessionId: null,
+        runId: null,
+        stageKey: null,
+        roleKey: null,
+        entryType: 'USER_MESSAGE',
+        sourceType: 'CHAT',
+        sourceRef: null,
+        payload: {},
+        createdAt: new Date().toISOString(),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects invalid entryType values', () => {
+    expect(
+      contextJournalEntrySchema.safeParse({
+        id: '11111111-1111-1111-1111-111111111111',
+        userId: '22222222-2222-2222-2222-222222222222',
+        sessionId: null,
+        runId: null,
+        stageKey: 'THESIS',
+        roleKey: null,
+        entryType: 'BAD_TYPE',
+        sourceType: 'CHAT',
+        sourceRef: null,
+        payload: {},
+        createdAt: new Date().toISOString(),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects invalid stageKey values', () => {
+    expect(
+      contextJournalEntrySchema.safeParse({
+        id: '11111111-1111-1111-1111-111111111111',
+        userId: '22222222-2222-2222-2222-222222222222',
+        sessionId: null,
+        runId: null,
+        stageKey: 'BAD_STAGE',
+        roleKey: null,
+        entryType: 'USER_MESSAGE',
+        sourceType: 'CHAT',
+        sourceRef: null,
+        payload: {},
+        createdAt: new Date().toISOString(),
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects negative token budgets', () => {
+    expect(
+      stageInputSnapshotSchema.safeParse({
+        contextEntryIds: [],
+        priorStageKeys: ['INTELLIGENCE'],
+        evidenceEntryIds: [],
+        promptHash: 'abc123',
+        tokenBudget: -1,
+        truncationApplied: false,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects DB-aligned max-length violations', () => {
+    const overlong = 'x'.repeat(256);
+    expect(
+      contextJournalEntrySchema.safeParse({
+        id: '11111111-1111-1111-1111-111111111111',
+        userId: '22222222-2222-2222-2222-222222222222',
+        sessionId: null,
+        runId: null,
+        stageKey: null,
+        roleKey: 'y'.repeat(65),
+        entryType: 'ASSISTANT_MESSAGE',
+        sourceType: 'z'.repeat(33),
+        sourceRef: overlong,
+        payload: {},
+        createdAt: new Date().toISOString(),
+      }).success,
+    ).toBe(false);
+  });
 });

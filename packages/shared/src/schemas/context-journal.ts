@@ -33,10 +33,10 @@ export const contextJournalEntrySchema = z.object({
   sessionId: z.string().uuid().nullable(),
   runId: z.string().uuid().nullable(),
   stageKey: analysisStageKeySchema.nullable(),
-  roleKey: z.string().nullable(),
+  roleKey: z.string().max(64).nullable(),
   entryType: contextJournalEntryTypeSchema,
-  sourceType: z.string(),
-  sourceRef: z.string().nullable(),
+  sourceType: z.string().max(32),
+  sourceRef: z.string().max(255).nullable(),
   payload: z.record(z.string(), z.unknown()),
   createdAt: z.string().datetime(),
 });

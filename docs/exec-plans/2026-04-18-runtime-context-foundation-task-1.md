@@ -38,6 +38,7 @@ Add versioned, test-covered contracts for context journal entries and runtime ti
 - 2026-04-18: Reopened the partial implementation to remove the duplicate test wrapper and resolve the shared export collision before verification.
 - 2026-04-18: Added the shared context journal contracts, DB table, exports, relations, and generated the Task 1 migration.
 - 2026-04-18: Verified `pnpm --filter @finsentinel/shared test -- src/__tests__/context-journal-schema.test.ts`, `pnpm --filter @finsentinel/shared build`, `pnpm --filter @finsentinel/db typecheck`, and `pnpm --filter @finsentinel/db db:generate`.
+- 2026-04-18: Updated the context journal schema with DB-aligned length validation, restored the single shared test glob, and added the canonical production V14 migration.
 
 ## Key decisions
 - Keep the implementation minimal and schema-only.
@@ -45,10 +46,11 @@ Add versioned, test-covered contracts for context journal entries and runtime ti
 - Use a dedicated context journal table rather than overloading existing event tables.
 - Keep the requested top-level shared test file as the runnable test and remove the nested duplicate.
 - Keep `runtimeTimelineEventSchema` defined in `context-journal.ts` and do not re-export it from `event.ts`, so `schemas/index.ts` does not hit a duplicate export collision.
+- Use `packages/db/migrations/V14__add_context_journal_entries.sql` as the production migration and keep the Drizzle-generated files as supplemental schema metadata only.
 
 ## Risks and blockers
 - DB typecheck may need a shared rebuild if package outputs are stale in the worktree.
 - Migration generation may surface unrelated schema drift; if so, inspect before changing scope.
 
 ## Final outcome
-Implemented and verified in the isolated worktree. The Task 1 shared contracts, DB schema, and generated migration are in place.
+Implemented and verified in the isolated worktree. The Task 1 shared contracts, DB schema, generated migration, and canonical production V14 migration are in place.
