@@ -8,6 +8,20 @@
       "when": 1775537851265,
       "tag": "0000_little_sharon_carter",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776538411411,
+      "tag": "0001_daily_guardsmen",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776539282006,
+      "tag": "0002_furry_goblin_queen",
+      "breakpoints": true
     }
   ]
 }
