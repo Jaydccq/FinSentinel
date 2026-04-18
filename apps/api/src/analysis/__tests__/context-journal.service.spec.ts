@@ -67,12 +67,116 @@ describe('ContextJournalService', () => {
       },
     });
     const context = await service.getRunContext(USER_ID, RUN_ID);
+    const insertValues = insertChain.values.mock.calls[0]![0] as Record<string, unknown>;
 
     expect(db.insert).toHaveBeenCalled();
+    expect(insertValues.id).toEqual(expect.any(String));
+    expect(insertValues.sessionId).toBeNull();
+    expect(insertValues.runId).toBe(RUN_ID);
     expect(context.shortTermSessionContext.summary).toContain('prior chat summary');
     expect(context.shortTermSessionContext.sourceIds).toContain('ctx-1');
     expect(context.retrievalContext.summary).toContain('retrieved document summary');
     expect(context.retrievalContext.sourceIds).toContain('rag-1');
+  });
+
+  it('keeps stage-input lineage authoritative when referenced ids are empty', async () => {
+    const rows = [
+      {
+        id: 'ctx-1',
+        entryType: 'COMPACTION_SUMMARY',
+        payloadJson: { summaryText: 'prior chat summary' },
+        sourceRef: 'chat_session_memories/session-1',
+        createdAt: new Date('2026-04-18T12:00:00.000Z'),
+      },
+      {
+        id: 'rag-1',
+        entryType: 'RAG_EVIDENCE',
+        payloadJson: { summary: 'retrieved document summary' },
+        sourceRef: 'documents/doc-1',
+        createdAt: new Date('2026-04-18T12:01:00.000Z'),
+      },
+      {
+        id: 'stage-empty',
+        entryType: 'STAGE_INPUT',
+        payloadJson: {
+          contextEntryIds: [],
+          priorStageKeys: ['INTELLIGENCE'],
+          evidenceEntryIds: [],
+          promptHash: 'hash-empty',
+          tokenBudget: 12000,
+          truncationApplied: false,
+        },
+        sourceRef: 'analysis_runs/22222222-2222-2222-2222-222222222222',
+        createdAt: new Date('2026-04-18T12:02:00.000Z'),
+      },
+    ];
+    const selectChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue(rows),
+    };
+    const db = {
+      insert: vi.fn(),
+      select: vi.fn().mockReturnValue(selectChain),
+    } as never;
+    const service = new ContextJournalService(db);
+
+    const context = await service.getRunContext(USER_ID, RUN_ID);
+
+    expect(context.shortTermSessionContext.summary).toBe('');
+    expect(context.shortTermSessionContext.sourceIds).toEqual([]);
+    expect(context.retrievalContext.summary).toBe('');
+    expect(context.retrievalContext.sourceIds).toEqual([]);
+  });
+
+  it('does not fall back to unrelated rows when referenced rows are missing', async () => {
+    const rows = [
+      {
+        id: 'ctx-1',
+        entryType: 'COMPACTION_SUMMARY',
+        payloadJson: { summaryText: 'unrelated chat summary' },
+        sourceRef: 'chat_session_memories/session-1',
+        createdAt: new Date('2026-04-18T12:00:00.000Z'),
+      },
+      {
+        id: 'rag-1',
+        entryType: 'RAG_EVIDENCE',
+        payloadJson: { summary: 'unrelated retrieval summary' },
+        sourceRef: 'documents/doc-1',
+        createdAt: new Date('2026-04-18T12:01:00.000Z'),
+      },
+      {
+        id: 'stage-missing',
+        entryType: 'STAGE_INPUT',
+        payloadJson: {
+          contextEntryIds: ['ctx-missing'],
+          priorStageKeys: ['INTELLIGENCE'],
+          evidenceEntryIds: ['rag-missing'],
+          promptHash: 'hash-missing',
+          tokenBudget: 12000,
+          truncationApplied: false,
+        },
+        sourceRef: 'analysis_runs/22222222-2222-2222-2222-222222222222',
+        createdAt: new Date('2026-04-18T12:02:00.000Z'),
+      },
+    ];
+    const selectChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue(rows),
+    };
+    const db = {
+      insert: vi.fn(),
+      select: vi.fn().mockReturnValue(selectChain),
+    } as never;
+    const service = new ContextJournalService(db);
+
+    const context = await service.getRunContext(USER_ID, RUN_ID);
+
+    expect(context.shortTermSessionContext.summary).toBe('');
+    expect(context.shortTermSessionContext.sourceIds).toEqual([]);
+    expect(context.retrievalContext.summary).toBe('');
+    expect(context.retrievalContext.sourceIds).toEqual([]);
   });
 
   it('returns the latest stage input payload for a run stage', async () => {

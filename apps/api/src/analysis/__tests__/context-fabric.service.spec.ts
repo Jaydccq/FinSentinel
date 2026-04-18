@@ -79,4 +79,40 @@ describe('ContextFabricService.assemble', () => {
     expect(journal.getRunContext).toHaveBeenCalledWith('u1', 'r1');
     expect(profile.load).not.toHaveBeenCalled();
   });
+
+  it('falls back to adapters when journal context is empty', async () => {
+    const journal = {
+      getRunContext: vi.fn().mockResolvedValue({
+        longTermPreferenceContext: { summary: '', sourceIds: [] },
+        midTermStrategyContext: { summary: '', sourceIds: [] },
+        shortTermSessionContext: { summary: '', sourceIds: [] },
+        retrievalContext: { summary: '', sourceIds: [] },
+      }),
+    };
+    const profile = { load: vi.fn().mockResolvedValue('adapter long') };
+    const strategy = { load: vi.fn().mockResolvedValue('adapter mid') };
+    const session = { load: vi.fn().mockResolvedValue({ summary: 'adapter session', count: 2 }) };
+    const retrieval = {
+      retrieve: vi.fn().mockResolvedValue([{ id: 'doc-1', snippet: 'adapter evidence' }]),
+    };
+    const svc = new ContextFabricService(
+      profile as never,
+      strategy as never,
+      session as never,
+      retrieval as never,
+      journal as never,
+    );
+
+    const ctx = await svc.assemble({
+      userId: 'u1',
+      runId: 'r1',
+      sessionId: 's1',
+      prompt: 'x',
+    });
+
+    expect(journal.getRunContext).toHaveBeenCalledWith('u1', 'r1');
+    expect(profile.load).toHaveBeenCalledWith('u1');
+    expect(ctx.shortTermSessionContext.summary).toContain('adapter session');
+    expect(ctx.retrievalContext.sourceIds).toEqual(['doc-1']);
+  });
 });

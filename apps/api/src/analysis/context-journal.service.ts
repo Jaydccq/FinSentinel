@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 
 import { contextJournalEntries } from '@finsentinel/db';
@@ -9,6 +10,7 @@ import type {
   SharedContext,
   StageInputSnapshot,
 } from '@finsentinel/shared';
+import { stageInputSnapshotSchema } from '@finsentinel/shared';
 
 interface AppendJournalEntryArgs {
   userId: string;
@@ -59,9 +61,12 @@ export class ContextJournalService {
 
   async append(args: AppendJournalEntryArgs): Promise<JournalRow | null> {
     const now = new Date();
+    // Supply id + createdAt explicitly to avoid the Drizzle+postgres.js
+    // mixed-default bind bug when defaulted columns are mixed with bound args.
     const [created] = await this.db
       .insert(contextJournalEntries)
       .values({
+        id: randomUUID(),
         userId: args.userId,
         sessionId: args.sessionId ?? null,
         runId: args.runId ?? null,
@@ -121,14 +126,8 @@ export class ContextJournalService {
     return {
       longTermPreferenceContext: this.emptyLayer(),
       midTermStrategyContext: this.emptyLayer(),
-      shortTermSessionContext: this.layerFromRows(
-        compactionRows.length > 0 ? compactionRows : this.filterByType(rows, 'COMPACTION_SUMMARY'),
-        ['summaryText'],
-      ),
-      retrievalContext: this.layerFromRows(
-        retrievalRows.length > 0 ? retrievalRows : this.filterByType(rows, 'RAG_EVIDENCE'),
-        ['summary', 'snippet', 'text'],
-      ),
+      shortTermSessionContext: this.layerFromRows(compactionRows, ['summaryText']),
+      retrievalContext: this.layerFromRows(retrievalRows, ['summary', 'snippet', 'text']),
     };
   }
 
@@ -153,7 +152,7 @@ export class ContextJournalService {
       .orderBy(desc(contextJournalEntries.createdAt))
       .limit(1);
 
-    return (row?.payloadJson as StageInputSnapshot | undefined) ?? null;
+    return row ? stageInputSnapshotSchema.parse(row.payloadJson) : null;
   }
 
   private async selectRunRows(userId: string, runId: string): Promise<JournalRow[]> {
@@ -226,7 +225,7 @@ export class ContextJournalService {
     ids: string[],
   ): JournalRow[] {
     const matches = this.filterByType(rows, entryType);
-    if (ids.length === 0) return matches;
+    if (ids.length === 0) return [];
 
     const idsSet = new Set(ids);
     return matches.filter((row) => idsSet.has(row.id));

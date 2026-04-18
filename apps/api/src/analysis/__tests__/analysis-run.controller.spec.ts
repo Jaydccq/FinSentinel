@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AnalysisRunController } from '../analysis-run.controller';
 
 describe('AnalysisRunController', () => {
@@ -129,5 +130,20 @@ describe('AnalysisRunController', () => {
 
     expect(contextJournal.getStageInput).toHaveBeenCalledWith('u1', 'r1', 'THESIS');
     expect(result?.contextEntryIds).toEqual(['ctx-1']);
+  });
+
+  it('GET /analysis/runs/:id/stages/:stageKey/input rejects invalid stage keys', async () => {
+    runs.getForUser.mockResolvedValue({ id: 'r1', userId: 'u1', status: 'RUNNING' });
+
+    await expect(ctrl.getStageInput('r1', 'NOT_A_STAGE', user)).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('GET /analysis/runs/:id/stages/:stageKey/input 404s when snapshot is missing', async () => {
+    runs.getForUser.mockResolvedValue({ id: 'r1', userId: 'u1', status: 'RUNNING' });
+    contextJournal.getStageInput.mockResolvedValue(null);
+
+    await expect(ctrl.getStageInput('r1', 'THESIS', user)).rejects.toThrow(NotFoundException);
   });
 });

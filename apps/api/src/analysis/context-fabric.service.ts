@@ -52,7 +52,14 @@ export class ContextFabricService {
 
   async assemble(args: AssembleArgs): Promise<SharedContext> {
     if (args.runId && this.journal) {
-      return this.journal.getRunContext(args.userId, args.runId);
+      try {
+        const journalContext = await this.journal.getRunContext(args.userId, args.runId);
+        if (this.hasUsefulContext(journalContext)) {
+          return journalContext;
+        }
+      } catch (err) {
+        this.logger.warn(`journal context load failed: ${err}`);
+      }
     }
 
     const [longSummary, midSummary, sessionSummary, retrieved] = await Promise.all([
@@ -97,6 +104,15 @@ export class ContextFabricService {
 
   private layer(summary: string, sourceIds: string[], updatedAt: string): ContextLayer {
     return { summary, sourceIds, updatedAt };
+  }
+
+  private hasUsefulContext(ctx: SharedContext): boolean {
+    return [
+      ctx.longTermPreferenceContext,
+      ctx.midTermStrategyContext,
+      ctx.shortTermSessionContext,
+      ctx.retrievalContext,
+    ].some((layer) => layer.summary.trim().length > 0 || layer.sourceIds.length > 0);
   }
 
   private async safeLoadLong(userId: string): Promise<string> {

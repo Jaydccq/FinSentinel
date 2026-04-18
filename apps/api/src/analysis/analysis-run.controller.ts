@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  BadRequestException,
   Get,
   NotFoundException,
   Param,
@@ -11,8 +12,8 @@ import {
 import { JwtGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
-import { createRunRequestSchema } from '@finsentinel/shared';
-import type { AnalysisStageKey, CreateRunRequest } from '@finsentinel/shared';
+import { analysisStageKeySchema, createRunRequestSchema } from '@finsentinel/shared';
+import type { CreateRunRequest } from '@finsentinel/shared';
 import { AnalysisRunService } from './analysis-run.service';
 import { AnalysisRunProducer } from '../queue/analysis-run.producer';
 import { ContextJournalService } from './context-journal.service';
@@ -119,11 +120,22 @@ export class AnalysisRunController {
   @Get(':id/stages/:stageKey/input')
   async getStageInput(
     @Param('id', new ParseUUIDPipe()) id: string,
-    @Param('stageKey') stageKey: AnalysisStageKey,
+    @Param('stageKey') stageKey: string,
     @CurrentUser() user: CurrentUserPayload,
   ) {
+    const parsedStageKey = analysisStageKeySchema.safeParse(stageKey);
+    if (!parsedStageKey.success) {
+      throw new BadRequestException(`Invalid stage key: ${stageKey}`);
+    }
+
     const run = await this.runs.getForUser(user.userId, id);
     if (!run) throw new NotFoundException(`Run ${id} not found`);
-    return this.contextJournal.getStageInput(user.userId, id, stageKey);
+
+    const snapshot = await this.contextJournal.getStageInput(user.userId, id, parsedStageKey.data);
+    if (!snapshot) {
+      throw new NotFoundException(`Stage input for run ${id} and stage ${parsedStageKey.data} not found`);
+    }
+
+    return snapshot;
   }
 }

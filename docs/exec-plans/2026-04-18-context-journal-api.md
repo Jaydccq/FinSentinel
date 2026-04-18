@@ -47,6 +47,7 @@ Add a minimal `ContextJournalService`, wire chat compaction writes into it, allo
 
 - 2026-04-18: Created plan and inspected existing analysis/chat services and tests.
 - 2026-04-18: Implemented `ContextJournalService`, wired it into `AnalysisModule`, added optional chat compaction writes, added journal-backed analysis context assembly, and exposed run context / stage input read endpoints on `AnalysisRunController`.
+- 2026-04-18: Hardened journal writes with explicit UUID inserts, made stage-input lineage authoritative in `getRunContext`, added journal fallback behavior in `ContextFabricService`, and validated stage keys / snapshot reads on the run controller.
 - 2026-04-18: Verified the Task 2 Vitest slice with `pnpm --filter @finsentinel/api exec vitest run src/analysis/__tests__/context-journal.service.spec.ts src/analysis/__tests__/analysis-run.controller.spec.ts src/chat/__tests__/chat-compaction.service.spec.ts src/analysis/__tests__/context-fabric.service.spec.ts` and `pnpm --filter @finsentinel/api typecheck`.
 
 ## Key Decisions
@@ -54,12 +55,14 @@ Add a minimal `ContextJournalService`, wire chat compaction writes into it, allo
 - Keep journal context materialization simple: map journal rows into existing `SharedContext` layers by entry type and source ids.
 - Preserve the adapter-based context fabric path unless a `runId` is present and the journal loader is available.
 - Keep chat compaction journal writes optional so isolated unit tests and partial module construction continue to work.
+- Compaction rows are only discoverable through run-context assembly when stage snapshots keep their entry IDs. Task 3+ must preserve those references; otherwise journal-backed run context intentionally stays narrow instead of falling back to unrelated rows.
 
 ## Risks And Blockers
 
 - Drizzle mocks in existing isolated tests may need small chain-method additions to match new query paths.
 - Typecheck may expose stricter mocked-controller constructor requirements after adding `ContextJournalService`.
+- If future stage writers omit `contextEntryIds` or `evidenceEntryIds`, journal-backed run context will stay empty by design rather than rehydrating unrelated compaction/RAG rows.
 
 ## Final Outcome
 
-Implemented and verified in the openalice runtime foundation worktree. The API now writes compaction events and summaries to the context journal, materializes run context from journal data when a run id is present, and exposes read endpoints for run context and stage input snapshots.
+Implemented and verified in the openalice runtime foundation worktree. The API now writes compaction events and summaries to the context journal with explicit UUIDs, materializes run context from journal data when a run id is present only when that context is useful, falls back to adapters when journal data is empty, and exposes validated read endpoints for run context and stage input snapshots.
