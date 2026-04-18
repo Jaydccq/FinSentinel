@@ -8,7 +8,7 @@ WORKDIR /app
 # Copy workspace-level files first (pnpm + turbo)
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json tsconfig.base.json ./
 
-# Copy all packages (shared, db) — needed for workspace: dependencies
+# Copy all packages — needed for workspace:* dependencies
 COPY packages/ ./packages/
 
 # Copy the API app
@@ -17,9 +17,10 @@ COPY apps/api/ ./apps/api/
 # Install dependencies (frozen lockfile for reproducibility)
 RUN pnpm install --frozen-lockfile
 
-# Build shared packages first, then the API
+# Build workspace packages first, then the API
 RUN pnpm --filter @finsentinel/shared build && \
     pnpm --filter @finsentinel/db build && \
+    pnpm --filter @finsentinel/ai-runtime build && \
     pnpm --filter @finsentinel/api build
 
 # ── Production dependencies ──────────────────────────────────────────────
@@ -40,6 +41,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=deps /app/packages ./packages
+COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
+COPY --from=builder /app/packages/db/dist ./packages/db/dist
+COPY --from=builder /app/packages/ai-runtime/dist ./packages/ai-runtime/dist
 
 # Copy built API dist
 COPY --from=builder /app/apps/api/dist ./dist
