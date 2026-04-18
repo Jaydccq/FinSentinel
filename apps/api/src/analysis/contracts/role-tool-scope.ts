@@ -17,6 +17,7 @@ export const ROLE_TOOL_SCOPE: Record<RoleKey, readonly string[]> = {
     'calculateStochastic',
     'calculateADX',
     'calculateOBV',
+    'evaluateStrategyTemplate',
     'checkMarketHours',
   ],
   NEWS_ANALYST: [

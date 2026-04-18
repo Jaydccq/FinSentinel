@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+export { runtimeTimelineEventSchema } from './context-journal';
+
 // --- AgentEventResponse ---
 export const agentEventResponseSchema = z.object({
   id: z.string().uuid(),

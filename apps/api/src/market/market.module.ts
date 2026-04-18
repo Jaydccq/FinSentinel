@@ -12,6 +12,7 @@ import { YahooFinanceMarketDataProvider } from './providers/yahoo.provider';
 import { MarketDataProviderRegistry } from './market-data-provider.registry';
 import { MarketDataService } from './market-data.service';
 import { TechnicalIndicatorsService } from './technical-indicators.service';
+import { StrategyTemplateService } from './strategy-template.service';
 import { MarketCalendarService } from './market-calendar.service';
 import { OwnershipDataService } from './ownership-data.service';
 import { MarketDataController } from './market-data.controller';
@@ -98,6 +99,7 @@ function isMarketDataProvider(
     MarketDataProviderRegistry,
     MarketDataService,
     TechnicalIndicatorsService,
+    StrategyTemplateService,
 
     // ── OpenBB-backed services ───────────────────────────────────────────
     MarketCalendarService,
@@ -107,6 +109,7 @@ function isMarketDataProvider(
     MarketDataService,
     MarketDataProviderRegistry,
     TechnicalIndicatorsService,
+    StrategyTemplateService,
     MarketCalendarService,
     OwnershipDataService,
   ],

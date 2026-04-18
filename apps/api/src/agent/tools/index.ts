@@ -14,6 +14,7 @@
 // Group A — fully wired
 export { createStockMarketTools } from './stock-market.tool';
 export { createTechnicalIndicatorTools } from './technical-indicator.tool';
+export { createStrategyTemplateTools } from './strategy-template.tool';
 
 // Group B — service stubs + no-service tools
 export { createNewsAnalysisTools } from './news-analysis.tool';
