@@ -1,0 +1,25 @@
+# Wave 2 per-bucket thresholds. Applied additively alongside the overall
+# `minimum_metrics:` block — a report must pass both the overall gate and
+# every bucket gate. Bucket names match the `tags` on golden entries and
+# `--bucket` on the CLI. Unknown metric keys surface as UNKNOWN_KEY.
+api_base_url: "http://localhost:3001"
+retrieval:
+  endpoint: "/api/rag/search"
+  top_k: 10
+minimum_metrics:
+  strict.recall@5: 0.30
+  strict.recall@10: 0.45
+  lenient.recall@10: 0.60
+  strict.mrr@10: 0.25
+bucket_minimum_metrics:
+  exact_lookup:
+    strict.recall@5: 0.80
+    strict.mrr@10: 0.70
+  colloquial:
+    lenient.recall@10: 0.85
+  cross_document:
+    lenient.recall@10: 0.70
+  long_doc:
+    lenient.recall@10: 0.70
+  table_numeric:
+    strict.recall@5: 0.65

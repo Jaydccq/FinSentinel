@@ -93,7 +93,13 @@ def fetch_retrieval_results(
     return results
 
 
-def run_evaluation(dataset_path: str, output_path: str, config_path: str | None = None, corpus_path: str | None = None) -> None:
+def run_evaluation(
+    dataset_path: str,
+    output_path: str,
+    config_path: str | None = None,
+    corpus_path: str | None = None,
+    bucket: str | None = None,
+) -> None:
     golden_set = load_golden_set(dataset_path)
     print(f"Loaded {len(golden_set)} golden entries from {dataset_path}")
 
@@ -119,8 +125,20 @@ def run_evaluation(dataset_path: str, output_path: str, config_path: str | None 
         retrieval_results = [RetrievalResult(chunks=[]) for _ in golden_set]
 
     evaluator = TopKEvaluator()
-    metrics = evaluator.evaluate(golden_set, retrieval_results)
+    metrics = evaluator.evaluate(golden_set, retrieval_results, bucket=bucket)
     minimum_metrics: dict[str, float] = config.get("minimum_metrics", {})
+    bucket_minimum_metrics: dict[str, dict[str, float]] = config.get(
+        "bucket_minimum_metrics", {}
+    )
+
+    # Per-bucket metrics: recompute for each bucket named in the gate config.
+    # Done regardless of --bucket, because bucket gating evaluates thresholds
+    # against bucket-scoped metrics, not the overall filtered set.
+    bucket_metrics: dict[str, dict[str, float]] = {}
+    for bucket_name in bucket_minimum_metrics:
+        bucket_metrics[bucket_name] = evaluator.evaluate(
+            golden_set, retrieval_results, bucket=bucket_name
+        )
 
     report = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -128,8 +146,13 @@ def run_evaluation(dataset_path: str, output_path: str, config_path: str | None 
         "entry_count": len(golden_set),
         "metrics": metrics,
     }
+    if bucket is not None:
+        report["bucket"] = bucket
     if minimum_metrics:
         report["minimum_metrics"] = minimum_metrics
+    if bucket_minimum_metrics:
+        report["bucket_minimum_metrics"] = bucket_minimum_metrics
+        report["bucket_metrics"] = bucket_metrics
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
@@ -140,13 +163,29 @@ def run_evaluation(dataset_path: str, output_path: str, config_path: str | None 
     for name, value in sorted(metrics.items()):
         print(f"  {name}: {value:.4f}")
 
+    should_exit_nonzero = False
+
     if minimum_metrics:
         violations = check_minimum_metrics(metrics, minimum_metrics)
         if violations:
             print("\nminimum_metrics violations:")
             for msg in violations:
                 print(f"  {msg}")
-            sys.exit(1)
+            should_exit_nonzero = True
+
+    if bucket_minimum_metrics:
+        for bucket_name, thresholds in bucket_minimum_metrics.items():
+            violations = check_minimum_metrics(
+                bucket_metrics[bucket_name], thresholds
+            )
+            if violations:
+                print(f"\nbucket_minimum_metrics[{bucket_name}] violations:")
+                for msg in violations:
+                    print(f"  {msg}")
+                should_exit_nonzero = True
+
+    if should_exit_nonzero:
+        sys.exit(1)
 
 
 def compare_reports(path_a: str, path_b: str) -> None:
@@ -206,6 +245,11 @@ def main():
     run_parser.add_argument("--output", required=True, help="Path for output report JSON")
     run_parser.add_argument("--config", default=None, help="Path to config YAML")
     run_parser.add_argument("--corpus", default=None, help="Path to corpus JSON for offline retrieval")
+    run_parser.add_argument(
+        "--bucket",
+        default=None,
+        help="Only score entries tagged with this bucket label (e.g. exact_lookup, colloquial)",
+    )
 
     cmp_parser = subparsers.add_parser("compare", help="Compare two reports")
     cmp_parser.add_argument("baseline", help="Baseline report JSON")
@@ -214,7 +258,7 @@ def main():
     args = parser.parse_args()
 
     if args.command == "run":
-        run_evaluation(args.dataset, args.output, args.config, args.corpus)
+        run_evaluation(args.dataset, args.output, args.config, args.corpus, args.bucket)
     elif args.command == "compare":
         compare_reports(args.baseline, args.experiment)
     else:
