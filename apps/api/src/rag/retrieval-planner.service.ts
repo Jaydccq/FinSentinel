@@ -56,7 +56,7 @@ export class RetrievalPlannerService {
     configService: ConfigService,
   ) {
     // Graph lane is disabled by default until graph enrichment pipeline is implemented
-    this.graphEnabled = configService.get<string>('RAG_GRAPH_ENABLED', 'false') === 'true';
+    this.graphEnabled = configService.get<boolean>('rag.graph.enabled', false) as boolean;
     this.rewriteEnabled = configService.get<boolean>('rag.retrieval.queryRewriteEnabled', true) as boolean;
     this.hydeEnabled = configService.get<boolean>('rag.retrieval.hydeEnabled', false) as boolean;
     this.decomposeEnabled = configService.get<boolean>('rag.retrieval.queryDecomposeEnabled', false) as boolean;
@@ -100,8 +100,11 @@ export class RetrievalPlannerService {
     // Decompose variant -- multi_part class only, gated by flag
     if (queryClass === 'multi_part' && this.decomposeEnabled) {
       const subqueries = await this.queryVariant.decompose(query);
-      if (subqueries.length > 0) {
-        for (const sub of subqueries) {
+      const dedupedSubs = subqueries.filter(
+        (sub) => !variants.some((v) => v.query === sub),
+      );
+      if (dedupedSubs.length > 0) {
+        for (const sub of dedupedSubs) {
           variants.push({ kind: 'subquery', query: sub });
         }
       } else {

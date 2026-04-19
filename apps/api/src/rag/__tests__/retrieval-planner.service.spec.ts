@@ -20,7 +20,7 @@ function mockConfigService(opts: ConfigOverrides = {}) {
 
   return {
     get: vi.fn((key: string, defaultVal: unknown) => {
-      if (key === 'RAG_GRAPH_ENABLED') return graphEnabled ? 'true' : 'false';
+      if (key === 'rag.graph.enabled') return graphEnabled;
       if (key === 'rag.retrieval.queryRewriteEnabled') return rewriteEnabled;
       if (key === 'rag.retrieval.hydeEnabled') return hydeEnabled;
       if (key === 'rag.retrieval.queryDecomposeEnabled') return decomposeEnabled;
