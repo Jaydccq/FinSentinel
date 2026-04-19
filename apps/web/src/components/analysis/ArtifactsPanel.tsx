@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { AnalysisArtifactResponse } from '../../api/analysis-runs'
+import { ArtifactRenderer } from './ArtifactRenderer'
 
 export interface ArtifactsPanelProps {
   artifacts: AnalysisArtifactResponse[]
@@ -38,9 +39,9 @@ export function ArtifactsPanel({ artifacts }: ArtifactsPanelProps) {
                 </span>
               </button>
               {isOpen && (
-                <pre className="text-xs bg-slate-950/70 p-3 overflow-auto">
-                  {JSON.stringify(a.payload, null, 2)}
-                </pre>
+                <div className="p-3">
+                  <ArtifactRenderer artifact={a} />
+                </div>
               )}
             </li>
           )
