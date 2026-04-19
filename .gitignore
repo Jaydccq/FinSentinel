@@ -92,6 +92,8 @@ docs/exec-plans/*
 !docs/exec-plans/2026-04-17-operator-console-implementation-plan.md
 !docs/exec-plans/2026-04-17-execution-review-ledger-implementation-plan.md
 !docs/exec-plans/2026-04-18-high-quality-strategy-engine.md
+!docs/exec-plans/2026-04-19-rag-redesign-plan.md
+!docs/exec-plans/2026-04-19-rag-redesign-design.md
 !docs/exec-plans/2026-04-17-pi-mono-refactor-plan.md
 !docs/exec-plans/2026-04-18-resume-technical-guide.md
 !docs/technical-guides/
