@@ -57,3 +57,42 @@
   `postgresql://postgres:123456@localhost:5432/finsentinel` appears as a fallback
   when `DATABASE_URL` is unset. Move to Vitest `globalSetup` that loads
   `apps/api/.env.test` so credentials come from env only.
+
+## 2026-04-19 — carried over from Phase 1 Team Config Runtime
+
+- **[PHASE1-TD-01] `packages/shared` dist must be rebuilt before API typecheck
+  on a fresh checkout.** `apps/api/tsconfig.typecheck.json` resolves
+  `@finsentinel/shared` via the compiled `dist/`. When a new export or
+  required field lands in `packages/shared/src/` without a follow-up
+  `pnpm --filter @finsentinel/shared build`, downstream consumers see TS2353
+  errors (e.g. `preset` missing from `CreateRunRequest`). Fix: add
+  `@finsentinel/shared#build` as an explicit dependency of
+  `@finsentinel/api#typecheck` in `turbo.json`, or bake the build into the
+  pre-typecheck hook.
+- **[PHASE1-TD-02] `TeamPresetService.maxParallelRoles` is computed but
+  unused.** `StageGraphService.build` discards the full `ResolvedPresetPlan`
+  and keeps only `stageKeys`. Team services do not thread
+  `maxParallelRoles` into role scheduling yet. Either wire it in when role
+  scheduling gets reworked, or remove it and re-add when a concrete consumer
+  exists. Low priority.
+- **[PHASE1-TD-03] `AnalysisCheckpointService.writeOrderDrafts` violates the
+  explicit-column rule on `stageId`.** Line ~160 writes
+  `stageId: args.stageId ?? undefined` — `undefined` makes Drizzle omit the
+  column and fall back to the DB default. The behaviour is correct by accident
+  because the DB default is `NULL`. Change to `stageId: args.stageId ?? null`
+  to comply with the convention in CLAUDE.md.
+- **[PHASE1-TD-04] Generic `ROLE_STARTED/ROLE_COMPLETED/ROLE_FAILED` event
+  types are declared but never emitted.** Role-lifecycle events are currently
+  emitted under role-specific names (`POSITIVE_CASE_STARTED`, etc.). The
+  generic keys were added for Phase 2/3 consumers. If Phase 2 does not
+  consume them, either delete or document them as forward-looking.
+- **[PHASE1-TD-05] Branch ref drift between worktree and shared repo.**
+  The Phase 1 execution dispatched subagents into a worktree at
+  `/Users/hongxichen/Desktop/FinSentinel-phase1`. Subagent commits advanced the
+  worktree HEAD but not the `phase1/team-config-runtime` branch ref, leaving
+  the branch at Task 1.3 while the worktree was at Task 1.5. The first merge
+  into `main` pulled only Tasks 1.1–1.3; a second merge was required to pull
+  the remaining commits. Future subagent dispatches should either (a) run on
+  a non-detached checkout of the target branch, or (b) explicitly advance
+  the branch ref after every commit. Document the pattern in the
+  subagent-driven-development notes.
