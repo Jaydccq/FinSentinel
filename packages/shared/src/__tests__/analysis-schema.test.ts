@@ -9,7 +9,10 @@ import {
   sharedContextSchema,
   complexityEstimateSchema,
   createRunRequestSchema,
+  analysisPresetSchema,
+  roleSummarySchema,
 } from '../schemas/analysis';
+import { AgentEventType } from '../enums/agent-event-type';
 
 describe('analysis schemas', () => {
   it('lists exactly the 4 source modes', () => {
@@ -138,5 +141,53 @@ describe('analysis schemas', () => {
     };
     expect(createRunRequestSchema.parse(req)).toMatchObject(req);
     expect(() => createRunRequestSchema.parse({ prompt: '' })).toThrow();
+  });
+
+  it('accepts a run request with preset, enabledTeams and researchDepth', () => {
+    const parsed = createRunRequestSchema.parse({
+      prompt: 'Analyze NVDA',
+      sourceMode: 'WORKSPACE',
+      ticker: 'NVDA',
+      preset: 'STANDARD_ANALYSIS',
+      researchDepth: 'DEEP',
+      enabledTeams: ['INTELLIGENCE', 'THESIS', 'RISK'],
+    });
+    expect(parsed.preset).toBe('STANDARD_ANALYSIS');
+  });
+
+  it('defaults preset to STANDARD_ANALYSIS when omitted', () => {
+    const parsed = createRunRequestSchema.parse({
+      prompt: 'hello',
+      sourceMode: 'WORKSPACE',
+    });
+    expect(parsed.preset).toBe('STANDARD_ANALYSIS');
+  });
+
+  it('accepts a role summary payload', () => {
+    const parsed = roleSummarySchema.parse({
+      roleKey: 'THESIS_LEAD',
+      status: 'COMPLETED',
+      durationMs: 8200,
+      toolCallCount: 2,
+      summary: 'Merged positive and negative case.',
+    });
+    expect(parsed.durationMs).toBe(8200);
+  });
+
+  it('exports new generic runtime events', () => {
+    expect(AgentEventType.ROLE_STARTED).toBe('ROLE_STARTED');
+    expect(AgentEventType.STAGE_SKIPPED).toBe('STAGE_SKIPPED');
+  });
+
+  it('still exports role-specific events for backward compatibility', () => {
+    expect(AgentEventType.POSITIVE_CASE_STARTED).toBe('POSITIVE_CASE_STARTED');
+  });
+});
+
+describe('analysisPresetSchema', () => {
+  it('parses all four presets', () => {
+    for (const value of ['FAST_RISK_CHECK', 'STANDARD_ANALYSIS', 'DEEP_THESIS', 'EXECUTION_READY']) {
+      expect(analysisPresetSchema.parse(value)).toBe(value);
+    }
   });
 });

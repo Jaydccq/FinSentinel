@@ -102,8 +102,8 @@ describe('StorageTier', () => {
 });
 
 describe('AgentEventType', () => {
-  it('has exactly 48 values', () => {
-    expect(Object.values(AgentEventType)).toHaveLength(48);
+  it('has exactly 52 values', () => {
+    expect(Object.values(AgentEventType)).toHaveLength(52);
   });
   it('contains chat event types', () => {
     expect(AgentEventType.CHAT_SESSION_STARTED).toBe('CHAT_SESSION_STARTED');

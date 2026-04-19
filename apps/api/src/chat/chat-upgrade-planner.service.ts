@@ -46,6 +46,7 @@ export class ChatUpgradePlannerService {
       prompt: args.prompt,
       sourceMode,
       parentChatSessionId: args.sessionId,
+      preset: 'STANDARD_ANALYSIS',
     });
     await this.producer.enqueuePreflight({ runId: run.id, userId: args.userId });
     await this.events.append(

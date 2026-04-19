@@ -1,19 +1,12 @@
 import { Injectable, Logger, forwardRef, Inject, Optional } from '@nestjs/common';
-import type { AnalysisStageKey } from '@finsentinel/shared';
+import type { AnalysisPreset, AnalysisStageKey, ResearchDepth } from '@finsentinel/shared';
 import { AnalysisRunService } from './analysis-run.service';
 import { AnalysisCheckpointService } from './analysis-checkpoint.service';
 import { ContextJournalService } from './context-journal.service';
 import { RunReportAssembler } from './run-report-assembler.service';
 import { AnalysisRunProducer } from '../queue/analysis-run.producer';
 import type { AnalysisRunJobData } from '../queue/analysis-run.producer';
-
-const TEAM_STAGE_ORDER: AnalysisStageKey[] = [
-  'INTELLIGENCE',
-  'THESIS',
-  'RISK',
-  'EXECUTION_PREP',
-  'HUMAN_APPROVAL',
-];
+import { StageGraphService } from './stage-graph.service';
 
 /**
  * Step-driven orchestrator. Each BullMQ job invokes `step(data)`. This class
@@ -33,6 +26,7 @@ export class RunOrchestratorService {
     private readonly checkpoints: AnalysisCheckpointService,
     @Inject(forwardRef(() => AnalysisRunProducer))
     private readonly producer: AnalysisRunProducer,
+    private readonly stageGraph: StageGraphService,
     @Optional() private readonly contextJournal?: ContextJournalService,
     @Optional() private readonly reportAssembler?: RunReportAssembler,
   ) {}
@@ -58,18 +52,39 @@ export class RunOrchestratorService {
     }
   }
 
+  private extractRuntimeConfig(snapshot: unknown): {
+    preset: AnalysisPreset;
+    researchDepth: ResearchDepth;
+    enabledTeams?: AnalysisStageKey[];
+  } {
+    const src = (snapshot ?? {}) as Record<string, unknown>;
+    const preset = (src.preset as AnalysisPreset | undefined) ?? 'STANDARD_ANALYSIS';
+    const researchDepth = (src.researchDepth as ResearchDepth | undefined) ?? 'STANDARD';
+    const enabledTeams = Array.isArray(src.enabledTeams)
+      ? (src.enabledTeams as AnalysisStageKey[])
+      : undefined;
+    return { preset, researchDepth, enabledTeams };
+  }
+
   private async handlePreflight(data: AnalysisRunJobData): Promise<void> {
     const run = await this.runs.getForUser(data.userId, data.runId);
     if (!run || run.status === 'CANCELED' || run.status === 'PAUSED') {
       return;
     }
     await this.runs.markRunning(data.userId, data.runId);
-    const first = TEAM_STAGE_ORDER[0]!;
-    await this.runs.setCurrentStage(data.userId, data.runId, first);
+    const runtimeConfig = this.extractRuntimeConfig(run.inputSnapshotJson);
+    const graph = this.stageGraph.build(runtimeConfig);
+    const firstEnabled = graph.find((n) => n.status === 'ENABLED')?.stageKey ?? null;
+    if (!firstEnabled) {
+      // No enabled stages — complete immediately.
+      await this.completeRun(data.userId, data.runId);
+      return;
+    }
+    await this.runs.setCurrentStage(data.userId, data.runId, firstEnabled);
     await this.producer.enqueueExecuteStage({
       runId: data.runId,
       userId: data.userId,
-      stageKey: first,
+      stageKey: firstEnabled,
     });
   }
 
@@ -81,6 +96,29 @@ export class RunOrchestratorService {
     if (!runBeforeStage || runBeforeStage.status !== 'RUNNING') {
       return;
     }
+
+    // Skip-and-advance when the current stage is disabled by runtime config.
+    const runtimeConfig = this.extractRuntimeConfig(runBeforeStage.inputSnapshotJson);
+    const graph = this.stageGraph.build(runtimeConfig);
+    const node = graph.find((g) => g.stageKey === data.stageKey);
+    if (node && node.status === 'SKIPPED') {
+      await this.checkpoints.markStageSkipped(data.userId, data.runId, data.stageKey, {
+        reason: 'disabled_by_runtime_config',
+      });
+      const next = this.stageGraph.nextEnabled(graph, data.stageKey);
+      if (next) {
+        await this.runs.setCurrentStage(data.userId, data.runId, next);
+        await this.producer.enqueueExecuteStage({
+          runId: data.runId,
+          userId: data.userId,
+          stageKey: next,
+        });
+      } else {
+        await this.completeRun(data.userId, data.runId);
+      }
+      return;
+    }
+
     const executor = this.stageExecutors.get(data.stageKey);
     if (!executor) {
       this.logger.warn(
@@ -102,7 +140,7 @@ export class RunOrchestratorService {
         // Hard stop — control/approval paths re-enqueue explicitly when execution should continue.
         return;
       }
-      const next = this.nextStage(data.stageKey);
+      const next = this.stageGraph.nextEnabled(graph, data.stageKey);
       if (next === null) {
         await this.completeRun(data.userId, data.runId);
       } else {
@@ -137,13 +175,6 @@ export class RunOrchestratorService {
       userId: data.userId,
       stageKey: run.currentStageKey as AnalysisStageKey,
     });
-  }
-
-  private nextStage(current: AnalysisStageKey): AnalysisStageKey | null {
-    const idx = TEAM_STAGE_ORDER.indexOf(current);
-    if (idx === -1) return null;
-    const next = TEAM_STAGE_ORDER[idx + 1];
-    return next ?? null;
   }
 
   private async completeRun(userId: string, runId: string): Promise<void> {
