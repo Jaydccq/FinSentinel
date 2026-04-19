@@ -156,7 +156,7 @@ describe('RetrievalOrchestratorService', () => {
     const denseLane = fuseCalls[0]!;
     expect(denseLane).toHaveLength(1);
     expect(denseLane[0]!.chunkId).toBe('c1');
-    expect(denseLane[0]!.representationType).toBe('canonical');
+    expect(denseLane[0]!.representationType).toEqual(['canonical']);
   });
 
   it('metadata pre-filter passes explicit filters to both lanes unchanged', async () => {

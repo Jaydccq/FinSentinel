@@ -186,7 +186,7 @@ export class RetrievalOrchestratorService {
       score: rrfScore,
       lane: 'dense' as const,
       variantKind,
-      representationType: repTypes.join(','),
+      representationType: repTypes,
     }));
   }
 

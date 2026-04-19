@@ -10,8 +10,8 @@ export interface RankedCandidate {
   lane: 'dense' | 'sparse' | 'graph';
   /** Which query variant produced this candidate, if applicable. */
   variantKind?: VariantKind;
-  /** Which representation surface produced this candidate. */
-  representationType?: string;
+  /** Which representation surface(s) produced this candidate. */
+  representationType?: string[];
 }
 
 export interface FusedCandidate extends Omit<RankedCandidate, 'lane' | 'score' | 'variantKind' | 'representationType'> {
@@ -39,11 +39,12 @@ export class RetrievalFusionService {
           if (!existing.lanes.includes(candidate.lane)) {
             existing.lanes.push(candidate.lane);
           }
-          if (
-            candidate.representationType &&
-            !existing.representationTypesSeen.includes(candidate.representationType)
-          ) {
-            existing.representationTypesSeen.push(candidate.representationType);
+          if (candidate.representationType) {
+            for (const rt of candidate.representationType) {
+              if (!existing.representationTypesSeen.includes(rt)) {
+                existing.representationTypesSeen.push(rt);
+              }
+            }
           }
           if (
             candidate.variantKind &&
@@ -60,7 +61,7 @@ export class RetrievalFusionService {
             rrfScore: rrfContribution,
             lanes: [candidate.lane],
             representationTypesSeen: candidate.representationType
-              ? [candidate.representationType]
+              ? [...candidate.representationType]
               : [],
             variantKindsSeen: candidate.variantKind ? [candidate.variantKind] : [],
           });

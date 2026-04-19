@@ -60,11 +60,11 @@ describe('RetrievalFusionService', () => {
   it('accumulates representationTypesSeen across multiple hits for same chunkId', () => {
     const canonical: RankedCandidate = {
       chunkId: 'c1', sourceId: 's1', content: 'x', metadata: {},
-      score: 0.9, lane: 'dense', representationType: 'canonical',
+      score: 0.9, lane: 'dense', representationType: ['canonical'],
     };
     const contextual: RankedCandidate = {
       chunkId: 'c1', sourceId: 's1', content: 'x', metadata: {},
-      score: 0.8, lane: 'dense', representationType: 'contextual_text',
+      score: 0.8, lane: 'dense', representationType: ['contextual_text'],
     };
 
     const result = service.fuse([[canonical, contextual]], 60);
@@ -92,11 +92,11 @@ describe('RetrievalFusionService', () => {
   it('deduplicates representationTypesSeen entries', () => {
     const a: RankedCandidate = {
       chunkId: 'c1', sourceId: 's1', content: 'x', metadata: {},
-      score: 0.9, lane: 'dense', representationType: 'canonical',
+      score: 0.9, lane: 'dense', representationType: ['canonical'],
     };
     const b: RankedCandidate = {
       chunkId: 'c1', sourceId: 's1', content: 'x', metadata: {},
-      score: 0.8, lane: 'sparse', representationType: 'canonical',
+      score: 0.8, lane: 'sparse', representationType: ['canonical'],
     };
 
     const result = service.fuse([[a], [b]], 60);
