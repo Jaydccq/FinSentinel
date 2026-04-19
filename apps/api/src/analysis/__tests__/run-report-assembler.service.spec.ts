@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { RunReportAssembler } from '../run-report-assembler.service';
+import { strategyArchivePayloadSchema } from '@finsentinel/shared';
 
 const sharedContext = {
   longTermPreferenceContext: { summary: 'risk aware', sourceIds: [], updatedAt: '2026-04-18T00:00:00.000Z' },
@@ -44,6 +45,113 @@ describe('RunReportAssembler', () => {
     expect(result.finalReportMarkdown).toContain('drafts ready');
     expect(result.decisionObject?.portfolioDecision).toBe('BUY');
     expect(result.decisionObject?.executionPayload.orderDrafts).toEqual([]);
+  });
+
+  it('preserves a typed strategy archive payload from the risk stage', () => {
+    const strategyArchivePayload = strategyArchivePayloadSchema.parse({
+      status: 'EVALUATED',
+      generatedAt: '2026-04-18T02:00:00.000Z',
+      ticker: 'AAPL',
+      bars: {
+        requestedDays: 260,
+        receivedBars: 260,
+        source: 'market-data',
+      },
+      evaluations: [],
+      selectedTemplateKey: null,
+      summary: {
+        enterLongCount: 1,
+        blockedCount: 0,
+        warnings: [],
+        recommendedNextStep: 'PAPER_ONLY',
+      },
+    });
+
+    const assembler = new RunReportAssembler();
+    const result = assembler.build({
+      sharedContext,
+      stages: [
+        {
+          stageKey: 'RISK',
+          humanReportMarkdown: 'risk ok',
+          structuredOutput: {
+            portfolioDecision: 'BUY',
+            allocationGuidance: { notes: 'scale in', targets: [] },
+            riskLimits: { maxDrawdownPct: 8, stopLossTriggers: [] },
+            alertTriggers: [],
+            summary: 'risk ok',
+            thesis: 'buy',
+            risks: [],
+            openQuestions: [],
+            citations: [],
+            confidence: 0.72,
+            strategyArchivePayload,
+          },
+        },
+      ],
+      executionPayload: { orderDrafts: [] },
+    });
+
+    expect(result.decisionObject?.strategyArchivePayload).toEqual(strategyArchivePayload);
+  });
+
+  it('preserves a legacy strategy archive snapshot from the risk stage', () => {
+    const legacyStrategyArchivePayload = { snapshot: { legacy: true } };
+
+    const assembler = new RunReportAssembler();
+    const result = assembler.build({
+      sharedContext,
+      stages: [
+        {
+          stageKey: 'RISK',
+          humanReportMarkdown: 'risk ok',
+          structuredOutput: {
+            portfolioDecision: 'BUY',
+            allocationGuidance: { notes: 'scale in', targets: [] },
+            riskLimits: { maxDrawdownPct: 8, stopLossTriggers: [] },
+            alertTriggers: [],
+            summary: 'risk ok',
+            thesis: 'buy',
+            risks: [],
+            openQuestions: [],
+            citations: [],
+            confidence: 0.72,
+            strategyArchivePayload: legacyStrategyArchivePayload,
+          },
+        },
+      ],
+      executionPayload: { orderDrafts: [] },
+    });
+
+    expect(result.decisionObject?.strategyArchivePayload).toEqual(legacyStrategyArchivePayload);
+  });
+
+  it('keeps the compatibility snapshot fallback when the risk stage omits the archive', () => {
+    const assembler = new RunReportAssembler();
+    const result = assembler.build({
+      sharedContext,
+      stages: [
+        {
+          stageKey: 'RISK',
+          humanReportMarkdown: 'risk ok',
+          structuredOutput: {
+            portfolioDecision: 'BUY',
+            allocationGuidance: { notes: 'scale in', targets: [] },
+            riskLimits: { maxDrawdownPct: 8, stopLossTriggers: [] },
+            alertTriggers: [],
+            summary: 'risk ok',
+            thesis: 'buy',
+            risks: [],
+            openQuestions: [],
+            citations: [],
+            confidence: 0.72,
+          },
+        },
+      ],
+      executionPayload: { orderDrafts: [] },
+    });
+
+    expect(result.decisionObject?.strategyArchivePayload).toEqual({ snapshot: {} });
   });
 
   it('returns null decisionObject when stage output cannot satisfy the contract', () => {

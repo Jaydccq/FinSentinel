@@ -2,9 +2,12 @@ import { Injectable } from '@nestjs/common';
 import {
   decisionObjectSchema,
   orderDraftsPayloadSchema,
-  type AnalysisStageKey,
-  type DecisionObject,
-  type SharedContext,
+  strategyArchivePayloadSchema,
+} from '@finsentinel/shared';
+import type {
+  AnalysisStageKey,
+  DecisionObject,
+  SharedContext,
 } from '@finsentinel/shared';
 
 interface RunReportStage {
@@ -17,6 +20,30 @@ interface RunReportBuildArgs {
   sharedContext: SharedContext | null;
   stages: RunReportStage[];
   executionPayload: Record<string, unknown> | null;
+}
+
+function parseStrategyArchivePayload(value: unknown) {
+  const parsed = strategyArchivePayloadSchema.safeParse(value);
+  if (parsed.success) {
+    return parsed.data;
+  }
+
+  if (isLegacyStrategyArchivePayload(value)) {
+    return value;
+  }
+
+  return { snapshot: {} };
+}
+
+function isLegacyStrategyArchivePayload(
+  value: unknown,
+): value is { snapshot: Record<string, unknown> } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const snapshot = (value as { snapshot?: unknown }).snapshot;
+  return typeof snapshot === 'object' && snapshot !== null && !Array.isArray(snapshot);
 }
 
 @Injectable()
@@ -73,10 +100,7 @@ export class RunReportAssembler {
         typeof risk['alertPayload'] === 'object' && risk['alertPayload'] !== null
           ? risk['alertPayload']
           : { alerts: [] },
-      strategyArchivePayload:
-        typeof risk['strategyArchivePayload'] === 'object' && risk['strategyArchivePayload'] !== null
-          ? risk['strategyArchivePayload']
-          : { snapshot: {} },
+      strategyArchivePayload: parseStrategyArchivePayload(risk['strategyArchivePayload']),
     };
 
     const parsed = decisionObjectSchema.safeParse(candidate);

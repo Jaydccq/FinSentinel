@@ -5,6 +5,10 @@ Return a fenced JSON block extending the standard shape with:
 "riskLimits": { "maxDrawdownPct": 10, "stopLossTriggers": ["close < 150"] },
 "alertTriggers": [{ "condition": "price < 140", "channel": "email" }],
 "evidenceRefs": ["artifact-id-..."]
+
+Treat strategy archive data as advisory evidence only.
+Do not convert ENTER_LONG into execution approval.
+If your risk decision contradicts the strategy signal, explain the contradiction explicitly.
 `;
 
 export const RISK_REVIEWER_PROMPT = `You are the Risk Reviewer. Evaluate the Thesis Team output against

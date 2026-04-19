@@ -2,8 +2,12 @@ import { Injectable } from '@nestjs/common';
 import {
   AgentEventAggregateType,
   AgentEventType,
-  type AnalysisStageKey,
-  type StageStructuredOutput,
+  strategyArchivePayloadSchema,
+} from '@finsentinel/shared';
+import type {
+  AnalysisStageKey,
+  StageStructuredOutput,
+  StrategyArchivePayload,
 } from '@finsentinel/shared';
 import { AgentEventService } from '../../events/agent-event.service';
 import { AnalysisRunService } from '../analysis-run.service';
@@ -15,6 +19,11 @@ import {
   RISK_REVIEWER_PROMPT,
   PORTFOLIO_MANAGER_PROMPT,
 } from '../contracts/prompts';
+
+function parseStrategyArchivePayload(value: unknown): StrategyArchivePayload | undefined {
+  const parsed = strategyArchivePayloadSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
 
 @Injectable()
 export class RiskTeamService implements TeamService {
@@ -43,13 +52,25 @@ export class RiskTeamService implements TeamService {
       }
     }
 
+    const intelligenceArchive = parseStrategyArchivePayload(
+      (priorStageOutputs.INTELLIGENCE as Record<string, unknown> | undefined)
+        ?.strategyArchivePayload,
+    );
+
     const ctx = await this.fabric.assemble({
       userId: args.userId,
       runId: args.runId,
       prompt: input.prompt,
     });
     const contextText = this.fabric.toPromptReady(ctx);
-    const commonInput = { prompt: input.prompt, contextText, priorStageOutputs };
+    const commonInput = {
+      prompt: input.prompt,
+      contextText,
+      priorStageOutputs,
+      extra: {
+        strategyArchivePayload: intelligenceArchive,
+      },
+    };
 
     const reviewer = await this.roleExecutor.run({
       roleKey: 'RISK_REVIEWER',
@@ -62,12 +83,16 @@ export class RiskTeamService implements TeamService {
       systemPrompt: PORTFOLIO_MANAGER_PROMPT,
       userInput: {
         ...commonInput,
-        extra: { riskReviewerOutput: reviewer.structured },
+        extra: {
+          strategyArchivePayload: intelligenceArchive,
+          riskReviewerOutput: reviewer.structured,
+        },
       },
       userId: args.userId,
     });
 
     const pmExt = pm.structured as unknown as Record<string, unknown>;
+    const pmArchive = parseStrategyArchivePayload(pmExt.strategyArchivePayload);
 
     const teamOutput: StageStructuredOutput = {
       summary: pm.structured.summary,
@@ -76,6 +101,7 @@ export class RiskTeamService implements TeamService {
       openQuestions: pm.structured.openQuestions,
       citations: pm.structured.citations,
       confidence: pm.structured.confidence,
+      strategyArchivePayload: pmArchive ?? intelligenceArchive ?? { snapshot: {} },
       portfolioDecision: (pmExt.portfolioDecision as string | undefined) ?? 'HOLD',
       allocationGuidance:
         (pmExt.allocationGuidance as unknown) ?? { notes: '', targets: [] },
