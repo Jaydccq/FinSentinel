@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { MetricsService } from '../common/services/metrics.service';
 import { Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 import { z } from 'zod';
@@ -91,6 +92,7 @@ export class GraphEnrichConsumer implements OnModuleInit, OnModuleDestroy {
     @Inject('BULLMQ_CONNECTION') private readonly connection: ConnectionOptions,
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     configService: ConfigService,
+    @Optional() private readonly metrics?: MetricsService,
   ) {
     this.sidecarUrl = configService.get<string>('RERANKER_URL', 'http://localhost:8100');
     this.minRelationConfidence = configService.get<number>(
@@ -256,14 +258,6 @@ export class GraphEnrichConsumer implements OnModuleInit, OnModuleDestroy {
       );
 
       for (const rel of sidecarRelations) {
-        // Validate relation_type (already enforced by zod, double-check for safety)
-        if (!RELATION_TYPE_SET.has(rel.relation_type)) {
-          this.logger.warn(
-            `Dropping relation with unknown type "${rel.relation_type}" for ${sourceType}/${sourceId}`,
-          );
-          continue;
-        }
-
         // Validate confidence threshold
         if (rel.confidence < this.minRelationConfidence) {
           this.logger.debug(
@@ -319,6 +313,11 @@ export class GraphEnrichConsumer implements OnModuleInit, OnModuleDestroy {
           createdAt: now,
         }).onConflictDoNothing();
 
+        this.metrics?.incrementCounter(
+          'rag_graph_relations_inserted_total',
+          'Total knowledge_relations rows inserted by graph enrichment',
+          { relation_type: rel.relation_type },
+        );
         relationsInserted++;
       }
     }

@@ -89,11 +89,16 @@ function makeJob(data: GraphEnrichJobData): Job<GraphEnrichJobData> {
   return { data, id: 'job-1', attemptsMade: 0 } as unknown as Job<GraphEnrichJobData>;
 }
 
-function buildConsumer(db: ReturnType<typeof makeDb>, minConfidence = 0.5): GraphEnrichConsumer {
+function buildConsumer(
+  db: ReturnType<typeof makeDb>,
+  minConfidence = 0.5,
+  metrics?: { incrementCounter: ReturnType<typeof vi.fn> },
+): GraphEnrichConsumer {
   const consumer = new GraphEnrichConsumer(
     { host: 'localhost', port: 6379 } as any,
     db as any,
     makeConfigService(minConfidence) as any,
+    metrics as any,
   );
   return consumer;
 }
@@ -320,5 +325,38 @@ describe('GraphEnrichConsumer.process', () => {
     await consumer.process(makeJob({ sourceType: 'document', sourceId: 'doc-empty' }));
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('increments counter per inserted relation with relation_type label', async () => {
+    const db = makeDb({ existingRelations: [] });
+    const metrics = { incrementCounter: vi.fn() };
+    const consumer = buildConsumer(db, 0.5, metrics);
+
+    mockFetch({
+      entities: [
+        { name: 'Apple Inc.', type: 'COMPANY', confidence: 0.9, mention_text: 'Apple Inc.' },
+        { name: 'TSMC', type: 'TICKER', confidence: 0.85, mention_text: 'TSMC' },
+        { name: 'Samsung', type: 'COMPANY', confidence: 0.8, mention_text: 'Samsung' },
+      ],
+      relations: [
+        { source: 'Apple Inc.', target: 'TSMC', relation_type: 'SUPPLIES_TO', confidence: 0.87, evidence: 'Apple supplies TSMC', source_chunk_index: 0 },
+        { source: 'Apple Inc.', target: 'Samsung', relation_type: 'COMPETES_WITH', confidence: 0.75, evidence: 'Apple competes with Samsung', source_chunk_index: 0 },
+      ],
+      latency_ms: 10,
+    });
+
+    await consumer.process(makeJob({ sourceType: 'document', sourceId: 'doc-1' }));
+
+    expect(metrics.incrementCounter).toHaveBeenCalledTimes(2);
+    expect(metrics.incrementCounter).toHaveBeenCalledWith(
+      'rag_graph_relations_inserted_total',
+      'Total knowledge_relations rows inserted by graph enrichment',
+      { relation_type: 'SUPPLIES_TO' },
+    );
+    expect(metrics.incrementCounter).toHaveBeenCalledWith(
+      'rag_graph_relations_inserted_total',
+      'Total knowledge_relations rows inserted by graph enrichment',
+      { relation_type: 'COMPETES_WITH' },
+    );
   });
 });
