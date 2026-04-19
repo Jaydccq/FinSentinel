@@ -45,6 +45,8 @@ import {
 import { AnalysisRunService } from '../analysis-run.service';
 import { AnalysisCheckpointService } from '../analysis-checkpoint.service';
 import { AnalysisApprovalService } from '../analysis-approval.service';
+import { ContextJournalService } from '../context-journal.service';
+import { RunReportAssembler } from '../run-report-assembler.service';
 import { RunOrchestratorService } from '../run-orchestrator.service';
 import { ContextFabricService } from '../context-fabric.service';
 import { RoleExecutorService } from '../teams/role-executor.service';
@@ -60,6 +62,7 @@ import { AgentEventService } from '../../events/agent-event.service';
 import type { AnalysisRunJobData } from '../../queue/analysis-run.producer';
 import type { AnalysisStageKey, CreateRunRequest } from '@finsentinel/shared';
 import { AgentEventType } from '@finsentinel/shared';
+import type { StrategyArchivePayload } from '@finsentinel/shared';
 import type { LlmRunner } from '../teams/role-executor.service';
 
 // ── Database URL ──────────────────────────────────────────────────────────────
@@ -101,6 +104,52 @@ const VALID_DRAFT = {
   approvalRequired: true as const,
   warnings: [],
 } as const;
+
+const VALID_STRATEGY_ARCHIVE = {
+  status: 'EVALUATED',
+  ticker: 'AAPL',
+  generatedAt: '2026-04-19T00:00:00.000Z',
+  bars: {
+    requestedDays: 260,
+    receivedBars: 260,
+    source: 'market-data.service',
+  },
+  evaluations: [
+    {
+      templateKey: 'SMA_50_200_RSI_LONG_ONLY',
+      signal: 'ENTER_LONG',
+      confidence: 0.81,
+      recommendedNextStep: 'PAPER_ONLY',
+      reasons: ['Price is above the long-term trend and momentum is constructive.'],
+      warnings: ['Entry remains advisory until execution checks pass.'],
+      requiredBars: 200,
+      receivedBars: 260,
+      indicatorSnapshot: {
+        close: 192.15,
+        rsi14: 63.2,
+        stochasticK14: 71.4,
+        stochasticD3: 69.8,
+        ema200: 184.3,
+        sma50: 189.7,
+        sma200: 181.9,
+      },
+      costProfile: {
+        makerFeeBps: 1.5,
+        takerFeeBps: 4.5,
+        estimatedRoundTripBps: 6,
+        expectedAnnualTrades: 12,
+        feeDragWarning: false,
+      },
+    },
+  ],
+  selectedTemplateKey: 'SMA_50_200_RSI_LONG_ONLY',
+  summary: {
+    enterLongCount: 1,
+    blockedCount: 0,
+    warnings: ['Entry remains advisory until execution checks pass.'],
+    recommendedNextStep: 'PAPER_ONLY',
+  },
+} as const satisfies StrategyArchivePayload;
 
 // ── Standard structured-output JSON (valid against stageStructuredOutputSchema) ──
 
@@ -223,6 +272,8 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
     eventsSvc = new AgentEventService(db as never);
     runsSvc = new AnalysisRunService(db as never, eventsSvc);
     checkpointsSvc = new AnalysisCheckpointService(db as never, eventsSvc);
+    const contextJournal = new ContextJournalService(db as never);
+    const reportAssembler = new RunReportAssembler();
 
     const validator = new OrderDraftValidator();
     const mapper = new OrderDraftMapper();
@@ -236,6 +287,8 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
       mapper,
       makeUnifiedTradingStub() as never,
       { enabled: false },
+      contextJournal,
+      reportAssembler,
     );
 
     // ── Build stub producer with trampoline ──────────────────────────────
@@ -288,23 +341,29 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
     );
     const fabric = makeContextFabricStub();
     const strategyEvidence = {
-      buildArchive: vi.fn().mockResolvedValue({
-        status: 'SKIPPED',
-        generatedAt: '2026-04-19T00:00:00.000Z',
-        bars: {
-          requestedDays: 260,
-          receivedBars: 0,
-          source: 'market-data.service',
-        },
-        evaluations: [],
-        selectedTemplateKey: null,
-        summary: {
-          enterLongCount: 0,
-          blockedCount: 0,
-          warnings: ['No ticker in run input.'],
-          recommendedNextStep: null,
-        },
-        skipReason: 'No ticker in run input.',
+      buildArchive: vi.fn().mockImplementation(async ({ ticker }) => {
+        if (ticker === 'AAPL') {
+          return VALID_STRATEGY_ARCHIVE;
+        }
+
+        return {
+          status: 'SKIPPED',
+          generatedAt: '2026-04-19T00:00:00.000Z',
+          bars: {
+            requestedDays: 260,
+            receivedBars: 0,
+            source: 'market-data.service',
+          },
+          evaluations: [],
+          selectedTemplateKey: null,
+          summary: {
+            enterLongCount: 0,
+            blockedCount: 0,
+            warnings: ['No ticker in run input.'],
+            recommendedNextStep: null,
+          },
+          skipReason: 'No ticker in run input.',
+        } as const satisfies StrategyArchivePayload;
       }),
     } as unknown as StrategyEvidenceService;
 
@@ -445,32 +504,58 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
       const approvalId = approval?.id as string;
       expect(approvalId).toBeTruthy();
 
-      // ── Step 5: ORDER_DRAFTS artifact should exist ────────────────────────
+      // ── Step 5: STRATEGY_ARCHIVE artifact should exist ────────────────────
       const artifacts = await runsSvc.listArtifactsForRun(runId);
+      const strategyArchiveArtifact = artifacts.find(
+        (a) => a.artifactKind === 'STRATEGY_ARCHIVE',
+      );
+      expect(strategyArchiveArtifact).toBeDefined();
+      expect(strategyArchiveArtifact?.payloadJson).toEqual(VALID_STRATEGY_ARCHIVE);
+
+      // ── Step 6: ORDER_DRAFTS artifact should still come from EXECUTION_PREP ─
       const orderDraftsArtifact = artifacts.find(
         (a) => a.artifactKind === 'ORDER_DRAFTS',
       );
       expect(orderDraftsArtifact).toBeDefined();
+      expect(orderDraftsArtifact?.payloadJson).toEqual({
+        orderDrafts: [VALID_DRAFT],
+      });
 
-      // ── Step 6: Resolve the approval ──────────────────────────────────────
+      // ── Step 7: Resolve the approval ──────────────────────────────────────
       await approvalsSvc.resolve({
         userId: testUserId,
         approvalId,
         decision: 'APPROVE',
       });
 
-      // ── Step 7: Run should now be COMPLETED ───────────────────────────────
+      // ── Step 8: Run should now be COMPLETED ───────────────────────────────
       const runAfterApproval = await runsSvc.getForUser(testUserId, runId);
       expect(runAfterApproval?.status).toBe('COMPLETED');
 
-      // ── Step 8: EXECUTION_PAYLOAD artifact should exist ───────────────────
+      const completedRun = await db
+        .select()
+        .from(analysisRuns)
+        .where(eq(analysisRuns.id, runId))
+        .limit(1);
+      expect(completedRun[0]?.decisionObjectJson).toMatchObject({
+        strategyArchivePayload: VALID_STRATEGY_ARCHIVE,
+        executionPayload: {
+          orderDrafts: [VALID_DRAFT],
+        },
+      });
+
+      // ── Step 9: EXECUTION_PAYLOAD artifact should exist ───────────────────
       const artifactsAfter = await runsSvc.listArtifactsForRun(runId);
       const execPayload = artifactsAfter.find(
         (a) => a.artifactKind === 'EXECUTION_PAYLOAD',
       );
       expect(execPayload).toBeDefined();
+      expect(execPayload?.payloadJson).toMatchObject({
+        orderDrafts: [VALID_DRAFT],
+        stageRequests: [{ action: 'BUY', symbol: 'AAPL', qty: '10' }],
+      });
 
-      // ── Step 9: Lifecycle events in agent_events ──────────────────────────
+      // ── Step 10: Lifecycle events in agent_events ─────────────────────────
       const events = await db
         .select()
         .from(agentEvents)
