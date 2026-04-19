@@ -4,6 +4,7 @@ import {
   AgentEventType,
   type AnalysisStageKey,
   type OrderDraftsPayload,
+  type RoleSummary,
   type StageStructuredOutput,
 } from '@finsentinel/shared';
 import { AgentEventService } from '../../events/agent-event.service';
@@ -98,6 +99,11 @@ export class ExecutionPrepTeamService implements TeamService {
       payload: validated,
     });
 
+    const roleSummaries: RoleSummary[] = [
+      { roleKey: 'TRADE_PLANNER',          status: 'COMPLETED', durationMs: planner.durationMs, toolCallCount: planner.toolCallCount, summary: planner.structured.summary },
+      { roleKey: 'EXECUTION_DRAFT_BUILDER', status: 'COMPLETED', durationMs: builder.durationMs, toolCallCount: builder.toolCallCount, summary: builder.structured.summary },
+    ];
+
     const teamOutput: StageStructuredOutput = {
       summary: `Generated ${validated.orderDrafts.length} broker-neutral order draft(s). Awaiting approval.`,
       thesis: 'Execution drafts validated and queued for human approval.',
@@ -107,6 +113,7 @@ export class ExecutionPrepTeamService implements TeamService {
       confidence: builder.structured.confidence,
       orderDraftsArtifactId: artifact.id,
       orderDraftCount: validated.orderDrafts.length,
+      roleSummaries,
     };
 
     await this.checkpoints.commitStage({

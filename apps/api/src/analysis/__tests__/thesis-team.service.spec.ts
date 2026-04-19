@@ -14,6 +14,8 @@ function makeRoleOutput(roleKey: string, thesis: string) {
       confidence: 0.75,
     },
     rawMarkdown: `${roleKey}-md`,
+    durationMs: 100,
+    toolCallCount: 2,
   };
 }
 
@@ -109,5 +111,12 @@ describe('ThesisTeamService.execute', () => {
     expect(fabric.assemble).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'u1', runId: 'r1', prompt: 'analyze AAPL' }),
     );
+  });
+
+  it('writes roleSummaries for positive/negative/lead into structuredOutput', async () => {
+    await svc.execute({ runId: 'r1', userId: 'u1' });
+    const committedCall = (checkpoints.commitStage as unknown as { mock: { calls: Array<[{ structuredOutput: { roleSummaries?: Array<{ roleKey: string }> } }]> } }).mock.calls.at(-1);
+    const summaries = committedCall?.[0]?.structuredOutput?.roleSummaries;
+    expect(summaries?.map((s) => s.roleKey)).toEqual(['POSITIVE_CASE', 'NEGATIVE_CASE', 'THESIS_LEAD']);
   });
 });

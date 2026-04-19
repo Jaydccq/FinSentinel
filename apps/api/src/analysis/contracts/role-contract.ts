@@ -34,4 +34,6 @@ export interface RoleOutput {
   roleKey: RoleKey;
   structured: StageStructuredOutput;
   rawMarkdown: string;
+  durationMs: number;
+  toolCallCount: number;
 }

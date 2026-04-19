@@ -4,6 +4,7 @@ import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtim
 import type { FinToolSet } from '@finsentinel/ai-runtime';
 import {
   stageStructuredOutputSchema,
+  type ResearchDepth,
   type StageStructuredOutput,
 } from '@finsentinel/shared';
 import { aiConfig } from '../../config/ai.config';
@@ -111,8 +112,10 @@ export class RoleExecutorService {
     roleKey: RoleKey;
     systemPrompt: string;
     userInput: RoleInput;
+    runtimeConfig?: { researchDepth: ResearchDepth };
     userId?: string;
   }): Promise<RoleOutput> {
+    const startedAt = Date.now();
     const scope = ROLE_TOOL_SCOPE[args.roleKey];
     const fullTools = this.getAllTools(args.userId);
     const scopedTools: FinToolSet = {};
@@ -131,7 +134,13 @@ export class RoleExecutorService {
     });
 
     const structured = this.parseStructured(text);
-    return { roleKey: args.roleKey, structured, rawMarkdown: text };
+    return {
+      roleKey: args.roleKey,
+      structured,
+      rawMarkdown: text,
+      durationMs: Date.now() - startedAt,
+      toolCallCount: Object.keys(scopedTools).length,
+    };
   }
 
   private getAllTools(userId?: string): FinToolSet {

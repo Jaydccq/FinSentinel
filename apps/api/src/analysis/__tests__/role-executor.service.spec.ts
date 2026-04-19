@@ -62,4 +62,24 @@ describe('RoleExecutorService.run', () => {
       }),
     ).rejects.toThrow(/no JSON/i);
   });
+
+  it('returns durationMs and toolCallCount on the role output', async () => {
+    const out = await svc.run({
+      roleKey: 'THESIS_LEAD',
+      systemPrompt: 'lead',
+      userInput: { prompt: 'go', contextText: '', priorStageOutputs: {} },
+    });
+    expect(out.durationMs).toBeGreaterThanOrEqual(0);
+    expect(out.toolCallCount).toBeGreaterThanOrEqual(0);
+  });
+
+  it('accepts optional runtimeConfig without error', async () => {
+    const out = await svc.run({
+      roleKey: 'MARKET_ANALYST',
+      systemPrompt: 'sys',
+      userInput: { prompt: 'x', contextText: '', priorStageOutputs: {} },
+      runtimeConfig: { researchDepth: 'DEEP' },
+    });
+    expect(out.roleKey).toBe('MARKET_ANALYST');
+  });
 });

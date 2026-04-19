@@ -73,6 +73,8 @@ describe('RiskTeamService.execute', () => {
             roleKey === 'PORTFOLIO_MANAGER' ? pmArchive : undefined,
         },
         rawMarkdown: `${roleKey}-md`,
+        durationMs: 75,
+        toolCallCount: 3,
       })),
     };
     runs = {
@@ -145,6 +147,16 @@ describe('RiskTeamService.execute', () => {
     expect(fabric.assemble).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'u1', runId: 'r1', prompt: 'x' }),
     );
+  });
+
+  it('writes roleSummaries for RISK_REVIEWER and PORTFOLIO_MANAGER into structuredOutput', async () => {
+    await svc.execute({ runId: 'r1', userId: 'u1' });
+    const commitArg = checkpoints.commitStage.mock.calls[0]?.[0];
+    const summaries = commitArg?.structuredOutput?.roleSummaries;
+    expect(summaries?.map((s: { roleKey: string }) => s.roleKey)).toEqual([
+      'RISK_REVIEWER',
+      'PORTFOLIO_MANAGER',
+    ]);
   });
 
   it('falls back to the intelligence archive when the PM archive is invalid', async () => {
