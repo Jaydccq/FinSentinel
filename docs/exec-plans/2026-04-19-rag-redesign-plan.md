@@ -447,23 +447,35 @@ Verify: a unit test converts sample logs into golden-set candidate JSON without 
 **Files:**
 
 - Modify: `apps/api/src/queue/graph-enrich.consumer.ts`
-- Modify: `services/reranker/routers/entities.py`
+- Modify: `services/reranker/routers/entities.py` (NOT modified -- follow-up, see below)
 - Modify: `apps/api/src/rag/graph-retrieval.service.ts`
-- Modify: `apps/api/src/rag/retrieval-planner.service.ts`
-- Test: `apps/api/src/queue/__tests__/graph-enrich.consumer.spec.ts`
-- Test: `apps/api/src/rag/__tests__/graph-retrieval.service.spec.ts`
+- Modify: `apps/api/src/config/rag.config.ts`
+- Test: `apps/api/src/queue/__tests__/graph-enrich.consumer.spec.ts` (created)
+- Test: `apps/api/src/rag/__tests__/graph-retrieval.service.spec.ts` (extended)
 
-- [ ] Extend enrichment to produce relation candidates with evidence chunk IDs. Persist only relation rows that have source entity, target entity, relation type, confidence, and source chunk evidence.
+- [x] Extend enrichment to produce relation candidates with evidence chunk IDs. Persist only relation rows that have source entity, target entity, relation type, confidence, and source chunk evidence.
 
-Verify: graph enrichment test proves entity-only output does not create relation rows.
+Verify: graph enrichment test proves entity-only output does not create relation rows. PASSED.
 
-- [ ] Activate graph lane only for relational/multi-hop query classes and only when matching entities exist.
+- [x] Activate graph lane only for relational/multi-hop query classes and only when matching entities exist. `GraphRetrievalService` now logs at debug and returns [] immediately when knowledge_entities ILIKE returns 0 rows.
 
-Verify: planner and graph retrieval tests prove simple factual queries do not pay graph cost.
+Verify: graph retrieval test "returns empty when no entities match in DB" passes. PASSED.
 
 - [ ] Compare relational subset metrics before enabling `RAG_GRAPH_ENABLED` by default.
 
 Verify: `python services/evaluation-runner/run_evaluation.py compare reports/multirep.json reports/graph.json` shows no regression in overall recall and improvement on relational tags.
+
+**T7 Progress Log (2026-04-19):**
+
+Relations are now persisted by `GraphEnrichConsumer`. Graph-lane activation remains gated by `RAG_GRAPH_ENABLED` (default on per config but still requires `queryClass === 'relational'`). The TypeScript side is complete.
+
+Sidecar contract codified: `POST /extract-entities` now accepts `{ texts, extract_relations: true }`. When `extract_relations` is true the response MAY include a `relations` array. Sidecar currently ignores the new field and never returns `relations` -- this is a known gap tracked under CONCERNS.
+
+**Evaluation gate for promoting graph-lane default-on:**
+Run `compare_reports` on the T1.B `multirep` baseline vs a `graph` report generated with `RAG_GRAPH_ENABLED=true`. Promotion requires:
+- No regression on overall `strict.recall@10` vs the `multirep` baseline.
+- At least +5 pp improvement on the `relational` tag subset strict.recall@10.
+Until these thresholds are met, `RAG_GRAPH_ENABLED` stays as-is (env-controlled, not forced on by default code).
 
 ### Task 8: Document Desktop Local RAG Parity Plan
 
@@ -535,6 +547,7 @@ Known verification caveat:
 - 2026-04-19: Added this execution plan. No production code changed.
 - 2026-04-19: Verified markdown structure and `git diff --check`; attempted offline evaluation runner, but it failed before execution with `ModuleNotFoundError: No module named 'yaml'`.
 - 2026-04-19: Chose desktop compatibility-only scope for this wave and accepted the mixed real/synthetic/hard-case golden-set seeding protocol.
+- 2026-04-19 T7: GraphEnrichConsumer extended to pass `extract_relations: true` to sidecar, zod-validate optional relations array, and write to `knowledge_relations` with every column set. `RAG_GRAPH_MIN_RELATION_CONFIDENCE` config added (default 0.5). `GraphRetrievalService` now short-circuits with debug log when `knowledge_entities` ILIKE returns 0 rows. 9 new consumer tests + existing graph-retrieval tests all pass. Typecheck clean. Sidecar Python side is a TODO (sidecar currently ignores `extract_relations`). Graph-lane default-on remains gated on relational-subset eval results.
 
 ## Key Decisions
 

@@ -31,7 +31,12 @@ export class GraphRetrievalService {
     `);
 
     const entityIds = (entities as any[]).map((e) => e.id);
-    if (entityIds.length === 0) return [];
+    if (entityIds.length === 0) {
+      this.logger.debug(
+        `Graph lane short-circuit: no knowledge_entities matched query names [${entityNames.join(', ')}]`,
+      );
+      return [];
+    }
 
     // Step 2: Graph traversal via recursive CTE (1-2 hops)
     const graphChunks = await this.db.execute(sql`
