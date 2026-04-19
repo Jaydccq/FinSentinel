@@ -2,6 +2,15 @@
 
 ## Active Gaps
 
+### `apps/web` full lint is blocked by pre-existing violations
+
+- **Observed:** 2026-04-18 while verifying the Operator Console Timeline UI.
+- **Command:** `pnpm --filter @finsentinel/web lint`
+- **Failure:** `apps/web/src/context/AuthContext.tsx` violates `react-hooks/set-state-in-effect`; `apps/web/src/lib/rag/__tests__/hybrid-search.test.ts` has an unused `HybridHit` import; `apps/web/src/lib/tauri/__tests__/is-tauri.test.ts` uses explicit `any`.
+- **Impact:** Full package lint cannot be used as a clean PR gate for unrelated web UI changes until these files are fixed.
+- **Likely fix path:** Fix each lint violation directly and keep future UI PRs using full package lint as the default gate.
+- **Status:** Open.
+
 ### `packages/db` build config blocks workspace typecheck
 
 - **Observed:** 2026-04-17 while verifying the pi-mono migration plan.

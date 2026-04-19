@@ -6,6 +6,7 @@ import { LiveProgressPanel } from '../components/analysis/LiveProgressPanel'
 import { ArtifactsPanel } from '../components/analysis/ArtifactsPanel'
 import { FinalReportPanel } from '../components/analysis/FinalReportPanel'
 import { HumanApprovalRail } from '../components/analysis/HumanApprovalRail'
+import { TimelinePanel } from '../components/analysis/TimelinePanel'
 import { useAnalysisRun } from '../hooks/useAnalysisRun'
 import { portfolioApi, type PortfolioResponse } from '../api/portfolio'
 import { analysisRunsApi, type AnalysisRunResponse } from '../api/analysis-runs'
@@ -19,7 +20,15 @@ export default function AnalysisPage() {
   const [portfolios, setPortfolios] = useState<PortfolioResponse[]>([])
   const [activeRunId, setActiveRunId] = useState<string | null>(getInitialRunId)
   const [recentRuns, setRecentRuns] = useState<AnalysisRunResponse[]>([])
-  const { run, stages, artifacts, refresh } = useAnalysisRun(activeRunId)
+  const {
+    run,
+    stages,
+    artifacts,
+    timelineEvents,
+    streamStatus,
+    refresh,
+    retryStage,
+  } = useAnalysisRun(activeRunId)
 
   useEffect(() => {
     portfolioApi.list().then(setPortfolios).catch(() => setPortfolios([]))
@@ -39,7 +48,17 @@ export default function AnalysisPage() {
 
         {activeRunId ? (
           <>
-            <LiveProgressPanel run={run} stages={stages} onRefresh={refresh} />
+            <LiveProgressPanel
+              run={run}
+              stages={stages}
+              onRefresh={refresh}
+              onRetryStage={retryStage}
+            />
+            <TimelinePanel
+              events={timelineEvents}
+              streamStatus={streamStatus}
+              onRefresh={refresh}
+            />
             <ArtifactsPanel artifacts={artifacts} />
             <FinalReportPanel run={run} artifacts={artifacts} />
           </>

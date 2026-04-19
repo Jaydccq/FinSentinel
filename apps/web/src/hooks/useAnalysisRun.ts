@@ -6,27 +6,49 @@ import {
   type AnalysisArtifactResponse,
   type AnalysisRunResponse,
   type AnalysisStageResponse,
+  type AnalysisRunTimelineEvent,
+  type AnalysisStageKey,
 } from '../api/analysis-runs'
 
 const POLL_INTERVAL_MS = 2_000
 const ACTIVE_STATUSES = new Set(['QUEUED', 'RUNNING', 'WAITING_APPROVAL'])
+const TERMINAL_EVENTS = new Set(['RUN_COMPLETED', 'RUN_FAILED', 'RUN_CANCELED'])
+
+export type AnalysisRunStreamStatus = 'idle' | 'connecting' | 'live' | 'fallback' | 'closed'
 
 export interface UseAnalysisRunResult {
   run: AnalysisRunResponse | null
   stages: AnalysisStageResponse[]
   artifacts: AnalysisArtifactResponse[]
+  timelineEvents: AnalysisRunTimelineEvent[]
+  streamStatus: AnalysisRunStreamStatus
   loading: boolean
   error: string | null
   refresh: () => Promise<void>
+  retryStage: (stageKey: AnalysisStageKey) => Promise<void>
 }
 
 export function useAnalysisRun(runId: string | null): UseAnalysisRunResult {
   const [run, setRun] = useState<AnalysisRunResponse | null>(null)
   const [stages, setStages] = useState<AnalysisStageResponse[]>([])
   const [artifacts, setArtifacts] = useState<AnalysisArtifactResponse[]>([])
+  const [timelineEvents, setTimelineEvents] = useState<AnalysisRunTimelineEvent[]>([])
+  const [streamStatus, setStreamStatus] = useState<AnalysisRunStreamStatus>('idle')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastSeqNoRef = useRef<number | null>(null)
+  const seenEventKeysRef = useRef<Set<string>>(new Set())
+
+  const appendTimelineEvent = useCallback((event: AnalysisRunTimelineEvent) => {
+    const key = event.seqNo == null ? event.id : String(event.seqNo)
+    if (seenEventKeysRef.current.has(key)) return
+    seenEventKeysRef.current.add(key)
+    if (event.seqNo != null) {
+      lastSeqNoRef.current = Math.max(lastSeqNoRef.current ?? event.seqNo, event.seqNo)
+    }
+    setTimelineEvents((current) => [...current, event].slice(-100))
+  }, [])
 
   const fetchAll = useCallback(async (): Promise<AnalysisRunResponse | null> => {
     if (!runId) return null
@@ -54,6 +76,66 @@ export function useAnalysisRun(runId: string | null): UseAnalysisRunResult {
     await fetchAll()
   }, [fetchAll])
 
+  const retryStage = useCallback(
+    async (stageKey: AnalysisStageKey) => {
+      if (!runId) return
+      await analysisRunsApi.retryStage(runId, stageKey)
+      await fetchAll()
+    },
+    [fetchAll, runId],
+  )
+
+  useEffect(() => {
+    if (!runId) {
+      setRun(null)
+      setStages([])
+      setArtifacts([])
+      setTimelineEvents([])
+      setStreamStatus('idle')
+      lastSeqNoRef.current = null
+      seenEventKeysRef.current.clear()
+      return
+    }
+
+    let cancelled = false
+    setTimelineEvents([])
+    setStreamStatus('connecting')
+    lastSeqNoRef.current = null
+    seenEventKeysRef.current.clear()
+
+    const handle = analysisRunsApi.stream(runId, {
+      afterSeqNo: lastSeqNoRef.current,
+      onEvent: (event) => {
+        if (cancelled) return
+        appendTimelineEvent(event)
+        setStreamStatus('live')
+        void fetchAll()
+        if (TERMINAL_EVENTS.has(event.eventType)) {
+          setStreamStatus('closed')
+          handle.abort()
+        }
+      },
+      onError: (err) => {
+        if (cancelled) return
+        setError(err.message)
+        setStreamStatus('fallback')
+      },
+    })
+
+    void handle.closed
+      .then(() => {
+        if (!cancelled) setStreamStatus((status) => (status === 'fallback' ? status : 'closed'))
+      })
+      .catch(() => {
+        if (!cancelled) setStreamStatus('fallback')
+      })
+
+    return () => {
+      cancelled = true
+      handle.abort()
+    }
+  }, [appendTimelineEvent, fetchAll, runId])
+
   useEffect(() => {
     if (!runId) return
     let cancelled = false
@@ -73,5 +155,15 @@ export function useAnalysisRun(runId: string | null): UseAnalysisRunResult {
     }
   }, [runId, fetchAll])
 
-  return { run, stages, artifacts, loading, error, refresh }
+  return {
+    run,
+    stages,
+    artifacts,
+    timelineEvents,
+    streamStatus,
+    loading,
+    error,
+    refresh,
+    retryStage,
+  }
 }
