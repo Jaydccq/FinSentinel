@@ -116,6 +116,11 @@ export class RoleExecutorService {
     userId?: string;
   }): Promise<RoleOutput> {
     const startedAt = Date.now();
+    // runtimeConfig is threaded through the signature for downstream use
+    // (e.g. future prompt/tool shaping by researchDepth). It is intentionally
+    // unused in this task — see plan doc Task 1.4.
+    void args.runtimeConfig;
+
     const scope = ROLE_TOOL_SCOPE[args.roleKey];
     const fullTools = this.getAllTools(args.userId);
     const scopedTools: FinToolSet = {};
@@ -134,6 +139,7 @@ export class RoleExecutorService {
     });
 
     const structured = this.parseStructured(text);
+    // NOTE: scope-size proxy (not per-call invocation count) — see RoleOutput.toolCallCount JSDoc.
     return {
       roleKey: args.roleKey,
       structured,
