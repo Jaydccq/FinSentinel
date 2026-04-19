@@ -8,6 +8,7 @@ import { RetrievalOrchestratorService } from './retrieval-orchestrator.service';
 import { RerankService } from './rerank.service';
 import { ContextPackerService } from './context-packer.service';
 import { ContextExpanderService } from './context-expander.service';
+import { RagTraceService } from './rag-trace.service';
 
 export interface RagSearchResult {
   chunkId: string;
@@ -42,6 +43,7 @@ export class RagRetrievalService {
     @Optional() private readonly reranker?: RerankService,
     @Optional() private readonly contextPacker?: ContextPackerService,
     @Optional() private readonly contextExpander?: ContextExpanderService,
+    @Optional() private readonly ragTrace?: RagTraceService,
   ) {
     this.similarityThreshold = configService.get<number>('RAG_SIMILARITY_THRESHOLD', 0.65);
     this.multiStageEnabled = configService.get<string>('RAG_MULTI_STAGE_ENABLED', 'false') === 'true';
@@ -146,23 +148,57 @@ export class RagRetrievalService {
     safeTopK: number,
   ): Promise<RagSearchResult[]> {
     const startedAt = Date.now();
+    const timingsMs: Record<string, number> = {};
+    const fallbackFlags: string[] = [];
+    let rerankReason: string | null = null;
+    let resultChunkIds: string[] = [];
+    let planLanes: string[] = [];
+    let planVariants: Array<{ kind: string; query: string }> = [];
+    let planQueryClass: string | undefined;
+    let planFallbackFlags: string[] = [];
+
     try {
+      const planStart = Date.now();
       const plan = await this.planner!.plan(opts.query);
+      timingsMs['plan'] = Date.now() - planStart;
+      planLanes = plan.lanes;
+      planVariants = plan.variants ?? [];
+      planQueryClass = plan.queryClass;
+      planFallbackFlags = plan.fallbackFlags ?? [];
+
+      const orchestrateStart = Date.now();
+      const filters = {
+        docType: opts.docType,
+        sector: opts.sector,
+        regionId: opts.regionId,
+        afterDate: opts.afterDate,
+      };
       const fused = await this.orchestrator!.orchestrate({
         rewrittenQuery: plan.rewrittenQuery,
         lanes: plan.lanes,
         topKPerLane: plan.topKPerLane,
-        filters: {
-          docType: opts.docType,
-          sector: opts.sector,
-          regionId: opts.regionId,
-          afterDate: opts.afterDate,
-        },
+        filters,
+        variants: plan.variants,
+        queryClass: plan.queryClass,
       });
+      timingsMs['orchestrate'] = Date.now() - orchestrateStart;
+
+      const rerankStart = Date.now();
       const reranked = await this.reranker!.rerank(plan.rewrittenQuery, fused, safeTopK * 2);
+      timingsMs['rerank'] = Date.now() - rerankStart;
+
+      // Collect rerank fallback reason from first result (all share same reason when fallback fires).
+      rerankReason = reranked[0]?.fallbackReason ?? null;
+      if (rerankReason) {
+        fallbackFlags.push(rerankReason);
+      }
+
+      const expandStart = Date.now();
       const expanded = this.contextExpander
         ? await this.contextExpander.expand(reranked, { neighborChunks: 1, fetchParentSection: true })
         : reranked;
+      timingsMs['expand'] = Date.now() - expandStart;
+
       const packed = this.contextPacker!.pack(expanded, {
         maxTokens: 4096,
         maxChunksPerSource: 3,
@@ -176,28 +212,69 @@ export class RagRetrievalService {
         similarity: 1.0, // reranked results don't have cosine similarity
       }));
 
+      resultChunkIds = results.map((r) => r.chunkId);
+      const totalMs = Date.now() - startedAt;
+
       this.metrics.incrementCounter('rag_search_requests_total', 'Total RAG search requests by status', { status: 'success' });
       this.metrics.observeHistogram(
         'rag_search_duration_seconds',
         'Duration of RAG search operations in seconds',
         { status: 'success' },
-        (Date.now() - startedAt) / 1000,
+        totalMs / 1000,
         [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
       );
+
+      this.fireTrace({
+        query: opts.query,
+        queryClass: planQueryClass,
+        variants: planVariants,
+        filters: { docType: opts.docType ?? null, sector: opts.sector ?? null, regionId: opts.regionId ?? null, afterDate: opts.afterDate ?? null },
+        lanes: planLanes,
+        resultChunkIds,
+        laneCounts: {},
+        timingsMs,
+        fallbackFlags: [...planFallbackFlags, ...fallbackFlags],
+        rerankReason,
+        totalMs,
+      });
+
       return results;
     } catch (error) {
       this.logger.warn(`Multi-stage search failed, falling back to dense: ${error}`);
+      const totalMs = Date.now() - startedAt;
       this.metrics.incrementCounter('rag_search_requests_total', 'Total RAG search requests by status', { status: 'error' });
       this.metrics.observeHistogram(
         'rag_search_duration_seconds',
         'Duration of RAG search operations in seconds',
         { status: 'error' },
-        (Date.now() - startedAt) / 1000,
+        totalMs / 1000,
         [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
       );
+
+      this.fireTrace({
+        query: opts.query,
+        queryClass: planQueryClass,
+        variants: planVariants,
+        filters: { docType: opts.docType ?? null, sector: opts.sector ?? null, regionId: opts.regionId ?? null, afterDate: opts.afterDate ?? null },
+        lanes: planLanes,
+        resultChunkIds,
+        laneCounts: {},
+        timingsMs,
+        fallbackFlags: [...planFallbackFlags, 'multi_stage_error'],
+        rerankReason,
+        totalMs,
+      });
+
       // Fall back to single-stage dense search
       return this.searchDenseFallback(opts, safeTopK);
     }
+  }
+
+  private fireTrace(input: Parameters<RagTraceService['recordTrace']>[0]): void {
+    if (!this.ragTrace) return;
+    this.ragTrace.recordTrace(input).catch((err: unknown) => {
+      this.logger.warn(`RagTraceService.recordTrace unhandled rejection: ${err}`);
+    });
   }
 
   private async searchDenseFallback(opts: RagSearchOptions, safeTopK: number): Promise<RagSearchResult[]> {

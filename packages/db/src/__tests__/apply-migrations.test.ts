@@ -33,4 +33,14 @@ describe('apply-migrations', () => {
     expect(sql).toContain('-- ROLLBACK:');
     expect(sql).toContain('DROP TABLE IF EXISTS document_chunk_representations');
   });
+
+  it('V17 migration file contains a ROLLBACK block and DROP TABLE for rag_query_logs', () => {
+    const migrationsDir = join(__dirname, '../../migrations');
+    const sql = readFileSync(
+      join(migrationsDir, 'V17__add_rag_query_logs.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('-- ROLLBACK:');
+    expect(sql).toContain('DROP TABLE IF EXISTS rag_query_logs');
+  });
 });

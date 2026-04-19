@@ -54,4 +54,11 @@ export const ragConfig = registerAs('rag', () => ({
     enabled: process.env['RAG_CONTEXT_EXPANSION_ENABLED'] === 'true',
     topN: Number(process.env['RAG_CONTEXT_EXPANSION_TOP_N']) || 10,
   },
+  queryLog: {
+    sampleRate: Number(process.env['RAG_QUERY_LOG_SAMPLE_RATE'] ?? '1.0'),
+    retentionDays: Number(process.env['RAG_QUERY_LOG_RETENTION_DAYS'] ?? '30'),
+    piiEnabled: process.env['RAG_QUERY_LOG_PII_ENABLED'] === 'true',
+    // Retention is gated off by default — operator must opt in.
+    retentionEnabled: process.env['RAG_QUERY_LOG_RETENTION_ENABLED'] === 'true',
+  },
 }));

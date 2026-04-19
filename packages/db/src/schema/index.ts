@@ -29,6 +29,7 @@ export { analysisArtifacts } from './analysis-artifacts';
 export { analysisApprovals } from './analysis-approvals';
 export { contextJournalEntries } from './context-journal-entries';
 export { executionReviewLedgers } from './execution-review-ledgers';
+export { ragQueryLogs } from './rag-query-logs';
 
 // Relations
 export {
