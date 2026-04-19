@@ -95,4 +95,38 @@
   the remaining commits. Future subagent dispatches should either (a) run on
   a non-detached checkout of the target branch, or (b) explicitly advance
   the branch ref after every commit. Document the pattern in the
-  subagent-driven-development notes.
+  subagent-driven-development notes. Applied as a pre-merge guardrail in
+  Phase 2 and Phase 3 via `git rev-parse HEAD == git rev-parse <branch>`.
+
+## 2026-04-19 — carried over from Phase 3 Execution Review Ledger
+
+- **[PHASE3-TD-01] `DISPATCHED` status is declared but never written.** The
+  `executionReviewLedgerStatusSchema` enum, the V15 SQL `CHECK` constraint,
+  and the web `ExecutionReviewLedgerResponse.status` union all list eight
+  values including both `DISPATCHED` and `EXECUTED`. In practice
+  `ExecutionReviewLedgerService.markDispatched` writes `'EXECUTED'` directly,
+  and no code path writes `'DISPATCHED'`. Dead enum value — not a runtime
+  defect but an inflated contract surface. Fix options:
+  (a) rename `markDispatched` → `markExecuted` and drop `DISPATCHED` from the
+  enum + CHECK + union (needs a follow-up migration that widens the CHECK
+  first, then narrows it after data is confirmed); or
+  (b) introduce a genuine two-step `COMMITTED → DISPATCHED → EXECUTED`
+  lifecycle where dispatch records the "hand-off to trading engine" moment
+  separately from the confirmed execution.
+  Track until a product decision selects between the two.
+- **[PHASE3-TD-02] `dispatchManual` loses trading execution details.**
+  `ExecutionReviewLedgerService.dispatchManual` records
+  `executionResultRef: ledger.commitHash` (the commit hash as a proxy) and
+  discards the return value of `trading.execute(userId)`, which contains a
+  structured `ExecuteResult` with per-op fill data. Auto-dispatch has the
+  same limitation (PHASE3-TD-01 related). Audit-trail gap. Fix: store a
+  real execution-result reference (or the JSON-stringified
+  `ExecuteResult`) as `executionResultRef`. Low priority until the
+  ledger becomes the primary post-trade audit source.
+- **[PHASE3-TD-03] Plan document contains a stale test snippet.**
+  `docs/exec-plans/2026-04-18-openalice-remaining-work-plan.md` Task 3.2
+  Step 1 still references the pre-fix Drizzle property name
+  `orderDraftRefsJson`. The actual implementation uses `orderDraftRefs` per
+  commit `997a63a`. Harmless today but misleading for the next reader.
+  Fix: update the plan snippet to match the landed code, or note that the
+  Drizzle/Zod alignment was done post-hoc.
