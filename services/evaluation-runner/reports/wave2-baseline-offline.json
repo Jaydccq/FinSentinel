@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-04-19T23:24:33.738467+00:00",
+  "dataset": "services/evaluation-runner/datasets/golden.json",
+  "entry_count": 25,
+  "metrics": {
+    "strict.recall@3": 0.9133333333333333,
+    "strict.mrr@3": 0.8866666666666667,
+    "lenient.recall@3": 0.9133333333333333,
+    "lenient.mrr@3": 0.8866666666666667,
+    "precision@3": 0.4533333333333333,
+    "strict.recall@5": 0.9866666666666667,
+    "strict.mrr@5": 0.8966666666666667,
+    "lenient.recall@5": 0.9866666666666667,
+    "lenient.mrr@5": 0.8966666666666667,
+    "precision@5": 0.29600000000000004,
+    "strict.recall@10": 1.0,
+    "strict.mrr@10": 0.8966666666666667,
+    "lenient.recall@10": 1.0,
+    "lenient.mrr@10": 0.8966666666666667,
+    "precision@10": 0.15200000000000002
+  },
+  "minimum_metrics": {
+    "strict.recall@5": 0.3,
+    "strict.recall@10": 0.45,
+    "lenient.recall@10": 0.6,
+    "strict.mrr@10": 0.25
+  }
+}

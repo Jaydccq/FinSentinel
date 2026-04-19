@@ -95,6 +95,7 @@ docs/exec-plans/*
 !docs/exec-plans/2026-04-19-rag-redesign-plan.md
 !docs/exec-plans/2026-04-19-rag-redesign-design.md
 !docs/exec-plans/2026-04-19-desktop-rag-parity-notes.md
+!docs/exec-plans/2026-04-19-rag-wave2-production-rollout-plan.md
 !docs/exec-plans/2026-04-17-pi-mono-refactor-plan.md
 !docs/exec-plans/2026-04-18-resume-technical-guide.md
 !docs/technical-guides/
@@ -113,6 +114,11 @@ __pycache__/
 
 ### Evaluation runner reports (generated) ###
 services/evaluation-runner/reports/*.json
+# Exception: committed baselines used as reference points by Wave 2 phases.
+!services/evaluation-runner/reports/wave2-baseline-*.json
+
+### Python local venvs (evaluator dev) ###
+.venv-eval/
 
 ### Node.js / TypeScript ###
 node_modules/
