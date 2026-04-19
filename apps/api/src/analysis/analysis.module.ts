@@ -6,6 +6,7 @@ import { CommonModule } from '../common/common.module';
 import { EventsModule } from '../events/events.module';
 import { RagModule } from '../rag/rag.module';
 import { QueueModule } from '../queue/queue.module';
+import { MarketModule } from '../market/market.module';
 import { TradingModule } from '../trading/trading.module';
 import { APPROVAL_AUTO_DISPATCH_FLAG_TOKEN } from './analysis-approval.service';
 import type { DrizzleDB } from '@finsentinel/db';
@@ -25,6 +26,7 @@ import { ContextJournalService } from './context-journal.service';
 import { RuntimeControlService } from './runtime-control.service';
 import { RunReportAssembler } from './run-report-assembler.service';
 import { RunOrchestratorService } from './run-orchestrator.service';
+import { StrategyEvidenceService } from './strategy-evidence.service';
 import { TeamRegistry } from './team-registry';
 import { RoleExecutorService } from './teams/role-executor.service';
 import { IntelligenceTeamService } from './teams/intelligence-team.service';
@@ -61,6 +63,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
     EventsModule,
     forwardRef(() => RagModule),
     forwardRef(() => QueueModule),
+    MarketModule,
     TradingModule,
   ],
   controllers: [
@@ -75,6 +78,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
     RunReportAssembler,
     AnalysisCheckpointService,
     AnalysisApprovalService,
+    StrategyEvidenceService,
     {
       provide: APPROVAL_AUTO_DISPATCH_FLAG_TOKEN,
       useFactory: (config: ConfigService) => ({
@@ -181,6 +185,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
     RunReportAssembler,
     AnalysisCheckpointService,
     AnalysisApprovalService,
+    StrategyEvidenceService,
     ContextFabricService,
     ContextJournalService,
     PreflightPlannerService,

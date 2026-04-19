@@ -320,6 +320,12 @@ Expected tests:
 - Market-data failure returns `DEGRADED`.
 - One template exception returns `DEGRADED` with successful evaluations retained.
 
+**Progress log**
+
+- 2026-04-19: Worker 2 completed the strategy evidence service slice. Added `StrategyEvidenceService`, wired `MarketModule` into `AnalysisModule`, converted `MarketBar` string OHLC fields to numeric evaluator bars, and covered skipped, evaluated, market-data failure, and single-template failure paths.
+- 2026-04-19: Review follow-up removed the local strategy archive schema mirror from `apps/api/src/analysis/strategy-evidence.service.ts`; the service and spec now import `strategyArchivePayloadSchema` from `@finsentinel/shared`. Verification requires rebuilding workspace dependency packages first: `pnpm --filter @finsentinel/shared build`, `pnpm --filter @finsentinel/db build`, then `pnpm --filter @finsentinel/api exec vitest run src/analysis/__tests__/strategy-evidence.service.spec.ts` and `pnpm --filter @finsentinel/api typecheck`, all passing locally.
+- 2026-04-19: Step 2 review findings fixed. Added red coverage for empty `getHistoricalBars()` results and blank OHLC input, then updated `StrategyEvidenceService` to return a single typed `DEGRADED` archive with a non-empty warning when no bars are returned and to validate bar fields before coercion. Verified with `pnpm --filter @finsentinel/shared build`, `pnpm --filter @finsentinel/db build`, `pnpm --filter @finsentinel/api exec vitest run src/analysis/__tests__/strategy-evidence.service.spec.ts`, and `pnpm --filter @finsentinel/api typecheck`.
+
 ### Step 3: Persist `STRATEGY_ARCHIVE` Artifact
 
 **Files**
