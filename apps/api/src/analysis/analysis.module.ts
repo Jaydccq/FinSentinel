@@ -154,8 +154,8 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
             args: { userId: string; limit?: number },
           ): Promise<Array<{ id: string; snippet: string }>> => {
             const results = await rag.search(query, args.limit ?? 8);
-            return results.map((r, idx) => ({
-              id: String(r.metadata['sourceId'] ?? r.metadata['id'] ?? idx),
+            return results.map((r) => ({
+              id: r.sourceId,
               snippet: r.content,
             }));
           },

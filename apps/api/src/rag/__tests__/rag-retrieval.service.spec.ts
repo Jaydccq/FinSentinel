@@ -47,6 +47,7 @@ describe('RagRetrievalService', () => {
   it('returns ranked results above the configured similarity threshold', async () => {
     mockChunkStore.search.mockResolvedValueOnce([
       {
+        id: 'chunk-uuid-1',
         sourceType: 'document',
         sourceId: 'doc-1',
         chunkIndex: 0,
@@ -56,6 +57,7 @@ describe('RagRetrievalService', () => {
         similarity: 0.91,
       },
       {
+        id: 'chunk-uuid-2',
         sourceType: 'news',
         sourceId: 'news-1',
         chunkIndex: 0,
@@ -65,6 +67,7 @@ describe('RagRetrievalService', () => {
         similarity: 0.72,
       },
       {
+        id: 'chunk-uuid-3',
         sourceType: 'document',
         sourceId: 'doc-2',
         chunkIndex: 0,
@@ -81,6 +84,10 @@ describe('RagRetrievalService', () => {
     expect(results[0]?.similarity).toBeGreaterThan(results[1]!.similarity);
     expect(results[0]?.content).toContain('Apple revenue');
     expect(results[1]?.content).toContain('supply chain');
+    expect(results[0]?.chunkId).toBe('chunk-uuid-1');
+    expect(results[0]?.sourceId).toBe('doc-1');
+    expect(results[1]?.chunkId).toBe('chunk-uuid-2');
+    expect(results[1]?.sourceId).toBe('news-1');
   });
 
   it('passes normalized filters and candidate limit to the chunk store', async () => {
@@ -125,6 +132,7 @@ describe('RagRetrievalService', () => {
   it('returns empty when no chunk clears similarity threshold', async () => {
     mockChunkStore.search.mockResolvedValueOnce([
       {
+        id: 'chunk-uuid-low',
         sourceType: 'document',
         sourceId: 'doc-1',
         chunkIndex: 0,

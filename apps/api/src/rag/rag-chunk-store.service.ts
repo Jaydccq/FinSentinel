@@ -4,6 +4,7 @@ import { and, documentChunks, eq, sql } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 
 export interface RagChunkRecord {
+  id: string;
   sourceType: 'document' | 'news';
   sourceId: string;
   chunkIndex: number;

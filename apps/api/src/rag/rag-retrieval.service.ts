@@ -9,6 +9,8 @@ import { RerankService } from './rerank.service';
 import { ContextPackerService } from './context-packer.service';
 
 export interface RagSearchResult {
+  chunkId: string;
+  sourceId: string;
   content: string;
   metadata: Record<string, unknown>;
   similarity: number;
@@ -85,6 +87,8 @@ export class RagRetrievalService {
         .sort((left, right) => right.similarity - left.similarity)
         .slice(0, safeTopK)
         .map((row) => ({
+          chunkId: row.id,
+          sourceId: row.sourceId,
           content: row.content,
           metadata: row.metadata,
           similarity: row.similarity,
@@ -160,6 +164,8 @@ export class RagRetrievalService {
       });
 
       const results = packed.chunks.slice(0, safeTopK).map((c) => ({
+        chunkId: c.chunkId,
+        sourceId: c.sourceId,
         content: c.content,
         metadata: c.metadata,
         similarity: 1.0, // reranked results don't have cosine similarity
@@ -202,7 +208,7 @@ export class RagRetrievalService {
       .filter((row) => row.similarity >= this.similarityThreshold)
       .sort((left, right) => right.similarity - left.similarity)
       .slice(0, safeTopK)
-      .map((row) => ({ content: row.content, metadata: row.metadata, similarity: row.similarity }));
+      .map((row) => ({ chunkId: row.id, sourceId: row.sourceId, content: row.content, metadata: row.metadata, similarity: row.similarity }));
   }
 
   getThreshold(): number {
