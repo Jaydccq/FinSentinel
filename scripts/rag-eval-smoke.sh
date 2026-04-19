@@ -6,9 +6,11 @@
 # API: applies migrations, seeds the fixture corpus, and runs the
 # evaluator in offline CorpusRetriever mode against configs/ci-offline.yaml.
 #
-# Defaults to the Homebrew-native Postgres on localhost:5432 per the repo
-# convention (see CLAUDE.md). Override with DATABASE_URL if you want to
-# target a different ephemeral DB.
+# Defaults to an ephemeral `finsentinel_test` DB on localhost:5432 to avoid
+# touching the Homebrew-native dev DB (see CLAUDE.md). Override with
+# DATABASE_URL to target a different DB. If the overridden URL points at
+# the native dev DB (`/finsentinel`, not `/finsentinel_test`), the script
+# prompts for interactive confirmation before proceeding.
 #
 # Usage:
 #   ./scripts/rag-eval-smoke.sh
@@ -24,7 +26,35 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
-: "${DATABASE_URL:=postgresql://postgres:postgres@localhost:5432/finsentinel}"
+# Preflight: fail fast if required tools are missing rather than producing
+# an opaque error deep in the migrate/seed/evaluator pipeline.
+command -v pnpm >/dev/null || { echo "[smoke] missing: pnpm"; exit 1; }
+command -v python3 >/dev/null || { echo "[smoke] missing: python3"; exit 1; }
+
+# DATABASE_URL handling. Two branches:
+#   1) unset → default to the ephemeral finsentinel_test DB and warn loudly.
+#   2) set and pointing at the dev DB → prompt before proceeding.
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  echo "[smoke] WARNING: DATABASE_URL not set — defaulting to finsentinel_test on localhost:5432."
+  echo "[smoke] If you want to use a different DB, set DATABASE_URL before running this script."
+  echo "[smoke] This script will: (1) run migrations, (2) seed fixture corpus, (3) run the evaluator."
+  echo
+  DATABASE_URL="postgresql://postgres:postgres@localhost:5432/finsentinel_test"
+else
+  # If DATABASE_URL points at the native dev DB (path ends in /finsentinel,
+  # NOT /finsentinel_test), warn and require explicit y/Y confirmation.
+  # Match on `/finsentinel` followed by end-of-string or query string.
+  if [[ "$DATABASE_URL" =~ /finsentinel(\?|$) ]]; then
+    echo "[smoke] Detected DATABASE_URL points at the native dev DB."
+    echo "[smoke]   DATABASE_URL = ${DATABASE_URL}"
+    read -r -p "Proceed? [y/N] " reply
+    case "$reply" in
+      y|Y) ;;
+      *) echo "[smoke] aborted"; exit 1 ;;
+    esac
+  fi
+fi
+
 : "${REDIS_URL:=redis://localhost:6379}"
 export DATABASE_URL REDIS_URL
 
@@ -52,7 +82,6 @@ echo "-> seeding fixture corpus"
 pnpm --filter @finsentinel/api rag:eval:seed-fixture \
   --corpus services/evaluation-runner/datasets/corpus.json \
   --stub-embeddings \
-  --skip-enrichment \
   --output-summary "${REPORT_DIR}/seed-summary.json"
 
 echo "-> running evaluator (offline corpus mode)"
