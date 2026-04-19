@@ -257,4 +257,46 @@ describe('MarkdownStructureService', () => {
       expect(chunk.parentId).toBeNull();
     }
   });
+
+  // ── Fenced code: plain backtick fence (no language specifier) ────────────
+
+  it('plain ``` fence without language specifier closes correctly', () => {
+    const md = '```\ncode line\n```\n\nAfter fence.';
+    const result = service.parse(md);
+
+    expect(result.chunks).toHaveLength(2);
+    expect(result.chunks[0]!.text).toContain('code line');
+    // Closing fence consumed: subsequent paragraph is its own chunk
+    expect(result.chunks[1]!.text).toBe('After fence.');
+  });
+
+  // ── Fenced code: unclosed fence (EOF without closing marker) ────────────
+
+  it('unclosed fence consumes the rest of the document verbatim', () => {
+    const md = '# Title\n\n```\ncode without closing fence\nmore lines\n';
+    const result = service.parse(md);
+
+    // Everything from the opening fence to EOF becomes one fence chunk
+    const fenceChunk = result.chunks.find((c) => c.text.includes('code without closing fence'));
+    expect(fenceChunk).toBeDefined();
+    expect(fenceChunk!.text).toContain('more lines');
+    // No separate chunk after the fence since the rest was consumed
+    expect(result.chunks.filter((c) => !c.text.includes('```')).every(
+      (c) => c.text.includes('code without closing fence') || c.title === 'Title',
+    )).toBe(true);
+  });
+
+  // ── Setext edge case: standalone "---" after blank line is not setext ────
+
+  it('standalone "---" after a blank line is treated as paragraph text, not setext H2', () => {
+    const md = 'Paragraph.\n\n---\n\nAfter rule.';
+    const result = service.parse(md);
+
+    // "---" should appear as paragraph content, not as a heading marker
+    const texts = result.chunks.map((c) => c.text);
+    expect(texts.some((t) => t.includes('---'))).toBe(true);
+    // No section path should be created by the "---" line
+    const ruleChunk = result.chunks.find((c) => c.text.includes('---'));
+    expect(ruleChunk?.sectionPath).toEqual([]);
+  });
 });

@@ -75,7 +75,7 @@ export class MarkdownStructureService {
         i++;
         while (i < lines.length) {
           fenceLines.push(lines[i]!);
-          if (closePattern.test(lines[i]!) && lines[i] !== line) {
+          if (closePattern.test(lines[i]!)) {
             i++;
             break;
           }
