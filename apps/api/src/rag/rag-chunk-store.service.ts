@@ -209,8 +209,11 @@ export class RagChunkStoreService {
               SELECT
                 id AS chunk_id,
                 source_id,
+                chunk_index,
                 content,
                 metadata,
+                meta_title,
+                section_path,
                 1 - (embedding <=> ${vectorStr}::vector) AS similarity
               FROM document_chunks
               ${canonicalWhere}
@@ -223,7 +226,12 @@ export class RagChunkStoreService {
               chunkId: row.chunk_id as string,
               sourceId: row.source_id as string,
               content: row.content as string,
-              metadata: row.metadata as Record<string, unknown>,
+              metadata: {
+                ...(row.metadata as Record<string, unknown>),
+                meta_title: row.meta_title ?? undefined,
+                section_path: row.section_path ?? undefined,
+                chunk_index: row.chunk_index as number,
+              } as Record<string, unknown>,
               similarity: row.similarity as number,
               representationType: 'canonical' as const,
             })),
@@ -244,8 +252,11 @@ export class RagChunkStoreService {
               SELECT
                 dc.id AS chunk_id,
                 dc.source_id,
+                dc.chunk_index,
                 dc.content,
                 dc.metadata,
+                dc.meta_title,
+                dc.section_path,
                 1 - (r.embedding <=> ${vectorStr}::vector) AS similarity
               FROM document_chunk_representations r
               JOIN document_chunks dc ON dc.id = r.chunk_id
@@ -261,7 +272,12 @@ export class RagChunkStoreService {
               chunkId: row.chunk_id as string,
               sourceId: row.source_id as string,
               content: row.content as string,
-              metadata: row.metadata as Record<string, unknown>,
+              metadata: {
+                ...(row.metadata as Record<string, unknown>),
+                meta_title: row.meta_title ?? undefined,
+                section_path: row.section_path ?? undefined,
+                chunk_index: row.chunk_index as number,
+              } as Record<string, unknown>,
               similarity: row.similarity as number,
               representationType: repType,
             })),

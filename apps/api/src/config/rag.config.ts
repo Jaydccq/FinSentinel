@@ -47,4 +47,11 @@ export const ragConfig = registerAs('rag', () => ({
     minEntityConfidence:
       Number(process.env['RAG_GRAPH_MIN_ENTITY_CONFIDENCE']) || 0.7,
   },
+  rerank: {
+    maxTokens: Number(process.env['RAG_RERANK_MAX_TOKENS']) || 480,
+  },
+  contextExpansion: {
+    enabled: process.env['RAG_CONTEXT_EXPANSION_ENABLED'] === 'true',
+    topN: Number(process.env['RAG_CONTEXT_EXPANSION_TOP_N']) || 10,
+  },
 }));

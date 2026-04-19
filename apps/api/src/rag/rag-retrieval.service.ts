@@ -7,6 +7,7 @@ import { RetrievalPlannerService } from './retrieval-planner.service';
 import { RetrievalOrchestratorService } from './retrieval-orchestrator.service';
 import { RerankService } from './rerank.service';
 import { ContextPackerService } from './context-packer.service';
+import { ContextExpanderService } from './context-expander.service';
 
 export interface RagSearchResult {
   chunkId: string;
@@ -40,6 +41,7 @@ export class RagRetrievalService {
     @Optional() private readonly orchestrator?: RetrievalOrchestratorService,
     @Optional() private readonly reranker?: RerankService,
     @Optional() private readonly contextPacker?: ContextPackerService,
+    @Optional() private readonly contextExpander?: ContextExpanderService,
   ) {
     this.similarityThreshold = configService.get<number>('RAG_SIMILARITY_THRESHOLD', 0.65);
     this.multiStageEnabled = configService.get<string>('RAG_MULTI_STAGE_ENABLED', 'false') === 'true';
@@ -158,7 +160,10 @@ export class RagRetrievalService {
         },
       });
       const reranked = await this.reranker!.rerank(plan.rewrittenQuery, fused, safeTopK * 2);
-      const packed = this.contextPacker!.pack(reranked, {
+      const expanded = this.contextExpander
+        ? await this.contextExpander.expand(reranked, { neighborChunks: 1, fetchParentSection: true })
+        : reranked;
+      const packed = this.contextPacker!.pack(expanded, {
         maxTokens: 4096,
         maxChunksPerSource: 3,
       });

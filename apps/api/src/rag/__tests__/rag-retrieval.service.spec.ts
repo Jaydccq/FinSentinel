@@ -5,6 +5,11 @@ import { RagRetrievalService, type RagSearchOptions } from '../rag-retrieval.ser
 import { RagEmbeddingService } from '../rag-embedding.service';
 import { RagChunkStoreService } from '../rag-chunk-store.service';
 import { MetricsService } from '../../common/services/metrics.service';
+import { RerankService } from '../rerank.service';
+import { ContextPackerService } from '../context-packer.service';
+import { ContextExpanderService } from '../context-expander.service';
+import { RetrievalPlannerService } from '../retrieval-planner.service';
+import { RetrievalOrchestratorService } from '../retrieval-orchestrator.service';
 
 describe('RagRetrievalService', () => {
   let service: RagRetrievalService;
@@ -149,5 +154,154 @@ describe('RagRetrievalService', () => {
 
   it('reports configured similarity threshold', () => {
     expect(service.getThreshold()).toBe(0.65);
+  });
+});
+
+describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> packer)', () => {
+  it('wires reranker, expander, and packer in order', async () => {
+    const fusedCandidate = {
+      chunkId: 'c1',
+      sourceId: 'src-1',
+      content: 'fused content',
+      metadata: {},
+      rrfScore: 0.05,
+      lanes: ['dense'],
+      representationTypesSeen: [],
+      variantKindsSeen: [],
+    };
+
+    const rerankedCandidate = { ...fusedCandidate, rerankScore: 0.9, fallbackReason: null };
+    const expandedCandidate = { ...rerankedCandidate, chunkId: 'c1-expanded', rerankScore: 0.675 };
+
+    const mockPlanner = {
+      plan: vi.fn().mockResolvedValue({
+        rewrittenQuery: 'AAPL revenue 2026',
+        lanes: ['dense'],
+        topKPerLane: 20,
+      }),
+    };
+
+    const mockOrchestrator = {
+      orchestrate: vi.fn().mockResolvedValue([fusedCandidate]),
+    };
+
+    const mockReranker = {
+      rerank: vi.fn().mockResolvedValue([rerankedCandidate]),
+    };
+
+    const mockExpander = {
+      expand: vi.fn().mockResolvedValue([rerankedCandidate, expandedCandidate]),
+    };
+
+    const mockPacker = {
+      pack: vi.fn().mockReturnValue({
+        chunks: [
+          { chunkId: 'c1', sourceId: 'src-1', content: 'fused content', metadata: {} },
+        ],
+        totalTokenEstimate: 10,
+      }),
+    };
+
+    const module = await Test.createTestingModule({
+      providers: [
+        RagRetrievalService,
+        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
+        { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([]) } },
+        {
+          provide: MetricsService,
+          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn() },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string, defaultVal: unknown) => {
+              if (key === 'RAG_SIMILARITY_THRESHOLD') return 0.65;
+              if (key === 'RAG_MULTI_STAGE_ENABLED') return 'true';
+              return defaultVal;
+            },
+          },
+        },
+        { provide: RetrievalPlannerService, useValue: mockPlanner },
+        { provide: RetrievalOrchestratorService, useValue: mockOrchestrator },
+        { provide: RerankService, useValue: mockReranker },
+        { provide: ContextPackerService, useValue: mockPacker },
+        { provide: ContextExpanderService, useValue: mockExpander },
+      ],
+    }).compile();
+
+    const svc = module.get(RagRetrievalService);
+    const results = await svc.search('AAPL revenue', 5);
+
+    expect(mockReranker.rerank).toHaveBeenCalledOnce();
+    expect(mockExpander.expand).toHaveBeenCalledWith(
+      [rerankedCandidate],
+      { neighborChunks: 1, fetchParentSection: true },
+    );
+    expect(mockPacker.pack).toHaveBeenCalledWith(
+      [rerankedCandidate, expandedCandidate],
+      expect.any(Object),
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0]!.chunkId).toBe('c1');
+  });
+
+  it('skips expander when it is not provided (Optional dep)', async () => {
+    const fusedCandidate = {
+      chunkId: 'c1',
+      sourceId: 'src-1',
+      content: 'content',
+      metadata: {},
+      rrfScore: 0.05,
+      lanes: ['dense'],
+      representationTypesSeen: [],
+      variantKindsSeen: [],
+    };
+
+    const rerankedCandidate = { ...fusedCandidate, rerankScore: 0.9, fallbackReason: null };
+
+    const mockPlanner = {
+      plan: vi.fn().mockResolvedValue({ rewrittenQuery: 'q', lanes: ['dense'], topKPerLane: 20 }),
+    };
+    const mockOrchestrator = { orchestrate: vi.fn().mockResolvedValue([fusedCandidate]) };
+    const mockReranker = { rerank: vi.fn().mockResolvedValue([rerankedCandidate]) };
+    const mockPacker = {
+      pack: vi.fn().mockReturnValue({
+        chunks: [{ chunkId: 'c1', sourceId: 'src-1', content: 'content', metadata: {} }],
+        totalTokenEstimate: 5,
+      }),
+    };
+
+    const module = await Test.createTestingModule({
+      providers: [
+        RagRetrievalService,
+        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
+        { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([]) } },
+        {
+          provide: MetricsService,
+          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn() },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string, defaultVal: unknown) => {
+              if (key === 'RAG_SIMILARITY_THRESHOLD') return 0.65;
+              if (key === 'RAG_MULTI_STAGE_ENABLED') return 'true';
+              return defaultVal;
+            },
+          },
+        },
+        { provide: RetrievalPlannerService, useValue: mockPlanner },
+        { provide: RetrievalOrchestratorService, useValue: mockOrchestrator },
+        { provide: RerankService, useValue: mockReranker },
+        { provide: ContextPackerService, useValue: mockPacker },
+        // ContextExpanderService intentionally omitted
+      ],
+    }).compile();
+
+    const svc = module.get(RagRetrievalService);
+    await svc.search('AAPL revenue', 5);
+
+    // Packer receives raw reranked output directly (no expansion)
+    expect(mockPacker.pack).toHaveBeenCalledWith([rerankedCandidate], expect.any(Object));
   });
 });
