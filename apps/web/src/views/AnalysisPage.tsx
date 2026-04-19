@@ -7,6 +7,8 @@ import { ArtifactsPanel } from '../components/analysis/ArtifactsPanel'
 import { FinalReportPanel } from '../components/analysis/FinalReportPanel'
 import { HumanApprovalRail } from '../components/analysis/HumanApprovalRail'
 import { TimelinePanel } from '../components/analysis/TimelinePanel'
+import { ContextPanel } from '../components/analysis/ContextPanel'
+import { RunNavigator } from '../components/analysis/RunNavigator'
 import { useAnalysisRun } from '../hooks/useAnalysisRun'
 import { portfolioApi, type PortfolioResponse } from '../api/portfolio'
 import { analysisRunsApi, type AnalysisRunResponse } from '../api/analysis-runs'
@@ -24,6 +26,7 @@ export default function AnalysisPage() {
     run,
     stages,
     artifacts,
+    context,
     timelineEvents,
     streamStatus,
     refresh,
@@ -36,7 +39,12 @@ export default function AnalysisPage() {
   }, [])
 
   return (
-    <div className="px-4 py-4 md:px-8 md:py-6 grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-4">
+    <div className="px-4 py-4 md:px-8 md:py-6 grid grid-cols-1 2xl:grid-cols-[260px_1fr_320px] gap-4">
+      <RunNavigator
+        recentRuns={recentRuns}
+        activeRunId={activeRunId}
+        onSelect={setActiveRunId}
+      />
       <div className="space-y-4">
         <RunSetupPanel
           portfolios={portfolios.map((p) => ({ id: p.id, name: p.name }))}
@@ -45,7 +53,6 @@ export default function AnalysisPage() {
             analysisRunsApi.list().then(setRecentRuns).catch(() => {})
           }}
         />
-
         {activeRunId ? (
           <>
             <LiveProgressPanel
@@ -59,28 +66,12 @@ export default function AnalysisPage() {
               streamStatus={streamStatus}
               onRefresh={refresh}
             />
+            <ContextPanel context={context as never} />
             <ArtifactsPanel artifacts={artifacts} />
             <FinalReportPanel run={run} artifacts={artifacts} />
           </>
-        ) : (
-          <section className="surface-panel rounded p-4">
-            <h2 className="text-base font-semibold">Recent Runs</h2>
-            <ul className="mt-2 space-y-1">
-              {recentRuns.slice(0, 10).map((r) => (
-                <li key={r.id}>
-                  <button
-                    className="text-left text-sm underline text-slate-300"
-                    onClick={() => setActiveRunId(r.id)}
-                  >
-                    {r.id.slice(0, 8)} · {r.status} · {r.sourceMode} · {new Date(r.createdAt).toLocaleString()}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
+        ) : null}
       </div>
-
       <HumanApprovalRail run={run} onResolved={() => refresh()} />
     </div>
   )

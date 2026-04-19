@@ -20,6 +20,7 @@ export interface UseAnalysisRunResult {
   run: AnalysisRunResponse | null
   stages: AnalysisStageResponse[]
   artifacts: AnalysisArtifactResponse[]
+  context: Record<string, unknown> | null
   timelineEvents: AnalysisRunTimelineEvent[]
   streamStatus: AnalysisRunStreamStatus
   loading: boolean
@@ -33,6 +34,7 @@ export function useAnalysisRun(runId: string | null): UseAnalysisRunResult {
   const [stages, setStages] = useState<AnalysisStageResponse[]>([])
   const [artifacts, setArtifacts] = useState<AnalysisArtifactResponse[]>([])
   const [timelineEvents, setTimelineEvents] = useState<AnalysisRunTimelineEvent[]>([])
+  const [context, setContext] = useState<Record<string, unknown> | null>(null)
   const [streamStatus, setStreamStatus] = useState<AnalysisRunStreamStatus>('idle')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -155,10 +157,30 @@ export function useAnalysisRun(runId: string | null): UseAnalysisRunResult {
     }
   }, [runId, fetchAll])
 
+  useEffect(() => {
+    if (!runId) {
+      setContext(null)
+      return
+    }
+    let cancelled = false
+    analysisRunsApi
+      .getContext(runId)
+      .then((c) => {
+        if (!cancelled) setContext(c)
+      })
+      .catch(() => {
+        // Swallow — context is best-effort; failures don't block the UI.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [runId, run?.status])
+
   return {
     run,
     stages,
     artifacts,
+    context,
     timelineEvents,
     streamStatus,
     loading,
