@@ -2,6 +2,14 @@
 
 ## Active Gaps
 
+### Cloud RAG quality work is blocked by weak ingestion and evaluation gates
+
+- **Observed:** 2026-04-19 while preparing the RAG redesign plan.
+- **Evidence:** `DocumentUploadService` rejects PDFs, `DocumentParseService` returns empty text for `application/pdf`, `document_chunks` stores only one dense embedding surface, current graph enrichment extracts entities but not relation rows, and `services/evaluation-runner/datasets/golden.json` is synthetic.
+- **Impact:** Production-like RAG quality cannot be improved safely by tuning alone because real retrieval regressions are not gated and PDF-heavy source material cannot enter the cloud RAG pipeline directly.
+- **Likely fix path:** Execute `docs/exec-plans/2026-04-19-rag-redesign-plan.md` starting with stable chunk IDs and representative evaluation gates, then add structured Markdown ingestion and multi-representation indexing.
+- **Status:** Open.
+
 ### `apps/web` full lint is blocked by pre-existing violations
 
 - **Observed:** 2026-04-18 while verifying the Operator Console Timeline UI.
