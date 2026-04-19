@@ -38,7 +38,7 @@ export const ragConfig = registerAs('rag', () => ({
       Number(process.env['RAG_CONTEXT_MAX_CHUNKS_PER_SOURCE']) || 3,
   },
   graph: {
-    enabled: process.env['RAG_GRAPH_ENABLED'] !== 'false',
+    enabled: process.env['RAG_GRAPH_ENABLED'] === 'true',
     maxHops: Number(process.env['RAG_GRAPH_MAX_HOPS']) || 2,
     hopDecay: Number(process.env['RAG_GRAPH_HOP_DECAY']) || 0.6,
     topologyWeight: Number(process.env['RAG_GRAPH_TOPOLOGY_WEIGHT']) || 0.4,

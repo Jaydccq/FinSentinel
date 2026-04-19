@@ -138,7 +138,7 @@ describe('GraphEnrichConsumer.process', () => {
     expect(countRelationInserts(db)).toBe(0);
   });
 
-  it('unknown relation_type in response — WARN logged, entire response dropped by zod', async () => {
+  it('unknown relation_type in response — bad row WARN logged, bad row dropped, entities still processed', async () => {
     const db = makeDb({ existingRelations: [] });
     const consumer = buildConsumer(db);
 
@@ -157,7 +157,9 @@ describe('GraphEnrichConsumer.process', () => {
 
     await consumer.process(makeJob({ sourceType: 'document', sourceId: 'doc-1' }));
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('parse failed'));
+    // Per-row drop: warn logged for the bad row, but the whole response is NOT aborted.
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Dropping malformed relation'));
+    // Bad relation is dropped.
     expect(countRelationInserts(db)).toBe(0);
   });
 

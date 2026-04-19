@@ -43,7 +43,9 @@ const extractedRelationSchema = z.object({
 
 const sidecarResponseSchema = z.object({
   entities: z.array(extractedEntitySchema),
-  relations: z.array(extractedRelationSchema).optional(),
+  // Relations are parsed per-row below (safeParse) so one bad row is silently
+  // dropped rather than rejecting the entire response.
+  relations: z.array(z.unknown()).optional(),
 });
 
 type SidecarRelation = z.infer<typeof extractedRelationSchema>;
@@ -167,7 +169,17 @@ export class GraphEnrichConsumer implements OnModuleInit, OnModuleDestroy {
         return;
       }
       sidecarEntities = parsed.data.entities;
-      sidecarRelations = parsed.data.relations ?? [];
+      // Per-row parse: silently drop rows that fail schema validation.
+      for (const rawRel of parsed.data.relations ?? []) {
+        const relParsed = extractedRelationSchema.safeParse(rawRel);
+        if (relParsed.success) {
+          sidecarRelations.push(relParsed.data);
+        } else {
+          this.logger.warn(
+            `Dropping malformed relation for ${sourceType}/${sourceId}: ${relParsed.error.message}`,
+          );
+        }
+      }
     } catch (error) {
       this.logger.warn(`Entity extraction failed for ${sourceType}/${sourceId}: ${error}`);
       return;
