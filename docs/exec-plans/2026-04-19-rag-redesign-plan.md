@@ -655,3 +655,11 @@ Next: T1.C — golden set candidate export CLI.
 - Provided and exported `MarkdownStructureService` in `DocumentModule`.
 - Tests: 133 test files pass, 1098 tests pass. Typecheck clean.
 - Commit: `1f63e45`.
+
+**2026-04-19 — T4 done**: query variant planner with HyDE + decomposition.
+- Created `apps/api/src/rag/query-variant.service.ts`: three methods — `rewrite()` (delegates to `QueryRewriteService`), `hyde()` (returns trimmed hypothetical passage capped at 400 chars or null on failure), `decompose()` (parses zod-validated JSON array of 0-3 subqueries, returns [] on failure). Both LLM methods degrade gracefully and log warn on failure, never throw.
+- Modified `apps/api/src/rag/retrieval-planner.service.ts`: added `QueryClass` (`factoid | relational | analytical | multi_part`), `VariantKind`, `QueryVariant`, and extended `RetrievalPlan` with `queryClass`, `variants[]`, and `fallbackFlags[]`. Kept `rewrittenQuery` for T5 backward compat. Regex classifier (no LLM): `multi_part` (multiple `?` or `and` adjacent to `?`) > `analytical` (length > 120 OR analytical keywords) > `relational` (existing cues) > `factoid`. Activation: analytical + `RAG_HYDE_ENABLED` triggers hyde; multi_part + `RAG_QUERY_DECOMPOSE_ENABLED` triggers decompose. Graph lane activation consolidated under relational class path.
+- Modified `apps/api/src/config/rag.config.ts`: added `hydeEnabled` (default false) and `queryDecomposeEnabled` (default false) under `retrieval`.
+- Modified `apps/api/src/rag/rag.module.ts`: registered and exported `QueryVariantService`.
+- Tests: created `query-variant.service.spec.ts` (9 tests), expanded `retrieval-planner.service.spec.ts` (24 tests). All 134 test files, 1126 tests pass. Typecheck clean.
+- Commit: `e42c2ae`.
