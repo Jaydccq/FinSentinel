@@ -84,23 +84,34 @@ export function LiveProgressPanel({
           const status = stage?.status ?? 'PENDING'
           const canRetryStage = Boolean(onRetryStage && stage && canRetryRun && status !== 'PENDING')
           return (
-            <li key={key} className="flex items-center justify-between rounded border border-slate-700 bg-slate-900/40 px-3 py-2">
-              <span className="font-mono text-sm">{key}</span>
-              <div className="flex items-center gap-2">
-                {canRetryStage && (
-                  <button
-                    className="btn-secondary px-2 py-1 text-xs"
-                    disabled={retryingStage !== null}
-                    onClick={() => retry(key)}
-                  >
-                    {retryingStage === key ? 'Retrying' : 'Retry'}
-                  </button>
-                )}
-                <span className={`status-chip border ${STATUS_STYLE[status] ?? STATUS_STYLE.PENDING}`}>
-                  {status}
-                  {stage?.checkpointVersion ? ` · v${stage.checkpointVersion}` : ''}
-                </span>
+            <li key={key} className="rounded border border-slate-700 bg-slate-900/40 px-3 py-2">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-sm">{key}</span>
+                <div className="flex items-center gap-2">
+                  {canRetryStage && (
+                    <button
+                      className="btn-secondary px-2 py-1 text-xs"
+                      disabled={retryingStage !== null}
+                      onClick={() => retry(key)}
+                    >
+                      {retryingStage === key ? 'Retrying' : 'Retry'}
+                    </button>
+                  )}
+                  <span className={`status-chip border ${STATUS_STYLE[status] ?? STATUS_STYLE.PENDING}`}>
+                    {status}
+                    {stage?.checkpointVersion ? ` · v${stage.checkpointVersion}` : ''}
+                  </span>
+                </div>
               </div>
+              {stage?.structuredOutput?.roleSummaries?.length ? (
+                <ul className="mt-2 w-full space-y-1 pl-2 border-l border-slate-700">
+                  {stage.structuredOutput.roleSummaries.map((role) => (
+                    <li key={role.roleKey} className="text-xs text-slate-400">
+                      {role.roleKey} · {role.status} · {Math.max(1, Math.round(role.durationMs / 1000))}s · {role.toolCallCount} tools
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </li>
           )
         })}

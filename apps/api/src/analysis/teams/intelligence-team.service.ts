@@ -3,6 +3,7 @@ import {
   AgentEventAggregateType,
   AgentEventType,
   type AnalysisStageKey,
+  type RoleSummary,
   type StageStructuredOutput,
 } from '@finsentinel/shared';
 import { AgentEventService } from '../../events/agent-event.service';
@@ -72,6 +73,7 @@ export class IntelligenceTeamService implements TeamService {
 
     const roleOutputs: Record<string, StageStructuredOutput> = {};
     const markdownParts: string[] = [];
+    const roleOutputSummaries: RoleSummary[] = [];
     for (const role of roles) {
       const out = await this.roleExecutor.run({
         roleKey: role.key,
@@ -81,6 +83,7 @@ export class IntelligenceTeamService implements TeamService {
       });
       roleOutputs[role.key] = out.structured;
       markdownParts.push(`## ${role.key}\n${out.rawMarkdown}`);
+      roleOutputSummaries.push({ roleKey: role.key, status: 'COMPLETED', durationMs: out.durationMs, toolCallCount: out.toolCallCount, summary: out.structured.summary });
     }
     markdownParts.push(
       [
@@ -104,6 +107,7 @@ export class IntelligenceTeamService implements TeamService {
       confidence: this.avgConfidence(Object.values(roleOutputs)),
       roleOutputs,
       strategyArchivePayload,
+      roleSummaries: roleOutputSummaries,
     };
 
     await this.checkpoints.commitStage({

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { analysisRunsApi, type AnalysisStageKey } from '../../api/analysis-runs'
+import { analysisRunsApi, type AnalysisPreset, type AnalysisStageKey } from '../../api/analysis-runs'
 
 const ALL_STAGES = ['INTELLIGENCE', 'THESIS', 'RISK', 'EXECUTION_PREP'] as const satisfies readonly AnalysisStageKey[]
 
@@ -14,6 +14,7 @@ export function RunSetupPanel({ portfolios, onRunCreated }: RunSetupPanelProps) 
   const [ticker, setTicker] = useState('AAPL')
   const [prompt, setPrompt] = useState('Complete analysis of AAPL with decision and order draft')
   const [portfolioId, setPortfolioId] = useState(portfolios[0]?.id ?? '')
+  const [preset, setPreset] = useState<AnalysisPreset>('STANDARD_ANALYSIS')
   const [researchDepth, setResearchDepth] = useState<'SHALLOW' | 'STANDARD' | 'DEEP'>('STANDARD')
   const [enabledTeams, setEnabledTeams] = useState<AnalysisStageKey[]>([...ALL_STAGES])
   const [submitting, setSubmitting] = useState(false)
@@ -34,6 +35,7 @@ export function RunSetupPanel({ portfolios, onRunCreated }: RunSetupPanelProps) 
         sourceMode: 'WORKSPACE',
         ticker,
         portfolioId: portfolioId || undefined,
+        preset,
         enabledTeams,
         researchDepth,
       })
@@ -81,6 +83,19 @@ export function RunSetupPanel({ portfolios, onRunCreated }: RunSetupPanelProps) 
         />
       </label>
       <div className="flex gap-4 items-end">
+        <label>
+          <span className="field-label">Preset</span>
+          <select
+            className="field-input"
+            value={preset}
+            onChange={(e) => setPreset(e.target.value as AnalysisPreset)}
+          >
+            <option value="FAST_RISK_CHECK">Fast Risk Check</option>
+            <option value="STANDARD_ANALYSIS">Standard Analysis</option>
+            <option value="DEEP_THESIS">Deep Thesis</option>
+            <option value="EXECUTION_READY">Execution Ready</option>
+          </select>
+        </label>
         <label>
           <span className="field-label">Research depth</span>
           <select

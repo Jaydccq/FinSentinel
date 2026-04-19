@@ -1,6 +1,8 @@
 import {
   strategyArchivePayloadSchema,
   type StrategyArchivePayload as SharedStrategyArchivePayload,
+  type RoleSummary,
+  type AnalysisPreset,
 } from '@finsentinel/shared';
 
 import { BASE, authHeaders } from './client';
@@ -12,12 +14,15 @@ export type AnalysisStageKey =
   | 'EXECUTION_PREP'
   | 'HUMAN_APPROVAL';
 
+export type { RoleSummary, AnalysisPreset };
+
 export interface CreateRunRequest {
   prompt: string;
   sourceMode: 'CHAT' | 'WORKSPACE' | 'SCHEDULE' | 'HEARTBEAT';
   ticker?: string;
   portfolioId?: string;
   parentChatSessionId?: string;
+  preset?: AnalysisPreset;
   enabledTeams?: AnalysisStageKey[];
   researchDepth?: 'SHALLOW' | 'STANDARD' | 'DEEP';
 }
@@ -98,6 +103,7 @@ export interface AnalysisStageResponse {
   humanReportMarkdown: string | null;
   startedAt: string | null;
   completedAt: string | null;
+  structuredOutput?: { roleSummaries?: RoleSummary[]; [key: string]: unknown };
 }
 
 export interface AnalysisArtifactResponse {

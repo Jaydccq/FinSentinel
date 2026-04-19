@@ -34,4 +34,13 @@ export interface RoleOutput {
   roleKey: RoleKey;
   structured: StageStructuredOutput;
   rawMarkdown: string;
+  /** Wall-clock duration of the role's LLM invocation, in milliseconds. */
+  durationMs: number;
+  /**
+   * Number of tools made available to this role (scope size), NOT the number
+   * of tool invocations the LLM actually made. `generateAgentText` does not
+   * currently surface per-call invocation counts; this scope-based proxy is
+   * what the UI and role-summary consumers display.
+   */
+  toolCallCount: number;
 }

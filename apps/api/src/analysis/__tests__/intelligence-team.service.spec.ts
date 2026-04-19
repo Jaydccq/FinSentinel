@@ -13,8 +13,8 @@ describe('IntelligenceTeamService.execute', () => {
 
   beforeEach(() => {
     roleExec = {
-      run: vi.fn().mockResolvedValue({
-        roleKey: 'MARKET_ANALYST',
+      run: vi.fn().mockImplementation(async ({ roleKey }) => ({
+        roleKey,
         structured: {
           summary: 's',
           thesis: 't',
@@ -24,7 +24,9 @@ describe('IntelligenceTeamService.execute', () => {
           confidence: 0.8,
         },
         rawMarkdown: '# r',
-      }),
+        durationMs: 50,
+        toolCallCount: 1,
+      })),
     };
     runs = {
       getForUser: vi.fn().mockResolvedValue({
@@ -155,6 +157,18 @@ describe('IntelligenceTeamService.execute', () => {
       }),
     );
     expect(checkpoints.commitStage).not.toHaveBeenCalled();
+  });
+
+  it('writes roleSummaries for all 4 analyst roles into structuredOutput', async () => {
+    await svc.execute({ runId: 'r1', userId: 'u1' });
+    const commitArg = checkpoints.commitStage.mock.calls[0]?.[0];
+    const summaries = commitArg?.structuredOutput?.roleSummaries;
+    expect(summaries?.map((s: { roleKey: string }) => s.roleKey)).toEqual([
+      'MARKET_ANALYST',
+      'NEWS_ANALYST',
+      'FUNDAMENTALS_ANALYST',
+      'SENTIMENT_ANALYST',
+    ]);
   });
 
   it('renders the strategy archive markdown section after the analyst reports', async () => {

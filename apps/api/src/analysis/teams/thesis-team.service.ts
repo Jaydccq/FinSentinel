@@ -3,6 +3,7 @@ import {
   AgentEventAggregateType,
   AgentEventType,
   type AnalysisStageKey,
+  type RoleSummary,
   type StageStructuredOutput,
 } from '@finsentinel/shared';
 import { AgentEventService } from '../../events/agent-event.service';
@@ -96,6 +97,12 @@ export class ThesisTeamService implements TeamService {
       confidence: lead.structured.confidence,
     });
 
+    const roleSummaries: RoleSummary[] = [
+      { roleKey: 'POSITIVE_CASE', status: 'COMPLETED', durationMs: positive.durationMs, toolCallCount: positive.toolCallCount, summary: positive.structured.summary },
+      { roleKey: 'NEGATIVE_CASE', status: 'COMPLETED', durationMs: negative.durationMs, toolCallCount: negative.toolCallCount, summary: negative.structured.summary },
+      { roleKey: 'THESIS_LEAD',   status: 'COMPLETED', durationMs: lead.durationMs,     toolCallCount: lead.toolCallCount,     summary: lead.structured.summary },
+    ];
+
     const teamOutput: StageStructuredOutput = {
       summary: lead.structured.summary,
       thesis: `THESIS_LEAD: ${lead.structured.thesis}`,
@@ -109,6 +116,7 @@ export class ThesisTeamService implements TeamService {
       confidence: lead.structured.confidence,
       positiveCase: positive.structured,
       negativeCase: negative.structured,
+      roleSummaries,
     };
 
     await this.checkpoints.commitStage({

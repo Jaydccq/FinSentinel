@@ -6,6 +6,7 @@ import {
 } from '@finsentinel/shared';
 import type {
   AnalysisStageKey,
+  RoleSummary,
   StageStructuredOutput,
   StrategyArchivePayload,
 } from '@finsentinel/shared';
@@ -94,6 +95,11 @@ export class RiskTeamService implements TeamService {
     const pmExt = pm.structured as unknown as Record<string, unknown>;
     const pmArchive = parseStrategyArchivePayload(pmExt.strategyArchivePayload);
 
+    const roleSummaries: RoleSummary[] = [
+      { roleKey: 'RISK_REVIEWER',     status: 'COMPLETED', durationMs: reviewer.durationMs, toolCallCount: reviewer.toolCallCount, summary: reviewer.structured.summary },
+      { roleKey: 'PORTFOLIO_MANAGER', status: 'COMPLETED', durationMs: pm.durationMs,       toolCallCount: pm.toolCallCount,       summary: pm.structured.summary },
+    ];
+
     const teamOutput: StageStructuredOutput = {
       summary: pm.structured.summary,
       thesis: pm.structured.thesis,
@@ -111,6 +117,7 @@ export class RiskTeamService implements TeamService {
           stopLossTriggers: [],
         },
       alertTriggers: (pmExt.alertTriggers as unknown) ?? [],
+      roleSummaries,
     };
 
     await this.checkpoints.commitStage({

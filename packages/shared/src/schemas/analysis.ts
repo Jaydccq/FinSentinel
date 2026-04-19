@@ -112,6 +112,7 @@ export const stageStructuredOutputSchema = z
     openQuestions: z.array(z.string()),
     citations: z.array(citationSchema),
     confidence: z.number().min(0).max(1),
+    roleSummaries: z.array(roleSummarySchema).optional(),
   })
   .passthrough();
 export type StageStructuredOutput = z.infer<typeof stageStructuredOutputSchema>;

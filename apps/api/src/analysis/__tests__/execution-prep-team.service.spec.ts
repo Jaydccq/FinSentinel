@@ -47,6 +47,8 @@ describe('ExecutionPrepTeamService.execute', () => {
             citations: [], confidence: 0.8,
           },
           rawMarkdown: 'plan',
+          durationMs: 60,
+          toolCallCount: 2,
         })
         .mockResolvedValueOnce({
           roleKey: 'EXECUTION_DRAFT_BUILDER',
@@ -56,6 +58,8 @@ describe('ExecutionPrepTeamService.execute', () => {
             orderDrafts: [validDraft],
           },
           rawMarkdown: '```json\n{"orderDrafts":[...]}\n```',
+          durationMs: 80,
+          toolCallCount: 4,
         }),
     };
     runs = {
@@ -142,5 +146,15 @@ describe('ExecutionPrepTeamService.execute', () => {
     expect(fabric.assemble).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'u1', runId: 'r1', prompt: 'x' }),
     );
+  });
+
+  it('writes roleSummaries for TRADE_PLANNER and EXECUTION_DRAFT_BUILDER into structuredOutput', async () => {
+    await svc.execute({ runId: 'r1', userId: 'u1' });
+    const commitArg = checkpoints.commitStage.mock.calls[0]?.[0];
+    const summaries = commitArg?.structuredOutput?.roleSummaries;
+    expect(summaries?.map((s: { roleKey: string }) => s.roleKey)).toEqual([
+      'TRADE_PLANNER',
+      'EXECUTION_DRAFT_BUILDER',
+    ]);
   });
 });

@@ -4,6 +4,7 @@ import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtim
 import type { FinToolSet } from '@finsentinel/ai-runtime';
 import {
   stageStructuredOutputSchema,
+  type ResearchDepth,
   type StageStructuredOutput,
 } from '@finsentinel/shared';
 import { aiConfig } from '../../config/ai.config';
@@ -111,8 +112,15 @@ export class RoleExecutorService {
     roleKey: RoleKey;
     systemPrompt: string;
     userInput: RoleInput;
+    runtimeConfig?: { researchDepth: ResearchDepth };
     userId?: string;
   }): Promise<RoleOutput> {
+    const startedAt = Date.now();
+    // runtimeConfig is threaded through the signature for downstream use
+    // (e.g. future prompt/tool shaping by researchDepth). It is intentionally
+    // unused in this task — see plan doc Task 1.4.
+    void args.runtimeConfig;
+
     const scope = ROLE_TOOL_SCOPE[args.roleKey];
     const fullTools = this.getAllTools(args.userId);
     const scopedTools: FinToolSet = {};
@@ -131,7 +139,14 @@ export class RoleExecutorService {
     });
 
     const structured = this.parseStructured(text);
-    return { roleKey: args.roleKey, structured, rawMarkdown: text };
+    // NOTE: scope-size proxy (not per-call invocation count) — see RoleOutput.toolCallCount JSDoc.
+    return {
+      roleKey: args.roleKey,
+      structured,
+      rawMarkdown: text,
+      durationMs: Date.now() - startedAt,
+      toolCallCount: Object.keys(scopedTools).length,
+    };
   }
 
   private getAllTools(userId?: string): FinToolSet {
