@@ -33,6 +33,46 @@ const DEFAULT_OUTPUT = resolve(
   'services/evaluation-runner/datasets/golden-candidates-draft.json',
 );
 
+// ── GOLDEN_LLM_CLIENT factory (exported for unit testing) ────────────────────
+
+export function makeGoldenLlmClientFactory(argv: string[]): LlmTextClient {
+  const isDryRun = argv.includes('--dry-run');
+
+  if (isDryRun) {
+    const stub: LlmTextClient = {
+      generate(_systemPrompt: string, _userPrompt: string): Promise<string> {
+        return Promise.reject(new Error('stub called in dry-run — should not happen'));
+      },
+    };
+    return stub;
+  }
+
+  const apiKey = process.env['OPENROUTER_API_KEY'];
+  if (!apiKey) {
+    throw new Error(
+      'Missing OPENROUTER_API_KEY. Set it or pass --dry-run to exercise without LLM.',
+    );
+  }
+
+  const model = createOpenRouterModel({
+    modelId: process.env['AI_MODEL'] || 'google/gemini-3-flash-preview',
+    baseUrl: process.env['OPENROUTER_BASE_URL'] || 'https://openrouter.ai/api/v1',
+  });
+
+  const client: LlmTextClient = {
+    async generate(systemPrompt: string, userPrompt: string): Promise<string> {
+      return generateAgentText({
+        model,
+        systemPrompt,
+        prompt: userPrompt,
+        tools: {},
+      });
+    },
+  };
+
+  return client;
+}
+
 // ── Minimal bootstrap module ──────────────────────────────────────────────────
 
 @Module({
@@ -41,25 +81,7 @@ const DEFAULT_OUTPUT = resolve(
     GoldenCandidatesService,
     {
       provide: GOLDEN_LLM_CLIENT,
-      useFactory: () => {
-        const model = createOpenRouterModel({
-          modelId: process.env['AI_MODEL'] || 'google/gemini-3-flash-preview',
-          baseUrl: process.env['OPENROUTER_BASE_URL'] || 'https://openrouter.ai/api/v1',
-        });
-
-        const client: LlmTextClient = {
-          async generate(systemPrompt: string, userPrompt: string): Promise<string> {
-            return generateAgentText({
-              model,
-              systemPrompt,
-              prompt: userPrompt,
-              tools: {},
-            });
-          },
-        };
-
-        return client;
-      },
+      useFactory: () => makeGoldenLlmClientFactory(process.argv),
     },
   ],
 })
