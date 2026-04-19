@@ -21,6 +21,17 @@ interface RagChunkSearchFilters {
   limit?: number;
 }
 
+export type RepresentationType = 'canonical' | 'contextual_text' | 'sample_question';
+
+export interface RepresentationHit {
+  chunkId: string;
+  sourceId: string;
+  content: string;
+  metadata: Record<string, unknown>;
+  similarity: number;
+  representationType: RepresentationType;
+}
+
 @Injectable()
 export class RagChunkStoreService {
   constructor(
@@ -133,5 +144,139 @@ export class RagChunkStoreService {
       metadata: row.metadata,
       similarity: row.similarity,
     }));
+  }
+
+  /**
+   * Search across multiple chunk representations (canonical + contextual_text +
+   * sample_question) in parallel and return one hit per (chunkId, representationType).
+   *
+   * `types` defaults to all three surfaces. Pass a subset to narrow.
+   * When `document_chunk_representations` has no rows for a given type, that
+   * sub-query returns an empty array — canonical results are always attempted.
+   */
+  async searchRepresentations(
+    queryEmbedding: number[],
+    filters: Omit<RagChunkSearchFilters, 'limit'>,
+    topK: number,
+    types: RepresentationType[] = ['canonical', 'contextual_text', 'sample_question'],
+  ): Promise<RepresentationHit[]> {
+    const vectorStr = `[${queryEmbedding.join(',')}]`;
+
+    const metaFilterClauses = [];
+    if (filters.docType) {
+      metaFilterClauses.push(sql`dc.metadata->>'doc_type' = ${filters.docType}`);
+    }
+    if (filters.sector) {
+      metaFilterClauses.push(sql`dc.metadata->>'sector' = ${filters.sector}`);
+    }
+    if (filters.regionId) {
+      metaFilterClauses.push(sql`dc.metadata->>'region_id' = ${filters.regionId}`);
+    }
+    if (filters.afterDate) {
+      metaFilterClauses.push(sql`dc.metadata->>'date' >= ${filters.afterDate}`);
+    }
+
+    const metaWhere =
+      metaFilterClauses.length > 0
+        ? sql`AND ${sql.join(metaFilterClauses, sql` AND `)}`
+        : sql``;
+
+    const subQueries: Promise<RepresentationHit[]>[] = [];
+
+    if (types.includes('canonical')) {
+      const canonicalFilter = [];
+      if (filters.docType) {
+        canonicalFilter.push(sql`metadata->>'doc_type' = ${filters.docType}`);
+      }
+      if (filters.sector) {
+        canonicalFilter.push(sql`metadata->>'sector' = ${filters.sector}`);
+      }
+      if (filters.regionId) {
+        canonicalFilter.push(sql`metadata->>'region_id' = ${filters.regionId}`);
+      }
+      if (filters.afterDate) {
+        canonicalFilter.push(sql`metadata->>'date' >= ${filters.afterDate}`);
+      }
+      const canonicalWhere =
+        canonicalFilter.length > 0
+          ? sql`WHERE ${sql.join(canonicalFilter, sql` AND `)}`
+          : sql``;
+
+      subQueries.push(
+        this.db
+          .execute(
+            sql`
+              SELECT
+                id AS chunk_id,
+                source_id,
+                content,
+                metadata,
+                1 - (embedding <=> ${vectorStr}::vector) AS similarity
+              FROM document_chunks
+              ${canonicalWhere}
+              ORDER BY embedding <=> ${vectorStr}::vector
+              LIMIT ${topK}
+            `,
+          )
+          .then((rows) =>
+            (rows as any[]).map((row) => ({
+              chunkId: row.chunk_id as string,
+              sourceId: row.source_id as string,
+              content: row.content as string,
+              metadata: row.metadata as Record<string, unknown>,
+              similarity: row.similarity as number,
+              representationType: 'canonical' as const,
+            })),
+          ),
+      );
+    }
+
+    const repTypes = types.filter(
+      (t): t is 'contextual_text' | 'sample_question' =>
+        t === 'contextual_text' || t === 'sample_question',
+    );
+
+    for (const repType of repTypes) {
+      subQueries.push(
+        this.db
+          .execute(
+            sql`
+              SELECT
+                dc.id AS chunk_id,
+                dc.source_id,
+                dc.content,
+                dc.metadata,
+                1 - (r.embedding <=> ${vectorStr}::vector) AS similarity
+              FROM document_chunk_representations r
+              JOIN document_chunks dc ON dc.id = r.chunk_id
+              WHERE r.representation_type = ${repType}
+                AND r.embedding IS NOT NULL
+                ${metaWhere}
+              ORDER BY r.embedding <=> ${vectorStr}::vector
+              LIMIT ${topK}
+            `,
+          )
+          .then((rows) =>
+            (rows as any[]).map((row) => ({
+              chunkId: row.chunk_id as string,
+              sourceId: row.source_id as string,
+              content: row.content as string,
+              metadata: row.metadata as Record<string, unknown>,
+              similarity: row.similarity as number,
+              representationType: repType,
+            })),
+          )
+          .catch(() => [] as RepresentationHit[]),
+      );
+    }
+
+    const settled = await Promise.allSettled(subQueries);
+    const all: RepresentationHit[] = [];
+    for (const result of settled) {
+      if (result.status === 'fulfilled') {
+        all.push(...result.value);
+      }
+    }
+    return all;
   }
 }

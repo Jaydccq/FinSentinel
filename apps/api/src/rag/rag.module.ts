@@ -18,6 +18,7 @@ import { GraphRetrievalService } from './graph-retrieval.service';
 import { GoldenCandidatesService, GOLDEN_LLM_CLIENT } from './eval/golden-candidates.service';
 import { ChunkRepresentationService, REPRESENTATION_LLM_CLIENT } from './chunk-representation.service';
 import { RepresentationAdminService } from './admin/representation-admin.service';
+import { MetadataPreFilterService } from './metadata-pre-filter.service';
 import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
 import { ConfigType } from '@nestjs/config';
 import { aiConfig } from '../config/ai.config';
@@ -84,6 +85,7 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
       },
       inject: [aiConfig.KEY],
     },
+    MetadataPreFilterService,
   ],
   exports: [
     RagRetrievalService,
@@ -103,6 +105,7 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     GoldenCandidatesService,
     ChunkRepresentationService,
     RepresentationAdminService,
+    MetadataPreFilterService,
   ],
 })
 export class RagModule {}

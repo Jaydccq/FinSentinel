@@ -32,22 +32,30 @@ export class SparseSearchService {
 
     const candidateLimit = Math.max(topK * 4, 100);
 
-    const filterClauses = [sql`search_vector @@ websearch_to_tsquery('simple', ${query})`];
+    const chunkFilterClauses = [sql`search_vector @@ websearch_to_tsquery('simple', ${query})`];
+    const repFilterClauses = [
+      sql`r.search_vector @@ websearch_to_tsquery('simple', ${query})`,
+      sql`r.representation_type IN ('contextual_text', 'sample_question', 'keyword_entity')`,
+    ];
     if (filters.docType) {
-      filterClauses.push(sql`metadata->>'doc_type' = ${filters.docType}`);
+      chunkFilterClauses.push(sql`metadata->>'doc_type' = ${filters.docType}`);
+      repFilterClauses.push(sql`dc.metadata->>'doc_type' = ${filters.docType}`);
     }
     if (filters.sector) {
-      filterClauses.push(sql`metadata->>'sector' = ${filters.sector}`);
+      chunkFilterClauses.push(sql`metadata->>'sector' = ${filters.sector}`);
+      repFilterClauses.push(sql`dc.metadata->>'sector' = ${filters.sector}`);
     }
     if (filters.regionId) {
-      filterClauses.push(sql`metadata->>'region_id' = ${filters.regionId}`);
+      chunkFilterClauses.push(sql`metadata->>'region_id' = ${filters.regionId}`);
+      repFilterClauses.push(sql`dc.metadata->>'region_id' = ${filters.regionId}`);
     }
     if (filters.afterDate) {
-      filterClauses.push(sql`metadata->>'date' >= ${filters.afterDate}`);
+      chunkFilterClauses.push(sql`metadata->>'date' >= ${filters.afterDate}`);
+      repFilterClauses.push(sql`dc.metadata->>'date' >= ${filters.afterDate}`);
     }
 
     const rows = await this.db.execute(sql`
-      WITH ranked AS (
+      WITH canonical_ranked AS (
         SELECT
           id,
           source_id,
@@ -55,19 +63,43 @@ export class SparseSearchService {
           metadata,
           ts_rank_cd(search_vector, websearch_to_tsquery('simple', ${query})) AS rank_score
         FROM document_chunks
-        WHERE ${sql.join(filterClauses, sql` AND `)}
+        WHERE ${sql.join(chunkFilterClauses, sql` AND `)}
         ORDER BY rank_score DESC
         LIMIT ${candidateLimit}
       ),
+      rep_ranked AS (
+        SELECT
+          dc.id,
+          dc.source_id,
+          dc.content,
+          dc.metadata,
+          MAX(ts_rank_cd(r.search_vector, websearch_to_tsquery('simple', ${query}))) AS rank_score
+        FROM document_chunk_representations r
+        JOIN document_chunks dc ON dc.id = r.chunk_id
+        WHERE ${sql.join(repFilterClauses, sql` AND `)}
+        GROUP BY dc.id, dc.source_id, dc.content, dc.metadata
+        ORDER BY rank_score DESC
+        LIMIT ${candidateLimit}
+      ),
+      merged AS (
+        SELECT id, source_id, content, metadata,
+          MAX(rank_score) AS rank_score
+        FROM (
+          SELECT * FROM canonical_ranked
+          UNION ALL
+          SELECT * FROM rep_ranked
+        ) combined
+        GROUP BY id, source_id, content, metadata
+      ),
       source_counts AS (
         SELECT source_id, count(*)::int AS hit_count
-        FROM ranked GROUP BY source_id
+        FROM merged GROUP BY source_id
       )
-      SELECT r.id, r.source_id, r.content, r.metadata,
-        r.rank_score, sc.hit_count
-      FROM ranked r
-      JOIN source_counts sc ON r.source_id = sc.source_id
-      ORDER BY r.rank_score * (1 + 0.1 * ln(sc.hit_count::float)) DESC
+      SELECT m.id, m.source_id, m.content, m.metadata,
+        m.rank_score, sc.hit_count
+      FROM merged m
+      JOIN source_counts sc ON m.source_id = sc.source_id
+      ORDER BY m.rank_score * (1 + 0.1 * ln(sc.hit_count::float)) DESC
       LIMIT ${topK}
     `);
 

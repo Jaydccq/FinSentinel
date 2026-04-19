@@ -4,6 +4,11 @@ import { RagEmbeddingService } from './rag-embedding.service';
 import { SparseSearchService, type SparseSearchFilters } from './sparse-search.service';
 import { RetrievalFusionService, type RankedCandidate, type FusedCandidate } from './retrieval-fusion.service';
 import { GraphRetrievalService } from './graph-retrieval.service';
+import { MetadataPreFilterService } from './metadata-pre-filter.service';
+import type { QueryClass, QueryVariant, VariantKind } from './retrieval-planner.service';
+
+/** Maximum number of query variants processed in parallel per orchestrate call. */
+const MAX_VARIANTS = 4;
 
 export interface OrchestrationRequest {
   rewrittenQuery: string;
@@ -12,6 +17,10 @@ export interface OrchestrationRequest {
   filters: SparseSearchFilters;
   entityNames?: string[];
   rrfK?: number;
+  /** Query variants from T4's planner. When present, orchestrator runs each (up to MAX_VARIANTS) in parallel. */
+  variants?: QueryVariant[];
+  /** Query class from T4's planner, forwarded to MetadataPreFilterService. */
+  queryClass?: QueryClass;
 }
 
 @Injectable()
@@ -23,69 +32,167 @@ export class RetrievalOrchestratorService {
     private readonly sparseSearch: SparseSearchService,
     private readonly embeddingService: RagEmbeddingService,
     private readonly fusion: RetrievalFusionService,
+    private readonly metadataPreFilter: MetadataPreFilterService,
     @Optional() private readonly graphRetrieval?: GraphRetrievalService,
   ) {}
 
   async orchestrate(request: OrchestrationRequest): Promise<FusedCandidate[]> {
     const { rewrittenQuery, lanes, topKPerLane, filters, rrfK = 60 } = request;
 
+    // Apply metadata pre-filter before dispatching lanes (v1: passes through explicit filters).
+    const preFilter = this.metadataPreFilter.buildFilter(
+      rewrittenQuery,
+      request.queryClass,
+      filters,
+    );
+
+    // Strip the PreFilter-only field so we only pass SparseSearchFilters downstream.
+    const { candidateDocIds: _unusedInV1, ...effectiveFilters } = preFilter;
+
+    // Determine variants to run, capped at MAX_VARIANTS.
+    const variants = request.variants?.slice(0, MAX_VARIANTS) ?? [
+      { kind: 'original' as VariantKind, query: rewrittenQuery },
+    ];
+
+    // Run each variant's lanes in parallel.
+    const variantPromises = variants.map((variant) =>
+      this.runVariantLanes(variant, lanes, topKPerLane, effectiveFilters, request.entityNames),
+    );
+
+    const settled = await Promise.allSettled(variantPromises);
+    const allLaneResults: RankedCandidate[][] = [];
+
+    for (const result of settled) {
+      if (result.status === 'fulfilled') {
+        allLaneResults.push(...result.value);
+      } else {
+        this.logger.warn(`Variant lanes failed: ${result.reason}`);
+      }
+    }
+
+    return this.fusion.fuse(allLaneResults, rrfK);
+  }
+
+  /**
+   * Run all requested lanes for one query variant and return the candidate lists.
+   */
+  private async runVariantLanes(
+    variant: QueryVariant,
+    lanes: Array<'dense' | 'sparse' | 'graph'>,
+    topKPerLane: number,
+    filters: SparseSearchFilters,
+    entityNames?: string[],
+  ): Promise<RankedCandidate[][]> {
     const lanePromises: Array<Promise<RankedCandidate[]>> = [];
 
     if (lanes.includes('dense')) {
-      lanePromises.push(this.runDenseLane(rewrittenQuery, topKPerLane, filters));
+      lanePromises.push(this.runDenseLane(variant.query, variant.kind, topKPerLane, filters));
     }
 
     if (lanes.includes('sparse')) {
-      lanePromises.push(this.runSparseLane(rewrittenQuery, topKPerLane, filters));
+      lanePromises.push(this.runSparseLane(variant.query, variant.kind, topKPerLane, filters));
     }
 
-    if (lanes.includes('graph') && this.graphRetrieval && request.entityNames?.length) {
+    if (lanes.includes('graph') && this.graphRetrieval && entityNames?.length) {
       lanePromises.push(
-        this.graphRetrieval.search(
-          request.entityNames,
-          rewrittenQuery,
-          topKPerLane,
-        ),
+        this.graphRetrieval
+          .search(entityNames, variant.query, topKPerLane)
+          .then((candidates) =>
+            candidates.map((c) => ({ ...c, variantKind: variant.kind })),
+          ),
       );
     }
 
     const settled = await Promise.allSettled(lanePromises);
-    const laneResults: RankedCandidate[][] = [];
+    const results: RankedCandidate[][] = [];
 
     for (const result of settled) {
       if (result.status === 'fulfilled') {
-        laneResults.push(result.value);
+        results.push(result.value);
       } else {
-        this.logger.warn(`Lane failed: ${result.reason}`);
+        this.logger.warn(`Lane failed for variant "${variant.kind}": ${result.reason}`);
       }
     }
 
-    return this.fusion.fuse(laneResults, rrfK);
+    return results;
   }
 
+  /**
+   * Dense lane: run canonical + contextual_text + sample_question sub-queries
+   * concurrently, then apply inner RRF to collapse all hits to one canonical
+   * chunkId per representation type before returning.
+   */
   private async runDenseLane(
     query: string,
+    variantKind: VariantKind,
     topK: number,
     filters: SparseSearchFilters,
   ): Promise<RankedCandidate[]> {
     const queryEmbedding = await this.embeddingService.embedQuery(query);
-    const results = await this.chunkStore.search(queryEmbedding, {
-      ...filters,
-      limit: topK * 4,
-    });
 
-    return results.map((r) => ({
-      chunkId: r.id ?? `${r.sourceId}-${r.chunkIndex}`,
-      sourceId: r.sourceId,
-      content: r.content,
-      metadata: r.metadata,
-      score: r.similarity,
+    const hits = await this.chunkStore.searchRepresentations(
+      queryEmbedding,
+      filters,
+      topK * 4,
+    );
+
+    // Inner RRF: group by (representationType), rank within each group,
+    // then fuse across groups by canonical chunkId.
+    const byRepType = new Map<string, typeof hits>();
+    for (const hit of hits) {
+      const group = byRepType.get(hit.representationType) ?? [];
+      group.push(hit);
+      byRepType.set(hit.representationType, group);
+    }
+
+    // Sort each group by similarity descending (already ordered by vector distance from DB,
+    // but we sort again for safety after grouping).
+    for (const group of byRepType.values()) {
+      group.sort((a, b) => b.similarity - a.similarity);
+    }
+
+    // Fuse across representation groups into one RRF score per chunkId.
+    const innerRrfK = 60;
+    const innerMap = new Map<string, { hit: (typeof hits)[0]; rrfScore: number; repTypes: string[] }>();
+
+    for (const [repType, group] of byRepType.entries()) {
+      for (let rank = 0; rank < group.length; rank++) {
+        const hit = group[rank]!;
+        const contribution = 1 / (innerRrfK + rank + 1);
+        const existing = innerMap.get(hit.chunkId);
+        if (existing) {
+          existing.rrfScore += contribution;
+          if (!existing.repTypes.includes(repType)) {
+            existing.repTypes.push(repType);
+          }
+        } else {
+          innerMap.set(hit.chunkId, {
+            hit,
+            rrfScore: contribution,
+            repTypes: [repType],
+          });
+        }
+      }
+    }
+
+    // Sort by inner RRF score, take topK.
+    const sorted = [...innerMap.values()].sort((a, b) => b.rrfScore - a.rrfScore).slice(0, topK);
+
+    return sorted.map(({ hit, rrfScore, repTypes }) => ({
+      chunkId: hit.chunkId,
+      sourceId: hit.sourceId,
+      content: hit.content,
+      metadata: hit.metadata,
+      score: rrfScore,
       lane: 'dense' as const,
+      variantKind,
+      representationType: repTypes.join(','),
     }));
   }
 
   private async runSparseLane(
     query: string,
+    variantKind: VariantKind,
     topK: number,
     filters: SparseSearchFilters,
   ): Promise<RankedCandidate[]> {
@@ -97,6 +204,7 @@ export class RetrievalOrchestratorService {
       metadata: r.metadata,
       score: r.score,
       lane: 'sparse' as const,
+      variantKind,
     }));
   }
 }

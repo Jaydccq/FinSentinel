@@ -91,4 +91,65 @@ describe('RagChunkStoreService', () => {
       expect(db.delete).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('searchRepresentations', () => {
+    it('returns canonical hits from document_chunks', async () => {
+      db.execute.mockResolvedValueOnce([
+        { chunk_id: 'c1', source_id: 's1', content: 'canon', metadata: {}, similarity: 0.9 },
+      ]);
+      // Rep type sub-queries return empty
+      db.execute.mockResolvedValue([]);
+
+      const results = await service.searchRepresentations([0.1, 0.2], {}, 5, ['canonical']);
+      expect(results).toHaveLength(1);
+      expect(results[0]!.chunkId).toBe('c1');
+      expect(results[0]!.representationType).toBe('canonical');
+    });
+
+    it('returns contextual_text hits from document_chunk_representations', async () => {
+      // canonical returns empty, contextual_text returns one hit
+      db.execute
+        .mockResolvedValueOnce([]) // canonical
+        .mockResolvedValueOnce([
+          { chunk_id: 'c2', source_id: 's2', content: 'ctx', metadata: {}, similarity: 0.85 },
+        ]); // contextual_text
+
+      const results = await service.searchRepresentations([0.1, 0.2], {}, 5, ['canonical', 'contextual_text']);
+      const ctxHits = results.filter(r => r.representationType === 'contextual_text');
+      expect(ctxHits).toHaveLength(1);
+      expect(ctxHits[0]!.chunkId).toBe('c2');
+    });
+
+    it('returns empty array when document_chunk_representations table has no rows (fresh DB)', async () => {
+      // All sub-queries return empty
+      db.execute.mockResolvedValue([]);
+
+      const results = await service.searchRepresentations([0.1, 0.2], {}, 5);
+      expect(results).toEqual([]);
+    });
+
+    it('SQL for representation types includes representation_type filter', async () => {
+      db.execute.mockResolvedValue([]);
+
+      await service.searchRepresentations([1, 0], {}, 5, ['contextual_text']);
+
+      const calls = db.execute.mock.calls;
+      // At least one execute call should reference contextual_text in its SQL object
+      const sqlStrings = calls.map((call: any[]) => JSON.stringify(call[0]));
+      expect(sqlStrings.some((s: string) => s.includes('contextual_text'))).toBe(true);
+    });
+
+    it('continues returning canonical results even if a rep-type sub-query rejects', async () => {
+      // canonical succeeds; contextual_text throws
+      db.execute
+        .mockResolvedValueOnce([
+          { chunk_id: 'c1', source_id: 's1', content: 'x', metadata: {}, similarity: 0.9 },
+        ])
+        .mockRejectedValueOnce(new Error('pg error'));
+
+      const results = await service.searchRepresentations([1, 0], {}, 5, ['canonical', 'contextual_text']);
+      const canonical = results.filter(r => r.representationType === 'canonical');
+      expect(canonical).toHaveLength(1);
+    });
+  });
 });
