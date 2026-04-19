@@ -1,11 +1,17 @@
-"""Tests for run_evaluation helpers, focused on check_minimum_metrics."""
+"""Tests for run_evaluation helpers, focused on check_minimum_metrics.
 
-import sys
+Also hosts the subprocess-based integration tests for the CLI runner:
+  - overall minimum_metrics gate exit code
+  - bucket_minimum_metrics gate exit code (pass-overall-fail-bucket and vice versa)
+  - --bucket CLI flag end-to-end safety on tagless golden sets
+
+Path bootstrap for `run_evaluation` import lives in conftest.py — no
+sys.path.insert(...) inside this module.
+"""
+
 import os
-import pytest
-
-# run_evaluation.py lives one level up from the evaluators/ package
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import subprocess
+import sys
 
 from run_evaluation import check_minimum_metrics
 
@@ -73,7 +79,6 @@ def test_empty_minimums_always_passes():
 
 def test_minimum_metrics_violation_exits_nonzero(tmp_path):
     """End-to-end: a report whose metrics violate minimums triggers sys.exit(1)."""
-    import subprocess
     import json
 
     runner_dir = os.path.join(os.path.dirname(__file__), "..")
@@ -139,3 +144,214 @@ def test_minimum_metrics_violation_exits_nonzero(tmp_path):
     )
     # Report must still have been written (write-before-exit ordering)
     assert output_path.exists(), "Report file should be written even when minimum_metrics fails"
+
+
+# --- bucket_minimum_metrics gate (CLI subprocess integration) ---
+
+
+def test_bucket_gate_fails_even_when_overall_passes(tmp_path):
+    """A report passing overall minimum_metrics but failing a bucket gate exits 1."""
+    import json
+    import yaml
+
+    runner_dir = os.path.join(os.path.dirname(__file__), "..")
+
+    golden = {
+        "version": "1.0",
+        "created_at": "2026-01-01",
+        "description": "test",
+        "entries": [
+            {
+                "id": "bucket-pass",
+                "query": "q1",
+                "query_class": "FACTUAL",
+                "expected_chunk_ids": ["chunk-a"],
+                "acceptable_chunk_ids": [],
+                "expected_source_docs": [],
+                "expected_answer": "",
+                "expected_entities": [],
+                "difficulty": "easy",
+                "tags": ["colloquial"],
+            },
+            {
+                "id": "bucket-fail",
+                "query": "q2",
+                "query_class": "FACTUAL",
+                "expected_chunk_ids": ["chunk-missing"],
+                "acceptable_chunk_ids": [],
+                "expected_source_docs": [],
+                "expected_answer": "",
+                "expected_entities": [],
+                "difficulty": "easy",
+                "tags": ["exact_lookup"],
+            },
+        ],
+    }
+    golden_path = tmp_path / "golden.json"
+    golden_path.write_text(json.dumps(golden))
+
+    # Overall has no floor => passes. Bucket exact_lookup floor is 0.99 and
+    # the retrieval is empty (no corpus, no api) so strict.recall@5 will be
+    # 0.0 — the bucket gate must fail and exit 1.
+    config = {
+        "minimum_metrics": {},
+        "bucket_minimum_metrics": {
+            "exact_lookup": {"strict.recall@5": 0.99},
+        },
+    }
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.dump(config))
+
+    output_path = tmp_path / "report.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "run_evaluation.py",
+            "run",
+            "--dataset",
+            str(golden_path),
+            "--output",
+            str(output_path),
+            "--config",
+            str(config_path),
+        ],
+        cwd=runner_dir,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1, (
+        f"Expected exit 1, got {result.returncode}.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    combined = result.stdout + result.stderr
+    assert "exact_lookup" in combined
+    assert "strict.recall@5" in combined
+    assert output_path.exists(), "Report must be written even when bucket gate fails"
+
+
+def test_overall_gate_fails_even_when_bucket_passes(tmp_path):
+    """Vice versa: report passes all buckets but fails overall => exit 1."""
+    import json
+    import yaml
+
+    runner_dir = os.path.join(os.path.dirname(__file__), "..")
+
+    golden = {
+        "version": "1.0",
+        "created_at": "2026-01-01",
+        "description": "test",
+        "entries": [
+            {
+                "id": "only-entry",
+                "query": "q",
+                "query_class": "FACTUAL",
+                "expected_chunk_ids": ["chunk-missing"],
+                "acceptable_chunk_ids": [],
+                "expected_source_docs": [],
+                "expected_answer": "",
+                "expected_entities": [],
+                "difficulty": "easy",
+                "tags": ["exact_lookup"],
+            }
+        ],
+    }
+    golden_path = tmp_path / "golden.json"
+    golden_path.write_text(json.dumps(golden))
+
+    # Bucket floor is 0.0 => will pass (nonexistent bucket -> 0.0 matches 0.0).
+    # Overall floor is 0.99 => will fail (no retrieval => 0.0).
+    config = {
+        "minimum_metrics": {
+            "strict.recall@5": 0.99,
+        },
+        "bucket_minimum_metrics": {
+            "nonexistent_bucket": {"strict.recall@5": 0.0},
+        },
+    }
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.dump(config))
+
+    output_path = tmp_path / "report.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "run_evaluation.py",
+            "run",
+            "--dataset",
+            str(golden_path),
+            "--output",
+            str(output_path),
+            "--config",
+            str(config_path),
+        ],
+        cwd=runner_dir,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 1, (
+        f"Expected exit 1, got {result.returncode}.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    combined = result.stdout + result.stderr
+    assert "strict.recall@5" in combined
+
+
+# --- CLI --bucket flag end-to-end ---
+
+
+def test_cli_bucket_flag_is_safe_on_tagless_golden(tmp_path):
+    """--bucket nonexistent must not crash on a golden set with no matching tags."""
+    import json
+
+    runner_dir = os.path.join(os.path.dirname(__file__), "..")
+
+    golden = {
+        "version": "1.0",
+        "created_at": "2026-01-01",
+        "description": "test",
+        "entries": [
+            {
+                "id": "t-001",
+                "query": "q",
+                "query_class": "FACTUAL",
+                "expected_chunk_ids": ["chunk-a"],
+                "acceptable_chunk_ids": [],
+                "expected_source_docs": [],
+                "expected_answer": "",
+                "expected_entities": [],
+                "difficulty": "easy",
+                "tags": [],
+            }
+        ],
+    }
+    golden_path = tmp_path / "golden.json"
+    golden_path.write_text(json.dumps(golden))
+
+    output_path = tmp_path / "report.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "run_evaluation.py",
+            "run",
+            "--dataset",
+            str(golden_path),
+            "--output",
+            str(output_path),
+            "--bucket",
+            "nonexistent",
+        ],
+        cwd=runner_dir,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, (
+        f"Expected exit 0, got {result.returncode}.\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    assert output_path.exists()
