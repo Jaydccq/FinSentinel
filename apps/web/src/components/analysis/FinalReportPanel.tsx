@@ -8,6 +8,7 @@ import type {
   AnalysisArtifactResponse,
   AnalysisRunResponse,
 } from '../../api/analysis-runs'
+import { JsonTree } from './JsonTree'
 
 export interface FinalReportPanelProps {
   run: AnalysisRunResponse | null
@@ -72,25 +73,21 @@ export function FinalReportPanel({ run, artifacts }: FinalReportPanelProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <div>
           <h3 className="text-sm font-semibold">Decision Object</h3>
-          <pre className="text-xs bg-slate-950/70 p-2 rounded overflow-auto">
-            {JSON.stringify(decisionObjectJsonForDisplay ?? null, null, 2)}
-          </pre>
+          <div className="rounded bg-slate-950/70 p-2 overflow-auto">
+            <JsonTree value={decisionObjectJsonForDisplay ?? null} />
+          </div>
         </div>
         <div>
           <h3 className="text-sm font-semibold">Execution Payload</h3>
-          <pre className="text-xs bg-slate-950/70 p-2 rounded overflow-auto">
-            {JSON.stringify(
-              materializedExecutionPayload ?? executionPayload?.payload ?? orderDrafts?.payload ?? null,
-              null,
-              2,
-            )}
-          </pre>
+          <div className="rounded bg-slate-950/70 p-2 overflow-auto">
+            <JsonTree value={materializedExecutionPayload ?? executionPayload?.payload ?? orderDrafts?.payload ?? null} />
+          </div>
         </div>
         <div>
           <h3 className="text-sm font-semibold">Shared Context</h3>
-          <pre className="text-xs bg-slate-950/70 p-2 rounded overflow-auto">
-            {JSON.stringify(run.sharedContextJson ?? null, null, 2)}
-          </pre>
+          <div className="rounded bg-slate-950/70 p-2 overflow-auto">
+            <JsonTree value={run.sharedContextJson ?? null} />
+          </div>
         </div>
       </div>
     </section>
