@@ -15,6 +15,7 @@ import { ContextPackerService } from './context-packer.service';
 import { RetrievalPlannerService } from './retrieval-planner.service';
 import { GraphRetrievalService } from './graph-retrieval.service';
 import { GoldenCandidatesService, GOLDEN_LLM_CLIENT } from './eval/golden-candidates.service';
+import { ChunkRepresentationService, REPRESENTATION_LLM_CLIENT } from './chunk-representation.service';
 import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
 import { ConfigType } from '@nestjs/config';
 import { aiConfig } from '../config/ai.config';
@@ -63,6 +64,22 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
       },
       inject: [aiConfig.KEY],
     },
+    ChunkRepresentationService,
+    {
+      provide: REPRESENTATION_LLM_CLIENT,
+      useFactory: (aiCfg: ConfigType<typeof aiConfig>): LlmTextClient => {
+        const model = createOpenRouterModel({
+          modelId: aiCfg.model,
+          baseUrl: aiCfg.openrouterBaseUrl,
+        });
+        return {
+          async generate(systemPrompt: string, userPrompt: string): Promise<string> {
+            return generateAgentText({ model, systemPrompt, prompt: userPrompt, tools: {} });
+          },
+        };
+      },
+      inject: [aiConfig.KEY],
+    },
   ],
   exports: [
     RagRetrievalService,
@@ -79,6 +96,7 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     RetrievalPlannerService,
     GraphRetrievalService,
     GoldenCandidatesService,
+    ChunkRepresentationService,
   ],
 })
 export class RagModule {}

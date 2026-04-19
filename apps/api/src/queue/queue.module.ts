@@ -11,6 +11,8 @@ import {
   GRAPH_ENRICH_QUEUE_TOKEN,
   ANALYSIS_RUN_QUEUE,
   ANALYSIS_RUN_QUEUE_TOKEN,
+  REPRESENTATION_ENRICH_QUEUE,
+  REPRESENTATION_ENRICH_QUEUE_TOKEN,
 } from './queue.constants';
 import { VectorizeProducer } from './vectorize.producer';
 import { VectorizeConsumer } from './vectorize.consumer';
@@ -20,12 +22,15 @@ import { GraphEnrichProducer } from './graph-enrich.producer';
 import { GraphEnrichConsumer } from './graph-enrich.consumer';
 import { AnalysisRunProducer } from './analysis-run.producer';
 import { AnalysisRunConsumer } from './analysis-run.consumer';
+import { RepresentationEnrichProducer } from './representation-enrich.producer';
+import { RepresentationEnrichConsumer } from './representation-enrich.consumer';
 import { DocumentModule } from '../document/document.module';
 import { StorageModule } from '../storage/storage.module';
 import { NewsModule } from '../news/news.module';
 import { ScraperModule } from '../scraper/scraper.module';
 import { CommonModule } from '../common/common.module';
 import { AnalysisModule } from '../analysis/analysis.module';
+import { RagModule } from '../rag/rag.module';
 
 /**
  * BullMQ queue infrastructure module.
@@ -49,6 +54,7 @@ import { AnalysisModule } from '../analysis/analysis.module';
     forwardRef(() => NewsModule),
     ScraperModule,
     forwardRef(() => AnalysisModule),
+    forwardRef(() => RagModule),
   ],
   providers: [
     // ── BullMQ connection (shared by all queues and workers) ──────────
@@ -99,18 +105,28 @@ import { AnalysisModule } from '../analysis/analysis.module';
       inject: ['BULLMQ_CONNECTION'],
     },
 
+    // ── Representation enrich queue ─────────────────────────────────
+    {
+      provide: REPRESENTATION_ENRICH_QUEUE_TOKEN,
+      useFactory: (connection: ConnectionOptions) =>
+        new Queue(REPRESENTATION_ENRICH_QUEUE, { connection }),
+      inject: ['BULLMQ_CONNECTION'],
+    },
+
     // ── Producers ────────────────────────────────────────────────────
     VectorizeProducer,
     NewsEnrichProducer,
     GraphEnrichProducer,
     AnalysisRunProducer,
+    RepresentationEnrichProducer,
 
     // ── Consumers (workers) ──────────────────────────────────────────
     VectorizeConsumer,
     NewsEnrichConsumer,
     GraphEnrichConsumer,
     AnalysisRunConsumer,
+    RepresentationEnrichConsumer,
   ],
-  exports: [VectorizeProducer, NewsEnrichProducer, GraphEnrichProducer, AnalysisRunProducer],
+  exports: [VectorizeProducer, NewsEnrichProducer, GraphEnrichProducer, AnalysisRunProducer, RepresentationEnrichProducer],
 })
 export class QueueModule {}

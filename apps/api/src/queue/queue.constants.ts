@@ -16,3 +16,6 @@ export const GRAPH_ENRICH_QUEUE_TOKEN = 'GRAPH_ENRICH_QUEUE';
 
 export const ANALYSIS_RUN_QUEUE = 'finsentinel-analysis-run';
 export const ANALYSIS_RUN_QUEUE_TOKEN = 'ANALYSIS_RUN_QUEUE';
+
+export const REPRESENTATION_ENRICH_QUEUE = 'finsentinel-representation-enrich';
+export const REPRESENTATION_ENRICH_QUEUE_TOKEN = 'REPRESENTATION_ENRICH_QUEUE';

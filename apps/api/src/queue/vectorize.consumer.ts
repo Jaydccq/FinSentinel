@@ -1,13 +1,14 @@
 import { Injectable, Inject, Optional, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
-import { documents, eq } from '@finsentinel/db';
+import { documents, documentChunks, eq, and } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import { VECTORIZE_QUEUE } from './queue.constants';
 import { DocumentParseService } from '../document/document-parse.service';
 import { DocumentVectorService } from '../document/document-vector.service';
 import { HybridStorageService } from '../storage/hybrid.storage';
 import { GraphEnrichProducer } from './graph-enrich.producer';
+import { RepresentationEnrichProducer } from './representation-enrich.producer';
 
 export interface VectorizeJobData {
   docId: string;
@@ -35,6 +36,7 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
     private readonly vectorService: DocumentVectorService,
     private readonly storage: HybridStorageService,
     @Optional() @Inject(GraphEnrichProducer) private readonly graphEnrichProducer?: GraphEnrichProducer,
+    @Optional() @Inject(RepresentationEnrichProducer) private readonly representationEnrichProducer?: RepresentationEnrichProducer,
   ) {}
 
   onModuleInit(): void {
@@ -137,6 +139,23 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
         await this.graphEnrichProducer.enqueue({ sourceType: 'document', sourceId: docId });
       } catch (error) {
         this.logger.warn(`Failed to enqueue graph enrichment for ${docId}: ${error}`);
+      }
+    }
+
+    // Enqueue representation enrichment per chunk
+    if (this.representationEnrichProducer) {
+      try {
+        const chunks = await this.db
+          .select({ id: documentChunks.id })
+          .from(documentChunks)
+          .where(and(
+            eq(documentChunks.sourceType, 'document'),
+            eq(documentChunks.sourceId, docId),
+          ));
+        const chunkIds = chunks.map((c) => c.id);
+        await this.representationEnrichProducer.enqueueMany(chunkIds);
+      } catch (error) {
+        this.logger.warn(`Failed to enqueue representation enrichment for ${docId}: ${error}`);
       }
     }
   }
