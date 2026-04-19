@@ -13,6 +13,8 @@ Two-path RAG:
 
 Frontend merges both result streams via `src/lib/rag/hybrid-search.ts`.
 
+The cloud RAG path received new fields (`chunkId`, `sourceId`, representation provenance) in the T1-T7 redesign wave. Desktop local RAG stays compatibility-only for that wave. See `docs/exec-plans/2026-04-19-desktop-rag-parity-notes.md` for the rationale and any future parity approaches.
+
 ## Running locally
 
 ```bash
