@@ -1,0 +1,26 @@
+# CI eval gate config — offline corpus retrieval, overall gate only.
+#
+# Runs under the rag-eval-gate GitHub Actions workflow on every PR that
+# touches the RAG stack. The `wave2-buckets.yaml` sibling layers per-bucket
+# gates on top of these overall floors, but those buckets (`exact_lookup`,
+# `colloquial`, `cross_document`, `long_doc`, `table_numeric`) require
+# the golden set to grow R1.1 wave-2 tags before they're meaningful —
+# until then, every bucket is empty and would fail trivially with recall=0.
+#
+# Once R1.1 ships tagged golden entries, this config should be replaced
+# with `wave2-buckets.yaml` in .github/workflows/rag-eval-gate.yml.
+#
+# Mode: offline corpus retrieval (CorpusRetriever). The evaluator does NOT
+# hit the live API; `apps/api` is intentionally not started in this
+# workflow (see the workflow YAML header for rationale).
+corpus_path: "datasets/corpus.json"
+retrieval:
+  top_k: 10
+
+# Overall floors tuned against the current 25-entry synthetic golden set
+# under CorpusRetriever TF-IDF. Matches wave2-buckets.yaml's overall block.
+minimum_metrics:
+  strict.recall@5: 0.30
+  strict.recall@10: 0.45
+  lenient.recall@10: 0.60
+  strict.mrr@10: 0.25
