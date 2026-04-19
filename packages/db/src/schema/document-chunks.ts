@@ -54,6 +54,9 @@ export const documentChunks = pgTable('document_chunks', {
   metaSource: text('meta_source'),
   metaEntities: text('meta_entities'),
   searchVector: tsvectorType('search_vector'),
+  parentId: uuid('parent_id'),
+  sectionPath: text('section_path'),
+  enrichmentStatus: varchar('enrichment_status', { length: 16 }).notNull().default('pending'),
 }, (table) => [
   uniqueIndex('uk_document_chunks_source_chunk').on(
     table.sourceType,

@@ -36,6 +36,7 @@ export class RagChunkStoreService {
       metadata: Record<string, unknown>;
     }>,
   ): Promise<void> {
+    // CASCADE on document_chunk_representations.chunk_id removes representation rows automatically
     await this.db
       .delete(documentChunks)
       .where(
@@ -61,6 +62,9 @@ export class RagChunkStoreService {
         metaTitle: (chunk.metadata['title'] as string) ?? null,
         metaSource: (chunk.metadata['source'] as string) ?? null,
         metaEntities: null, // populated later by GraphEnrichmentConsumer
+        parentId: null,
+        sectionPath: null,
+        enrichmentStatus: 'pending',
       })),
     );
 
