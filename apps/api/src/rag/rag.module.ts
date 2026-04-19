@@ -14,6 +14,11 @@ import { RerankService } from './rerank.service';
 import { ContextPackerService } from './context-packer.service';
 import { RetrievalPlannerService } from './retrieval-planner.service';
 import { GraphRetrievalService } from './graph-retrieval.service';
+import { GoldenCandidatesService, GOLDEN_LLM_CLIENT } from './eval/golden-candidates.service';
+import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
+import { ConfigType } from '@nestjs/config';
+import { aiConfig } from '../config/ai.config';
+import type { LlmTextClient } from './eval/golden-candidates.service';
 
 /**
  * RAG module -- Phase 8.
@@ -24,6 +29,7 @@ import { GraphRetrievalService } from './graph-retrieval.service';
  * - RagEmbeddingService / RagChunkStoreService — chunk storage + embedding persistence
  * - RagReindexService — backfill flow for documents/news that predate chunk storage
  * - RagBackfillSchedulerService — automatic background reindex for missing chunks
+ * - GoldenCandidatesService — golden-set candidate export for RAG evaluation (T1.C)
  */
 @Module({
   imports: [CommonModule, forwardRef(() => QueueModule)],
@@ -41,6 +47,22 @@ import { GraphRetrievalService } from './graph-retrieval.service';
     ContextPackerService,
     RetrievalPlannerService,
     GraphRetrievalService,
+    GoldenCandidatesService,
+    {
+      provide: GOLDEN_LLM_CLIENT,
+      useFactory: (aiCfg: ConfigType<typeof aiConfig>): LlmTextClient => {
+        const model = createOpenRouterModel({
+          modelId: aiCfg.model,
+          baseUrl: aiCfg.openrouterBaseUrl,
+        });
+        return {
+          async generate(systemPrompt: string, userPrompt: string): Promise<string> {
+            return generateAgentText({ model, systemPrompt, prompt: userPrompt, tools: {} });
+          },
+        };
+      },
+      inject: [aiConfig.KEY],
+    },
   ],
   exports: [
     RagRetrievalService,
@@ -56,6 +78,7 @@ import { GraphRetrievalService } from './graph-retrieval.service';
     ContextPackerService,
     RetrievalPlannerService,
     GraphRetrievalService,
+    GoldenCandidatesService,
   ],
 })
 export class RagModule {}
