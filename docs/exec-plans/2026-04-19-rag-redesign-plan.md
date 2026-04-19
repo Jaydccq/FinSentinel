@@ -465,11 +465,13 @@ Verify: graph retrieval test "returns empty when no entities match in DB" passes
 
 Verify: `python services/evaluation-runner/run_evaluation.py compare reports/multirep.json reports/graph.json` shows no regression in overall recall and improvement on relational tags.
 
-**T7 Progress Log (2026-04-19):**
+**T7 Progress Log (2026-04-19) — TypeScript contract only, no relation writes yet:**
 
-Relations are now persisted by `GraphEnrichConsumer`. Graph-lane activation remains gated by `RAG_GRAPH_ENABLED` (default on per config but still requires `queryClass === 'relational'`). The TypeScript side is complete.
+The TypeScript-side ingestion and retrieval paths for `knowledge_relations` are complete: `GraphEnrichConsumer` validates, filters, dedupes and every-column-inserts relation rows, and `GraphRetrievalService` short-circuits cleanly when no entities match. **However, zero relation rows will be written in production until the Python sidecar at `services/reranker/routers/entities.py` is extended to honor `extract_relations: true` and return the optional `relations` array.** This means the `knowledge_relations` table stays empty after merge; the graph lane returns empty for every query regardless of `RAG_GRAPH_ENABLED`.
 
-Sidecar contract codified: `POST /extract-entities` now accepts `{ texts, extract_relations: true }`. When `extract_relations` is true the response MAY include a `relations` array. Sidecar currently ignores the new field and never returns `relations` -- this is a known gap tracked under CONCERNS.
+Treat T7 as **contract-only** for this wave. The graph lane is wired end-to-end on the TypeScript side and ready to receive relation data the moment the sidecar ships. `RAG_GRAPH_ENABLED` is correctly defaulted to `false` so no user-facing behavior changes on merge.
+
+Sidecar contract codified: `POST /extract-entities` now accepts `{ texts, extract_relations: true }`. When `extract_relations` is true the response MAY include a `relations` array. The sidecar currently ignores the new field and never returns `relations`. Implementing the sidecar side is a separate follow-up and is NOT in scope for this merge.
 
 **Evaluation gate for promoting graph-lane default-on:**
 Run `compare_reports` on the T1.B `multirep` baseline vs a `graph` report generated with `RAG_GRAPH_ENABLED=true`. Promotion requires:
@@ -626,7 +628,14 @@ Performance review:
 
 ## Final Outcome
 
-Planning complete. No implementation has been applied yet. The next correct action is Task 1, Step 1: expose stable `chunkId`/`sourceId` on `RagSearchResult` across single-stage, multi-stage, and fallback paths. Without stable chunk IDs the evaluator cannot score anything that follows.
+All eight tasks (T1–T8) have landed on `feat/rag-redesign`. 32 commits, 1208/1208 tests passing, API + DB typecheck clean. Per the "Subagent-driven implementation sweep" progress log below, every task has a completion note with commits and verification results.
+
+**Merge posture**: all new feature flags default OFF, so merging does not alter production behavior. Enable path is: V16 → V17 → backfill `--dry-run` → backfill wet run → flip `RAG_ENRICHMENT_ENABLED=true` → flip `RAG_MULTI_STAGE_ENABLED=true`.
+
+**Two caveats for anyone reading this post-merge**:
+
+1. **T7 is contract-only.** See the "T7 Progress Log" note above. `knowledge_relations` will remain empty until `services/reranker/routers/entities.py` is extended to honor `extract_relations: true`. The graph lane returns empty for every query until that sidecar change ships. This is a separate follow-up, not an outstanding bug.
+2. **Golden set is still synthetic.** The `rag:golden:export` CLI from T1.C generates candidates; a human reviewer must approve them into `services/evaluation-runner/datasets/golden.json` before the CI gate from T1.B becomes meaningful on real queries.
 
 ### Progress Log
 
@@ -694,7 +703,7 @@ Commit trail:
 - T5.A (`c34175e` + `2f04903`) — Orchestrator runs dense over canonical + `contextual_text` + `sample_question` with inner-RRF dedup by canonical chunkId. Sparse search joins `document_chunk_representations` for `contextual_text | sample_question | keyword_entity` and takes MAX rank per chunk. `MetadataPreFilterService` is a thin v1 passthrough seam. Up to 4 variants per orchestration. `representationTypesSeen` changed from comma-joined string to `string[]`.
 - T5.B (`c5852ee` + `efc5183`) — Rerank payload now carries `[Title: …] [Section: …]` preamble bounded by `RAG_RERANK_MAX_TOKENS=480`; preamble is dropped first when over budget, chunk evidence is never dropped. Response is zod-parsed; malformed 200 routes to RRF fallback with `fallbackReason='rerank_malformed'` counter. `ContextExpanderService` pulls parent-section and neighbor chunks for top-N reranked candidates only; expanded chunks get 0.75× rerankScore. Behind `RAG_CONTEXT_EXPANSION_ENABLED` (default false).
 - T6 (`073ba1d` + `821f024`) — V17 creates `rag_query_logs` partitioned monthly with default partition + ROLLBACK block + pgcrypto extension. `RagTraceService` hashes queries by default; `query_preview` stored only when `RAG_QUERY_LOG_PII_ENABLED=true`. Sampling is deterministic per query_hash; fallback-flagged and malformed-rerank traces always logged regardless of rate. `RagTraceRetentionService` is a daily cron that drops confirmed partitions older than `RAG_QUERY_LOG_RETENTION_DAYS` and preemptively creates next month's partition. `RAG_QUERY_LOG_RETENTION_ENABLED` default false.
-- T7 (`e0ac287` + `4e34fcd` + `f43755a`) — `GraphEnrichConsumer` now sends `extract_relations: true` to the sidecar, zod-parses per relation row (malformed rows dropped, not the whole array), filters by `RAG_GRAPH_MIN_RELATION_CONFIDENCE=0.5`, maps source/target/chunk via `entityIdMap` + `chunks[index]`, writes every column explicitly. Counter `rag_graph_relations_inserted_total{relation_type}` emitted. `GraphRetrievalService` short-circuits when no entity match. `RAG_GRAPH_ENABLED` corrected to default false.
+- T7 (`e0ac287` + `4e34fcd` + `f43755a`) — **Contract-only.** TypeScript path for `knowledge_relations` is complete: `GraphEnrichConsumer` sends `extract_relations: true` to the sidecar, zod-parses per relation row (malformed rows dropped, not the whole array), filters by `RAG_GRAPH_MIN_RELATION_CONFIDENCE=0.5`, maps source/target/chunk via `entityIdMap` + `chunks[index]`, writes every column explicitly. Counter `rag_graph_relations_inserted_total{relation_type}` emitted. `GraphRetrievalService` short-circuits when no entity match. `RAG_GRAPH_ENABLED` corrected to default false. **Sidecar Python (`services/reranker/routers/entities.py`) not updated this wave**; until it returns the optional `relations` field, zero rows land in `knowledge_relations` and the graph lane returns empty.
 - T8 (`24785b8`) — `docs/exec-plans/2026-04-19-desktop-rag-parity-notes.md` captures the compatibility-only decision. Web unit tests prove `hybridSearch` merges upgraded cloud hits (with new T-series fields) with local `SearchHit` unchanged; no `apps/desktop/src-tauri` code changes this wave.
 
 ### Post-sweep tightening
@@ -720,9 +729,9 @@ Commit trail:
 
 ### Deferred / follow-up (do NOT ship with this branch)
 
-1. **`rag_query_logs.lane_counts` dead column** — `RetrievalOrchestratorService.orchestrate()` returns `FusedCandidate[]` only; per-lane candidate counts are not threaded through to `RagTraceService`, so `lane_counts` is always `{}`. Either drop the column from V17 or extend `orchestrate()` to return `{fused, laneCounts}`. Tracked.
-2. **`representationTypesSeen` not in trace** — the provenance is computed in `RetrievalFusionService` but discarded before `RagTraceService.recordTrace`. Wire it through for failure mining.
-3. **Python sidecar** still ignores `extract_relations: true`. The TS path is complete; relation rows only land once `services/reranker/routers/entities.py` ships the optional `relations` field.
+1. ~~**`rag_query_logs.lane_counts` dead column**~~ — RESOLVED in `32ff1d0`. `RetrievalOrchestratorService.orchestrate()` now returns `{ fused, laneCounts }`; `RagRetrievalService.searchMultiStage` threads both `laneCounts` and `representationTypesSeen` into `RagTraceService.recordTrace`.
+2. ~~**`representationTypesSeen` not in trace**~~ — RESOLVED in `32ff1d0`. Provenance is folded into `rag_query_logs.lane_counts` under a reserved `__reps` sub-key (no migration needed).
+3. **Python sidecar** still ignores `extract_relations: true`. The TS path is complete; relation rows only land once `services/reranker/routers/entities.py` ships the optional `relations` field. This is the primary T7 follow-up — see the "T7 Progress Log" above for the contract-only framing.
 4. **`knowledge_relations` uniqueness** — no unique index on `(source_entity_id, target_entity_id, relation_type, source_chunk_id)` yet. TS-side Set dedup prevents same-run duplicates; consider a migration before enabling graph lane in production.
 5. **Classifier accuracy gate** (plan line 466) — `RAG_GRAPH_ENABLED` default-on still requires relational-subset eval (`python3 services/evaluation-runner/run_evaluation.py compare …`) showing non-regression on overall strict.recall@10 AND ≥ +5 pp on relational-tagged subset.
 6. **Rollout runbook** — `docs/runbooks/2026-04-19-rag-redesign-rollout.md` should sequence V16 → V17 → backfill dry-run → enable `RAG_ENRICHMENT_ENABLED` → flip `RAG_MULTI_STAGE_ENABLED`. Not written this sweep.
