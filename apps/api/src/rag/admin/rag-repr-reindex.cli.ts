@@ -75,6 +75,17 @@ interface ReindexArgs {
   sourceId: string | undefined;
 }
 
+const KNOWN_FLAGS = new Set([
+  '--dry-run',
+  '--from-version',
+  '--limit',
+  '--source-type',
+  '--source-id',
+]);
+
+/** rep-vX.Y where X and Y are non-negative integers (single or multi-digit). */
+const FROM_VERSION_RE = /^rep-v\d+\.\d+$/;
+
 function parseArgs(argv: string[]): ReindexArgs {
   const args: ReindexArgs = {
     fromVersion: undefined,
@@ -85,7 +96,7 @@ function parseArgs(argv: string[]): ReindexArgs {
   };
 
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
+    const arg = argv[i]!;
     if (arg === '--dry-run') {
       args.dryRun = true;
     } else if (arg === '--from-version' && argv[i + 1]) {
@@ -96,6 +107,12 @@ function parseArgs(argv: string[]): ReindexArgs {
       args.sourceType = argv[++i];
     } else if (arg === '--source-id' && argv[i + 1]) {
       args.sourceId = argv[++i];
+    } else if (arg.startsWith('--')) {
+      console.error(
+        `Error: unrecognized flag: ${arg}\n` +
+        `Known flags: ${[...KNOWN_FLAGS].join(', ')}`,
+      );
+      process.exit(1);
     }
   }
 
@@ -122,6 +139,15 @@ async function main() {
       'Error: --from-version is required.\n' +
       'Example: pnpm rag:repr:reindex --from-version rep-v1.0\n' +
       'Chunks at or below this version will be re-enqueued.',
+    );
+    process.exit(1);
+  }
+
+  // --from-version must match the rep-vX.Y convention.
+  if (!FROM_VERSION_RE.test(cliArgs.fromVersion)) {
+    console.error(
+      `Error: --from-version "${cliArgs.fromVersion}" is not a valid version string.\n` +
+      'Expected format: rep-vX.Y (e.g. rep-v1.0, rep-v2.3).',
     );
     process.exit(1);
   }

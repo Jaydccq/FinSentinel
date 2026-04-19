@@ -468,4 +468,42 @@ describe('Reindex CLI safety guards', () => {
 
     expect(shouldRefuse).toBe(false);
   });
+
+  describe('--from-version format validation (rep-vX.Y)', () => {
+    const FROM_VERSION_RE = /^rep-v\d+\.\d+$/;
+
+    it('accepts valid single-digit versions', () => {
+      expect(FROM_VERSION_RE.test('rep-v1.0')).toBe(true);
+      expect(FROM_VERSION_RE.test('rep-v1.1')).toBe(true);
+      expect(FROM_VERSION_RE.test('rep-v2.0')).toBe(true);
+    });
+
+    it('accepts valid multi-digit versions', () => {
+      expect(FROM_VERSION_RE.test('rep-v10.0')).toBe(true);
+      expect(FROM_VERSION_RE.test('rep-v1.12')).toBe(true);
+    });
+
+    it('rejects bare semver strings', () => {
+      expect(FROM_VERSION_RE.test('1.0')).toBe(false);
+      expect(FROM_VERSION_RE.test('v1.0')).toBe(false);
+    });
+
+    it('rejects malformed prefix', () => {
+      expect(FROM_VERSION_RE.test('rep-1.0')).toBe(false);
+      expect(FROM_VERSION_RE.test('repv1.0')).toBe(false);
+      expect(FROM_VERSION_RE.test('REP-V1.0')).toBe(false);
+    });
+
+    it('rejects three-part versions', () => {
+      expect(FROM_VERSION_RE.test('rep-v1.0.0')).toBe(false);
+    });
+
+    it('rejects empty string', () => {
+      expect(FROM_VERSION_RE.test('')).toBe(false);
+    });
+
+    it('rejects non-numeric components', () => {
+      expect(FROM_VERSION_RE.test('rep-va.b')).toBe(false);
+    });
+  });
 });

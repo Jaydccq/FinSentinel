@@ -29,7 +29,6 @@ import {
   eq,
   and,
   sql,
-  isNull,
 } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import { CURRENT_REPRESENTATION_VERSION, RAG_REPRESENTATION_BATCH_SIZE_DEFAULT } from '../chunk-representation.service';

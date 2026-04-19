@@ -77,6 +77,15 @@ interface BackfillArgs {
   onlyPending: boolean;
 }
 
+const KNOWN_FLAGS = new Set([
+  '--dry-run',
+  '--only-pending',
+  '--limit',
+  '--batch-size',
+  '--source-type',
+  '--source-id',
+]);
+
 function parseArgs(argv: string[]): BackfillArgs {
   const args: BackfillArgs = {
     dryRun: false,
@@ -88,7 +97,7 @@ function parseArgs(argv: string[]): BackfillArgs {
   };
 
   for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
+    const arg = argv[i]!;
     if (arg === '--dry-run') {
       args.dryRun = true;
     } else if (arg === '--only-pending') {
@@ -101,6 +110,12 @@ function parseArgs(argv: string[]): BackfillArgs {
       args.sourceType = argv[++i];
     } else if (arg === '--source-id' && argv[i + 1]) {
       args.sourceId = argv[++i];
+    } else if (arg.startsWith('--')) {
+      console.error(
+        `Error: unrecognized flag: ${arg}\n` +
+        `Known flags: ${[...KNOWN_FLAGS].join(', ')}`,
+      );
+      process.exit(1);
     }
   }
 
