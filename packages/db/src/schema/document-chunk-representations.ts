@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   customType,
   pgTable,
@@ -61,7 +62,7 @@ export const documentChunkRepresentations = pgTable(
     embedding: vector('embedding'),
     searchVector: tsvectorType('search_vector'),
     weight: real('weight').notNull().default(1.0),
-    metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
+    metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -69,6 +70,7 @@ export const documentChunkRepresentations = pgTable(
     index('idx_dcr_chunk_type').on(table.chunkId, table.representationType),
     // HNSW operator opclass is set in the SQL migration; Drizzle records the index for schema awareness only
     index('idx_dcr_embedding_hnsw').on(table.embedding),
+    // SQL migration declares WHERE search_vector IS NOT NULL (partial GIN index); Drizzle does not support partial predicates here — sync work must preserve that predicate manually
     index('idx_dcr_search_vector').on(table.searchVector),
   ],
 );
