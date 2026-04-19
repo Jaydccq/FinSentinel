@@ -13,6 +13,7 @@ import { RetrievalOrchestratorService } from './retrieval-orchestrator.service';
 import { RerankService } from './rerank.service';
 import { ContextPackerService } from './context-packer.service';
 import { RetrievalPlannerService } from './retrieval-planner.service';
+import { QueryVariantService } from './query-variant.service';
 import { GraphRetrievalService } from './graph-retrieval.service';
 import { GoldenCandidatesService, GOLDEN_LLM_CLIENT } from './eval/golden-candidates.service';
 import { ChunkRepresentationService, REPRESENTATION_LLM_CLIENT } from './chunk-representation.service';
@@ -48,6 +49,7 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     RerankService,
     ContextPackerService,
     RetrievalPlannerService,
+    QueryVariantService,
     GraphRetrievalService,
     GoldenCandidatesService,
     {
@@ -96,6 +98,7 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     RerankService,
     ContextPackerService,
     RetrievalPlannerService,
+    QueryVariantService,
     GraphRetrievalService,
     GoldenCandidatesService,
     ChunkRepresentationService,

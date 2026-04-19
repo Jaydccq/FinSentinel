@@ -15,6 +15,8 @@ export const ragConfig = registerAs('rag', () => ({
     maxTopK: Number(process.env['RAG_MAX_TOP_K']) || 20,
     queryRewriteEnabled:
       process.env['RAG_QUERY_REWRITE_ENABLED'] !== 'false',
+    hydeEnabled: process.env['RAG_HYDE_ENABLED'] === 'true',
+    queryDecomposeEnabled: process.env['RAG_QUERY_DECOMPOSE_ENABLED'] === 'true',
   },
   backfill: {
     enabled: process.env['RAG_REINDEX_ENABLED'] !== 'false',
