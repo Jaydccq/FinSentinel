@@ -42,6 +42,7 @@
 
 - 2026-04-17: 初版计划从 Execution Review Ledger PRD 拆出。
 - 2026-04-17: 按现有代码修正 approval request 参数、order draft artifact 绑定、`UnifiedTradingService.commit` optional metadata、Drizzle 输出路径、web Vitest 配置和前端字段命名。
+- 2026-04-18 (status sync): repo audit — still not started. Confirmed: `AnalysisApprovalService.request({userId, runId, payload})` accepts no `orderDraftArtifactId` yet; `ExecutionPrepTeamService` creates the `ORDER_DRAFTS` artifact at `analysis-checkpoint.service.ts:152-169` before calling `approvals.request(...)` without passing the artifact id; `UnifiedTradingService.commit(userId, message)` at `unified-trading.service.ts:197` has no metadata parameter. Execution consolidated in [openalice remaining-work plan](2026-04-18-openalice-remaining-work-plan.md) Phase 3.
 
 ## Key Decisions
 
@@ -57,7 +58,7 @@
 
 ## Final Outcome
 
-本计划处于待执行状态；本轮只修正计划和版本化规则，未修改 ledger/trading 业务代码。
+本计划处于待执行状态；本轮只修正计划和版本化规则，未修改 ledger/trading 业务代码。2026-04-18 后续执行请参照 [openalice remaining-work plan](2026-04-18-openalice-remaining-work-plan.md) Phase 3。
 
 ## Planned File Map
 

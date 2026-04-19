@@ -42,6 +42,7 @@
 
 - 2026-04-17: 初版计划从 Analysis Operator Console PRD 拆出。
 - 2026-04-17: 按现有代码修正 EventSource auth 假设、run response 字段、Vitest TSX/jsdom 配置、Testing Library 断言和 `AnalysisPage` 组件示例。
+- 2026-04-18 (status sync): PR #12 (`codex/operator-console-timeline-ui`) landed a working slice — `TimelinePanel`, fetch-based SSE stream helper (`analysisRunsApi.stream` with cursor-replay), `useAnalysisRun` now owns timeline + fallback polling, `ChatPage` "Open Run" live card, `AutonomyPage` "Recent Runs" section, 2-column Analysis workspace. Still missing: `RunNavigator`, `ContextPanel`, `ArtifactRenderer`, `JsonTree`, `getContext`/`getStageInput` API client methods, replacement of `JSON.stringify` in `FinalReportPanel` + `ArtifactsPanel`, and `apps/web/vitest.config.ts` jsdom/`.test.tsx` support. The standalone `useAnalysisTimeline` hook in the original Task 1 is SUPERSEDED by `useAnalysisRun` — do not reintroduce it. Remaining work consolidated in [openalice remaining-work plan](2026-04-18-openalice-remaining-work-plan.md) Phase 2.
 
 ## Key Decisions
 
@@ -57,7 +58,7 @@
 
 ## Final Outcome
 
-本计划处于待执行状态；本轮只修正计划和版本化规则，未修改 Web 业务代码。
+本计划处于部分完成状态。PR #12 交付了 timeline SSE、runtime control wiring、live card 和 Autonomy 反向链接。剩余 console 组件和 renderer 合并进 [openalice remaining-work plan](2026-04-18-openalice-remaining-work-plan.md) Phase 2 继续执行。
 
 ## Planned File Map
 

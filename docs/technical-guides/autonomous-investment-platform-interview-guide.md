@@ -14,6 +14,132 @@
 2. 再按简历 bullet 逐个学习。
 3. 最后只看问题，闭卷讲出回答框架。
 
+## 项目介绍与技术栈
+
+### 一句话项目介绍
+
+FinSentinel 是一个 AI-assisted investment research and risk platform。它把投资研究里分散的行情、新闻、SEC filings、研究文档、组合持仓、风险复核和交易草案，整合到一个 chat/workspace 工作流里；LLM 负责理解用户意图、组织研究步骤和调用受控工具，后端负责权限、校验、状态机、人工审批、幂等执行、审计和观测。
+
+面试时不要把它说成“自动炒股机器人”。更准确的定位是：
+
+> 一个面向金融研究和风险控制的 AI workflow platform：模型辅助研究和生成草案，但交易执行必须经过确定性校验和 human approval。
+
+### 这个项目解决什么问题
+
+1. 投资研究信息太分散
+   一个完整研究问题通常要同时看 market data、technical indicators、news、filings、research docs、portfolio exposure 和 broker state。项目通过 RAG + typed tools + analysis runtime，把这些来源接入统一 workflow。
+
+2. LLM 不能直接被信任
+   投资场景不能接受模型凭空给结论，更不能让模型直接下单。系统通过 Zod schema、tool registry、role tool scope、order draft validator、approval gate，把模型限制在受控边界内。
+
+3. 金融执行有真实副作用
+   API retry、用户重复点击、worker 重启都可能造成重复下单。因此 trading layer 不是简单的 `placeOrder()`，而是拆成 stage / commit / execute 三阶段，并用 Redis Lua、commit hash、`GETDEL` 和 commit history 做幂等保护。
+
+4. 长对话会膨胀 token 和污染上下文
+   Chat session 越长，历史消息越多。系统在超过阈值后做 LLM-based compaction：压缩旧消息，保留最近窗口，从而降低 token cost，同时保留当前上下文。
+
+5. 后台任务需要异步和可恢复
+   文档 ingestion、向量化、RAG enrichment、news processing、multi-stage analysis run 都不适合阻塞 HTTP 请求。项目用 Redis + BullMQ 负责队列、重试和 worker 执行。
+
+6. 投资系统必须可审计
+   研究结论、审批状态、交易草案、执行状态、限流、RAG latency 都需要可追踪。项目通过 Prometheus/Grafana 和 append-only event log 提供 observability 和 auditability。
+
+### 端到端用户路径
+
+典型流程可以这样讲：
+
+```text
+用户在 Web chat/workspace 提问
+  -> Next.js 前端调用 NestJS API
+  -> JWT / RateLimit / Zod validation 保护入口
+  -> ChatService 判断普通对话或升级为 analysis run
+  -> RAG 从 filings/research/news chunks 中找证据
+  -> ToolRegistry 暴露行情、新闻、技术指标、组合、交易草案等 typed tools
+  -> Analysis runtime 执行 Intelligence / Thesis / Risk / Execution Prep
+  -> Execution Prep 生成 broker-neutral order drafts
+  -> Human approval gate 等待用户确认
+  -> Trading layer stage / commit / execute
+  -> BrokerRegistry 路由到 paper/live broker
+  -> Prometheus metrics 和 append-only events 记录全过程
+```
+
+### 技术栈分层
+
+| 层级 | 使用技术 | 在项目中的作用 |
+|---|---|---|
+| Monorepo / Tooling | TypeScript, Node.js 22+, pnpm 10, Turbo | 统一管理 API、Web、shared schema、db package、AI runtime package；统一 build/typecheck/test |
+| Frontend | Next.js 16, React 19, Tailwind CSS 4, Recharts, lightweight-charts, framer-motion | 实现 chat、research workspace、portfolio/dashboard、图表和交互界面 |
+| Backend API | NestJS 11, RxJS, `@nestjs/config`, `@nestjs/schedule` | 模块化后端；controller 保持薄，业务逻辑放 service；guard/pipe/filter 负责入口治理 |
+| AI Runtime | `@finsentinel/ai-runtime`, `@mariozechner/pi-ai`, `@mariozechner/pi-agent-core` | 封装模型构造、typed tool adapter、streaming text runtime、embedding client，避免业务层直接耦合外部 SDK |
+| Contracts | Zod, `packages/shared` | API 请求/响应 schema、tool input schema、structured output boundary、前后端共享类型 |
+| Database | PostgreSQL 17, pgvector, Drizzle ORM, `postgres` client | 存 durable state、analysis runs、documents、RAG chunks、vector embeddings、event log |
+| Retrieval | pgvector, PostgreSQL full-text search, RRF, reranker sidecar, context packing | 支持 dense+sparse hybrid retrieval、rank fusion、rerank 和 prompt context 控制 |
+| Queue / Cache / Runtime State | Redis 7, ioredis, BullMQ 5 | BullMQ job queue、rate limit counter、trading staging/pending state、Lua atomic transition |
+| Trading | Broker abstraction, Paper broker, live broker adapters, Redis `GETDEL`, order draft validator | broker-agnostic trading lifecycle；先生成草案，再审批，再幂等执行 |
+| Storage | RustFS / S3-compatible storage, AWS SDK S3 client | 保存上传文档和对象存储内容，供 ingestion/RAG pipeline 使用 |
+| Observability | prom-client, Prometheus, Grafana | 暴露 `/api/metrics`，观察 RAG latency、rate limit、请求量、系统健康度 |
+| Testing | Vitest, Nest testing utilities, benchmark-style specs | 覆盖 services、tool registry、RAG、chat compaction、SSE concurrency、rate limiter 等路径 |
+| Local Deployment | Docker Compose, API/Web Dockerfiles | 本地启动 Postgres/pgvector、Redis、RustFS、reranker、API、Web、Prometheus、Grafana |
+
+### 为什么这些技术适合这个项目
+
+**TypeScript + pnpm monorepo**
+前端、后端、shared contracts、db schema 和 AI runtime 都在同一个 workspace，schema 和类型可以直接复用。比如 `packages/shared` 中的 Zod schema 可以同时服务 API validation、前端 type inference 和 tool input validation。
+
+**NestJS**
+项目后端领域很多：auth、chat、agent、analysis、rag、trading、portfolio、news、storage、observability。NestJS 的 module/controller/service/guard/pipe 结构能把边界拆清楚，避免把所有逻辑堆到一个 server 文件里。
+
+**Next.js + React**
+前端不只是一个聊天框，还需要 portfolio/dashboard、研究结果展示、图表、approval action、workspace 状态。Next.js 适合做这种 full-stack web UI，React 生态也方便接图表和交互组件。
+
+**Zod**
+Zod 是整个系统的 contract layer：HTTP body validation、shared frontend type、LLM tool parameters、structured output 都可以用同一套 schema 思路表达。它让“模型生成的输入”先通过确定性 schema，再进入业务逻辑。
+
+**PostgreSQL + pgvector**
+金融研究数据不是纯向量数据。它既有文档 chunk embedding，也有用户、portfolio、analysis run、event log、metadata filter 等关系型数据。Postgres + pgvector 可以把 vector search 和 relational filtering 放在同一个数据库里。
+
+**Dense + Sparse + RRF 的 RAG 设计**
+金融文档同时有语义问题和精确术语。Dense retrieval 适合“管理层怎么看 margin pressure”这类语义查询；sparse full-text search 适合 `10-Q`、`EPS`、ticker、会计术语；RRF 用 rank-based fusion 避免 dense score 和 sparse score 量纲不同的问题。
+
+**Redis + BullMQ**
+Redis 已经适合做短生命周期状态和原子计数，BullMQ 又能基于 Redis 做 job queue。文档向量化、analysis run、news enrichment 这些任务可以异步执行；trading stage/pending state 和 rate limit 也能复用 Redis。
+
+**SSE**
+LLM chat 是服务端到客户端的单向增量输出。SSE 比 WebSocket 简单，适合 `message / done / error` 这种结构化 streaming frame。它能让用户实时看到模型输出，同时后端保留普通 HTTP 的部署和鉴权模型。
+
+**Prometheus + Grafana**
+AI workflow 的故障经常不是“服务挂了”，而是 latency 变高、retrieval result 变少、rate limit 命中异常、某个 stage 失败率上升。Prometheus 指标和 Grafana dashboard 更适合观察这些趋势。
+
+### 当前仓库和简历技术栈的校准
+
+简历中写的是：
+
+```text
+TypeScript • NestJS • Vercel AI SDK • PostgreSQL (pgvector) • Redis • BullMQ • Docker • Node.js
+```
+
+当前仓库更精确的版本是：
+
+```text
+TypeScript • NestJS • Next.js • internal @finsentinel/ai-runtime • PostgreSQL/pgvector • Drizzle • Redis • BullMQ • Docker Compose • Prometheus/Grafana • Node.js
+```
+
+其中最需要注意的是 `Vercel AI SDK`。当前代码已经迁移掉 direct `ai` / `@ai-sdk/openai` import，并通过 `pnpm check:no-vercel-ai-sdk` 机械阻止重新引入。面试时可以这样解释：
+
+> 早期实现采用 Vercel AI SDK 风格的 typed tool calling、streaming 和 structured generation。后来为了降低 SDK coupling，把模型、tool adapter、streaming 和 embeddings 收敛到内部 `@finsentinel/ai-runtime` 包。业务层仍然保留 typed tools、Zod schema、streaming 和 tool orchestration 的架构，但不直接依赖 Vercel AI SDK。
+
+### 30 秒项目介绍模板
+
+> FinSentinel 是一个 AI-assisted investment research and risk platform。前端是 Next.js，后端是 NestJS，数据层用 PostgreSQL/pgvector 和 Redis/BullMQ。它用 RAG 从 filings、research 和 news 中检索证据，用 typed tools 让模型访问行情、新闻、技术指标、组合和交易草案能力，再用多阶段 analysis runtime 做 thesis、risk review 和 execution prep。交易不会由 LLM 直接执行，而是走 broker-neutral draft、人类审批和 Redis-backed stage/commit/execute lifecycle。Prometheus/Grafana 和 append-only events 用来做观测和审计。
+
+### 2 分钟项目介绍模板
+
+> 这个项目解决的是投资研究链路分散和 AI 输出不可控的问题。用户在 Web chat 或 workspace 里提问后，请求进入 NestJS API，先经过 JWT、rate limit 和 Zod validation。普通问题走 ChatService 实时 SSE streaming；复杂问题可以升级成 tracked analysis run。RAG pipeline 会从 SEC filings、research documents 和 market news 的 chunks 中检索证据，结合 dense vector search、Postgres full-text sparse search、RRF fusion、reranker 和 context packing，把证据压到可控 token budget 内。
+>
+> Agent 侧不是让模型随便访问系统，而是通过 ToolRegistry 暴露 typed tools。每个 tool 都有 Zod input schema 和后端 execute 函数，工具覆盖 market data、technical indicators、news、research、portfolio、watchlist、trading drafts 等。Analysis runtime 再把复杂研究拆成 intelligence、thesis、risk、execution prep、human approval 多个阶段，每个阶段有 checkpoint 和 artifacts。
+>
+> 交易侧的重点是风险控制和幂等。LLM 最多生成 broker-neutral order draft，执行前要经过 human approval。后端 trading layer 把交易拆成 stage、commit、execute：stage 暂存意图，commit 生成 hash 和 pending payload，execute 用 Redis `GETDEL` 原子消费 pending commit，再通过 BrokerRegistry 路由到 paper 或 live broker。整个过程通过 Prometheus metrics 和 append-only event log 做观测、审计和回放。
+
 ## 当前仓库对齐风险
 
 这些点最容易被面试官深挖，也最需要你提前校准说法。

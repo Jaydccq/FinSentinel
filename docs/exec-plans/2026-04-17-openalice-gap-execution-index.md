@@ -36,6 +36,7 @@
 
 - 2026-04-17: 初版计划组由 OpenAlice gap PRD 与工业级方向拆分为四个 workstream。
 - 2026-04-17: 按现有代码修正计划中的路径、测试环境、API 字段、event payload、approval artifact 绑定和版本化规则。
+- 2026-04-18: Runtime & Context Foundation 已全部落地；Operator Console 经 PR #12 交付 timeline/SSE/live card slice，仍剩 navigator + context/artifact renderer；Team Config Runtime 与 Execution Review Ledger 未开始。剩余工作整合为 [openalice remaining-work plan](2026-04-18-openalice-remaining-work-plan.md)，按 Phase 1 (Team Config) → Phase 2 (Operator Console 补齐) → Phase 3 (Execution Ledger) 推进。
 
 ## Key Decisions
 

@@ -78,6 +78,10 @@ Out of scope:
   technical guide are visible to Git instead of ignored by the broad docs
   ignore rules.
 - 2026-04-18: Ran `git diff --check`; it passed with no whitespace errors.
+- 2026-04-18: Regenerated the missing project introduction material inside the
+  existing guide, adding a front-loaded "项目介绍与技术栈" section with the
+  project positioning, user flow, technology stack table, technology choices,
+  current repository calibration, and 30-second / 2-minute interview templates.
 
 ## Key Decisions
 
@@ -100,5 +104,7 @@ Out of scope:
 
 Completed. The repository now contains a durable Chinese technical guide for
 the resume project and this execution plan records the scope, assumptions,
-risks, and verification result. No application code was changed. `.gitignore`
-was updated only to make these two documentation artifacts trackable.
+risks, and verification result. The guide also includes a regenerated project
+introduction and technology stack section near the top for easier discovery. No
+application code was changed. `.gitignore` was updated only to make these two
+documentation artifacts trackable.

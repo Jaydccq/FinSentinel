@@ -45,6 +45,7 @@ OpenAlice 的关键差距集中在运行时真相链：上下文谱系、run tim
 - 2026-04-18: Task 1 and Task 2 completed via context journal contracts, DB schema, journal service, chat compaction writes, run context APIs, and team context wiring.
 - 2026-04-18: Task 3 completed via queue-aware `RuntimeControlService`, run stream SSE, aggregate event replay/fan-out, retry-stage endpoint, and orchestrator pause/cancel gates.
 - 2026-04-18: Task 4 completed via deterministic `RunReportAssembler`, `completeWithOutputs`, approval completion materialization, and optional orchestrator terminal materialization.
+- 2026-04-18 (status sync): repo audit confirmed all four tasks landed. `ContextJournalService` exposes `getRunContext`/`getStageInput` (no `materializeSharedContext` wrapper — `getRunContext` is the materialized entry point, plans that reference `materializeSharedContext` should read `getRunContext`). `AgentEventService.streamAggregate*` + `AnalysisStreamController` are live. Remaining OpenAlice gaps now consolidated in [openalice remaining-work plan](2026-04-18-openalice-remaining-work-plan.md).
 
 ## Key Decisions
 

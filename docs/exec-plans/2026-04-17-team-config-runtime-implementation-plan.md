@@ -42,6 +42,7 @@ OpenAlice 的 agent teams 能把团队配置、角色分工、执行深度和运
 
 - 2026-04-17: 初版计划从 Agent Teams V2 PRD 拆出。
 - 2026-04-17: 按现有代码修正 web Vitest 配置、Testing Library 断言、role executor snippet 和 run setup API shape。
+- 2026-04-18 (status sync): repo audit — still not started. `createRunRequestSchema` already has `enabledTeams` and `researchDepth`, so Task 1 only needs to *add* `presetSchema`, `roleSummarySchema`, and extend the existing request schema (not redefine it). `agent-event-type.ts` already has role-specific events (`POSITIVE_CASE_*`, `THESIS_LEAD_*`) but missing generic `ROLE_STARTED/COMPLETED/FAILED` and `STAGE_SKIPPED`. `AnalysisCheckpointService` has `markStageFailed` but no `markStageSkipped`. `RoleExecutorService.run()` does not yet return `durationMs`/`toolCallCount`. Execution now consolidated in [openalice remaining-work plan](2026-04-18-openalice-remaining-work-plan.md) Phase 1.
 
 ## Key Decisions
 
@@ -57,7 +58,7 @@ OpenAlice 的 agent teams 能把团队配置、角色分工、执行深度和运
 
 ## Final Outcome
 
-本计划处于待执行状态；本轮只修正计划和版本化规则，未修改 team runtime 业务代码。
+本计划处于待执行状态；本轮只修正计划和版本化规则，未修改 team runtime 业务代码。2026-04-18 后续执行请参照 [openalice remaining-work plan](2026-04-18-openalice-remaining-work-plan.md) Phase 1。
 
 ## Planned File Map
 
