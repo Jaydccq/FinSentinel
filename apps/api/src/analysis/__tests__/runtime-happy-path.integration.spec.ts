@@ -48,6 +48,8 @@ import { AnalysisApprovalService } from '../analysis-approval.service';
 import { ContextJournalService } from '../context-journal.service';
 import { RunReportAssembler } from '../run-report-assembler.service';
 import { RunOrchestratorService } from '../run-orchestrator.service';
+import { StageGraphService } from '../stage-graph.service';
+import { TeamPresetService } from '../team-preset.service';
 import { ContextFabricService } from '../context-fabric.service';
 import { RoleExecutorService } from '../teams/role-executor.service';
 import { IntelligenceTeamService } from '../teams/intelligence-team.service';
@@ -324,10 +326,12 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
     };
 
     // ── Build orchestrator ────────────────────────────────────────────────
+    const stageGraph = new StageGraphService(new TeamPresetService());
     orchestrator = new RunOrchestratorService(
       runsSvc,
       checkpointsSvc,
       stubProducer as never,
+      stageGraph,
     );
     // Wire the back-reference so the trampoline can call step()
     producerRef.orchestrator = orchestrator;
@@ -441,10 +445,13 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
   beforeEach(async () => {
     // Use createQueued() so RUN_QUEUED is emitted into agent_events — mirrors
     // the real production path and satisfies the plan-spec requirement.
+    // Use EXECUTION_READY so all five stages (including EXECUTION_PREP and
+    // HUMAN_APPROVAL) are enabled in the stage graph.
     const req: CreateRunRequest = {
       prompt: 'analyze AAPL for a swing trade',
       sourceMode: 'WORKSPACE',
       ticker: 'AAPL',
+      preset: 'EXECUTION_READY',
     };
     const created = await runsSvc.createQueued(testUserId, req);
     runId = created.id;

@@ -249,4 +249,42 @@ export class AnalysisCheckpointService {
       null,
     );
   }
+
+  async markStageSkipped(
+    userId: string,
+    runId: string,
+    stageKey: AnalysisStageKey,
+    reasonPayload: Record<string, unknown>,
+  ): Promise<void> {
+    const now = new Date();
+    // Supply EVERY nullable column explicitly to avoid the Drizzle+postgres.js
+    // mixed-default bind bug. onConflictDoUpdate handles BullMQ retries.
+    await this.db
+      .insert(analysisStages)
+      .values({
+        id: randomUUID(),
+        runId,
+        stageKey,
+        status: 'SKIPPED',
+        checkpointVersion: 0,
+        parallelGroupKey: null,
+        structuredOutputJson: null,
+        humanReportMarkdown: null,
+        errorJson: null,
+        startedAt: now,
+        completedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [analysisStages.runId, analysisStages.stageKey],
+        set: { status: 'SKIPPED', errorJson: null, startedAt: now, completedAt: now },
+      });
+    await this.events.append(
+      userId,
+      AgentEventAggregateType.ANALYSIS_RUN,
+      runId,
+      AgentEventType.STAGE_SKIPPED,
+      { stageKey, ...reasonPayload },
+      null,
+    );
+  }
 }

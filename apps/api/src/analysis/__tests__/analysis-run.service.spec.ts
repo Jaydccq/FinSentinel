@@ -121,6 +121,18 @@ describe('AnalysisRunService', () => {
     expect(run?.id).toBe('run-1');
     expect(db.__lastWhereDescriptor).toBeDefined();
   });
+
+  it('persists preset in inputSnapshotJson', async () => {
+    db.__insertReturns([{ id: 'run-2', userId: 'u1', status: 'QUEUED' }]);
+    await svc.createQueued('u1', {
+      prompt: 'hi',
+      sourceMode: 'WORKSPACE',
+      preset: 'FAST_RISK_CHECK',
+    } as never);
+    expect((db.__lastInsert as Record<string, unknown>).inputSnapshotJson).toMatchObject({
+      preset: 'FAST_RISK_CHECK',
+    });
+  });
 });
 
 function makeFakeDb() {

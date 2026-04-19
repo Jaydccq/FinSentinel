@@ -15,6 +15,7 @@ function makeDb(stageRow: Record<string, unknown> | null = {
   const state = {
     lastStageUpdateSet: undefined as Record<string, unknown> | undefined,
     lastArtifactInsert: undefined as Record<string, unknown> | undefined,
+    lastInsertValues: undefined as Record<string, unknown> | undefined,
     stageRow,
   };
   const db = {
@@ -36,8 +37,14 @@ function makeDb(stageRow: Record<string, unknown> | null = {
     }),
     insert: () => ({
       values: (v: Record<string, unknown>) => {
+        state.lastInsertValues = v;
         state.lastArtifactInsert = v;
-        return { returning: async () => [{ id: 'art-1', ...v }] };
+        return {
+          returning: async () => [{ id: 'art-1', ...v }],
+          onConflictDoUpdate: () => ({
+            returning: async () => [{ id: 'art-1', ...v }],
+          }),
+        };
       },
     }),
   };
@@ -181,5 +188,37 @@ describe('AnalysisCheckpointService.writeStrategyArchive', () => {
     ).rejects.toThrow(NotFoundException);
 
     expect(db.state.lastArtifactInsert).toBeUndefined();
+  });
+});
+
+describe('AnalysisCheckpointService.markStageSkipped', () => {
+  const userId = 'u1';
+  const runId = 'r1';
+  let db: ReturnType<typeof makeDb>;
+  let events: { append: ReturnType<typeof vi.fn> };
+  let checkpoints: AnalysisCheckpointService;
+
+  beforeEach(() => {
+    db = makeDb();
+    events = { append: vi.fn().mockResolvedValue({ id: 'evt-1' }) };
+    checkpoints = new AnalysisCheckpointService(db as never, events as never);
+  });
+
+  it('sets SKIPPED status with reason and emits STAGE_SKIPPED', async () => {
+    await checkpoints.markStageSkipped(userId, runId, 'EXECUTION_PREP', { reason: 'disabled_by_runtime_config' });
+
+    expect(db.state.lastInsertValues).toMatchObject({
+      runId,
+      stageKey: 'EXECUTION_PREP',
+      status: 'SKIPPED',
+    });
+    expect(events.append).toHaveBeenCalledWith(
+      userId,
+      AgentEventAggregateType.ANALYSIS_RUN,
+      runId,
+      AgentEventType.STAGE_SKIPPED,
+      expect.objectContaining({ stageKey: 'EXECUTION_PREP', reason: 'disabled_by_runtime_config' }),
+      null,
+    );
   });
 });

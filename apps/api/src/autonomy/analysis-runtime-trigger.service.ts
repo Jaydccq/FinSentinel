@@ -25,6 +25,7 @@ export class AnalysisRuntimeTriggerService {
       sourceMode: args.sourceMode,
       ticker: args.ticker,
       portfolioId: args.portfolioId,
+      preset: 'STANDARD_ANALYSIS',
     });
     await this.producer.enqueuePreflight({ runId: run.id, userId: args.userId });
     return { runId: run.id };

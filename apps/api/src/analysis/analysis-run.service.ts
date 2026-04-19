@@ -53,6 +53,7 @@ export class AnalysisRunService {
           prompt: req.prompt,
           ticker: req.ticker,
           portfolioId: req.portfolioId,
+          preset: req.preset ?? 'STANDARD_ANALYSIS',
           enabledTeams: req.enabledTeams,
           researchDepth: req.researchDepth ?? 'STANDARD',
         },

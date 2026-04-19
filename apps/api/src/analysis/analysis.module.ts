@@ -27,6 +27,8 @@ import { RuntimeControlService } from './runtime-control.service';
 import { RunReportAssembler } from './run-report-assembler.service';
 import { RunOrchestratorService } from './run-orchestrator.service';
 import { StrategyEvidenceService } from './strategy-evidence.service';
+import { TeamPresetService } from './team-preset.service';
+import { StageGraphService } from './stage-graph.service';
 import { TeamRegistry } from './team-registry';
 import { RoleExecutorService } from './teams/role-executor.service';
 import { IntelligenceTeamService } from './teams/intelligence-team.service';
@@ -171,6 +173,8 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
         ContextJournalService,
       ],
     },
+    TeamPresetService,
+    StageGraphService,
     RoleExecutorService,
     IntelligenceTeamService,
     ThesisTeamService,
