@@ -9,7 +9,7 @@
  * skipped in the default run — see the `describe.skipIf` block at the bottom.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   CORPUS_CHUNK_ID_NAMESPACE,
   CORPUS_SOURCE_DOC_NAMESPACE,
@@ -34,7 +34,9 @@ describe('parseCliArgs', () => {
   it('returns sensible defaults when argv is empty', () => {
     const args = parseCliArgs([]);
     expect(args.stubEmbeddings).toBe(true);
-    expect(args.skipEnrichment).toBe(false);
+    // Default polarity: enrichment NOT attempted. Operator must opt in
+    // with --with-enrichment to surface the stub NOTE.
+    expect(args.withEnrichment).toBe(false);
     expect(args.dryRun).toBe(false);
     expect(args.outputSummary).toBeUndefined();
     // corpusPath default points at the fixture corpus relative to repo root
@@ -45,8 +47,21 @@ describe('parseCliArgs', () => {
     expect(parseCliArgs(['--dry-run']).dryRun).toBe(true);
   });
 
-  it('honours --skip-enrichment', () => {
-    expect(parseCliArgs(['--skip-enrichment']).skipEnrichment).toBe(true);
+  it('honours --with-enrichment', () => {
+    expect(parseCliArgs(['--with-enrichment']).withEnrichment).toBe(true);
+  });
+
+  it('--skip-enrichment still parses but emits a deprecation warning on stderr', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const args = parseCliArgs(['--skip-enrichment']);
+      // It's a no-op now — default (false) is preserved.
+      expect(args.withEnrichment).toBe(false);
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0]![0]).toMatch(/--skip-enrichment is deprecated/);
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it('--use-real-embeddings flips stubEmbeddings off', () => {

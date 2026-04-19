@@ -128,7 +128,6 @@ jobs:
           pnpm --filter @finsentinel/api rag:eval:seed-fixture \
             --corpus services/evaluation-runner/datasets/corpus.json \
             --stub-embeddings \
-            --skip-enrichment \
             --output-summary reports/seed-summary.json
 
       - name: Run RAG eval gate (offline corpus mode)

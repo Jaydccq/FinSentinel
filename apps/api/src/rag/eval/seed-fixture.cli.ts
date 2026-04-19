@@ -9,12 +9,18 @@
  * Usage (from apps/api/):
  *   pnpm rag:eval:seed-fixture [--corpus <path>] [--dry-run]
  *     [--stub-embeddings | --no-stub-embeddings | --use-real-embeddings]
- *     [--skip-enrichment] [--output-summary <path>]
+ *     [--with-enrichment] [--output-summary <path>]
  *
  * Defaults:
  *   - corpus:            services/evaluation-runner/datasets/corpus.json
  *   - stub-embeddings:   true (fast CI path; no OpenRouter call)
- *   - skip-enrichment:   false (opt-in for fast CI: --skip-enrichment)
+ *   - with-enrichment:   false (representation enrichment is a documented
+ *                        stub — opt in with --with-enrichment to surface
+ *                        the NOTE reminding you to run the backfill CLI)
+ *
+ * Deprecated: `--skip-enrichment` is accepted as a no-op alias to avoid
+ * breaking existing CI during the transition. It prints a one-line
+ * deprecation warning on stderr. Remove after the next release cut.
  *
  * Idempotency: on rerun the CLI DELETEs all rows whose deterministic
  * document UUIDs match the corpus and re-inserts them. Every run ends
@@ -81,7 +87,13 @@ export interface CorpusDocumentGroup {
 export interface SeedFixtureCliArgs {
   corpusPath: string;
   stubEmbeddings: boolean;
-  skipEnrichment: boolean;
+  /**
+   * Whether to print the enrichment NOTE / attempt enrichment drain.
+   * Default: false. Opt in with `--with-enrichment`. The flag is named
+   * with positive polarity so the default behaviour is the safe one:
+   * the CLI does NOT claim to have run enrichment.
+   */
+  withEnrichment: boolean;
   dryRun: boolean;
   outputSummary: string | undefined;
 }
@@ -92,7 +104,7 @@ export interface SeedSummary {
   chunkCount: number;
   groups: Array<{ sourceDoc: string; documentId: string; chunkCount: number }>;
   stubEmbeddings: boolean;
-  skipEnrichment: boolean;
+  withEnrichment: boolean;
   dryRun: boolean;
 }
 
@@ -112,7 +124,7 @@ export function parseCliArgs(argv: string[]): SeedFixtureCliArgs {
   const args: SeedFixtureCliArgs = {
     corpusPath: DEFAULT_CORPUS,
     stubEmbeddings: true,
-    skipEnrichment: false,
+    withEnrichment: false,
     dryRun: false,
     outputSummary: undefined,
   };
@@ -121,8 +133,15 @@ export function parseCliArgs(argv: string[]): SeedFixtureCliArgs {
     const a = argv[i];
     if (a === '--dry-run') {
       args.dryRun = true;
+    } else if (a === '--with-enrichment') {
+      args.withEnrichment = true;
     } else if (a === '--skip-enrichment') {
-      args.skipEnrichment = true;
+      // Deprecated alias: enrichment is now OFF by default, so --skip-enrichment
+      // is a no-op. Keep it parsing without error so existing CI doesn't break
+      // during the transition, but warn the operator on stderr.
+      console.warn(
+        '[seed-fixture][WARN] --skip-enrichment is deprecated and now the default; remove it from your invocation.',
+      );
     } else if (a === '--stub-embeddings') {
       args.stubEmbeddings = true;
     } else if (a === '--no-stub-embeddings' || a === '--use-real-embeddings') {
@@ -347,7 +366,7 @@ function emitSummary(summary: SeedSummary, outputPath: string | undefined): void
   console.log(
     `[seed-fixture] corpus=${summary.corpusPath}\n` +
     `[seed-fixture]   documents=${summary.documentCount} chunks=${summary.chunkCount} ` +
-    `stub_embeddings=${summary.stubEmbeddings} skip_enrichment=${summary.skipEnrichment} ` +
+    `stub_embeddings=${summary.stubEmbeddings} with_enrichment=${summary.withEnrichment} ` +
     `dry_run=${summary.dryRun}`,
   );
   for (const g of summary.groups) {
@@ -374,7 +393,7 @@ async function main(): Promise<void> {
       chunkCount: g.chunks.length,
     })),
     stubEmbeddings: cliArgs.stubEmbeddings,
-    skipEnrichment: cliArgs.skipEnrichment,
+    withEnrichment: cliArgs.withEnrichment,
     dryRun: cliArgs.dryRun,
   };
 
@@ -410,17 +429,17 @@ async function main(): Promise<void> {
       await seedOneDocumentGroup(deps, group, cliArgs.stubEmbeddings);
     }
 
-    // Enrichment drain. The representation-enrich queue is a best-effort
-    // side effect; skip it for fast CI paths. The live API exercises
-    // it separately on its own document pipeline.
-    if (!cliArgs.skipEnrichment) {
-      console.log(
-        '[seed-fixture] NOTE: enrichment drain not implemented in this CLI. ' +
-        'Enrichment jobs are produced only by the normal document pipeline. ' +
-        'If you need representation coverage, run the backfill CLI separately.',
+    // Enrichment drain. Representation enrichment is a documented stub in
+    // this CLI — the live API exercises it separately on its own document
+    // pipeline. Default is OFF so we don't mislead operators into thinking
+    // reps were populated. When opted in via --with-enrichment, surface the
+    // stub warning on stderr with the pointer to the real backfill CLI.
+    if (cliArgs.withEnrichment) {
+      console.warn(
+        '[seed-fixture][WARN] representation enrichment is a documented stub; ' +
+        'use `pnpm --filter @finsentinel/api rag:backfill:representations` to ' +
+        'populate reps against the seeded chunks.',
       );
-    } else {
-      console.log('[seed-fixture] skip_enrichment=true — not enqueuing enrichment');
     }
 
     emitSummary(summary, cliArgs.outputSummary);
