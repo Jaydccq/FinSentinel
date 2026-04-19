@@ -645,3 +645,13 @@ Next: T1.C — golden set candidate export CLI.
 | DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
 
 **VERDICT:** ENG REVIEW CLEARED — structural issues resolved, scope unchanged, ready to implement Task 1 Step 1.
+
+**2026-04-19 — T3 done**: heading-aware chunking + structured document ingestion.
+- Created `apps/api/src/document/structured-document.ts` with `StructuredChunk` and `StructuredDocument` interfaces.
+- Created `apps/api/src/document/markdown-structure.service.ts`: regex-based ATX heading parser (levels 1-6), setext headings (H1/H2), fenced code blocks (verbatim, modality 'text'), table detection (requires separator row, modality 'table'), paragraph blocks (modality 'text'). Section stack pops correctly on shallower headings. pageStart/pageEnd always null. parentId null at parse time.
+- Added `DocumentChunkingService.chunkStructured(doc)`: tables and non-text blocks emitted as-is (truncated at 4x chunkSize with note); text blocks split on paragraph/sentence/word boundaries inheriting parent sectionPath + title + modality. minChunkSizeChars and maxNumChunks caps honored. Legacy `chunk(text)` signature unchanged.
+- Modified `DocumentVectorService.vectorize()` to call `MarkdownStructureService.parse()` + `chunking.chunkStructured()`, then passes `sectionPath` (joined with " / ") and `title` to `RagChunkStoreService.replaceChunks`.
+- Modified `RagChunkStoreService.replaceChunks` to accept optional `sectionPath` and `title` per chunk and write them to the existing `section_path` / `meta_title` columns.
+- Provided and exported `MarkdownStructureService` in `DocumentModule`.
+- Tests: 133 test files pass, 1098 tests pass. Typecheck clean.
+- Commit: `1f63e45`.
