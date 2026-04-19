@@ -22,6 +22,7 @@ import { ContextJournalService } from './context-journal.service';
 import { RunReportAssembler } from './run-report-assembler.service';
 import { OrderDraftMapper } from '../trading/order-draft-mapper.service';
 import { UnifiedTradingService } from '../trading/unified-trading.service';
+import { ExecutionReviewLedgerService } from './execution-review-ledger.service';
 
 export const APPROVAL_AUTO_DISPATCH_FLAG_TOKEN = 'APPROVAL_AUTO_DISPATCH_FLAG';
 
@@ -47,12 +48,14 @@ export class AnalysisApprovalService {
     private readonly autoDispatchFlag: { enabled: boolean },
     @Optional() private readonly contextJournal?: ContextJournalService,
     @Optional() private readonly reportAssembler?: RunReportAssembler,
+    @Optional() private readonly ledger?: ExecutionReviewLedgerService,
   ) {}
 
   async request(args: {
     userId: string;
     runId: string;
     payload: OrderDraftsPayload;
+    orderDraftArtifactId: string;
   }): Promise<ApprovalRow> {
     const parsed = orderDraftsPayloadSchema.parse(args.payload);
     const [row] = await this.db
@@ -67,12 +70,26 @@ export class AnalysisApprovalService {
       })
       .returning();
     const created = row as ApprovalRow;
+
+    // Create drafted ledger bound to this approval + source artifact.
+    if (this.ledger) {
+      await this.ledger.createDraft({
+        runId: args.runId,
+        approvalId: created.id,
+        orderDraftRefs: [args.orderDraftArtifactId],
+      });
+    }
+
     await this.events.append(
       args.userId,
       AgentEventAggregateType.ANALYSIS_APPROVAL,
       created.id,
       AgentEventType.EXECUTION_APPROVAL_REQUIRED,
-      { runId: args.runId, draftCount: parsed.orderDrafts.length },
+      {
+        runId: args.runId,
+        draftCount: parsed.orderDrafts.length,
+        orderDraftArtifactId: args.orderDraftArtifactId,
+      },
       `approval:request:${created.id}`,
     );
     return created;
@@ -117,6 +134,9 @@ export class AnalysisApprovalService {
     );
 
     if (args.decision === 'APPROVE') {
+      if (this.ledger) {
+        await this.ledger.markApproved({ approvalId: args.approvalId });
+      }
       const payload = existing.requestedPayloadJson as { orderDrafts: unknown[] };
       const mappedRequests = (payload.orderDrafts as never[]).map((d) =>
         this.mapper.toUnifiedStageRequest(d as never),
@@ -153,6 +173,9 @@ export class AnalysisApprovalService {
         }
       }
     } else {
+      if (this.ledger) {
+        await this.ledger.markRejected({ approvalId: args.approvalId, note: args.note });
+      }
       // REJECT: cancel the run (should be WAITING_APPROVAL at this point).
       try {
         await this.runs.cancel(args.userId, existing.runId);

@@ -106,7 +106,7 @@ describe('ExecutionPrepTeamService.execute', () => {
       }),
     );
     expect(approvals.request).toHaveBeenCalledWith(
-      expect.objectContaining({ runId: 'r1', userId: 'u1' }),
+      expect.objectContaining({ runId: 'r1', userId: 'u1', orderDraftArtifactId: expect.any(String) }),
     );
     expect(checkpoints.commitStage).toHaveBeenCalledWith(
       expect.objectContaining({ stageKey: 'EXECUTION_PREP' }),

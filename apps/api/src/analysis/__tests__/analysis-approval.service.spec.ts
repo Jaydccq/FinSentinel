@@ -63,6 +63,15 @@ const tradingStub = {
   execute: vi.fn().mockResolvedValue({ report: 'ok', results: [] }),
 };
 const defaultAutoDispatchFlag = { enabled: false };
+const ledgerMock = {
+  createDraft: vi.fn().mockResolvedValue({ id: 'ledger-1' }),
+  markApproved: vi.fn().mockResolvedValue(undefined),
+  markRejected: vi.fn().mockResolvedValue(undefined),
+  markCommitted: vi.fn().mockResolvedValue(undefined),
+  markDispatched: vi.fn().mockResolvedValue(undefined),
+  markFailed: vi.fn().mockResolvedValue(undefined),
+  listForRun: vi.fn().mockResolvedValue([]),
+};
 
 describe('AnalysisApprovalService', () => {
   let events: { append: ReturnType<typeof vi.fn> };
@@ -74,11 +83,12 @@ describe('AnalysisApprovalService', () => {
 
   it('request() creates a PENDING approval and emits EXECUTION_APPROVAL_REQUIRED', async () => {
     const db = makeDb();
-    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never, tradingStub as never, defaultAutoDispatchFlag);
+    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never, tradingStub as never, defaultAutoDispatchFlag, undefined, undefined, ledgerMock as never);
     const row = await svc.request({
       userId: 'u1',
       runId: 'r1',
       payload,
+      orderDraftArtifactId: 'artifact-id-X',
     });
     expect(row.id).toBe('appr-1');
     expect(db.state.lastInsert).toMatchObject({
@@ -94,19 +104,24 @@ describe('AnalysisApprovalService', () => {
       expect.any(Object),
       expect.any(String),
     );
+    expect(ledgerMock.createDraft).toHaveBeenCalledWith({
+      runId: 'r1',
+      approvalId: 'appr-1',
+      orderDraftRefs: ['artifact-id-X'],
+    });
   });
 
   it('request() rejects payloads that fail OrderDraft schema', async () => {
     const db = makeDb();
     const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never, tradingStub as never, defaultAutoDispatchFlag);
     await expect(
-      svc.request({ userId: 'u1', runId: 'r1', payload: { orderDrafts: [{}] } as never }),
+      svc.request({ userId: 'u1', runId: 'r1', payload: { orderDrafts: [{}] } as never, orderDraftArtifactId: 'art-x' }),
     ).rejects.toThrow();
   });
 
   it('resolve(APPROVE) flips status and emits EXECUTION_APPROVED', async () => {
     const db = makeDb({ id: 'appr-1', runId: 'r1', status: 'PENDING', requestedPayloadJson: payload });
-    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never, tradingStub as never, defaultAutoDispatchFlag);
+    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never, tradingStub as never, defaultAutoDispatchFlag, undefined, undefined, ledgerMock as never);
     await svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' });
     expect(db.state.lastUpdateSet).toMatchObject({ status: 'APPROVED' });
     expect(events.append).toHaveBeenCalledWith(
@@ -117,6 +132,7 @@ describe('AnalysisApprovalService', () => {
       expect.any(Object),
       null,
     );
+    expect(ledgerMock.markApproved).toHaveBeenCalledWith({ approvalId: 'appr-1' });
   });
 
   it('resolve() on non-PENDING row throws', async () => {
@@ -125,6 +141,15 @@ describe('AnalysisApprovalService', () => {
     await expect(
       svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' }),
     ).rejects.toThrow(/already resolved/i);
+  });
+
+  it('marks the ledger rejected when approval is rejected', async () => {
+    const db = makeDb({ id: 'appr-1', runId: 'r1', status: 'PENDING', requestedPayloadJson: payload });
+    const svc = new AnalysisApprovalService(db as never, events as never, runsStub as never, checkpointsStub as never, mapperStub as never, tradingStub as never, defaultAutoDispatchFlag, undefined, undefined, ledgerMock as never);
+    await svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'REJECT', note: 'Too much sizing risk' });
+    expect(ledgerMock.markRejected).toHaveBeenCalledWith(
+      expect.objectContaining({ approvalId: 'appr-1', note: 'Too much sizing risk' }),
+    );
   });
 });
 

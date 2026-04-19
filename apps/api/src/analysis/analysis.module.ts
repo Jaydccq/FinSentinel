@@ -9,6 +9,7 @@ import { QueueModule } from '../queue/queue.module';
 import { MarketModule } from '../market/market.module';
 import { TradingModule } from '../trading/trading.module';
 import { APPROVAL_AUTO_DISPATCH_FLAG_TOKEN } from './analysis-approval.service';
+import { ExecutionReviewLedgerService } from './execution-review-ledger.service';
 import type { DrizzleDB } from '@finsentinel/db';
 import { chatSessionMemories, eq, and } from '@finsentinel/db';
 
@@ -79,6 +80,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
     RuntimeControlService,
     RunReportAssembler,
     AnalysisCheckpointService,
+    ExecutionReviewLedgerService,
     AnalysisApprovalService,
     StrategyEvidenceService,
     {
@@ -188,6 +190,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
     RuntimeControlService,
     RunReportAssembler,
     AnalysisCheckpointService,
+    ExecutionReviewLedgerService,
     AnalysisApprovalService,
     StrategyEvidenceService,
     ContextFabricService,
