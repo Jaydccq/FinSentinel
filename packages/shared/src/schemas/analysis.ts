@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { orderDraftsPayloadSchema } from './order-draft';
+import { strategyArchivePayloadSchema } from './strategy';
 
 // ── Enums ────────────────────────────────────────────────────────────────────
 export const analysisRunSourceModeSchema = z.enum([
@@ -121,7 +122,10 @@ export const decisionObjectSchema = z.object({
   evidenceRefs: z.array(z.string()),
   executionPayload: orderDraftsPayloadSchema,
   alertPayload: z.object({ alerts: z.array(z.record(z.string(), z.unknown())) }),
-  strategyArchivePayload: z.object({ snapshot: z.record(z.string(), z.unknown()) }),
+  strategyArchivePayload: z.union([
+    strategyArchivePayloadSchema,
+    z.object({ snapshot: z.record(z.string(), z.unknown()) }),
+  ]),
 });
 export type DecisionObject = z.infer<typeof decisionObjectSchema>;
 

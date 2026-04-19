@@ -24,6 +24,13 @@ export type StrategyRecommendedNextStep = z.infer<
   typeof strategyRecommendedNextStepSchema
 >;
 
+export const strategyArchiveStatusSchema = z.enum([
+  'EVALUATED',
+  'SKIPPED',
+  'DEGRADED',
+]);
+export type StrategyArchiveStatus = z.infer<typeof strategyArchiveStatusSchema>;
+
 export const strategyIndicatorSnapshotSchema = z.object({
   close: z.number(),
   rsi14: z.number().nullable(),
@@ -61,3 +68,64 @@ export const strategyTemplateEvaluationSchema = z.object({
 export type StrategyTemplateEvaluation = z.infer<
   typeof strategyTemplateEvaluationSchema
 >;
+
+const strategyArchiveBarsSchema = z.object({
+  requestedDays: z.number().int().positive(),
+  receivedBars: z.number().int().nonnegative(),
+  source: z.string(),
+});
+
+const strategyArchiveSummarySchema = z.object({
+  enterLongCount: z.number().int().nonnegative(),
+  blockedCount: z.number().int().nonnegative(),
+  warnings: z.array(z.string()),
+  recommendedNextStep: strategyRecommendedNextStepSchema.nullable(),
+});
+
+const strategyArchiveDegradedSummarySchema = strategyArchiveSummarySchema.extend({
+  warnings: z.array(z.string()).min(1),
+});
+
+const strategyArchiveBaseSchema = z.object({
+  generatedAt: z.string().datetime(),
+  bars: strategyArchiveBarsSchema,
+  evaluations: z.array(strategyTemplateEvaluationSchema),
+  summary: strategyArchiveSummarySchema,
+});
+
+const strategyArchiveEvaluatedSchema = strategyArchiveBaseSchema
+  .extend({
+    status: z.literal('EVALUATED'),
+    ticker: z.string(),
+    selectedTemplateKey: strategyTemplateKeySchema.nullable(),
+  })
+  .strict();
+
+const strategyArchiveSkippedSchema = strategyArchiveBaseSchema
+  .extend({
+    status: z.literal('SKIPPED'),
+    ticker: z.string().optional(),
+    evaluations: z.array(strategyTemplateEvaluationSchema).length(0),
+    selectedTemplateKey: z.null(),
+    summary: strategyArchiveSummarySchema.extend({
+      recommendedNextStep: z.literal(null),
+    }),
+    skipReason: z.string(),
+  })
+  .strict();
+
+const strategyArchiveDegradedSchema = strategyArchiveBaseSchema
+  .extend({
+    status: z.literal('DEGRADED'),
+    ticker: z.string().optional(),
+    selectedTemplateKey: strategyTemplateKeySchema.nullable(),
+    summary: strategyArchiveDegradedSummarySchema,
+  })
+  .strict();
+
+export const strategyArchivePayloadSchema = z.discriminatedUnion('status', [
+  strategyArchiveEvaluatedSchema,
+  strategyArchiveSkippedSchema,
+  strategyArchiveDegradedSchema,
+]);
+export type StrategyArchivePayload = z.infer<typeof strategyArchivePayloadSchema>;

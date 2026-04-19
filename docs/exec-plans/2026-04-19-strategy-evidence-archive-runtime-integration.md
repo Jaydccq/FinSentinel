@@ -267,6 +267,10 @@ Expected:
 - Decision object still parses existing minimal fallback.
 - Shared package typecheck passes.
 
+**Progress log**
+
+- 2026-04-18: Worker 1 completed the shared archive contract slice. Added `strategyArchiveStatusSchema`, `strategyArchivePayloadSchema`, and `StrategyArchivePayload`; updated `decisionObjectSchema.strategyArchivePayload` to accept the typed payload while keeping `{ snapshot: {} }` compatibility; added focused tests for `EVALUATED`, `SKIPPED`, and `DEGRADED` archive payloads plus decision-object fallback parsing; verified with shared package tests and typecheck.
+
 ### Step 2: Strategy Evidence Service
 
 **Files**
@@ -576,6 +580,7 @@ Do not expand this implementation to fix unrelated debt.
 - 2026-04-19: Checked external strategy-validation references for cost, slippage, and walk-forward concerns.
 - 2026-04-19: Chose programmatic Strategy Evidence Archive as the next highest-leverage implementation slice.
 - 2026-04-19: Wrote this plan. Implementation pending.
+- 2026-04-18: Completed the shared archive contract hardening slice. Converted `strategyArchivePayloadSchema` from a flat object to a `status`-discriminated union, enforced `ticker` for `EVALUATED`, `skipReason` plus empty evaluations for `SKIPPED`, and non-empty warnings for `DEGRADED`; added invalid-mix coverage and verified with the requested shared test command and typecheck.
 
 ## Final Outcome
 

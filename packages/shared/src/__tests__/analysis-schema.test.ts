@@ -3,10 +3,10 @@ import {
   analysisRunSourceModeSchema,
   analysisRunStatusSchema,
   analysisStageKeySchema,
+  decisionObjectSchema,
   stageStatusSchema,
   stageStructuredOutputSchema,
   sharedContextSchema,
-  decisionObjectSchema,
   complexityEstimateSchema,
   createRunRequestSchema,
 } from '../schemas/analysis';
@@ -81,8 +81,41 @@ describe('analysis schemas', () => {
       evidenceRefs: [],
       executionPayload: { orderDrafts: [] },
       alertPayload: { alerts: [] },
+      strategyArchivePayload: {
+        status: 'EVALUATED',
+        ticker: 'AAPL',
+        generatedAt: '2026-04-19T12:00:00.000Z',
+        bars: {
+          requestedDays: 260,
+          receivedBars: 260,
+          source: 'polygon.daily',
+        },
+        evaluations: [],
+        selectedTemplateKey: null,
+        summary: {
+          enterLongCount: 0,
+          blockedCount: 0,
+          warnings: [],
+          recommendedNextStep: null,
+        },
+      },
+    };
+    expect(decisionObjectSchema.parse(d)).toMatchObject(d);
+  });
+
+  it('decisionObject keeps the legacy snapshot fallback during rollout', () => {
+    const d = {
+      portfolioDecision: 'HOLD',
+      allocationGuidance: { notes: '', targets: [] },
+      riskLimits: { maxDrawdownPct: 10, stopLossTriggers: [] },
+      alertTriggers: [],
+      confidence: 0.8,
+      evidenceRefs: [],
+      executionPayload: { orderDrafts: [] },
+      alertPayload: { alerts: [] },
       strategyArchivePayload: { snapshot: {} },
     };
+
     expect(decisionObjectSchema.parse(d)).toMatchObject(d);
   });
 
