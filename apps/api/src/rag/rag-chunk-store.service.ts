@@ -34,6 +34,10 @@ export class RagChunkStoreService {
       content: string;
       embedding: number[];
       metadata: Record<string, unknown>;
+      /** Joined section path string, e.g. "Chapter 1 / 1.2 Risks". Defaults to null. */
+      sectionPath?: string | null;
+      /** Closest enclosing heading text. Defaults to null. */
+      title?: string | null;
     }>,
   ): Promise<void> {
     // CASCADE on document_chunk_representations.chunk_id removes representation rows automatically
@@ -59,11 +63,11 @@ export class RagChunkStoreService {
         content: chunk.content,
         embedding: chunk.embedding,
         metadata: chunk.metadata,
-        metaTitle: (chunk.metadata['title'] as string) ?? null,
+        metaTitle: (chunk.title ?? (chunk.metadata['title'] as string)) ?? null,
         metaSource: (chunk.metadata['source'] as string) ?? null,
         metaEntities: null, // populated later by GraphEnrichmentConsumer
         parentId: null,
-        sectionPath: null,
+        sectionPath: chunk.sectionPath ?? null,
         enrichmentStatus: 'pending',
       })),
     );

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { DocumentChunkingService } from '../document-chunking.service';
+import type { StructuredDocument } from '../structured-document';
 
 /**
  * Create a ConfigService mock with configurable chunking parameters.
@@ -224,5 +225,243 @@ describe('DocumentChunkingService', () => {
     for (const chunk of chunks) {
       expect(chunk.trim().length).toBeGreaterThanOrEqual(200);
     }
+  });
+
+  // ── chunkStructured: backward compat ────────────────────────────────────
+
+  it('chunkStructured on plain-text doc produces string-equivalent output to chunk()', () => {
+    const text = 'A'.repeat(250) + '\n\n' + 'B'.repeat(250);
+
+    const legacyChunks = service.chunk(text);
+
+    const doc: StructuredDocument = {
+      sourceFormat: 'plain',
+      chunks: [
+        {
+          text,
+          title: null,
+          sectionPath: [],
+          parentId: null,
+          modality: 'text',
+          pageStart: null,
+          pageEnd: null,
+        },
+      ],
+    };
+    const structured = service.chunkStructured(doc);
+
+    expect(structured.length).toBe(legacyChunks.length);
+    for (let i = 0; i < structured.length; i++) {
+      expect(structured[i]!.text).toBe(legacyChunks[i]);
+    }
+  });
+
+  // ── chunkStructured: long section splits with inherited sectionPath ──────
+
+  it('chunkStructured splits a long section into multiple chunks sharing parent sectionPath', async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        DocumentChunkingService,
+        {
+          provide: ConfigService,
+          useValue: createConfigService({
+            'rag.chunking.chunkSize': 300,
+            'rag.chunking.minChunkSizeChars': 50,
+          }),
+        },
+      ],
+    }).compile();
+
+    const svc = module.get(DocumentChunkingService);
+
+    const longText = 'word '.repeat(200).trim(); // ~999 chars, well above 300 chunkSize
+    const doc: StructuredDocument = {
+      sourceFormat: 'markdown',
+      chunks: [
+        {
+          text: longText,
+          title: 'Risk Factors',
+          sectionPath: ['Chapter 1', 'Risk Factors'],
+          parentId: null,
+          modality: 'text',
+          pageStart: null,
+          pageEnd: null,
+        },
+      ],
+    };
+
+    const structured = svc.chunkStructured(doc);
+
+    expect(structured.length).toBeGreaterThan(1);
+    for (const chunk of structured) {
+      expect(chunk.sectionPath).toEqual(['Chapter 1', 'Risk Factors']);
+      expect(chunk.title).toBe('Risk Factors');
+      expect(chunk.modality).toBe('text');
+    }
+  });
+
+  // ── chunkStructured: table stays single chunk even if > chunkSize ────────
+
+  it('table chunk stays single even if larger than chunkSize', async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        DocumentChunkingService,
+        {
+          provide: ConfigService,
+          useValue: createConfigService({
+            'rag.chunking.chunkSize': 100,
+            'rag.chunking.minChunkSizeChars': 10,
+          }),
+        },
+      ],
+    }).compile();
+
+    const svc = module.get(DocumentChunkingService);
+
+    const tableText = '| col |\n|-----|\n' + '| val |\n'.repeat(20); // > 100 chars
+    expect(tableText.length).toBeGreaterThan(100);
+
+    const doc: StructuredDocument = {
+      sourceFormat: 'markdown',
+      chunks: [
+        {
+          text: tableText,
+          title: 'Table',
+          sectionPath: ['Table'],
+          parentId: null,
+          modality: 'table',
+          pageStart: null,
+          pageEnd: null,
+        },
+      ],
+    };
+
+    const structured = svc.chunkStructured(doc);
+
+    expect(structured).toHaveLength(1);
+    expect(structured[0]!.modality).toBe('table');
+  });
+
+  it('table chunk exceeding 4x chunkSize is truncated with [truncated] note', async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        DocumentChunkingService,
+        {
+          provide: ConfigService,
+          useValue: createConfigService({
+            'rag.chunking.chunkSize': 50,
+            'rag.chunking.minChunkSizeChars': 5,
+          }),
+        },
+      ],
+    }).compile();
+
+    const svc = module.get(DocumentChunkingService);
+
+    const hugeTable = '| col |\n|-----|\n' + '| val |\n'.repeat(100); // > 200 chars (4 * 50)
+    expect(hugeTable.length).toBeGreaterThan(200);
+
+    const doc: StructuredDocument = {
+      sourceFormat: 'markdown',
+      chunks: [
+        {
+          text: hugeTable,
+          title: null,
+          sectionPath: [],
+          parentId: null,
+          modality: 'table',
+          pageStart: null,
+          pageEnd: null,
+        },
+      ],
+    };
+
+    const structured = svc.chunkStructured(doc);
+
+    expect(structured).toHaveLength(1);
+    expect(structured[0]!.text).toContain('[truncated]');
+  });
+
+  // ── chunkStructured: minChunkSizeChars and maxNumChunks honored ──────────
+
+  it('chunkStructured respects minChunkSizeChars for text blocks', async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        DocumentChunkingService,
+        {
+          provide: ConfigService,
+          useValue: createConfigService({
+            'rag.chunking.chunkSize': 500,
+            'rag.chunking.minChunkSizeChars': 200,
+          }),
+        },
+      ],
+    }).compile();
+
+    const svc = module.get(DocumentChunkingService);
+
+    const doc: StructuredDocument = {
+      sourceFormat: 'markdown',
+      chunks: [
+        {
+          text: 'Short.', // well below 200
+          title: null,
+          sectionPath: [],
+          parentId: null,
+          modality: 'text',
+          pageStart: null,
+          pageEnd: null,
+        },
+        {
+          text: 'A'.repeat(250),
+          title: 'Section',
+          sectionPath: ['Section'],
+          parentId: null,
+          modality: 'text',
+          pageStart: null,
+          pageEnd: null,
+        },
+      ],
+    };
+
+    const structured = svc.chunkStructured(doc);
+
+    // Short chunk filtered; only the 250-char chunk should remain
+    expect(structured).toHaveLength(1);
+    expect(structured[0]!.title).toBe('Section');
+  });
+
+  it('chunkStructured respects maxNumChunks cap', async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        DocumentChunkingService,
+        {
+          provide: ConfigService,
+          useValue: createConfigService({
+            'rag.chunking.chunkSize': 100,
+            'rag.chunking.minChunkSizeChars': 10,
+            'rag.chunking.maxNumChunks': 3,
+          }),
+        },
+      ],
+    }).compile();
+
+    const svc = module.get(DocumentChunkingService);
+
+    // 5 sections each with text that fits in one chunk
+    const chunks = Array.from({ length: 5 }, (_, i) => ({
+      text: `Section ${i} content. `.repeat(3).trim(),
+      title: `Section ${i}`,
+      sectionPath: [`Section ${i}`],
+      parentId: null as null,
+      modality: 'text' as const,
+      pageStart: null as null,
+      pageEnd: null as null,
+    }));
+
+    const doc: StructuredDocument = { sourceFormat: 'markdown', chunks };
+    const structured = svc.chunkStructured(doc);
+
+    expect(structured.length).toBeLessThanOrEqual(3);
   });
 });

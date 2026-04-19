@@ -1,5 +1,6 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import type { StructuredChunk, StructuredDocument } from './structured-document';
 
 export interface ChunkingConfig {
   chunkSize: number;
@@ -66,6 +67,85 @@ export class DocumentChunkingService {
     }
 
     return filtered;
+  }
+
+  /**
+   * Split a StructuredDocument into output StructuredChunks.
+   *
+   * Tables and images are emitted as-is (one output chunk each) regardless of
+   * chunkSize. If a table or image block exceeds 4 * chunkSize it is truncated
+   * with a note appended. Text blocks that fit within chunkSize are emitted
+   * as-is; those that exceed it are split using the same paragraph/sentence/word
+   * hierarchy as chunk(), with each split inheriting the parent sectionPath and
+   * title.
+   *
+   * Output chunks are emitted in document order. minChunkSizeChars and
+   * maxNumChunks caps are applied to text blocks only (non-text blocks are
+   * never filtered).
+   *
+   * @param doc - StructuredDocument from MarkdownStructureService
+   * @returns Array of StructuredChunks ready for embedding
+   */
+  chunkStructured(doc: StructuredDocument): StructuredChunk[] {
+    const { chunkSize, minChunkSizeChars, maxNumChunks } = this.config;
+    const output: StructuredChunk[] = [];
+
+    for (const inputChunk of doc.chunks) {
+      if (inputChunk.modality !== 'text') {
+        // Tables, images: emit as-is, truncate only if absurdly large
+        const truncateAt = chunkSize * 4;
+        if (inputChunk.text.length > truncateAt) {
+          this.logger.warn(
+            `Non-text chunk (modality=${inputChunk.modality}) exceeds 4x chunkSize ` +
+            `(${inputChunk.text.length} chars); truncating`,
+          );
+          output.push({
+            ...inputChunk,
+            text: inputChunk.text.slice(0, truncateAt) + ' [truncated]',
+          });
+        } else {
+          output.push(inputChunk);
+        }
+        continue;
+      }
+
+      // Text block
+      if (!inputChunk.text || inputChunk.text.trim().length === 0) {
+        continue;
+      }
+
+      if (inputChunk.text.length <= chunkSize) {
+        if (inputChunk.text.trim().length >= minChunkSizeChars) {
+          output.push(inputChunk);
+        }
+      } else {
+        // Split the section text using the same paragraph/sentence/word logic
+        const segments = this.splitIntoSegments(inputChunk.text);
+        const splitTexts = this.mergeWithOverlap(segments).filter(
+          (t) => t.trim().length >= minChunkSizeChars,
+        );
+        for (const splitText of splitTexts) {
+          output.push({
+            text: splitText,
+            title: inputChunk.title,
+            sectionPath: inputChunk.sectionPath,
+            parentId: null,
+            modality: 'text',
+            pageStart: inputChunk.pageStart,
+            pageEnd: inputChunk.pageEnd,
+          });
+        }
+      }
+
+      if (output.length >= maxNumChunks) {
+        this.logger.warn(
+          `Structured chunk count reached max (${maxNumChunks}), truncating`,
+        );
+        return output.slice(0, maxNumChunks);
+      }
+    }
+
+    return output;
   }
 
   /**

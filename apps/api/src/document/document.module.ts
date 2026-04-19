@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TextCleaningService } from './text-cleaning.service';
 import { DocumentParseService } from './document-parse.service';
 import { DocumentChunkingService } from './document-chunking.service';
+import { MarkdownStructureService } from './markdown-structure.service';
 import { DocumentVectorService } from './document-vector.service';
 import { DocumentUploadService } from './document-upload.service';
 import { DocumentController } from './document.controller';
@@ -17,6 +18,7 @@ import { RagModule } from '../rag/rag.module';
  * - TextCleaningService — regex text normalization
  * - DocumentParseService — parse PDF/text to plain text
  * - DocumentChunkingService — split text into overlapping chunks
+ * - MarkdownStructureService — heading-aware markdown parser
  * - DocumentVectorService — embed chunks into pgvector
  * - DocumentUploadService — upload + persist + queue for vectorization
  * - DocumentController — REST endpoints for upload, list, get, delete
@@ -30,6 +32,7 @@ import { RagModule } from '../rag/rag.module';
     TextCleaningService,
     DocumentParseService,
     DocumentChunkingService,
+    MarkdownStructureService,
     DocumentVectorService,
     DocumentUploadService,
   ],
@@ -37,6 +40,7 @@ import { RagModule } from '../rag/rag.module';
     TextCleaningService,
     DocumentParseService,
     DocumentChunkingService,
+    MarkdownStructureService,
     DocumentVectorService,
     DocumentUploadService,
   ],

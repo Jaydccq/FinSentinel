@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DocumentChunkingService } from './document-chunking.service';
+import { MarkdownStructureService } from './markdown-structure.service';
 import { RagEmbeddingService } from '../rag/rag-embedding.service';
 import { RagChunkStoreService } from '../rag/rag-chunk-store.service';
 import { MetricsService } from '../common/services/metrics.service';
@@ -19,6 +20,7 @@ export class DocumentVectorService {
 
   constructor(
     private readonly chunking: DocumentChunkingService,
+    private readonly markdownStructure: MarkdownStructureService,
     private readonly embeddingService: RagEmbeddingService,
     private readonly ragChunkStore: RagChunkStoreService,
     private readonly metrics: MetricsService,
@@ -46,9 +48,10 @@ export class DocumentVectorService {
       return 0;
     }
 
-    const chunks = this.chunking.chunk(text);
+    const structuredDoc = this.markdownStructure.parse(text);
+    const structuredChunks = this.chunking.chunkStructured(structuredDoc);
 
-    if (chunks.length === 0) {
+    if (structuredChunks.length === 0) {
       this.logger.warn(
         `No chunks produced for document ${docId} (text may be too short)`,
       );
@@ -57,35 +60,45 @@ export class DocumentVectorService {
     }
 
     this.logger.log(
-      `Vectorizing document ${docId}: ${chunks.length} chunks, ` +
-      `metadata=${JSON.stringify(metadata)}`,
+      `Vectorizing document ${docId}: ${structuredChunks.length} chunks ` +
+      `(format=${structuredDoc.sourceFormat}), metadata=${JSON.stringify(metadata)}`,
     );
 
     try {
-      const embeddings = await this.embeddingService.embedChunks(chunks);
-      if (embeddings.length !== chunks.length) {
+      const chunkTexts = structuredChunks.map((c) => c.text);
+      const embeddings = await this.embeddingService.embedChunks(chunkTexts);
+      if (embeddings.length !== structuredChunks.length) {
         throw new Error(
-          `Embedding count mismatch for ${docId}: expected ${chunks.length}, got ${embeddings.length}`,
+          `Embedding count mismatch for ${docId}: expected ${structuredChunks.length}, got ${embeddings.length}`,
         );
       }
 
       await this.ragChunkStore.replaceChunks(
         sourceType,
         docId,
-        chunks.map((chunk, index) => ({
-          content: chunk,
+        structuredChunks.map((chunk, index) => ({
+          content: chunk.text,
           embedding: embeddings[index]!,
+          sectionPath: chunk.sectionPath.length > 0
+            ? chunk.sectionPath.join(' / ')
+            : null,
+          title: chunk.title,
           metadata: {
             ...metadata,
             source_type: sourceType,
             source_id: docId,
             chunk_index: index,
+            modality: chunk.modality,
+            section_path: chunk.sectionPath.length > 0
+              ? chunk.sectionPath.join(' / ')
+              : null,
+            title: chunk.title ?? metadata['title'] ?? null,
           },
         })),
       );
 
-      this.recordVectorizationMetrics(sourceType, 'success', startedAt, chunks.length);
-      return chunks.length;
+      this.recordVectorizationMetrics(sourceType, 'success', startedAt, structuredChunks.length);
+      return structuredChunks.length;
     } catch (error) {
       this.recordVectorizationMetrics(sourceType, 'error', startedAt, 0);
       throw error;
