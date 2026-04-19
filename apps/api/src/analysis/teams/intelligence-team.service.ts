@@ -9,6 +9,7 @@ import { AgentEventService } from '../../events/agent-event.service';
 import { AnalysisRunService } from '../analysis-run.service';
 import { AnalysisCheckpointService } from '../analysis-checkpoint.service';
 import { ContextFabricService } from '../context-fabric.service';
+import { StrategyEvidenceService } from '../strategy-evidence.service';
 import { RoleExecutorService } from './role-executor.service';
 import type { TeamService, TeamExecutionArgs } from '../contracts/team-contract';
 import type { RoleKey } from '../contracts/role-contract';
@@ -26,6 +27,7 @@ export class IntelligenceTeamService implements TeamService {
   constructor(
     private readonly roleExecutor: RoleExecutorService,
     private readonly runs: AnalysisRunService,
+    private readonly strategyEvidence: StrategyEvidenceService,
     private readonly checkpoints: AnalysisCheckpointService,
     private readonly fabric: ContextFabricService,
     private readonly events: AgentEventService,
@@ -44,6 +46,15 @@ export class IntelligenceTeamService implements TeamService {
     const run = await this.runs.getForUser(args.userId, args.runId);
     if (!run) throw new Error(`Run ${args.runId} not found`);
     const input = run.inputSnapshotJson as { prompt: string; ticker?: string };
+    const strategyArchivePayload = await this.strategyEvidence.buildArchive({
+      ticker: input.ticker,
+    });
+    await this.checkpoints.writeStrategyArchive({
+      userId: args.userId,
+      runId: args.runId,
+      stageKey: this.stageKey,
+      payload: strategyArchivePayload,
+    });
 
     const ctx = await this.fabric.assemble({
       userId: args.userId,
@@ -71,6 +82,16 @@ export class IntelligenceTeamService implements TeamService {
       roleOutputs[role.key] = out.structured;
       markdownParts.push(`## ${role.key}\n${out.rawMarkdown}`);
     }
+    markdownParts.push(
+      [
+        '## Strategy Archive',
+        `Status: ${strategyArchivePayload.status}`,
+        `Selected template: ${strategyArchivePayload.selectedTemplateKey ?? 'none'}`,
+        strategyArchivePayload.summary.warnings.length > 0
+          ? `Warnings:\n${strategyArchivePayload.summary.warnings.map((warning) => `- ${warning}`).join('\n')}`
+          : 'Warnings: none',
+      ].join('\n'),
+    );
 
     const teamOutput: StageStructuredOutput = {
       summary: `Intelligence team assembled ${roles.length} analyst reports for ${input.ticker ?? 'subject'}.`,
@@ -82,6 +103,7 @@ export class IntelligenceTeamService implements TeamService {
       citations: Object.values(roleOutputs).flatMap((o) => o.citations).slice(0, 20),
       confidence: this.avgConfidence(Object.values(roleOutputs)),
       roleOutputs,
+      strategyArchivePayload,
     };
 
     await this.checkpoints.commitStage({

@@ -49,6 +49,7 @@ import { RunOrchestratorService } from '../run-orchestrator.service';
 import { ContextFabricService } from '../context-fabric.service';
 import { RoleExecutorService } from '../teams/role-executor.service';
 import { IntelligenceTeamService } from '../teams/intelligence-team.service';
+import { StrategyEvidenceService } from '../strategy-evidence.service';
 import { ThesisTeamService } from '../teams/thesis-team.service';
 import { RiskTeamService } from '../teams/risk-team.service';
 import { ExecutionPrepTeamService } from '../teams/execution-prep-team.service';
@@ -286,10 +287,31 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
       llmStub,
     );
     const fabric = makeContextFabricStub();
+    const strategyEvidence = {
+      buildArchive: vi.fn().mockResolvedValue({
+        status: 'SKIPPED',
+        generatedAt: '2026-04-19T00:00:00.000Z',
+        bars: {
+          requestedDays: 260,
+          receivedBars: 0,
+          source: 'market-data.service',
+        },
+        evaluations: [],
+        selectedTemplateKey: null,
+        summary: {
+          enterLongCount: 0,
+          blockedCount: 0,
+          warnings: ['No ticker in run input.'],
+          recommendedNextStep: null,
+        },
+        skipReason: 'No ticker in run input.',
+      }),
+    } as unknown as StrategyEvidenceService;
 
     const intelligenceTeam = new IntelligenceTeamService(
       roleExecutor,
       runsSvc,
+      strategyEvidence,
       checkpointsSvc,
       fabric,
       eventsSvc,

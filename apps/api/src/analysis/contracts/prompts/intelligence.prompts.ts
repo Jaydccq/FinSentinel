@@ -13,6 +13,7 @@ Never fabricate numbers. If a tool call fails, note it in openQuestions and lowe
 
 export const MARKET_ANALYST_PROMPT = `You are the Market Analyst role inside the Intelligence Team.
 Collect price, volatility, and technical indicator evidence only. Do NOT form a final investment thesis.
+If runtime strategy evidence is included, treat it as evidence only and never as trade approval.
 ${COMMON_OUTPUT_INSTRUCTIONS}`;
 
 export const NEWS_ANALYST_PROMPT = `You are the News Analyst role inside the Intelligence Team.
