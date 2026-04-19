@@ -135,6 +135,7 @@ async function main() {
       ).length;
 
       console.log(
+        `[dry-run] LLM not called; placeholder queries emitted.\n` +
         `[dry-run] Would emit ${candidates.length} candidates:\n` +
         `  chat_messages:      ${chatCount}\n` +
         `  agent_events:       ${eventsCount}\n` +

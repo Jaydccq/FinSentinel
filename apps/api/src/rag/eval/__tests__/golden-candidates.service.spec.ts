@@ -345,19 +345,94 @@ describe('GoldenCandidatesService.fromChunkReverse', () => {
 
   it('caps limit at 30 regardless of argument', async () => {
     const db = makeDb();
-    // Single stratum so the chunk query is called once with limit 30
+    // Single stratum, limit=100 → effectiveLimit=30, quota=30, overshoot=60
     db.execute
       .mockResolvedValueOnce([
         { doc_type: 'SEC_FILING', sector: 'Technology', cnt: '100' },
       ])
-      .mockResolvedValueOnce([]); // no chunks returned
+      // Return 60 chunks so we can verify at most 30 are processed
+      .mockResolvedValueOnce(
+        Array.from({ length: 60 }, (_, i) => ({
+          id: `chunk-${i}`,
+          content: `Chunk content number ${i} about financial markets here.`,
+        })),
+      );
 
-    const svc = await buildService(db, makeLlm());
-    await svc.fromChunkReverse(100);
+    const llm = makeLlm('What is the revenue?\nfactoid');
+    const svc = await buildService(db, llm);
+    const results = await svc.fromChunkReverse(100);
 
-    // The chunk sample query should have been issued with limit 30
-    const chunkSampleCall = (db.execute as Mock).mock.calls[1];
-    expect(JSON.stringify(chunkSampleCall)).toContain('30');
+    // Hard cap: at most 30 entries even though 60 chunks were fetched
+    expect(results.length).toBeLessThanOrEqual(30);
+  });
+
+  it('stratification fills from other strata when a stratum is short', async () => {
+    // 3 strata; limit=12 → quota=ceil(12/3)=4
+    // Stratum A: has 8 rows (≥ quota*2=8, so ample)
+    // Stratum B: has 8 rows (ample)
+    // Stratum C: has only 1 row (short)
+    // First pass: A contributes 4, B contributes 4, C contributes 1 → total 9
+    // Fill pass: A and B each have reserve rows → round-robin fills 3 more → total 12
+    const db = makeDb();
+
+    const makeChunks = (prefix: string, count: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        id: `${prefix}-${i}`,
+        content: `Content from stratum ${prefix} chunk ${i} about financial markets.`,
+      }));
+
+    db.execute
+      .mockResolvedValueOnce([
+        { doc_type: 'SEC_FILING', sector: 'Technology', cnt: '50' },
+        { doc_type: 'RESEARCH_REPORT', sector: 'Finance', cnt: '40' },
+        { doc_type: 'NEWS', sector: 'Energy', cnt: '30' },
+      ])
+      // Stratum A: 8 rows returned (quota*2 = 4*2 = 8) — ample
+      .mockResolvedValueOnce(makeChunks('A', 8))
+      // Stratum B: 8 rows returned — ample
+      .mockResolvedValueOnce(makeChunks('B', 8))
+      // Stratum C: only 1 row returned — short
+      .mockResolvedValueOnce(makeChunks('C', 1));
+
+    const llm = makeLlm('What does this passage describe?\nfactoid');
+    const svc = await buildService(db, llm);
+    const results = await svc.fromChunkReverse(12);
+
+    // Total must reach 12 (fill-from-others worked)
+    expect(results).toHaveLength(12);
+
+    // Stratum C contributes exactly 1
+    const cCount = results.filter((r) =>
+      r.source_provenance.source_chunk_id?.startsWith('C-'),
+    ).length;
+    expect(cCount).toBe(1);
+  });
+
+  it('fromChunkReverse dry-run path does NOT call the LLM client', async () => {
+    const db = makeDb();
+    db.execute
+      .mockResolvedValueOnce([
+        { doc_type: 'SEC_FILING', sector: 'Technology', cnt: '10' },
+      ])
+      .mockResolvedValueOnce([
+        { id: 'chunk-1', content: 'Apple reported strong Q1 2024 earnings results.' },
+        { id: 'chunk-2', content: 'The Fed raised interest rates by 25 basis points.' },
+      ]);
+
+    const llm = makeLlm();
+    const svc = await buildService(db, llm);
+    const results = await svc.fromChunkReverse(5, { dryRun: true });
+
+    // LLM must never have been called
+    expect(llm.generate).not.toHaveBeenCalled();
+
+    // Placeholder queries must appear
+    expect(results).toHaveLength(2);
+    for (const r of results) {
+      expect(r.query).toBe('[dry-run] What does this passage describe?');
+      expect(r.query_class).toBe('unknown');
+      expect(r.source_provenance.source).toBe('reverse_from_chunk');
+    }
   });
 });
 

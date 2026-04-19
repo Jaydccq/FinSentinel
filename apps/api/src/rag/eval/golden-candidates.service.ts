@@ -50,6 +50,11 @@ export interface BuildDraftArgs {
   dryRun?: boolean;
 }
 
+/** Options forwarded to {@link GoldenCandidatesService.fromChunkReverse}. */
+export interface FromChunkReverseOptions {
+  dryRun?: boolean;
+}
+
 /**
  * Adapter interface for LLM text generation used by reverse-Q synthesis.
  * Injected via the GOLDEN_LLM_CLIENT token so tests can swap it out
@@ -186,8 +191,19 @@ export class GoldenCandidatesService {
    * question per chunk via LLM, and return candidate entries.
    *
    * Hard cap at 30 entries regardless of the limit argument.
+   *
+   * Fill-from-others: each stratum is over-fetched (quota * 2) so that when
+   * a stratum yields fewer rows than its quota, the surplus rows already
+   * fetched from other strata can cover the deficit via a round-robin pass.
+   *
+   * When dryRun=true the LLM is never called; each chunk produces a
+   * deterministic placeholder question classified as "unknown".
    */
-  async fromChunkReverse(limit: number): Promise<GoldenCandidateEntry[]> {
+  async fromChunkReverse(
+    limit: number,
+    options: FromChunkReverseOptions = {},
+  ): Promise<GoldenCandidateEntry[]> {
+    const { dryRun = false } = options;
     const effectiveLimit = Math.min(limit, 30);
 
     // Fetch strata: distinct (doc_type, sector) combinations
@@ -210,17 +226,17 @@ export class GoldenCandidatesService {
       return [];
     }
 
-    // Distribute quota across strata evenly, remainder fills from largest strata
     const strataCount = strataRows.length;
-    const baseQuota = Math.floor(effectiveLimit / strataCount);
-    const remainder = effectiveLimit - baseQuota * strataCount;
+    // ceil so the first-pass quota is generous enough to reach effectiveLimit
+    const quota = Math.ceil(effectiveLimit / strataCount);
 
-    const chunks: Array<{ id: string; content: string }> = [];
+    // Phase 1: fetch quota*2 rows per stratum, take min(rows, quota) first.
+    // Keep the overshoot rows as a "reserve" for the fill-up pass.
+    const firstPassChunks: Array<{ id: string; content: string }> = [];
+    const reservePerStratum: Array<Array<{ id: string; content: string }>> = [];
 
     for (let i = 0; i < strataRows.length; i++) {
       const stratum = strataRows[i]!;
-      const quota = baseQuota + (i < remainder ? 1 : 0);
-      if (quota === 0) continue;
 
       const conditions: ReturnType<typeof sql>[] = [];
 
@@ -243,17 +259,59 @@ export class GoldenCandidatesService {
         FROM document_chunks
         WHERE ${whereClause}
         ORDER BY RANDOM()
-        LIMIT ${quota}
+        LIMIT ${quota * 2}
       `);
 
-      chunks.push(...sampled);
+      const firstPassTake = sampled.slice(0, quota);
+      const reserve = sampled.slice(quota);
+
+      firstPassChunks.push(...firstPassTake);
+      reservePerStratum.push(reserve);
     }
 
-    // If strata sampling yielded fewer than effectiveLimit chunks, the total
-    // is naturally capped by what's in the DB — that's acceptable.
+    // Phase 2: if first pass is short of effectiveLimit, consume reserve rows
+    // round-robin across strata until we reach effectiveLimit or exhaust all.
+    const allChunks = [...firstPassChunks];
+    if (allChunks.length < effectiveLimit) {
+      let anyRemaining = true;
+      let strataIdx = 0;
+      while (allChunks.length < effectiveLimit && anyRemaining) {
+        anyRemaining = false;
+        for (
+          let round = 0;
+          round < strataCount && allChunks.length < effectiveLimit;
+          round++
+        ) {
+          const idx = (strataIdx + round) % strataCount;
+          const reserve = reservePerStratum[idx]!;
+          if (reserve.length > 0) {
+            allChunks.push(reserve.shift()!);
+            anyRemaining = true;
+          }
+        }
+        strataIdx = (strataIdx + strataCount) % strataCount;
+        // If no reserve produced anything this iteration, stop
+        if (!anyRemaining) break;
+      }
+    }
+
     const entries: GoldenCandidateEntry[] = [];
 
-    for (const chunk of chunks) {
+    for (const chunk of allChunks) {
+      if (dryRun) {
+        entries.push(
+          this.makeEntry(
+            'chunk',
+            chunk.id,
+            '[dry-run] What does this passage describe?',
+            'unknown',
+            'reverse_from_chunk',
+            chunk.id,
+          ),
+        );
+        continue;
+      }
+
       const result = await this.generateReverseQ(chunk.id, chunk.content);
       if (result === null) continue;
 
@@ -298,7 +356,7 @@ export class GoldenCandidatesService {
     const [chatEntries, eventEntries, chunkEntries] = await Promise.all([
       this.fromChatMessages(limitChat),
       this.fromAgentEvents(limitEvents),
-      this.fromChunkReverse(limitReverse),
+      this.fromChunkReverse(limitReverse, { dryRun }),
     ]);
 
     const all = [...chatEntries, ...eventEntries, ...chunkEntries];
