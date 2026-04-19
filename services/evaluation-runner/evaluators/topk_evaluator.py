@@ -11,6 +11,7 @@ spurious nearby matches).
 """
 
 from dataclasses import dataclass, field
+from typing import Optional
 
 
 @dataclass
@@ -49,7 +50,25 @@ class TopKEvaluator:
         self,
         golden_set: list[GoldenEntry],
         retrieval_results: list[RetrievalResult],
+        bucket: Optional[str] = None,
     ) -> dict[str, float]:
+        """Compute retrieval metrics.
+
+        When `bucket` is provided, only golden entries whose `tags` contain
+        that label contribute to the metrics. Result pairing is preserved
+        (entry[i] with retrieval_results[i]) before filtering. If no entries
+        match the bucket, all metrics resolve to 0.0 — intentionally, so
+        `--bucket foo` is safe on a dataset where `foo` is not yet populated.
+        """
+        if bucket is not None:
+            filtered = [
+                (e, r)
+                for e, r in zip(golden_set, retrieval_results)
+                if bucket in (e.tags or [])
+            ]
+            golden_set = [e for e, _ in filtered]
+            retrieval_results = [r for _, r in filtered]
+
         metrics: dict[str, float] = {}
 
         for k in self.K_VALUES:

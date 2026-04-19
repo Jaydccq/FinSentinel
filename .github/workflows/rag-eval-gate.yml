@@ -1,0 +1,155 @@
+name: RAG Eval Gate
+
+# Runs on PRs that touch the RAG retrieval stack or the eval tooling.
+# The gate exits non-zero if overall `minimum_metrics` or any bucket under
+# `bucket_minimum_metrics` drops below its configured floor.
+#
+# IMPORTANT — why offline evaluation, not live-API retrieval:
+#   Starting `apps/api` in CI requires DATABASE_URL, REDIS_URL, a 32-char
+#   JWT_SECRET, OPENROUTER_API_KEY, and POLYGON_API_KEY (see
+#   apps/api/src/config/env.validation.ts). Wiring those into the public CI
+#   runner would either leak secrets into forked-PR contexts or require a
+#   self-hosted runner. Instead we run the evaluator in offline
+#   `CorpusRetriever` mode — it reads services/.../corpus.json directly and
+#   scores golden queries via TF-IDF over the corpus, which is exactly
+#   what the gate thresholds in configs/wave2-buckets.yaml were tuned
+#   against. The live-API path is exercised weekly by the follow-up
+#   full-fidelity workflow (to be added in R1.5).
+#
+#   The seed-fixture CLI step still runs — it exercises the hydrate path
+#   against the ephemeral Postgres so we catch migration regressions on
+#   every PR even though the evaluator doesn't hit the DB.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/api/src/rag/**'
+      - 'apps/api/src/document/**'
+      - 'packages/db/migrations/V1[6-9]_*.sql'
+      - 'packages/db/migrations/V2[0-9]_*.sql'
+      - 'services/evaluation-runner/**'
+      - 'services/reranker/**'
+      - '.github/workflows/rag-eval-gate.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: rag-eval-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  eval:
+    name: Evaluate RAG retrieval quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        # pgvector/pgvector:pg17 ships the pgvector extension pre-built;
+        # matches the docker-compose.yml image used locally.
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: finsentinel_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      # Ephemeral DB on the CI Postgres service container — seed CLI's
+      # production-safety guard recognises `finsentinel_ci` as ephemeral.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/finsentinel_ci
+      REDIS_URL: redis://localhost:6379
+      NODE_ENV: test
+      FIXTURE_SEED_CONFIRM: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Python dependencies (evaluator)
+        working-directory: services/evaluation-runner
+        run: |
+          python -m pip install --upgrade pip
+          # ragas+langchain-openai are heavy and only used by the ragas
+          # subset of tests — skip them here, we only need pyyaml+httpx+pytest.
+          pip install "pyyaml>=6,<7" "httpx>=0.27,<1" "pydantic>=2.9,<3" "pytest>=8,<9"
+
+      - name: Build workspace packages (shared / db / ai-runtime)
+        run: pnpm --filter @finsentinel/shared --filter @finsentinel/db --filter @finsentinel/ai-runtime build
+
+      - name: Apply database migrations
+        run: pnpm --filter @finsentinel/db db:migrate
+
+      - name: Verify migration status
+        run: pnpm --filter @finsentinel/db db:migrate:status
+
+      - name: Seed fixture corpus into Postgres
+        # Hydrates `documents` + `document_chunks` from corpus.json so the
+        # seeder's code path is exercised on every PR. The evaluator itself
+        # still runs offline against corpus.json (see workflow header note),
+        # but this catches schema regressions that would break the real
+        # hydrate path.
+        run: |
+          pnpm --filter @finsentinel/api rag:eval:seed-fixture \
+            --corpus services/evaluation-runner/datasets/corpus.json \
+            --stub-embeddings \
+            --output-summary reports/seed-summary.json
+
+      - name: Run RAG eval gate (offline corpus mode)
+        # NOTE: this uses `ci-offline.yaml`, not `wave2-buckets.yaml`.
+        # Per-bucket thresholds in wave2-buckets require R1.1 tagged golden
+        # entries to be meaningful; before then every bucket is empty and
+        # the gate fails trivially. Swap this path once R1.1 lands.
+        run: |
+          mkdir -p reports
+          python services/evaluation-runner/run_evaluation.py run \
+            --dataset services/evaluation-runner/datasets/golden.json \
+            --output reports/ci.json \
+            --corpus services/evaluation-runner/datasets/corpus.json \
+            --config services/evaluation-runner/configs/ci-offline.yaml
+
+      - name: Upload eval report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-eval-report-${{ github.sha }}
+          path: |
+            reports/ci.json
+            reports/seed-summary.json
+          if-no-files-found: warn
+          retention-days: 14
