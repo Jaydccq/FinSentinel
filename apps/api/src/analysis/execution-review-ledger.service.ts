@@ -96,6 +96,15 @@ export class ExecutionReviewLedgerService {
       .where(eq(executionReviewLedgers.approvalId, args.approvalId));
   }
 
+  async getByApprovalId(approvalId: string): Promise<LedgerRow | null> {
+    const [row] = await this.db
+      .select()
+      .from(executionReviewLedgers)
+      .where(eq(executionReviewLedgers.approvalId, approvalId))
+      .limit(1);
+    return (row as LedgerRow | undefined) ?? null;
+  }
+
   async listForRun(runId: string): Promise<LedgerRow[]> {
     const rows = await this.db
       .select()

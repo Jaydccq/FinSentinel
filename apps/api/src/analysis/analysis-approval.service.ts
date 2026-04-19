@@ -152,14 +152,30 @@ export class AnalysisApprovalService {
       });
 
       if (this.autoDispatchFlag.enabled) {
+        // Fetch the drafted ledger to pass ledgerId into commit metadata.
+        const ledgerRow = await this.ledger?.getByApprovalId?.(existing.id);
         try {
           for (const req of mappedRequests) {
             await this.trading.stage(args.userId, req);
           }
-          await this.trading.commit(args.userId, `auto:run ${existing.runId}`);
+          const committed = await this.trading.commit(
+            args.userId,
+            `auto:run ${existing.runId}`,
+            { runId: existing.runId, ...(ledgerRow ? { ledgerId: ledgerRow.id } : {}) },
+          );
+          await this.ledger?.markCommitted({
+            approvalId: existing.id,
+            commitHash: committed.hash,
+            operationRefs: mappedRequests.map((_, i) => `stage-${i}`),
+          });
           await this.trading.execute(args.userId);
+          await this.ledger?.markDispatched({
+            approvalId: existing.id,
+            executionResultRef: committed.hash,
+          });
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
+          await this.ledger?.markFailed({ approvalId: existing.id, note: message });
           // Don't revert the approval — the run is already marked complete.
           // Surface the dispatch failure via event log for operator follow-up.
           await this.events.append(

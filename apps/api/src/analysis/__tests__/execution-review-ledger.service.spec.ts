@@ -45,4 +45,15 @@ describe('ExecutionReviewLedgerService', () => {
     expect(setPayload.status).toBe('REJECTED');
     expect(setPayload.rejectionNote).toBe('too much sizing risk');
   });
+
+  it('getByApprovalId queries by approvalId and returns the first row', async () => {
+    const db = makeDb();
+    const limitMock = vi.fn().mockResolvedValue([{ id: 'ledger-1' }]);
+    const whereMock = vi.fn().mockReturnValue({ limit: limitMock });
+    const fromMock = vi.fn().mockReturnValue({ where: whereMock });
+    (db.select as ReturnType<typeof vi.fn>).mockReturnValue({ from: fromMock });
+    const svc = new ExecutionReviewLedgerService(db as never);
+    const row = await svc.getByApprovalId('approval-1');
+    expect(row?.id).toBe('ledger-1');
+  });
 });

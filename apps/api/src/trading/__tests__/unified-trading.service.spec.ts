@@ -268,6 +268,31 @@ describe('UnifiedTradingService', () => {
         service.commit(TEST_USER_ID, '   '),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('persists ledger metadata on the pending commit payload when provided', async () => {
+      const ops = [{ action: 'BUY', symbol: 'AAPL', qty: '10' }];
+      mockRedis.get.mockResolvedValue(JSON.stringify(ops));
+      const runId = 'run-99999';
+
+      await service.commit(TEST_USER_ID, `analysis run ${runId}`, { ledgerId: 'ledger-1', runId });
+
+      const calls = (mockRedis.setex as unknown as { mock: { calls: Array<[string, number, string]> } }).mock.calls;
+      const last = calls[calls.length - 1]!;
+      expect(last[2]).toContain('"ledgerId":"ledger-1"');
+      expect(last[2]).toContain(`"runId":"${runId}"`);
+    });
+
+    it('omits metadata from the pending commit payload when not provided', async () => {
+      const ops = [{ action: 'BUY', symbol: 'AAPL', qty: '10' }];
+      mockRedis.get.mockResolvedValue(JSON.stringify(ops));
+
+      await service.commit(TEST_USER_ID, 'no-metadata commit');
+
+      const calls = (mockRedis.setex as unknown as { mock: { calls: Array<[string, number, string]> } }).mock.calls;
+      const last = calls[calls.length - 1]!;
+      const payload = JSON.parse(last[2]);
+      expect(payload.metadata).toBeUndefined();
+    });
   });
 
   // ── Phase 3: Execute ────────────────────────────────────────────────────

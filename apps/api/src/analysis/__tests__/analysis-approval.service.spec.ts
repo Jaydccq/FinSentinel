@@ -71,6 +71,7 @@ const ledgerMock = {
   markDispatched: vi.fn().mockResolvedValue(undefined),
   markFailed: vi.fn().mockResolvedValue(undefined),
   listForRun: vi.fn().mockResolvedValue([]),
+  getByApprovalId: vi.fn().mockResolvedValue({ id: 'ledger-1', approvalId: 'appr-1' }),
 };
 
 describe('AnalysisApprovalService', () => {
@@ -271,7 +272,77 @@ describe('AnalysisApprovalService.resolve(APPROVE) with auto-dispatch', () => {
     );
     await svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' });
     expect(tradingStub.stage).toHaveBeenCalled();
-    expect(tradingStub.commit).toHaveBeenCalledWith('u1', expect.stringContaining('auto:run'));
+    expect(tradingStub.commit).toHaveBeenCalledWith('u1', expect.stringContaining('auto:run'), expect.anything());
     expect(tradingStub.execute).toHaveBeenCalledWith('u1');
+  });
+
+  it('marks the ledger COMMITTED and DISPATCHED when auto-dispatch succeeds', async () => {
+    const db = makeDb({ id: 'appr-1', runId: 'r1', status: 'PENDING', requestedPayloadJson: payload });
+    const events = { append: vi.fn().mockResolvedValue({}) };
+    const runsLocal = { markCompleted: vi.fn().mockResolvedValue(undefined), cancel: vi.fn() };
+    const checkpointsLocal = { writeExecutionPayload: vi.fn().mockResolvedValue({ id: 'art' }) };
+    const mapperLocal = { toUnifiedStageRequest: vi.fn().mockReturnValue({ action: 'BUY', symbol: 'AAPL', qty: '100' }) };
+    const mockTrading = {
+      stage: vi.fn().mockResolvedValue(undefined),
+      commit: vi.fn().mockResolvedValue({ hash: 'abc123', count: 1 }),
+      execute: vi.fn().mockResolvedValue({ fills: [{ orderId: 'f-1' }] }),
+    };
+    const svc = new AnalysisApprovalService(
+      db as never,
+      events as never,
+      runsLocal as never,
+      checkpointsLocal as never,
+      mapperLocal as never,
+      mockTrading as never,
+      { enabled: true },
+      undefined,
+      undefined,
+      ledgerMock as never,
+    );
+
+    await svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' });
+
+    expect(mockTrading.commit).toHaveBeenCalledWith(
+      'u1',
+      expect.stringContaining('auto:run r1'),
+      expect.objectContaining({ runId: 'r1', ledgerId: expect.any(String) }),
+    );
+    expect(ledgerMock.markCommitted).toHaveBeenCalledWith(
+      expect.objectContaining({ approvalId: 'appr-1', commitHash: 'abc123' }),
+    );
+    expect(ledgerMock.markDispatched).toHaveBeenCalledWith(
+      expect.objectContaining({ approvalId: 'appr-1', executionResultRef: 'abc123' }),
+    );
+  });
+
+  it('marks the ledger FAILED when auto-dispatch throws', async () => {
+    const db = makeDb({ id: 'appr-1', runId: 'r1', status: 'PENDING', requestedPayloadJson: payload });
+    const events = { append: vi.fn().mockResolvedValue({}) };
+    const runsLocal = { markCompleted: vi.fn().mockResolvedValue(undefined), cancel: vi.fn() };
+    const checkpointsLocal = { writeExecutionPayload: vi.fn().mockResolvedValue({ id: 'art' }) };
+    const mapperLocal = { toUnifiedStageRequest: vi.fn().mockReturnValue({ action: 'BUY', symbol: 'AAPL', qty: '100' }) };
+    const mockTrading = {
+      stage: vi.fn().mockResolvedValue(undefined),
+      commit: vi.fn().mockRejectedValue(new Error('redis down')),
+      execute: vi.fn(),
+    };
+    const svc = new AnalysisApprovalService(
+      db as never,
+      events as never,
+      runsLocal as never,
+      checkpointsLocal as never,
+      mapperLocal as never,
+      mockTrading as never,
+      { enabled: true },
+      undefined,
+      undefined,
+      ledgerMock as never,
+    );
+
+    await svc.resolve({ userId: 'u1', approvalId: 'appr-1', decision: 'APPROVE' });
+
+    expect(ledgerMock.markFailed).toHaveBeenCalledWith(
+      expect.objectContaining({ approvalId: 'appr-1', note: expect.stringContaining('redis down') }),
+    );
   });
 });
