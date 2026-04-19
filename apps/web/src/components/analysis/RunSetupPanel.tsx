@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { analysisRunsApi } from '../../api/analysis-runs'
+import { analysisRunsApi, type AnalysisStageKey } from '../../api/analysis-runs'
 
-const ALL_STAGES = ['INTELLIGENCE', 'THESIS', 'RISK', 'EXECUTION_PREP'] as const
+const ALL_STAGES = ['INTELLIGENCE', 'THESIS', 'RISK', 'EXECUTION_PREP'] as const satisfies readonly AnalysisStageKey[]
 
 export interface RunSetupPanelProps {
   portfolios: Array<{ id: string; name: string }>
@@ -15,11 +15,11 @@ export function RunSetupPanel({ portfolios, onRunCreated }: RunSetupPanelProps) 
   const [prompt, setPrompt] = useState('Complete analysis of AAPL with decision and order draft')
   const [portfolioId, setPortfolioId] = useState(portfolios[0]?.id ?? '')
   const [researchDepth, setResearchDepth] = useState<'SHALLOW' | 'STANDARD' | 'DEEP'>('STANDARD')
-  const [enabledTeams, setEnabledTeams] = useState<string[]>([...ALL_STAGES])
+  const [enabledTeams, setEnabledTeams] = useState<AnalysisStageKey[]>([...ALL_STAGES])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const toggleTeam = (key: string) => {
+  const toggleTeam = (key: AnalysisStageKey) => {
     setEnabledTeams((cur) =>
       cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key],
     )

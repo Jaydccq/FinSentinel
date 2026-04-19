@@ -10,6 +10,12 @@ export interface FinalReportPanelProps {
   artifacts: AnalysisArtifactResponse[]
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+}
+
 export function FinalReportPanel({ run, artifacts }: FinalReportPanelProps) {
   if (!run || (run.status !== 'COMPLETED' && run.status !== 'WAITING_APPROVAL')) {
     return null
@@ -17,9 +23,7 @@ export function FinalReportPanel({ run, artifacts }: FinalReportPanelProps) {
 
   const executionPayload = artifacts.find((a) => a.artifactKind === 'EXECUTION_PAYLOAD')
   const orderDrafts = artifacts.find((a) => a.artifactKind === 'ORDER_DRAFTS')
-  const riskReport = artifacts.find(
-    (a) => a.artifactKind === 'STAGE_STRUCTURED_OUTPUT' && a.artifactName.startsWith('risk-'),
-  )
+  const materializedExecutionPayload = asRecord(run.decisionObjectJson?.executionPayload)
 
   return (
     <section className="surface-panel rounded p-4 space-y-3">
@@ -27,17 +31,27 @@ export function FinalReportPanel({ run, artifacts }: FinalReportPanelProps) {
       {run.finalReportMarkdown && (
         <pre className="whitespace-pre-wrap text-sm">{run.finalReportMarkdown}</pre>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <div>
           <h3 className="text-sm font-semibold">Decision Object</h3>
           <pre className="text-xs bg-slate-950/70 p-2 rounded overflow-auto">
-            {JSON.stringify(riskReport?.payload ?? null, null, 2)}
+            {JSON.stringify(run.decisionObjectJson ?? null, null, 2)}
           </pre>
         </div>
         <div>
           <h3 className="text-sm font-semibold">Execution Payload</h3>
           <pre className="text-xs bg-slate-950/70 p-2 rounded overflow-auto">
-            {JSON.stringify(executionPayload?.payload ?? orderDrafts?.payload ?? null, null, 2)}
+            {JSON.stringify(
+              materializedExecutionPayload ?? executionPayload?.payload ?? orderDrafts?.payload ?? null,
+              null,
+              2,
+            )}
+          </pre>
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold">Shared Context</h3>
+          <pre className="text-xs bg-slate-950/70 p-2 rounded overflow-auto">
+            {JSON.stringify(run.sharedContextJson ?? null, null, 2)}
           </pre>
         </div>
       </div>

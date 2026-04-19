@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import type {
+  AnalysisStageKey,
   AnalysisRunResponse,
   AnalysisStageResponse,
 } from '../../api/analysis-runs'
@@ -26,15 +28,32 @@ export interface LiveProgressPanelProps {
   run: AnalysisRunResponse | null
   stages: AnalysisStageResponse[]
   onRefresh: () => void
+  onRetryStage?: (stageKey: AnalysisStageKey) => Promise<void>
 }
 
-export function LiveProgressPanel({ run, stages, onRefresh }: LiveProgressPanelProps) {
+export function LiveProgressPanel({
+  run,
+  stages,
+  onRefresh,
+  onRetryStage,
+}: LiveProgressPanelProps) {
+  const [retryingStage, setRetryingStage] = useState<AnalysisStageKey | null>(null)
   if (!run) return null
   const stageByKey = new Map(stages.map((s) => [s.stageKey, s] as const))
+  const canRetryRun = ['FAILED', 'PAUSED', 'WAITING_APPROVAL'].includes(run.status)
 
   const pause = async () => { await analysisRunsApi.pause(run.id); onRefresh() }
   const resume = async () => { await analysisRunsApi.resume(run.id); onRefresh() }
   const cancel = async () => { await analysisRunsApi.cancel(run.id); onRefresh() }
+  const retry = async (stageKey: AnalysisStageKey) => {
+    if (!onRetryStage) return
+    setRetryingStage(stageKey)
+    try {
+      await onRetryStage(stageKey)
+    } finally {
+      setRetryingStage(null)
+    }
+  }
 
   return (
     <section className="surface-panel rounded p-4 space-y-3">
@@ -63,13 +82,25 @@ export function LiveProgressPanel({ run, stages, onRefresh }: LiveProgressPanelP
         {TEAM_ORDER.map((key) => {
           const stage = stageByKey.get(key)
           const status = stage?.status ?? 'PENDING'
+          const canRetryStage = Boolean(onRetryStage && stage && canRetryRun && status !== 'PENDING')
           return (
             <li key={key} className="flex items-center justify-between rounded border border-slate-700 bg-slate-900/40 px-3 py-2">
               <span className="font-mono text-sm">{key}</span>
-              <span className={`status-chip border ${STATUS_STYLE[status] ?? STATUS_STYLE.PENDING}`}>
-                {status}
-                {stage?.checkpointVersion ? ` · v${stage.checkpointVersion}` : ''}
-              </span>
+              <div className="flex items-center gap-2">
+                {canRetryStage && (
+                  <button
+                    className="btn-secondary px-2 py-1 text-xs"
+                    disabled={retryingStage !== null}
+                    onClick={() => retry(key)}
+                  >
+                    {retryingStage === key ? 'Retrying' : 'Retry'}
+                  </button>
+                )}
+                <span className={`status-chip border ${STATUS_STYLE[status] ?? STATUS_STYLE.PENDING}`}>
+                  {status}
+                  {stage?.checkpointVersion ? ` · v${stage.checkpointVersion}` : ''}
+                </span>
+              </div>
             </li>
           )
         })}
