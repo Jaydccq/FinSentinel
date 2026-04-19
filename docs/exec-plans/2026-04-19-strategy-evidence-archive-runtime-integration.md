@@ -595,7 +595,9 @@ Do not expand this implementation to fix unrelated debt.
 - 2026-04-19: Chose programmatic Strategy Evidence Archive as the next highest-leverage implementation slice.
 - 2026-04-19: Wrote this plan. Implementation pending.
 - 2026-04-18: Completed the shared archive contract hardening slice. Converted `strategyArchivePayloadSchema` from a flat object to a `status`-discriminated union, enforced `ticker` for `EVALUATED`, `skipReason` plus empty evaluations for `SKIPPED`, and non-empty warnings for `DEGRADED`; added invalid-mix coverage and verified with the requested shared test command and typecheck.
+- 2026-04-18: Worker 6 completed the web operator-console summary slice. Added a web-side `StrategyArchivePayload` type alias and guard in `apps/web/src/api/analysis-runs.ts`, rendered a concise `Strategy Archive` summary in `apps/web/src/components/analysis/FinalReportPanel.tsx` only for typed archive payloads, and kept the legacy `{ snapshot: {} }` fallback hidden. Verified with `pnpm --filter @finsentinel/shared build`, `pnpm --filter @finsentinel/web typecheck`, and `pnpm --filter @finsentinel/web test -- src/api/__tests__/analysis-runs.test.ts`; `pnpm --filter @finsentinel/web lint` still fails because of pre-existing errors in `src/context/AuthContext.tsx` and `src/lib/tauri/__tests__/is-tauri.test.ts`.
+- 2026-04-18: Review follow-up closed the remaining web-side gap by switching analysis-run validation to shared `strategyArchivePayloadSchema.safeParse`, adding a malformed `SKIPPED` regression test, and redacting only legacy snapshot payloads before raw decision JSON stringify.
 
 ## Final Outcome
 
-Planning complete. No business code has been changed yet. The next implementation should execute the steps above in order and update this plan's progress log after each verified step.
+The strategy archive summary is now visible in the operator console without duplicating raw artifact JSON. The web type boundary and guard are in place, the snapshot fallback remains excluded from the summary, and the shared build plus web typecheck and focused test pass. Web lint still has unrelated pre-existing failures outside this slice.

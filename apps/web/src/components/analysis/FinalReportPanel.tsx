@@ -1,5 +1,9 @@
 'use client'
 
+import {
+  isStrategyArchivePayload,
+  sanitizeDecisionObjectJsonForDisplay,
+} from '../../api/analysis-runs'
 import type {
   AnalysisArtifactResponse,
   AnalysisRunResponse,
@@ -24,6 +28,14 @@ export function FinalReportPanel({ run, artifacts }: FinalReportPanelProps) {
   const executionPayload = artifacts.find((a) => a.artifactKind === 'EXECUTION_PAYLOAD')
   const orderDrafts = artifacts.find((a) => a.artifactKind === 'ORDER_DRAFTS')
   const materializedExecutionPayload = asRecord(run.decisionObjectJson?.executionPayload)
+  const decisionObjectJsonForDisplay = sanitizeDecisionObjectJsonForDisplay(
+    run.decisionObjectJson,
+  )
+  const strategyArchivePayload = isStrategyArchivePayload(
+    run.decisionObjectJson?.strategyArchivePayload,
+  )
+    ? run.decisionObjectJson.strategyArchivePayload
+    : null
 
   return (
     <section className="surface-panel rounded p-4 space-y-3">
@@ -31,11 +43,37 @@ export function FinalReportPanel({ run, artifacts }: FinalReportPanelProps) {
       {run.finalReportMarkdown && (
         <pre className="whitespace-pre-wrap text-sm">{run.finalReportMarkdown}</pre>
       )}
+      {strategyArchivePayload && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-semibold">Strategy Archive</h3>
+          <div className="grid grid-cols-1 gap-1 text-sm lg:grid-cols-2">
+            <div>
+              <span className="text-slate-400">Status:</span>{' '}
+              {strategyArchivePayload.status}
+            </div>
+            <div>
+              <span className="text-slate-400">Selected:</span>{' '}
+              {strategyArchivePayload.selectedTemplateKey ?? 'none'}
+            </div>
+            <div>
+              <span className="text-slate-400">Signals:</span>{' '}
+              {strategyArchivePayload.summary.enterLongCount} enter,{' '}
+              {strategyArchivePayload.summary.blockedCount} blocked
+            </div>
+            {strategyArchivePayload.summary.warnings.length > 0 && (
+              <div className="lg:col-span-2">
+                <span className="text-slate-400">Warnings:</span>{' '}
+                {strategyArchivePayload.summary.warnings.join('; ')}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <div>
           <h3 className="text-sm font-semibold">Decision Object</h3>
           <pre className="text-xs bg-slate-950/70 p-2 rounded overflow-auto">
-            {JSON.stringify(run.decisionObjectJson ?? null, null, 2)}
+            {JSON.stringify(decisionObjectJsonForDisplay ?? null, null, 2)}
           </pre>
         </div>
         <div>

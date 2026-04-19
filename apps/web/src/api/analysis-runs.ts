@@ -1,3 +1,8 @@
+import {
+  strategyArchivePayloadSchema,
+  type StrategyArchivePayload as SharedStrategyArchivePayload,
+} from '@finsentinel/shared';
+
 import { BASE, authHeaders } from './client';
 
 export type AnalysisStageKey =
@@ -35,12 +40,53 @@ export interface AnalysisRunResponse {
   parentChatSessionId: string | null;
   inputSnapshotJson: Record<string, unknown>;
   sharedContextJson: Record<string, unknown> | null;
-  decisionObjectJson: Record<string, unknown> | null;
+  decisionObjectJson: AnalysisDecisionObjectJson | null;
   finalReportMarkdown: string | null;
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
   archivedAt: string | null;
+}
+
+export type StrategyArchivePayload = SharedStrategyArchivePayload;
+
+export interface StrategyArchiveSnapshotFallback {
+  snapshot: Record<string, unknown>;
+}
+
+export interface AnalysisDecisionObjectJson extends Record<string, unknown> {
+  executionPayload?: Record<string, unknown>;
+  strategyArchivePayload?: StrategyArchivePayload | StrategyArchiveSnapshotFallback;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+export function isStrategyArchivePayload(
+  value: unknown,
+): value is StrategyArchivePayload {
+  return strategyArchivePayloadSchema.safeParse(value).success;
+}
+
+function isLegacyStrategyArchiveSnapshotFallback(
+  value: unknown,
+): value is StrategyArchiveSnapshotFallback {
+  return isRecord(value) && isRecord(value.snapshot);
+}
+
+export function sanitizeDecisionObjectJsonForDisplay(
+  value: AnalysisDecisionObjectJson | null,
+): Record<string, unknown> | null {
+  if (!isRecord(value)) return null;
+  if (!isLegacyStrategyArchiveSnapshotFallback(value.strategyArchivePayload)) {
+    return value;
+  }
+
+  return {
+    ...value,
+    strategyArchivePayload: '[redacted legacy snapshot]',
+  };
 }
 
 export interface AnalysisStageResponse {

@@ -1,4 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type {
+  AnalysisDecisionObjectJson,
+  StrategyArchivePayload,
+} from '../analysis-runs';
 
 // Stub fetch before importing the module so the internal json() helper picks it up.
 const fetchMock = vi.fn();
@@ -10,7 +14,11 @@ vi.mock('../client', () => ({
   authHeaders: () => ({}),
 }));
 
-const { analysisRunsApi } = await import('../analysis-runs');
+const {
+  analysisRunsApi,
+  isStrategyArchivePayload,
+  sanitizeDecisionObjectJsonForDisplay,
+} = await import('../analysis-runs');
 
 describe('analysisRunsApi', () => {
   beforeEach(() => {
@@ -62,6 +70,81 @@ describe('analysisRunsApi', () => {
     const call = fetchMock.mock.calls[0];
     expect(call?.[0]).toContain('/analysis/runs/r1/stages/RISK/retry');
     expect((call?.[1] as RequestInit).method).toBe('POST');
+  });
+
+  it('isStrategyArchivePayload() accepts typed archives and rejects snapshot fallbacks', () => {
+    expect(
+      isStrategyArchivePayload({
+        status: 'EVALUATED',
+        ticker: 'AAPL',
+        generatedAt: '2026-04-18T12:00:00.000Z',
+        bars: { requestedDays: 260, receivedBars: 260, source: 'daily' },
+        evaluations: [],
+        selectedTemplateKey: null,
+        summary: {
+          enterLongCount: 1,
+          blockedCount: 2,
+          warnings: ['Fee drag is high'],
+          recommendedNextStep: 'REVIEW_FOR_BACKTEST',
+        },
+      }),
+    ).toBe(true);
+
+    expect(isStrategyArchivePayload({ snapshot: {} })).toBe(false);
+  });
+
+  it('isStrategyArchivePayload() rejects malformed skipped archives without a skip reason', () => {
+    expect(
+      isStrategyArchivePayload({
+        status: 'SKIPPED',
+        generatedAt: '2026-04-18T12:00:00.000Z',
+        bars: { requestedDays: 260, receivedBars: 0, source: 'daily' },
+        evaluations: [],
+        selectedTemplateKey: null,
+        summary: {
+          enterLongCount: 0,
+          blockedCount: 0,
+          warnings: [],
+          recommendedNextStep: null,
+        },
+      }),
+    ).toBe(false);
+  });
+
+  it('sanitizeDecisionObjectJsonForDisplay() redacts only legacy snapshot payloads', () => {
+    const typedPayload: StrategyArchivePayload = {
+      status: 'EVALUATED',
+      ticker: 'AAPL',
+      generatedAt: '2026-04-18T12:00:00.000Z',
+      bars: { requestedDays: 260, receivedBars: 260, source: 'daily' },
+      evaluations: [],
+      selectedTemplateKey: null,
+      summary: {
+        enterLongCount: 0,
+        blockedCount: 0,
+        warnings: [],
+        recommendedNextStep: null,
+      },
+    };
+    const typedDecisionObject: AnalysisDecisionObjectJson = {
+      decision: 'HOLD',
+      strategyArchivePayload: typedPayload,
+    };
+    const legacyDecisionObject: AnalysisDecisionObjectJson = {
+      decision: 'HOLD',
+      strategyArchivePayload: { snapshot: { secret: 'should-not-render' } },
+    };
+
+    expect(sanitizeDecisionObjectJsonForDisplay(typedDecisionObject)).toEqual(
+      typedDecisionObject,
+    );
+
+    const sanitized = sanitizeDecisionObjectJsonForDisplay(legacyDecisionObject);
+    expect(JSON.stringify(sanitized)).not.toContain('should-not-render');
+    expect(sanitized).toMatchObject({
+      decision: 'HOLD',
+      strategyArchivePayload: '[redacted legacy snapshot]',
+    });
   });
 
   it('stream() reads SSE timeline events with the cursor query', async () => {
