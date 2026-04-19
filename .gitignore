@@ -105,6 +105,7 @@ docs/exec-plans/*
 !docs/runbooks/
 docs/runbooks/*
 !docs/runbooks/2026-04-16-multi-agent-runtime-rollout.md
+!docs/runbooks/2026-04-19-rag-wave2-rollout.md
 work-log/
 work-logs/
 
