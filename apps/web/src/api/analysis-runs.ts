@@ -125,6 +125,28 @@ export interface AnalysisApprovalResponse {
   requestedAt: string;
 }
 
+export interface ExecutionReviewLedgerResponse {
+  id: string;
+  runId: string;
+  approvalId: string;
+  status:
+    | 'DRAFTED'
+    | 'STAGED'
+    | 'COMMITTED'
+    | 'APPROVED'
+    | 'DISPATCHED'
+    | 'EXECUTED'
+    | 'REJECTED'
+    | 'FAILED';
+  orderDraftRefs: string[];
+  stagedOperationRefs: string[];
+  commitHash: string | null;
+  executionResultRef: string | null;
+  rejectionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RunContextLayer {
   summary: string;
   sourceIds: string[];
@@ -279,5 +301,11 @@ export const analysisRunsApi = {
   getContext: (id: string) => json<RunContext>(`/analysis/runs/${id}/context`),
   getStageInput: (id: string, stageKey: AnalysisStageKey) =>
     json<Record<string, unknown> | null>(`/analysis/runs/${id}/stages/${stageKey}/input`),
+  getLedger: (runId: string) =>
+    json<ExecutionReviewLedgerResponse[]>(`/analysis/runs/${runId}/ledger`),
+  commitLedger: (ledgerId: string) =>
+    json<{ ok: true }>(`/analysis/ledgers/${ledgerId}/commit`, { method: 'POST' }),
+  dispatchLedger: (ledgerId: string) =>
+    json<{ ok: true }>(`/analysis/ledgers/${ledgerId}/dispatch`, { method: 'POST' }),
   stream: streamRun,
 };

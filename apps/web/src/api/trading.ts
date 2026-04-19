@@ -87,6 +87,7 @@ export interface V2TradeCommit {
   timestamp: string
   operations: V2TradeOperation[]
   results: Record<string, unknown>[]
+  metadata?: { ledgerId?: string; runId?: string }
 }
 
 export interface V2StagedOrders {
