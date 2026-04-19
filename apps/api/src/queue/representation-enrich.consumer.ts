@@ -10,7 +10,8 @@ import type { RepresentationEnrichJobData } from './representation-enrich.produc
 export class RepresentationEnrichConsumer implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RepresentationEnrichConsumer.name);
   private readonly concurrency: number;
-  private worker!: Worker<RepresentationEnrichJobData>;
+  private readonly enabled: boolean;
+  private worker?: Worker<RepresentationEnrichJobData>;
 
   constructor(
     @Inject('BULLMQ_CONNECTION') private readonly connection: ConnectionOptions,
@@ -18,9 +19,14 @@ export class RepresentationEnrichConsumer implements OnModuleInit, OnModuleDestr
     configService: ConfigService,
   ) {
     this.concurrency = configService.get<number>('RAG_REPRESENTATION_CONCURRENCY', 4);
+    this.enabled = configService.get<boolean>('RAG_ENRICHMENT_ENABLED', false);
   }
 
   onModuleInit(): void {
+    if (!this.enabled) {
+      this.logger.log('RepresentationEnrichConsumer disabled (RAG_ENRICHMENT_ENABLED=false)');
+      return;
+    }
     this.worker = new Worker<RepresentationEnrichJobData>(
       REPRESENTATION_ENRICH_QUEUE,
       async (job) => this.process(job),

@@ -676,3 +676,63 @@ Next: T1.C — golden set candidate export CLI.
 - Modified `apps/api/src/rag/rag.module.ts`: registered and exported `QueryVariantService`.
 - Tests: created `query-variant.service.spec.ts` (9 tests), expanded `retrieval-planner.service.spec.ts` (24 tests). All 134 test files, 1126 tests pass. Typecheck clean.
 - Commit: `e42c2ae`.
+
+### 2026-04-19 — Subagent-driven implementation sweep (T1–T8 landed)
+
+All eight tasks in the plan were executed on branch `feat/rag-redesign` via the `superpowers:subagent-driven-development` skill with per-task implementer + reviewer + inline-fix subagents. Final state: 30 commits, 1202/1202 tests passing, `pnpm --filter @finsentinel/api typecheck` + `pnpm --filter @finsentinel/db typecheck` clean.
+
+Commit trail:
+
+- T1.A (`091a74d` + `0ceb8f8`) — stable `chunkId`/`sourceId` on `RagSearchResult` across single-stage, multi-stage, and fallback paths. Added `RagChunkRecord.id` field. Flag-off regression test locks current dense-only top-10 output.
+- T1.B (`9a9ed51` + `495d33d`) — Python evaluator now emits `strict.recall@k` + `lenient.recall@k` + `strict.mrr@k` + `lenient.mrr@k` + `precision@k`. `check_minimum_metrics` helper with unknown-key guard; CI gate exits 1 on violation after writing partial report.
+- T1.C (`049060e` + `e016c92` + `fdac464`) — NestJS CLI `rag:golden:export` pulls candidates from `chat_messages`, `agent_events`, and reverse-from-chunks. Dry-run uses stub LLM so `OPENROUTER_API_KEY` is not required under dry-run. Never overwrites `golden.json`.
+- T2.A (`52a5eed` + `1392c6c`) — V16 migration adds `document_chunk_representations` with FK CASCADE, partial HNSW on embedding (WHERE representation_type IN ('contextual_text','sample_question')), GIN on search_vector, `-- ROLLBACK:` block. Structural columns `parent_id`, `section_path`, `enrichment_status` added to `document_chunks`.
+- T2.B (`1ed762c` + `732d014`) — `ChunkRepresentationService` generates 4 reps per chunk in one LLM call, embeds contextual + sample_question only, 429 circuit breaker with 2 s floor, `CURRENT_REPRESENTATION_VERSION='rep-v1.0'`, `ChunkNotFoundError` re-thrown by consumer so BullMQ retries. `RAG_ENRICHMENT_ENABLED` (default false) gates both producer enqueue and consumer worker start.
+- T2.C (`776360d` + `7137578`) — `rag:backfill:representations` + `rag:repr:reindex` admin CLIs. Both refuse to run without `--dry-run` when enrichment is disabled. Rejected reindex `--from-version` values that don't match `^rep-v\d+\.\d+$`.
+- T3 (`1f63e45` + `ba21b85`) — `MarkdownStructureService` parses ATX + setext headings, tables, fenced code. `chunkStructured` respects heading boundaries first. `sectionPath` + `title` threaded to `document_chunks.section_path` + `meta_title`.
+- T4 (`e42c2ae` + `9e5e49b`) — `QueryVariantService` with HyDE + decompose. Regex classifier (no LLM): `multi_part > analytical > relational > factoid`. `RetrievalPlan` extended with `queryClass`, `variants[]`, `fallbackFlags[]`. Original query always first variant.
+- T5.A (`c34175e` + `2f04903`) — Orchestrator runs dense over canonical + `contextual_text` + `sample_question` with inner-RRF dedup by canonical chunkId. Sparse search joins `document_chunk_representations` for `contextual_text | sample_question | keyword_entity` and takes MAX rank per chunk. `MetadataPreFilterService` is a thin v1 passthrough seam. Up to 4 variants per orchestration. `representationTypesSeen` changed from comma-joined string to `string[]`.
+- T5.B (`c5852ee` + `efc5183`) — Rerank payload now carries `[Title: …] [Section: …]` preamble bounded by `RAG_RERANK_MAX_TOKENS=480`; preamble is dropped first when over budget, chunk evidence is never dropped. Response is zod-parsed; malformed 200 routes to RRF fallback with `fallbackReason='rerank_malformed'` counter. `ContextExpanderService` pulls parent-section and neighbor chunks for top-N reranked candidates only; expanded chunks get 0.75× rerankScore. Behind `RAG_CONTEXT_EXPANSION_ENABLED` (default false).
+- T6 (`073ba1d` + `821f024`) — V17 creates `rag_query_logs` partitioned monthly with default partition + ROLLBACK block + pgcrypto extension. `RagTraceService` hashes queries by default; `query_preview` stored only when `RAG_QUERY_LOG_PII_ENABLED=true`. Sampling is deterministic per query_hash; fallback-flagged and malformed-rerank traces always logged regardless of rate. `RagTraceRetentionService` is a daily cron that drops confirmed partitions older than `RAG_QUERY_LOG_RETENTION_DAYS` and preemptively creates next month's partition. `RAG_QUERY_LOG_RETENTION_ENABLED` default false.
+- T7 (`e0ac287` + `4e34fcd` + `f43755a`) — `GraphEnrichConsumer` now sends `extract_relations: true` to the sidecar, zod-parses per relation row (malformed rows dropped, not the whole array), filters by `RAG_GRAPH_MIN_RELATION_CONFIDENCE=0.5`, maps source/target/chunk via `entityIdMap` + `chunks[index]`, writes every column explicitly. Counter `rag_graph_relations_inserted_total{relation_type}` emitted. `GraphRetrievalService` short-circuits when no entity match. `RAG_GRAPH_ENABLED` corrected to default false.
+- T8 (`24785b8`) — `docs/exec-plans/2026-04-19-desktop-rag-parity-notes.md` captures the compatibility-only decision. Web unit tests prove `hybridSearch` merges upgraded cloud hits (with new T-series fields) with local `SearchHit` unchanged; no `apps/desktop/src-tauri` code changes this wave.
+
+### Post-sweep tightening
+
+- `apps/api/src/queue/representation-enrich.consumer.ts` — added `RAG_ENRICHMENT_ENABLED` gate at `onModuleInit` so the BullMQ worker doesn't start until the master flag is on. Producer was already gated; this adds defense-in-depth and saves a Redis connection on fresh envs.
+
+### Flag posture (all default OFF unless noted)
+
+- `RAG_MULTI_STAGE_ENABLED` — off. Master switch for the multi-stage pipeline.
+- `RAG_ENRICHMENT_ENABLED` — off. Gates representation generation producer + consumer worker.
+- `RAG_HYDE_ENABLED` — off. Gates HyDE variant generation for analytical queries.
+- `RAG_QUERY_DECOMPOSE_ENABLED` — off. Gates decomposition variant generation.
+- `RAG_GRAPH_ENABLED` — off. Corrected this sweep.
+- `RAG_CONTEXT_EXPANSION_ENABLED` — off. Gates post-rerank parent/neighbor expansion.
+- `RAG_QUERY_LOG_PII_ENABLED` — off. When off, `query_preview` is always null.
+- `RAG_QUERY_LOG_RETENTION_ENABLED` — off. Retention cron no-ops until operator opts in.
+- `RAG_QUERY_REWRITE_ENABLED` — on (pre-existing).
+- `RAG_REINDEX_ENABLED` — on (pre-existing).
+
+### Full env var inventory (introduced or touched this sweep)
+
+`RAG_REPRESENTATION_CONCURRENCY=4`, `RAG_REPRESENTATION_BATCH_SIZE=50`, `RAG_REPRESENTATION_MAX_CHUNKS_PER_DOC=2000`, `RAG_RERANK_MAX_TOKENS=480`, `RAG_CONTEXT_EXPANSION_TOP_N=10`, `RAG_QUERY_LOG_SAMPLE_RATE=1.0`, `RAG_QUERY_LOG_RETENTION_DAYS=30`, `RAG_GRAPH_MIN_RELATION_CONFIDENCE=0.5`, plus all flags above.
+
+### Deferred / follow-up (do NOT ship with this branch)
+
+1. **`rag_query_logs.lane_counts` dead column** — `RetrievalOrchestratorService.orchestrate()` returns `FusedCandidate[]` only; per-lane candidate counts are not threaded through to `RagTraceService`, so `lane_counts` is always `{}`. Either drop the column from V17 or extend `orchestrate()` to return `{fused, laneCounts}`. Tracked.
+2. **`representationTypesSeen` not in trace** — the provenance is computed in `RetrievalFusionService` but discarded before `RagTraceService.recordTrace`. Wire it through for failure mining.
+3. **Python sidecar** still ignores `extract_relations: true`. The TS path is complete; relation rows only land once `services/reranker/routers/entities.py` ships the optional `relations` field.
+4. **`knowledge_relations` uniqueness** — no unique index on `(source_entity_id, target_entity_id, relation_type, source_chunk_id)` yet. TS-side Set dedup prevents same-run duplicates; consider a migration before enabling graph lane in production.
+5. **Classifier accuracy gate** (plan line 466) — `RAG_GRAPH_ENABLED` default-on still requires relational-subset eval (`python3 services/evaluation-runner/run_evaluation.py compare …`) showing non-regression on overall strict.recall@10 AND ≥ +5 pp on relational-tagged subset.
+6. **Rollout runbook** — `docs/runbooks/2026-04-19-rag-redesign-rollout.md` should sequence V16 → V17 → backfill dry-run → enable `RAG_ENRICHMENT_ENABLED` → flip `RAG_MULTI_STAGE_ENABLED`. Not written this sweep.
+7. **`RagRetrievalService.search()` synchronous catch path** — canonical sub-query in `searchRepresentations` lacks the `.catch(() => [])` that rep sub-queries carry. Minor asymmetry; intentional per current design but worth aligning in a cleanup pass.
+8. **Golden-set real labels** — `golden.json` is still synthetic. Task 1.C shipped the candidate export CLI; the next operator action is to run it against a real dev DB, have a human reviewer approve the draft, and land the labeled set.
+9. **`laneCounts`, metric name review** — no collisions this sweep, but new counters: `rag_rerank_preamble_dropped_total`, `rag_rerank_malformed_total`, `rag_rerank_fallback_total{reason}`, `rag_representation_enrich_total{status}`, `rag_representation_circuit_breaker_trips_total`, `rag_graph_relations_inserted_total{relation_type}`, `rag_trace_writes_total{sampled,always_logged}`, `rag_trace_partitions_dropped_total`, `rag_trace_partitions_created_total`. Register in Grafana dashboards.
+
+### Verification summary
+
+- `pnpm --filter @finsentinel/api test` — 1202 passed, 139 files.
+- `pnpm --filter @finsentinel/api typecheck` — clean.
+- `pnpm --filter @finsentinel/db typecheck` — clean.
+- Branch not yet merged; no migrations applied to dev DB.
