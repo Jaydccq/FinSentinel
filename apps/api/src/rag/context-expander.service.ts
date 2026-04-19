@@ -65,8 +65,9 @@ export class ContextExpanderService {
       }
 
       let rows: ExpandedChunkRow[];
+      const useSectionPath = sectionPath !== null && options.fetchParentSection !== false;
       try {
-        if (sectionPath) {
+        if (useSectionPath) {
           rows = await this.queryWithSectionPath(
             candidate.sourceId,
             sectionPath,
@@ -121,10 +122,7 @@ export class ContextExpanderService {
       SELECT id, source_id, chunk_index, content, metadata, meta_title, section_path, parent_id
       FROM document_chunks
       WHERE source_id = ${sourceId}
-        AND (
-          (section_path = ${sectionPath})
-          OR (section_path LIKE ${sectionPath + '%'})
-        )
+        AND section_path LIKE ${sectionPath + '%'}
         AND chunk_index BETWEEN ${chunkIndex - W} AND ${chunkIndex + W}
         AND id != ${excludeId}
       ORDER BY chunk_index
