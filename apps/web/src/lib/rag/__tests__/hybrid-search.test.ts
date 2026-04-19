@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { hybridSearch, type HybridHit } from '../hybrid-search';
+import { hybridSearch } from '../hybrid-search';
 
 describe('hybridSearch', () => {
   it('merges and tags results from both sources', async () => {
