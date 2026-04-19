@@ -263,5 +263,8 @@ export const analysisRunsApi = {
     json<{ ok: true }>(`/analysis/runs/${id}/stages/${stageKey}/retry`, {
       method: 'POST',
     }),
+  getContext: (id: string) => json<Record<string, unknown>>(`/analysis/runs/${id}/context`),
+  getStageInput: (id: string, stageKey: AnalysisStageKey) =>
+    json<Record<string, unknown> | null>(`/analysis/runs/${id}/stages/${stageKey}/input`),
   stream: streamRun,
 };

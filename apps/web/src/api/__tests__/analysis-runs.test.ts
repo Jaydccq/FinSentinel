@@ -187,4 +187,18 @@ describe('analysisRunsApi', () => {
       }),
     ]);
   });
+
+  it('getContext() GETs /analysis/runs/:id/context', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) });
+    await analysisRunsApi.getContext('run-1');
+    const calledUrl = (fetchMock.mock.calls[0]?.[0] ?? '') as string;
+    expect(calledUrl).toContain('/analysis/runs/run-1/context');
+  });
+
+  it('getStageInput() GETs /analysis/runs/:id/stages/:stageKey/input', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, status: 200, json: async () => null });
+    await analysisRunsApi.getStageInput('run-1', 'THESIS');
+    const calledUrl = (fetchMock.mock.calls[0]?.[0] ?? '') as string;
+    expect(calledUrl).toContain('/analysis/runs/run-1/stages/THESIS/input');
+  });
 });
