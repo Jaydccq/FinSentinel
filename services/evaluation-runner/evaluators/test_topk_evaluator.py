@@ -130,3 +130,7 @@ def test_lenient_never_below_strict(
             f"lenient.recall@{k} < strict.recall@{k}: "
             f"{metrics[f'lenient.recall@{k}']} < {metrics[f'strict.recall@{k}']}"
         )
+        assert metrics[f"lenient.mrr@{k}"] >= metrics[f"strict.mrr@{k}"] - 1e-9, (
+            f"lenient.mrr@{k} < strict.mrr@{k}: "
+            f"{metrics[f'lenient.mrr@{k}']} < {metrics[f'strict.mrr@{k}']}"
+        )
