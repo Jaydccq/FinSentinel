@@ -6,9 +6,13 @@ import type { DrizzleDB } from '@finsentinel/db';
 import {
   AgentEventAggregateType,
   AgentEventType,
-  type AnalysisStageKey,
-  type StageStructuredOutput,
   stageStructuredOutputSchema,
+  strategyArchivePayloadSchema,
+} from '@finsentinel/shared';
+import type {
+  AnalysisStageKey,
+  StageStructuredOutput,
+  StrategyArchivePayload,
 } from '@finsentinel/shared';
 import { AgentEventService } from '../events/agent-event.service';
 
@@ -131,6 +135,43 @@ export class AnalysisCheckpointService {
       { stageKey: args.stageKey, checkpointVersion: nextVersion },
       null,
     );
+  }
+
+  async writeStrategyArchive(args: {
+    userId: string;
+    runId: string;
+    stageKey: AnalysisStageKey;
+    payload: StrategyArchivePayload;
+  }): Promise<void> {
+    const parsed = strategyArchivePayloadSchema.parse(args.payload);
+
+    const [stage] = await this.db
+      .select()
+      .from(analysisStages)
+      .where(
+        and(
+          eq(analysisStages.runId, args.runId),
+          eq(analysisStages.stageKey, args.stageKey),
+        ),
+      )
+      .limit(1);
+    if (!stage) {
+      throw new NotFoundException(
+        `Stage ${args.stageKey} not found for run ${args.runId}`,
+      );
+    }
+    const row = stage as StageRow;
+
+    await this.db.insert(analysisArtifacts).values({
+      id: randomUUID(),
+      runId: args.runId,
+      stageId: row.id,
+      artifactKind: 'STRATEGY_ARCHIVE',
+      artifactName: 'strategy-archive.json',
+      mimeType: 'application/json',
+      payloadJson: parsed as Record<string, unknown>,
+      createdAt: new Date(),
+    });
   }
 
   async findByStage(runId: string, stageKey: AnalysisStageKey): Promise<{

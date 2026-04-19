@@ -370,6 +370,10 @@ Expected:
 - Invalid payload is rejected before insert.
 - Existing `commitStage` tests still pass.
 
+**Progress log**
+
+- 2026-04-18: Worker 3 completed the checkpoint persistence slice. Added `writeStrategyArchive(...)` to `AnalysisCheckpointService` with shared `strategyArchivePayloadSchema` validation, stage lookup by `(runId, stageKey)`, `STRATEGY_ARCHIVE` artifact insertion, and `NotFoundException` parity with `commitStage`. Added focused tests for successful insert, schema rejection, and missing-stage behavior. Verified with `pnpm --filter @finsentinel/shared build`, `pnpm --filter @finsentinel/db build`, and `pnpm --filter @finsentinel/api exec vitest run src/analysis/__tests__/analysis-checkpoint.service.spec.ts` passing. The exact requested `pnpm --filter @finsentinel/api test -- src/analysis/__tests__/analysis-checkpoint.service.spec.ts` command still fails due unrelated repo-wide integration/environment failures in other suites, while `pnpm --filter @finsentinel/api typecheck` passes.
+
 ### Step 4: Attach Strategy Archive To Intelligence Stage
 
 **Files**
