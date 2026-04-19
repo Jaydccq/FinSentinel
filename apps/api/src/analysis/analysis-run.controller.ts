@@ -18,6 +18,7 @@ import { AnalysisRunService } from './analysis-run.service';
 import { AnalysisRunProducer } from '../queue/analysis-run.producer';
 import { ContextJournalService } from './context-journal.service';
 import { RuntimeControlService } from './runtime-control.service';
+import { ExecutionReviewLedgerService } from './execution-review-ledger.service';
 
 @Controller('analysis/runs')
 @UseGuards(JwtGuard)
@@ -27,6 +28,7 @@ export class AnalysisRunController {
     private readonly producer: AnalysisRunProducer,
     private readonly contextJournal: ContextJournalService,
     private readonly runtimeControl: RuntimeControlService,
+    private readonly ledger: ExecutionReviewLedgerService,
   ) {}
 
   @Post()
@@ -154,5 +156,15 @@ export class AnalysisRunController {
     }
 
     return snapshot;
+  }
+
+  @Get(':id/ledger')
+  async getLedger(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ): Promise<unknown> {
+    const run = await this.runs.getForUser(user.userId, id);
+    if (!run) throw new NotFoundException(`Run ${id} not found`);
+    return this.ledger.listForRun(id);
   }
 }

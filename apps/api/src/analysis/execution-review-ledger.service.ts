@@ -1,8 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
-import { executionReviewLedgers } from '@finsentinel/db';
+import { analysisRuns, executionReviewLedgers } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
+import { UnifiedTradingService } from '../trading/unified-trading.service';
 
 type LedgerRow = {
   id: string;
@@ -20,7 +21,10 @@ type LedgerRow = {
 
 @Injectable()
 export class ExecutionReviewLedgerService {
-  constructor(@Inject('DRIZZLE_DB') private readonly db: DrizzleDB) {}
+  constructor(
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
+    private readonly trading: UnifiedTradingService,
+  ) {}
 
   async createDraft(args: { runId: string; approvalId: string; orderDraftRefs: string[] }): Promise<LedgerRow> {
     // Every nullable column explicit — Postgres.js mixed-default bind bug.
@@ -111,5 +115,60 @@ export class ExecutionReviewLedgerService {
       .from(executionReviewLedgers)
       .where(eq(executionReviewLedgers.runId, runId));
     return rows as LedgerRow[];
+  }
+
+  async commitManual(userId: string, ledgerId: string): Promise<void> {
+    const ledger = await this.requireOwnedLedger(userId, ledgerId);
+    if (ledger.status !== 'APPROVED') {
+      throw new BadRequestException(`Cannot commit ledger in status ${ledger.status}`);
+    }
+    const committed = await this.trading.commit(
+      userId,
+      `manual:run ${ledger.runId}`,
+      { runId: ledger.runId, ledgerId: ledger.id },
+    );
+    await this.db
+      .update(executionReviewLedgers)
+      .set({
+        status: 'COMMITTED',
+        commitHash: committed.hash,
+        updatedAt: new Date(),
+      })
+      .where(eq(executionReviewLedgers.id, ledger.id));
+  }
+
+  async dispatchManual(userId: string, ledgerId: string): Promise<void> {
+    const ledger = await this.requireOwnedLedger(userId, ledgerId);
+    if (ledger.status !== 'COMMITTED') {
+      throw new BadRequestException(`Cannot dispatch ledger in status ${ledger.status}`);
+    }
+    await this.trading.execute(userId);
+    await this.db
+      .update(executionReviewLedgers)
+      .set({
+        status: 'EXECUTED',
+        executionResultRef: ledger.commitHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(executionReviewLedgers.id, ledger.id));
+  }
+
+  private async requireOwnedLedger(userId: string, ledgerId: string): Promise<LedgerRow> {
+    const [ledgerRow] = await this.db
+      .select()
+      .from(executionReviewLedgers)
+      .where(eq(executionReviewLedgers.id, ledgerId))
+      .limit(1);
+    if (!ledgerRow) throw new NotFoundException(`Ledger ${ledgerId} not found`);
+    const ledger = ledgerRow as LedgerRow;
+    const [runRow] = await this.db
+      .select()
+      .from(analysisRuns)
+      .where(eq(analysisRuns.id, ledger.runId))
+      .limit(1);
+    if (!runRow || (runRow as { userId?: string }).userId !== userId) {
+      throw new NotFoundException(`Ledger ${ledgerId} not found`);
+    }
+    return ledger;
   }
 }

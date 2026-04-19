@@ -17,6 +17,7 @@ import { AnalysisController } from './analysis.controller';
 import { AnalysisRunController } from './analysis-run.controller';
 import { AnalysisStreamController } from './analysis-stream.controller';
 import { AnalysisApprovalController } from './analysis-approval.controller';
+import { AnalysisLedgerController } from './analysis-ledger.controller';
 import { AnalysisRunService } from './analysis-run.service';
 import { AnalysisCheckpointService } from './analysis-checkpoint.service';
 import { AnalysisApprovalService } from './analysis-approval.service';
@@ -74,6 +75,7 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
     AnalysisRunController,
     AnalysisStreamController,
     AnalysisApprovalController,
+    AnalysisLedgerController,
   ],
   providers: [
     AnalysisRunService,

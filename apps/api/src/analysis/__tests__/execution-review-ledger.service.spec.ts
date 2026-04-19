@@ -1,3 +1,4 @@
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { ExecutionReviewLedgerService } from '../execution-review-ledger.service';
 
@@ -11,6 +12,22 @@ describe('ExecutionReviewLedgerService', () => {
     const update = vi.fn().mockReturnValue({ set: setUpdate });
     const select = vi.fn();
     return { insert, update, select, returning, values, setUpdate, whereUpdate };
+  }
+
+  /** Build a chainable select mock that returns `rows` for the first call and `secondRows` for the second call. */
+  function makeSelectSequence(firstRows: unknown[], secondRows: unknown[]) {
+    let callCount = 0;
+    const makeChain = (rows: unknown[]) => {
+      const limit = vi.fn().mockResolvedValue(rows);
+      const where = vi.fn().mockReturnValue({ limit });
+      const from = vi.fn().mockReturnValue({ where });
+      return { from, where, limit };
+    };
+    return vi.fn().mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return makeChain(firstRows);
+      return makeChain(secondRows);
+    });
   }
 
   it('createDraft inserts a DRAFTED row bound to run + approval + draft refs', async () => {
@@ -55,5 +72,84 @@ describe('ExecutionReviewLedgerService', () => {
     const svc = new ExecutionReviewLedgerService(db as never);
     const row = await svc.getByApprovalId('approval-1');
     expect(row?.id).toBe('ledger-1');
+  });
+
+  describe('commitManual', () => {
+    const userId = 'user-1';
+    const ledgerId = 'ledger-1';
+    const runId = 'run-1';
+
+    it('commits the staged trading ops and marks the ledger COMMITTED when state is APPROVED', async () => {
+      const db = makeDb();
+      // First select: ledger row in APPROVED state
+      // Second select: run row owned by userId
+      db.select = makeSelectSequence(
+        [{ id: ledgerId, runId, approvalId: 'approval-1', status: 'APPROVED', commitHash: null }],
+        [{ id: runId, userId }],
+      );
+      const tradingMock = { commit: vi.fn().mockResolvedValue({ hash: 'c1', count: 1 }) };
+      const svc = new ExecutionReviewLedgerService(db as never, tradingMock as never);
+      await svc.commitManual(userId, ledgerId);
+      expect(tradingMock.commit).toHaveBeenCalledWith(
+        userId,
+        expect.stringContaining(runId),
+        expect.objectContaining({ runId, ledgerId }),
+      );
+      expect(db.setUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'COMMITTED', commitHash: 'c1' }),
+      );
+    });
+
+    it('throws BadRequestException when the ledger is not APPROVED', async () => {
+      const db = makeDb();
+      db.select = makeSelectSequence(
+        [{ id: ledgerId, runId, approvalId: 'approval-1', status: 'DRAFTED', commitHash: null }],
+        [{ id: runId, userId }],
+      );
+      const tradingMock = { commit: vi.fn() };
+      const svc = new ExecutionReviewLedgerService(db as never, tradingMock as never);
+      await expect(svc.commitManual(userId, ledgerId)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFoundException when the ledger does not exist or belongs to another user', async () => {
+      const db = makeDb();
+      // Empty first select → ledger not found
+      db.select = makeSelectSequence([], []);
+      const tradingMock = { commit: vi.fn() };
+      const svc = new ExecutionReviewLedgerService(db as never, tradingMock as never);
+      await expect(svc.commitManual(userId, ledgerId)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('dispatchManual', () => {
+    const userId = 'user-1';
+    const ledgerId = 'ledger-1';
+    const runId = 'run-1';
+
+    it('executes and marks the ledger EXECUTED when state is COMMITTED', async () => {
+      const db = makeDb();
+      db.select = makeSelectSequence(
+        [{ id: ledgerId, runId, approvalId: 'approval-1', status: 'COMMITTED', commitHash: 'c1' }],
+        [{ id: runId, userId }],
+      );
+      const tradingMock = { execute: vi.fn().mockResolvedValue({ report: 'ok' }) };
+      const svc = new ExecutionReviewLedgerService(db as never, tradingMock as never);
+      await svc.dispatchManual(userId, ledgerId);
+      expect(tradingMock.execute).toHaveBeenCalledWith(userId);
+      expect(db.setUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'EXECUTED' }),
+      );
+    });
+
+    it('throws BadRequestException when the ledger is not COMMITTED', async () => {
+      const db = makeDb();
+      db.select = makeSelectSequence(
+        [{ id: ledgerId, runId, approvalId: 'approval-1', status: 'DRAFTED', commitHash: null }],
+        [{ id: runId, userId }],
+      );
+      const tradingMock = { execute: vi.fn() };
+      const svc = new ExecutionReviewLedgerService(db as never, tradingMock as never);
+      await expect(svc.dispatchManual(userId, ledgerId)).rejects.toThrow(BadRequestException);
+    });
   });
 });
