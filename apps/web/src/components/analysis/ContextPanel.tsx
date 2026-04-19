@@ -29,14 +29,21 @@ function LayerCard({ title, layer }: { title: string; layer: ContextLayer }) {
 
 export function ContextPanel({ context }: ContextPanelProps) {
   if (!context) return null;
+
+  const emptyLayer: ContextLayer = { summary: '', sourceIds: [] };
+  const long = context.longTermPreferenceContext ?? emptyLayer;
+  const mid = context.midTermStrategyContext ?? emptyLayer;
+  const short = context.shortTermSessionContext ?? emptyLayer;
+  const retrieval = context.retrievalContext ?? emptyLayer;
+
   return (
     <section className="surface-panel rounded p-4 space-y-2">
       <h2 className="text-base font-semibold">Context Lineage</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <LayerCard title="Long-term Preference" layer={context.longTermPreferenceContext} />
-        <LayerCard title="Mid-term Strategy" layer={context.midTermStrategyContext} />
-        <LayerCard title="Short-term Session" layer={context.shortTermSessionContext} />
-        <LayerCard title="Retrieval" layer={context.retrievalContext} />
+        <LayerCard title="Long-term Preference" layer={long} />
+        <LayerCard title="Mid-term Strategy" layer={mid} />
+        <LayerCard title="Short-term Session" layer={short} />
+        <LayerCard title="Retrieval" layer={retrieval} />
       </div>
     </section>
   );

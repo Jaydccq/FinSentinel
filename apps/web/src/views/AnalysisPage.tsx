@@ -66,7 +66,7 @@ export default function AnalysisPage() {
               streamStatus={streamStatus}
               onRefresh={refresh}
             />
-            <ContextPanel context={context as never} />
+            <ContextPanel context={context} />
             <ArtifactsPanel artifacts={artifacts} />
             <FinalReportPanel run={run} artifacts={artifacts} />
           </>

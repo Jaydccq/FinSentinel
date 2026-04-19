@@ -125,6 +125,19 @@ export interface AnalysisApprovalResponse {
   requestedAt: string;
 }
 
+export interface RunContextLayer {
+  summary: string;
+  sourceIds: string[];
+  updatedAt?: string;
+}
+
+export interface RunContext {
+  longTermPreferenceContext: RunContextLayer;
+  midTermStrategyContext: RunContextLayer;
+  shortTermSessionContext: RunContextLayer;
+  retrievalContext: RunContextLayer;
+}
+
 export interface AnalysisRunTimelineEvent {
   id: string;
   seqNo: number | null;
@@ -263,7 +276,7 @@ export const analysisRunsApi = {
     json<{ ok: true }>(`/analysis/runs/${id}/stages/${stageKey}/retry`, {
       method: 'POST',
     }),
-  getContext: (id: string) => json<Record<string, unknown>>(`/analysis/runs/${id}/context`),
+  getContext: (id: string) => json<RunContext>(`/analysis/runs/${id}/context`),
   getStageInput: (id: string, stageKey: AnalysisStageKey) =>
     json<Record<string, unknown> | null>(`/analysis/runs/${id}/stages/${stageKey}/input`),
   stream: streamRun,

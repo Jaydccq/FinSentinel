@@ -8,6 +8,7 @@ import {
   type AnalysisStageResponse,
   type AnalysisRunTimelineEvent,
   type AnalysisStageKey,
+  type RunContext,
 } from '../api/analysis-runs'
 
 const POLL_INTERVAL_MS = 2_000
@@ -20,7 +21,7 @@ export interface UseAnalysisRunResult {
   run: AnalysisRunResponse | null
   stages: AnalysisStageResponse[]
   artifacts: AnalysisArtifactResponse[]
-  context: Record<string, unknown> | null
+  context: RunContext | null
   timelineEvents: AnalysisRunTimelineEvent[]
   streamStatus: AnalysisRunStreamStatus
   loading: boolean
@@ -34,7 +35,7 @@ export function useAnalysisRun(runId: string | null): UseAnalysisRunResult {
   const [stages, setStages] = useState<AnalysisStageResponse[]>([])
   const [artifacts, setArtifacts] = useState<AnalysisArtifactResponse[]>([])
   const [timelineEvents, setTimelineEvents] = useState<AnalysisRunTimelineEvent[]>([])
-  const [context, setContext] = useState<Record<string, unknown> | null>(null)
+  const [context, setContext] = useState<RunContext | null>(null)
   const [streamStatus, setStreamStatus] = useState<AnalysisRunStreamStatus>('idle')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
