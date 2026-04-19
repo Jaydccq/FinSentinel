@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+import { describe, it, expect, vi, type Mock } from 'vitest';
 import { RagTraceRetentionService } from '../rag-trace-retention.service';
 
 function makeMetrics() {
