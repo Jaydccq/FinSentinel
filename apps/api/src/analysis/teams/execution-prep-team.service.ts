@@ -97,6 +97,7 @@ export class ExecutionPrepTeamService implements TeamService {
       userId: args.userId,
       runId: args.runId,
       payload: validated,
+      orderDraftArtifactId: artifact.id,
     });
 
     const roleSummaries: RoleSummary[] = [

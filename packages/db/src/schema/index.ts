@@ -26,6 +26,7 @@ export { analysisStages } from './analysis-stages';
 export { analysisArtifacts } from './analysis-artifacts';
 export { analysisApprovals } from './analysis-approvals';
 export { contextJournalEntries } from './context-journal-entries';
+export { executionReviewLedgers } from './execution-review-ledgers';
 
 // Relations
 export {
@@ -49,4 +50,5 @@ export {
   analysisArtifactsRelations,
   analysisApprovalsRelations,
   contextJournalEntriesRelations,
+  executionReviewLedgersRelations,
 } from './relations';

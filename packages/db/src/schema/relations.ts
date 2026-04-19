@@ -21,6 +21,7 @@ import { analysisStages } from './analysis-stages';
 import { analysisArtifacts } from './analysis-artifacts';
 import { analysisApprovals } from './analysis-approvals';
 import { contextJournalEntries } from './context-journal-entries';
+import { executionReviewLedgers } from './execution-review-ledgers';
 
 // ── users ───────────────────────────────────────────────────────────────────
 export const usersRelations = relations(users, ({ many, one }) => ({
@@ -130,6 +131,7 @@ export const analysisRunsRelations = relations(analysisRuns, ({ one, many }) => 
   artifacts: many(analysisArtifacts),
   approvals: many(analysisApprovals),
   contextJournalEntries: many(contextJournalEntries),
+  executionReviewLedgers: many(executionReviewLedgers),
 }));
 
 // ── analysis_stages ────────────────────────────────────────────────────────
@@ -154,7 +156,7 @@ export const analysisArtifactsRelations = relations(analysisArtifacts, ({ one })
 }));
 
 // ── analysis_approvals ─────────────────────────────────────────────────────
-export const analysisApprovalsRelations = relations(analysisApprovals, ({ one }) => ({
+export const analysisApprovalsRelations = relations(analysisApprovals, ({ one, many }) => ({
   run: one(analysisRuns, {
     fields: [analysisApprovals.runId],
     references: [analysisRuns.id],
@@ -163,10 +165,23 @@ export const analysisApprovalsRelations = relations(analysisApprovals, ({ one })
     fields: [analysisApprovals.resolvedByUserId],
     references: [users.id],
   }),
+  executionReviewLedgers: many(executionReviewLedgers),
 }));
 
 // ── context_journal_entries ────────────────────────────────────────────────
 export const contextJournalEntriesRelations = relations(contextJournalEntries, ({ one }) => ({
   user: one(users, { fields: [contextJournalEntries.userId], references: [users.id] }),
   run: one(analysisRuns, { fields: [contextJournalEntries.runId], references: [analysisRuns.id] }),
+}));
+
+// ── execution_review_ledgers ───────────────────────────────────────────────
+export const executionReviewLedgersRelations = relations(executionReviewLedgers, ({ one }) => ({
+  run: one(analysisRuns, {
+    fields: [executionReviewLedgers.runId],
+    references: [analysisRuns.id],
+  }),
+  approval: one(analysisApprovals, {
+    fields: [executionReviewLedgers.approvalId],
+    references: [analysisApprovals.id],
+  }),
 }));

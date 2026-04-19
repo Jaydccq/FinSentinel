@@ -878,6 +878,14 @@ export default function TradingPage() {
                                         ))}
                                       </div>
                                     )}
+                                    {commit.metadata?.runId ? (
+                                      <a
+                                        className="text-xs underline text-slate-300"
+                                        href={`/analysis?runId=${commit.metadata.runId}`}
+                                      >
+                                        Source Run
+                                      </a>
+                                    ) : null}
                                   </div>
                                 </motion.div>
                               )}

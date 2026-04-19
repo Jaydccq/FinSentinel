@@ -84,6 +84,10 @@ interface CommitData {
   message: string;
   timestamp: string;
   operations: Record<string, unknown>[];
+  metadata?: {
+    ledgerId?: string;
+    runId?: string;
+  };
 }
 
 // ── Service ─────────────────────────────────────────────────────────────────
@@ -197,6 +201,7 @@ export class UnifiedTradingService {
   async commit(
     userId: string,
     message: string,
+    metadata?: { ledgerId?: string; runId?: string },
   ): Promise<{ hash: string; count: number }> {
     // Validate message
     if (!message || message.trim().length === 0) {
@@ -220,6 +225,7 @@ export class UnifiedTradingService {
       message,
       timestamp,
       operations: ops,
+      ...(metadata ? { metadata } : {}),
     };
 
     // Store as pending commit in Redis (single atomic setex)
