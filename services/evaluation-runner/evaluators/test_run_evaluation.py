@@ -355,3 +355,143 @@ def test_cli_bucket_flag_is_safe_on_tagless_golden(tmp_path):
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
     assert output_path.exists()
+
+
+# --- Defensive: malformed bucket_minimum_metrics YAML surfaces as TypeError ---
+
+
+def test_malformed_bucket_minimum_metrics_scalar_raises_type_error(tmp_path):
+    """`bucket_minimum_metrics:` as a scalar must produce a readable TypeError, not AttributeError.
+
+    Regression for R1.2 follow-up c: YAML like
+        bucket_minimum_metrics: 0.8
+    used to crash with `AttributeError: 'float' object has no attribute 'items'`
+    deep inside the gate loop. The runner now validates the shape up front.
+    """
+    import json
+    import yaml
+
+    runner_dir = os.path.join(os.path.dirname(__file__), "..")
+
+    golden = {
+        "version": "1.0",
+        "created_at": "2026-01-01",
+        "description": "test",
+        "entries": [
+            {
+                "id": "x1",
+                "query": "q",
+                "query_class": "FACTUAL",
+                "expected_chunk_ids": ["c1"],
+                "acceptable_chunk_ids": [],
+                "expected_source_docs": [],
+                "expected_answer": "",
+                "expected_entities": [],
+                "difficulty": "easy",
+                "tags": [],
+            }
+        ],
+    }
+    golden_path = tmp_path / "golden.json"
+    golden_path.write_text(json.dumps(golden))
+
+    # Malformed: scalar where a dict of bucket -> thresholds is expected.
+    config = {
+        "minimum_metrics": {},
+        "bucket_minimum_metrics": 0.8,
+    }
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.dump(config))
+
+    output_path = tmp_path / "report.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "run_evaluation.py",
+            "run",
+            "--dataset",
+            str(golden_path),
+            "--output",
+            str(output_path),
+            "--config",
+            str(config_path),
+        ],
+        cwd=runner_dir,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0, "Malformed config must fail, not silently proceed"
+    combined = result.stdout + result.stderr
+    assert "bucket_minimum_metrics" in combined, (
+        f"Error must mention the offending key.\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    # AttributeError on .items() would surface as "AttributeError" — we want TypeError instead.
+    assert "TypeError" in combined, (
+        f"Must raise TypeError (not AttributeError).\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+
+
+def test_malformed_bucket_minimum_metrics_nested_scalar_raises_type_error(tmp_path):
+    """A per-bucket scalar (e.g. bucket_minimum_metrics: {exact_lookup: 0.8}) must also raise."""
+    import json
+    import yaml
+
+    runner_dir = os.path.join(os.path.dirname(__file__), "..")
+
+    golden = {
+        "version": "1.0",
+        "created_at": "2026-01-01",
+        "description": "test",
+        "entries": [
+            {
+                "id": "x1",
+                "query": "q",
+                "query_class": "FACTUAL",
+                "expected_chunk_ids": ["c1"],
+                "acceptable_chunk_ids": [],
+                "expected_source_docs": [],
+                "expected_answer": "",
+                "expected_entities": [],
+                "difficulty": "easy",
+                "tags": [],
+            }
+        ],
+    }
+    golden_path = tmp_path / "golden.json"
+    golden_path.write_text(json.dumps(golden))
+
+    # Malformed at the inner level: threshold value is a scalar instead of a dict.
+    config = {
+        "bucket_minimum_metrics": {
+            "exact_lookup": 0.8,  # should be {"strict.recall@5": 0.8}
+        },
+    }
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.dump(config))
+
+    output_path = tmp_path / "report.json"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "run_evaluation.py",
+            "run",
+            "--dataset",
+            str(golden_path),
+            "--output",
+            str(output_path),
+            "--config",
+            str(config_path),
+        ],
+        cwd=runner_dir,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    combined = result.stdout + result.stderr
+    assert "bucket_minimum_metrics" in combined
+    assert "exact_lookup" in combined
+    assert "TypeError" in combined

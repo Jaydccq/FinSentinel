@@ -131,6 +131,25 @@ def run_evaluation(
         "bucket_minimum_metrics", {}
     )
 
+    # Defensive: `bucket_minimum_metrics:` must be a mapping of
+    # `bucket_name -> {metric_key: threshold}`. A common YAML mistake is
+    # writing `bucket_minimum_metrics: 0.8` (scalar) or using a flat list,
+    # which would raise a cryptic AttributeError on `.items()` below. Surface
+    # a readable message that points at the offending key and its type.
+    if not isinstance(bucket_minimum_metrics, dict):
+        raise TypeError(
+            f"bucket_minimum_metrics must be a mapping of "
+            f"'bucket_name -> {{metric_key: threshold}}' — got "
+            f"{type(bucket_minimum_metrics).__name__}: {bucket_minimum_metrics!r}"
+        )
+    for _bucket_name, _thresholds in bucket_minimum_metrics.items():
+        if not isinstance(_thresholds, dict):
+            raise TypeError(
+                f"bucket_minimum_metrics['{_bucket_name}'] must be a mapping of "
+                f"metric_key -> threshold — got "
+                f"{type(_thresholds).__name__}: {_thresholds!r}"
+            )
+
     # Per-bucket metrics: recompute for each bucket named in the gate config.
     # Done regardless of --bucket, because bucket gating evaluates thresholds
     # against bucket-scoped metrics, not the overall filtered set.
@@ -248,7 +267,11 @@ def main():
     run_parser.add_argument(
         "--bucket",
         default=None,
-        help="Only score entries tagged with this bucket label (e.g. exact_lookup, colloquial)",
+        help=(
+            "Only score entries tagged with this bucket label (e.g. exact_lookup, "
+            "colloquial). Scopes the overall metrics block only; does NOT disable "
+            "bucket_minimum_metrics gates, which are always evaluated per-bucket."
+        ),
     )
 
     cmp_parser = subparsers.add_parser("compare", help="Compare two reports")
