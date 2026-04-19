@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { RepresentationEnrichConsumer } from '../representation-enrich.consumer';
-import { ChunkRepresentationService } from '../../rag/chunk-representation.service';
+import { ChunkRepresentationService, ChunkNotFoundError } from '../../rag/chunk-representation.service';
 import type { Job } from 'bullmq';
 import type { RepresentationEnrichJobData } from '../representation-enrich.producer';
 
@@ -115,6 +115,17 @@ describe('RepresentationEnrichConsumer', () => {
     const job = createMockJob({ chunkId: 'chunk-uuid-1' });
 
     await expect(consumer.process(job)).rejects.toThrow(/circuit breaker open/);
+  });
+
+  // ── ChunkNotFoundError: re-throw so BullMQ retries ────────────────────────
+
+  it('re-throws ChunkNotFoundError so BullMQ retries', async () => {
+    mockService.enrichChunk.mockRejectedValue(new ChunkNotFoundError('chunk-uuid-missing'));
+
+    const job = createMockJob({ chunkId: 'chunk-uuid-missing' });
+
+    await expect(consumer.process(job)).rejects.toThrow(ChunkNotFoundError);
+    await expect(consumer.process(job)).rejects.toThrow('chunk not found: chunk-uuid-missing');
   });
 
   // ── Service throws unexpectedly ────────────────────────────────────────────

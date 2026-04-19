@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import {
   ChunkRepresentationService,
+  ChunkNotFoundError,
   CURRENT_REPRESENTATION_VERSION,
   REPRESENTATION_LLM_CLIENT,
 } from '../chunk-representation.service';
@@ -303,14 +304,12 @@ describe('ChunkRepresentationService', () => {
 
   // ── Chunk not found ───────────────────────────────────────────────────────
 
-  it('returns failed when chunk is not found in DB', async () => {
+  it('throws ChunkNotFoundError when chunk is not found in DB', async () => {
     const notFoundDb = createMockDb([[]]);  // select returns empty → chunk not found
     const notFoundService = await buildService(notFoundDb, llm, embedding, metrics);
 
-    const result = await notFoundService.enrichChunk('nonexistent-chunk');
-
-    expect(result.status).toBe('failed');
-    expect(result.reason).toContain('not found');
+    await expect(notFoundService.enrichChunk('nonexistent-chunk')).rejects.toThrow(ChunkNotFoundError);
+    await expect(notFoundService.enrichChunk('nonexistent-chunk')).rejects.toThrow('chunk not found: nonexistent-chunk');
   });
 
   // ── Circuit breaker ───────────────────────────────────────────────────────

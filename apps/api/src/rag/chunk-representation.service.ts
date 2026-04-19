@@ -54,6 +54,15 @@ const enrichmentResponseSchema = z.object({
 
 type EnrichmentResponse = z.infer<typeof enrichmentResponseSchema>;
 
+// ── Error types ────────────────────────────────────────────────────────────────
+
+export class ChunkNotFoundError extends Error {
+  constructor(chunkId: string) {
+    super(`chunk not found: ${chunkId}`);
+    this.name = 'ChunkNotFoundError';
+  }
+}
+
 // ── Public types ───────────────────────────────────────────────────────────────
 
 export interface EnrichChunkResult {
@@ -160,7 +169,7 @@ export class ChunkRepresentationService {
       .limit(1);
 
     if (!chunk) {
-      return { chunkId, status: 'failed', representationsWritten: 0, reason: 'chunk not found' };
+      throw new ChunkNotFoundError(chunkId);
     }
 
     // 2. Idempotency check — skip if already enriched at current version
@@ -376,7 +385,7 @@ export class ChunkRepresentationService {
   private recordCircuitBreakerError(): void {
     this.cb.consecutiveErrors += 1;
     if (this.cb.consecutiveErrors >= ChunkRepresentationService.CB_THRESHOLD) {
-      const backoffMs = Math.min(60_000, 1_000 * Math.pow(2, this.cb.consecutiveErrors - ChunkRepresentationService.CB_THRESHOLD));
+      const backoffMs = Math.min(60_000, 1_000 * Math.pow(2, this.cb.consecutiveErrors - ChunkRepresentationService.CB_THRESHOLD + 1));
       this.cb.trippedUntil = Date.now() + backoffMs;
       this.metrics.incrementCounter(
         'rag_representation_circuit_breaker_trips_total',

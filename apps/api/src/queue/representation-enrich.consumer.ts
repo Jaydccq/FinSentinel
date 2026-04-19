@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 import { REPRESENTATION_ENRICH_QUEUE } from './queue.constants';
-import { ChunkRepresentationService } from '../rag/chunk-representation.service';
+import { ChunkRepresentationService, ChunkNotFoundError } from '../rag/chunk-representation.service';
 import type { RepresentationEnrichJobData } from './representation-enrich.producer';
 
 @Injectable()
@@ -51,16 +51,24 @@ export class RepresentationEnrichConsumer implements OnModuleInit, OnModuleDestr
     const { chunkId } = job.data;
     this.logger.log(`Processing representation enrichment for chunk ${chunkId}`);
 
-    const result = await this.representationService.enrichChunk(chunkId);
+    try {
+      const result = await this.representationService.enrichChunk(chunkId);
 
-    if (result.status === 'failed') {
-      // Check if the failure was a circuit breaker trip so BullMQ re-queues
-      if (result.reason?.includes('circuit breaker open')) {
-        throw new Error(`circuit breaker open: retryable — ${result.reason}`);
+      if (result.status === 'failed') {
+        // Check if the failure was a circuit breaker trip so BullMQ re-queues
+        if (result.reason?.includes('circuit breaker open')) {
+          throw new Error(`circuit breaker open: retryable — ${result.reason}`);
+        }
+        this.logger.warn(
+          `Representation enrichment failed for chunk ${chunkId}: ${result.reason}`,
+        );
       }
-      this.logger.warn(
-        `Representation enrichment failed for chunk ${chunkId}: ${result.reason}`,
-      );
+    } catch (err) {
+      if (err instanceof ChunkNotFoundError) {
+        this.logger.warn(`Chunk not found for job ${job.id}, chunkId=${chunkId}: ${err.message}`);
+        throw err;
+      }
+      throw err;
     }
   }
 }
