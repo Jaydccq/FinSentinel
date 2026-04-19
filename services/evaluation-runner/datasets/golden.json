@@ -7,276 +7,600 @@
       "id": "gs-001",
       "query": "What was Apple's total revenue in fiscal year 2025?",
       "query_class": "FACTUAL",
-      "expected_chunk_ids": ["chunk-001"],
-      "expected_source_docs": ["AAPL-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-001"
+      ],
+      "expected_source_docs": [
+        "AAPL-10K-2025.pdf"
+      ],
       "expected_answer": "Apple reported total revenue of $391.0 billion for fiscal year 2025, a 5.2% increase year-over-year from $371.8 billion in fiscal year 2024.",
-      "expected_entities": ["Apple Inc."],
+      "expected_entities": [
+        "Apple Inc."
+      ],
       "difficulty": "easy",
-      "tags": ["sec-filing", "revenue", "apple"]
+      "tags": [
+        "sec-filing",
+        "revenue",
+        "apple"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-002",
       "query": "How might TSMC supply disruptions affect NVIDIA's GPU production?",
       "query_class": "MULTI_HOP",
-      "expected_chunk_ids": ["chunk-012", "chunk-029", "chunk-031"],
-      "expected_source_docs": ["NVDA-10K-2025.pdf", "tsmc-geopolitical-risk-2025.pdf", "semiconductor-supply-chain-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-012",
+        "chunk-029",
+        "chunk-031"
+      ],
+      "expected_source_docs": [
+        "NVDA-10K-2025.pdf",
+        "tsmc-geopolitical-risk-2025.pdf",
+        "semiconductor-supply-chain-2025.pdf"
+      ],
       "expected_answer": "NVIDIA depends on TSMC as its primary manufacturing partner, with all Hopper and Blackwell GPUs fabricated on TSMC's 4nm and 3nm nodes. TSMC produces over 90% of the world's most advanced chips, and companies including NVIDIA have no viable alternative. A disruption to TSMC would severely impact NVIDIA's GPU production capacity, with TSMC's CoWoS advanced packaging already limiting Blackwell shipments.",
-      "expected_entities": ["TSMC", "NVIDIA"],
+      "expected_entities": [
+        "TSMC",
+        "NVIDIA"
+      ],
       "difficulty": "hard",
-      "tags": ["supply-chain", "multi-hop", "semiconductor"]
+      "tags": [
+        "supply-chain",
+        "multi-hop",
+        "semiconductor"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-003",
       "query": "What are Apple's key risk factors in its 10-K filing?",
       "query_class": "FACTUAL",
-      "expected_chunk_ids": ["chunk-003"],
-      "expected_source_docs": ["AAPL-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-003"
+      ],
+      "expected_source_docs": [
+        "AAPL-10K-2025.pdf"
+      ],
       "expected_answer": "Apple's key risk factors include dependence on TSMC for advanced semiconductor chips, supply chain concentration in East Asia (Taiwan and China) exposing it to geopolitical and trade risks, iPhone revenue concentration at over 51% of total revenue, and regulatory scrutiny of App Store practices under the EU Digital Markets Act.",
-      "expected_entities": ["Apple Inc.", "TSMC"],
+      "expected_entities": [
+        "Apple Inc.",
+        "TSMC"
+      ],
       "difficulty": "easy",
-      "tags": ["sec-filing", "risk-factors", "apple"]
+      "tags": [
+        "sec-filing",
+        "risk-factors",
+        "apple"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-004",
       "query": "Who are the main competitors of Tesla in the EV market?",
       "query_class": "RELATIONAL",
-      "expected_chunk_ids": ["chunk-016"],
-      "expected_source_docs": ["TSLA-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-016"
+      ],
+      "expected_source_docs": [
+        "TSLA-10K-2025.pdf"
+      ],
       "expected_answer": "Tesla's main competitors include BYD (which surpassed Tesla in total EV sales with 3.2 million units), Volkswagen Group, Hyundai-Kia, BMW, Mercedes-Benz, Rivian, and Lucid Motors. In China specifically, Tesla competes with NIO, XPeng, Li Auto, and BYD. Tesla's global BEV market share declined from 19.5% to 15.8%.",
-      "expected_entities": ["Tesla", "BYD"],
+      "expected_entities": [
+        "Tesla",
+        "BYD"
+      ],
       "difficulty": "medium",
-      "tags": ["competitors", "relational", "ev-market"]
+      "tags": [
+        "competitors",
+        "relational",
+        "ev-market"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-005",
       "query": "What impact did the Fed rate hike have on tech stocks in 2025?",
       "query_class": "ANALYTICAL",
-      "expected_chunk_ids": ["chunk-025", "chunk-028"],
-      "expected_source_docs": ["fed-rate-impact-analysis-2025.pdf", "macro-tech-sector-impact-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-025",
+        "chunk-028"
+      ],
+      "expected_source_docs": [
+        "fed-rate-impact-analysis-2025.pdf",
+        "macro-tech-sector-impact-2025.pdf"
+      ],
       "expected_answer": "Higher-for-longer interest rates pressured growth stock valuations, with the NASDAQ gaining only 8.2% vs the S&P 500's 10.5% in H1 2025. DCF-sensitive tech stocks experienced multiple compression. However, AI-related stocks (NVDA, MSFT, GOOG) outperformed due to near-term revenue growth. Large-cap tech with strong free cash flow benefited from higher interest income on cash holdings.",
-      "expected_entities": ["Federal Reserve", "NASDAQ"],
+      "expected_entities": [
+        "Federal Reserve",
+        "NASDAQ"
+      ],
       "difficulty": "hard",
-      "tags": ["macro", "analytical", "multi-source"]
+      "tags": [
+        "macro",
+        "analytical",
+        "multi-source"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-006",
       "query": "How much revenue did NVIDIA's Data Center segment generate in FY2025?",
       "query_class": "FACTUAL",
-      "expected_chunk_ids": ["chunk-009"],
-      "expected_source_docs": ["NVDA-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-009"
+      ],
+      "expected_source_docs": [
+        "NVDA-10K-2025.pdf"
+      ],
       "expected_answer": "NVIDIA's Data Center segment generated $115.2 billion in revenue in FY2025, representing 88.3% of total revenue, driven by demand for H100, H200, and Blackwell GPU architectures for AI training and inference.",
-      "expected_entities": ["NVIDIA"],
+      "expected_entities": [
+        "NVIDIA"
+      ],
       "difficulty": "easy",
-      "tags": ["sec-filing", "revenue", "nvidia", "data-center"]
+      "tags": [
+        "sec-filing",
+        "revenue",
+        "nvidia",
+        "data-center"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-007",
       "query": "What is Apple's Services business and how fast is it growing?",
       "query_class": "FACTUAL",
-      "expected_chunk_ids": ["chunk-002"],
-      "expected_source_docs": ["AAPL-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-002"
+      ],
+      "expected_source_docs": [
+        "AAPL-10K-2025.pdf"
+      ],
       "expected_answer": "Apple's Services segment includes App Store, Apple Music, iCloud, Apple TV+, Apple Pay, AppleCare, and advertising. Services revenue grew from $84.3 billion in FY2024 to $96.2 billion in FY2025. The platform had 1.1 billion paid subscriptions and Apple Pay processed over $1.8 trillion in transaction volume.",
-      "expected_entities": ["Apple Inc."],
+      "expected_entities": [
+        "Apple Inc."
+      ],
       "difficulty": "easy",
-      "tags": ["sec-filing", "services", "apple", "growth"]
+      "tags": [
+        "sec-filing",
+        "services",
+        "apple",
+        "growth"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-008",
       "query": "How does NVIDIA's competitive position in AI chips compare to AMD and Intel?",
       "query_class": "RELATIONAL",
-      "expected_chunk_ids": ["chunk-010"],
-      "expected_source_docs": ["NVDA-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-010"
+      ],
+      "expected_source_docs": [
+        "NVDA-10K-2025.pdf"
+      ],
       "expected_answer": "NVIDIA holds an estimated 80-85% market share in AI training GPUs. Its competitive advantages include the CUDA ecosystem with over 5 million developers, proprietary NVLink/NVSwitch interconnect technologies, and full-stack platform capabilities. AMD's MI300X and Intel's Gaudi are competitors but neither has achieved comparable software ecosystem adoption.",
-      "expected_entities": ["NVIDIA", "AMD", "Intel"],
+      "expected_entities": [
+        "NVIDIA",
+        "AMD",
+        "Intel"
+      ],
       "difficulty": "medium",
-      "tags": ["competitive-analysis", "semiconductor", "ai"]
+      "tags": [
+        "competitive-analysis",
+        "semiconductor",
+        "ai"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-009",
       "query": "What was the Federal Reserve's interest rate decision in June 2025?",
       "query_class": "FACTUAL",
-      "expected_chunk_ids": ["chunk-024"],
-      "expected_source_docs": ["fed-fomc-minutes-2025-06.pdf"],
+      "expected_chunk_ids": [
+        "chunk-024"
+      ],
+      "expected_source_docs": [
+        "fed-fomc-minutes-2025-06.pdf"
+      ],
       "expected_answer": "The FOMC voted to maintain the federal funds rate target range at 4.25-4.50% at its June 2025 meeting, citing persistent inflation above the 2% target, with core PCE at 2.8% year-over-year and unemployment at 4.2%.",
-      "expected_entities": ["Federal Reserve", "FOMC"],
+      "expected_entities": [
+        "Federal Reserve",
+        "FOMC"
+      ],
       "difficulty": "easy",
-      "tags": ["macro", "fed", "rates"]
+      "tags": [
+        "macro",
+        "fed",
+        "rates"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-010",
       "query": "What is Apple's supply chain strategy for reducing risk in manufacturing?",
       "query_class": "ANALYTICAL",
-      "expected_chunk_ids": ["chunk-004", "chunk-003"],
-      "expected_source_docs": ["AAPL-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-004",
+        "chunk-003"
+      ],
+      "expected_source_docs": [
+        "AAPL-10K-2025.pdf"
+      ],
       "expected_answer": "Apple relies on Foxconn and Pegatron as primary iPhone assemblers and TSMC for chip fabrication. To mitigate concentration risk, Apple has diversified manufacturing to India and Vietnam, with India now accounting for 14% of global iPhone production (up from 7%). The company maintains inventory reserves and long-term supply agreements to mitigate shortages.",
-      "expected_entities": ["Apple Inc.", "Foxconn", "TSMC"],
+      "expected_entities": [
+        "Apple Inc.",
+        "Foxconn",
+        "TSMC"
+      ],
       "difficulty": "medium",
-      "tags": ["supply-chain", "apple", "risk-management"]
+      "tags": [
+        "supply-chain",
+        "apple",
+        "risk-management"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-011",
       "query": "How did Microsoft's Azure revenue perform relative to AWS market share?",
       "query_class": "RELATIONAL",
-      "expected_chunk_ids": ["chunk-021"],
-      "expected_source_docs": ["MSFT-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-021"
+      ],
+      "expected_source_docs": [
+        "MSFT-10K-2025.pdf"
+      ],
       "expected_answer": "Azure maintained its position as the second-largest cloud infrastructure provider with an estimated 24% market share, behind AWS at 31%. Azure and other cloud services revenue grew 29% year-over-year. Azure AI services contributed approximately $15 billion in annualized revenue, growing over 100% year-over-year.",
-      "expected_entities": ["Microsoft", "Azure", "AWS"],
+      "expected_entities": [
+        "Microsoft",
+        "Azure",
+        "AWS"
+      ],
       "difficulty": "medium",
-      "tags": ["cloud", "market-share", "relational"]
+      "tags": [
+        "cloud",
+        "market-share",
+        "relational"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-012",
       "query": "What are the key risks from US semiconductor export controls on China?",
       "query_class": "ANALYTICAL",
-      "expected_chunk_ids": ["chunk-032", "chunk-013"],
-      "expected_source_docs": ["semiconductor-export-controls-2025.pdf", "NVDA-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-032",
+        "chunk-013"
+      ],
+      "expected_source_docs": [
+        "semiconductor-export-controls-2025.pdf",
+        "NVDA-10K-2025.pdf"
+      ],
       "expected_answer": "US export controls tightened in 2025, expanding restrictions and reducing performance thresholds for AI chip exports to China. NVIDIA, AMD, and Intel require licenses for all AI accelerator shipments to China, reducing China-bound exports by an estimated $15 billion annually. NVIDIA specifically lost approximately $12 billion in China revenue. China is accelerating domestic alternatives through Huawei Ascend and SMIC, though performance gaps remain.",
-      "expected_entities": ["NVIDIA", "China", "Huawei"],
+      "expected_entities": [
+        "NVIDIA",
+        "China",
+        "Huawei"
+      ],
       "difficulty": "hard",
-      "tags": ["regulation", "export-controls", "china", "semiconductor"]
+      "tags": [
+        "regulation",
+        "export-controls",
+        "china",
+        "semiconductor"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-013",
       "query": "What is Tesla's autonomous driving technology status?",
       "query_class": "FACTUAL",
-      "expected_chunk_ids": ["chunk-017"],
-      "expected_source_docs": ["TSLA-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-017"
+      ],
+      "expected_source_docs": [
+        "TSLA-10K-2025.pdf"
+      ],
       "expected_answer": "Tesla's Full Self-Driving (FSD) achieved supervised autonomous driving in the US and began limited unsupervised robotaxi services in Austin, Texas and Phoenix, Arizona in late 2025. FSD generated $3.2 billion in revenue. The system uses a vision-only approach with no lidar, trained on over 20 billion miles of fleet driving data.",
-      "expected_entities": ["Tesla"],
+      "expected_entities": [
+        "Tesla"
+      ],
       "difficulty": "easy",
-      "tags": ["autonomous-driving", "tesla", "technology"]
+      "tags": [
+        "autonomous-driving",
+        "tesla",
+        "technology"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-014",
       "query": "How do Apple and Microsoft compare in shareholder returns and cash flow?",
       "query_class": "RELATIONAL",
-      "expected_chunk_ids": ["chunk-005", "chunk-023"],
-      "expected_source_docs": ["AAPL-10K-2025.pdf", "MSFT-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-005",
+        "chunk-023"
+      ],
+      "expected_source_docs": [
+        "AAPL-10K-2025.pdf",
+        "MSFT-10K-2025.pdf"
+      ],
       "expected_answer": "Apple generated $118.3 billion in operating cash flow and returned $95.0 billion to shareholders ($15.6B dividends, $79.4B buybacks) with $51.2B in cash. Microsoft generated $89.4 billion in operating cash flow and returned $52.3 billion to shareholders ($23.4B dividends, $28.9B buybacks) with $75.8B in cash. Apple leads in total shareholder returns while Microsoft holds more cash.",
-      "expected_entities": ["Apple Inc.", "Microsoft"],
+      "expected_entities": [
+        "Apple Inc.",
+        "Microsoft"
+      ],
       "difficulty": "medium",
-      "tags": ["financial-comparison", "cash-flow", "shareholder-returns"]
+      "tags": [
+        "financial-comparison",
+        "cash-flow",
+        "shareholder-returns"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-015",
       "query": "What is the outlook for the global EV market and how is Tesla positioned?",
       "query_class": "ANALYTICAL",
-      "expected_chunk_ids": ["chunk-019", "chunk-015", "chunk-016"],
-      "expected_source_docs": ["TSLA-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-019",
+        "chunk-015",
+        "chunk-016"
+      ],
+      "expected_source_docs": [
+        "TSLA-10K-2025.pdf"
+      ],
       "expected_answer": "The global EV market reached 18.5 million BEV sales in 2025, about 22% of total vehicle sales. China led with 10.2 million units. Tesla delivered 1.95 million vehicles but its market share declined from 19.5% to 15.8% as BYD surpassed it with 3.2 million units. Tesla's automotive gross margin was 18.2%, impacted by price reductions and intensifying competition.",
-      "expected_entities": ["Tesla", "BYD"],
+      "expected_entities": [
+        "Tesla",
+        "BYD"
+      ],
       "difficulty": "hard",
-      "tags": ["ev-market", "analytical", "competition"]
+      "tags": [
+        "ev-market",
+        "analytical",
+        "competition"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-016",
       "query": "How much did Microsoft invest in AI infrastructure and capital expenditures?",
       "query_class": "FACTUAL",
-      "expected_chunk_ids": ["chunk-022"],
-      "expected_source_docs": ["MSFT-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-022"
+      ],
+      "expected_source_docs": [
+        "MSFT-10K-2025.pdf"
+      ],
       "expected_answer": "Microsoft invested $56.8 billion in capital expenditures during FY2025, primarily for data center construction for Azure and AI workloads. Capex grew 78% year-over-year. AI investments focused on GPU procurement (NVIDIA H100 and Blackwell) and custom Maia AI accelerator development.",
-      "expected_entities": ["Microsoft", "NVIDIA"],
+      "expected_entities": [
+        "Microsoft",
+        "NVIDIA"
+      ],
       "difficulty": "easy",
-      "tags": ["capex", "ai-infrastructure", "microsoft"]
+      "tags": [
+        "capex",
+        "ai-infrastructure",
+        "microsoft"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-017",
       "query": "What is JPMorgan Chase's financial performance and how does the rate environment help banks?",
       "query_class": "MULTI_HOP",
-      "expected_chunk_ids": ["chunk-039", "chunk-041"],
-      "expected_source_docs": ["JPM-10K-2025.pdf", "banking-sector-outlook-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-039",
+        "chunk-041"
+      ],
+      "expected_source_docs": [
+        "JPM-10K-2025.pdf",
+        "banking-sector-outlook-2025.pdf"
+      ],
       "expected_answer": "JPMorgan reported record net income of $54.2 billion on $172.3 billion in revenue. Net interest income was $92.8 billion, benefiting from the elevated rate environment. The broader US banking sector benefited from higher net interest margins with Fed rates above 4%, and the KBW Bank Index returned 14.2% in H1 2025, outperforming the S&P 500.",
-      "expected_entities": ["JPMorgan Chase"],
+      "expected_entities": [
+        "JPMorgan Chase"
+      ],
       "difficulty": "medium",
-      "tags": ["banking", "rates", "multi-hop"]
+      "tags": [
+        "banking",
+        "rates",
+        "multi-hop"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-018",
       "query": "What is the FOMC's rate cut projection for the rest of 2025?",
       "query_class": "FACTUAL",
-      "expected_chunk_ids": ["chunk-026"],
-      "expected_source_docs": ["fed-fomc-minutes-2025-06.pdf"],
+      "expected_chunk_ids": [
+        "chunk-026"
+      ],
+      "expected_source_docs": [
+        "fed-fomc-minutes-2025-06.pdf"
+      ],
       "expected_answer": "The FOMC's updated dot plot showed a median expectation of two 25-basis-point rate cuts by end of 2025, down from three cuts projected in March. The 10-year Treasury yield remained elevated at 4.45%, reflecting market expectations of sustained higher rates.",
-      "expected_entities": ["FOMC", "Federal Reserve"],
+      "expected_entities": [
+        "FOMC",
+        "Federal Reserve"
+      ],
       "difficulty": "easy",
-      "tags": ["macro", "fed", "projections"]
+      "tags": [
+        "macro",
+        "fed",
+        "projections"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-019",
       "query": "How does TSMC's geographic concentration create systemic risk for the tech industry?",
       "query_class": "ANALYTICAL",
-      "expected_chunk_ids": ["chunk-029", "chunk-031"],
-      "expected_source_docs": ["tsmc-geopolitical-risk-2025.pdf", "semiconductor-supply-chain-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-029",
+        "chunk-031"
+      ],
+      "expected_source_docs": [
+        "tsmc-geopolitical-risk-2025.pdf",
+        "semiconductor-supply-chain-2025.pdf"
+      ],
       "expected_answer": "TSMC produces over 90% of the world's most advanced chips (sub-5nm) and its Taiwan operations are concentrated in a geopolitically sensitive location. A Chinese military action against Taiwan could disrupt an estimated $500 billion in annual technology product revenue globally. Apple, NVIDIA, AMD, and Qualcomm have no viable alternative. TSMC's Arizona fab has begun limited 4nm production but at 30-50% higher costs.",
-      "expected_entities": ["TSMC", "Taiwan"],
+      "expected_entities": [
+        "TSMC",
+        "Taiwan"
+      ],
       "difficulty": "hard",
-      "tags": ["geopolitics", "supply-chain", "systemic-risk"]
+      "tags": [
+        "geopolitics",
+        "supply-chain",
+        "systemic-risk"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-020",
       "query": "What drove Johnson & Johnson's revenue growth in 2025?",
       "query_class": "FACTUAL",
-      "expected_chunk_ids": ["chunk-033"],
-      "expected_source_docs": ["JNJ-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-033"
+      ],
+      "expected_source_docs": [
+        "JNJ-10K-2025.pdf"
+      ],
       "expected_answer": "JNJ reported $88.7 billion in revenue. Innovative Medicine (pharma) was $58.4 billion, driven by oncology and immunology portfolios. Key growth drivers were Darzalex ($12.1B, +15%), Tremfya ($4.8B, +28%), and newly launched Nipocalimab. MedTech contributed $30.3 billion. The company had 50 pipeline programs in Phase 2 or later.",
-      "expected_entities": ["Johnson & Johnson"],
+      "expected_entities": [
+        "Johnson & Johnson"
+      ],
       "difficulty": "medium",
-      "tags": ["healthcare", "pharma", "revenue"]
+      "tags": [
+        "healthcare",
+        "pharma",
+        "revenue"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-021",
       "query": "How does Exxon Mobil's performance relate to the broader oil market dynamics?",
       "query_class": "MULTI_HOP",
-      "expected_chunk_ids": ["chunk-036", "chunk-037"],
-      "expected_source_docs": ["XOM-10K-2025.pdf", "oil-market-outlook-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-036",
+        "chunk-037"
+      ],
+      "expected_source_docs": [
+        "XOM-10K-2025.pdf",
+        "oil-market-outlook-2025.pdf"
+      ],
       "expected_answer": "Exxon reported $334.5 billion in revenue with upstream earnings of $26.3 billion, producing 4.2 million barrels per day. Brent crude averaged $78/barrel in 2025, supported by OPEC+ production cuts of 2.2 million barrels per day. While US shale production reached 13.5 million bpd, demand growth was led by India and Southeast Asia, and Chinese demand growth slowed due to EV adoption.",
-      "expected_entities": ["Exxon Mobil", "OPEC"],
+      "expected_entities": [
+        "Exxon Mobil",
+        "OPEC"
+      ],
       "difficulty": "hard",
-      "tags": ["energy", "oil", "multi-hop"]
+      "tags": [
+        "energy",
+        "oil",
+        "multi-hop"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-022",
       "query": "What is the relationship between NVIDIA GPU demand and Microsoft Azure AI spending?",
       "query_class": "MULTI_HOP",
-      "expected_chunk_ids": ["chunk-011", "chunk-022"],
-      "expected_source_docs": ["NVDA-10K-2025.pdf", "MSFT-10K-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-011",
+        "chunk-022"
+      ],
+      "expected_source_docs": [
+        "NVDA-10K-2025.pdf",
+        "MSFT-10K-2025.pdf"
+      ],
       "expected_answer": "Hyperscale cloud providers including Microsoft Azure represented approximately 45% of NVIDIA's $115.2 billion data center revenue. Microsoft invested $56.8 billion in capex, primarily for data center construction and GPU procurement (NVIDIA H100 and Blackwell GPUs). This symbiotic relationship drives both companies' AI revenue growth.",
-      "expected_entities": ["NVIDIA", "Microsoft", "Azure"],
+      "expected_entities": [
+        "NVIDIA",
+        "Microsoft",
+        "Azure"
+      ],
       "difficulty": "hard",
-      "tags": ["ai", "cloud", "multi-hop", "supply-demand"]
+      "tags": [
+        "ai",
+        "cloud",
+        "multi-hop",
+        "supply-demand"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-023",
       "query": "What are the key trends in the pharmaceutical industry in 2025?",
       "query_class": "ANALYTICAL",
-      "expected_chunk_ids": ["chunk-034"],
-      "expected_source_docs": ["pharma-trends-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-034"
+      ],
+      "expected_source_docs": [
+        "pharma-trends-2025.pdf"
+      ],
       "expected_answer": "Key pharma trends include GLP-1 drugs (Ozempic, Mounjaro, Wegovy) with the obesity market reaching $50 billion, patent cliff threatening $120 billion in branded revenue over 2025-2030, AI-driven drug discovery with 15 molecules in clinical trials, expanding cell and gene therapy approvals with manufacturing challenges, and increasing biosimilar adoption in oncology.",
       "expected_entities": [],
       "difficulty": "medium",
-      "tags": ["healthcare", "pharma", "trends", "analytical"]
+      "tags": [
+        "healthcare",
+        "pharma",
+        "trends",
+        "analytical"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-024",
       "query": "How are energy companies valued compared to the broader market and what are their yield characteristics?",
       "query_class": "ANALYTICAL",
-      "expected_chunk_ids": ["chunk-038"],
-      "expected_source_docs": ["energy-sector-analysis-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-038"
+      ],
+      "expected_source_docs": [
+        "energy-sector-analysis-2025.pdf"
+      ],
       "expected_answer": "Major integrated oil companies traded at an average forward P/E of 11.2x, a significant discount to the S&P 500's 21.5x. Free cash flow yields averaged 8.5% and dividend yields ranged 3.5-4.5%. The sector offers value characteristics but faces long-term secular headwinds from the energy transition.",
-      "expected_entities": ["Exxon Mobil"],
+      "expected_entities": [
+        "Exxon Mobil"
+      ],
       "difficulty": "medium",
-      "tags": ["energy", "valuation", "analytical"]
+      "tags": [
+        "energy",
+        "valuation",
+        "analytical"
+      ],
+      "acceptable_chunk_ids": []
     },
     {
       "id": "gs-025",
       "query": "How did inflation and tariffs affect the Fed's monetary policy decisions in 2025?",
       "query_class": "ANALYTICAL",
-      "expected_chunk_ids": ["chunk-024", "chunk-027"],
-      "expected_source_docs": ["fed-fomc-minutes-2025-06.pdf", "macro-inflation-outlook-Q2-2025.pdf"],
+      "expected_chunk_ids": [
+        "chunk-024",
+        "chunk-027"
+      ],
+      "expected_source_docs": [
+        "fed-fomc-minutes-2025-06.pdf",
+        "macro-inflation-outlook-Q2-2025.pdf"
+      ],
       "expected_answer": "CPI rose 3.1% year-over-year with core PCE at 2.8%, above the Fed's 2% target. Tariffs on Chinese imports added an estimated 0.3-0.5 percentage points to goods inflation. The FOMC held rates at 4.25-4.50%, with several members citing tariff-driven inflation concerns. Shelter costs and services inflation remained sticky above 4%. Consensus expected the first cut in September 2025 if inflation decelerated.",
-      "expected_entities": ["Federal Reserve", "FOMC"],
+      "expected_entities": [
+        "Federal Reserve",
+        "FOMC"
+      ],
       "difficulty": "hard",
-      "tags": ["macro", "inflation", "tariffs", "analytical"]
+      "tags": [
+        "macro",
+        "inflation",
+        "tariffs",
+        "analytical"
+      ],
+      "acceptable_chunk_ids": []
     }
   ]
 }

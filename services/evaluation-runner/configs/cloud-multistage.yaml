@@ -1,0 +1,10 @@
+# Multi-stage pipeline config (RAG_MULTI_STAGE_ENABLED=true on the API).
+api_base_url: "http://localhost:3001"
+retrieval:
+  endpoint: "/api/rag/search"
+  top_k: 10
+minimum_metrics:
+  strict.recall@5: 0.55
+  strict.recall@10: 0.75
+  lenient.recall@10: 0.88
+  strict.mrr@10: 0.55

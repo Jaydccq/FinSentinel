@@ -18,6 +18,27 @@ from evaluators.topk_evaluator import TopKEvaluator, GoldenEntry, RetrievalResul
 from evaluators.corpus_retriever import CorpusRetriever
 
 
+def check_minimum_metrics(metrics: dict[str, float], minimums: dict[str, float]) -> list[str]:
+    """Return list of violation messages, empty if all pass.
+
+    Returns a message for any minimums key not present in metrics (typo guard),
+    and a violation message for any key whose value falls below its threshold.
+    """
+    violations: list[str] = []
+    for key, threshold in minimums.items():
+        if key not in metrics:
+            violations.append(
+                f"UNKNOWN_KEY: '{key}' not found in metrics. "
+                f"Available keys: {sorted(metrics.keys())}"
+            )
+        elif metrics[key] < threshold:
+            delta = metrics[key] - threshold
+            violations.append(
+                f"FAIL: {key} = {metrics[key]:.4f} < minimum {threshold:.4f} (delta {delta:+.4f})"
+            )
+    return violations
+
+
 def load_golden_set(path: str) -> list[GoldenEntry]:
     with open(path) as f:
         data = json.load(f)
@@ -99,6 +120,7 @@ def run_evaluation(dataset_path: str, output_path: str, config_path: str | None 
 
     evaluator = TopKEvaluator()
     metrics = evaluator.evaluate(golden_set, retrieval_results)
+    minimum_metrics: dict[str, float] = config.get("minimum_metrics", {})
 
     report = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -106,6 +128,8 @@ def run_evaluation(dataset_path: str, output_path: str, config_path: str | None 
         "entry_count": len(golden_set),
         "metrics": metrics,
     }
+    if minimum_metrics:
+        report["minimum_metrics"] = minimum_metrics
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
@@ -115,6 +139,14 @@ def run_evaluation(dataset_path: str, output_path: str, config_path: str | None 
     print("\nMetrics:")
     for name, value in sorted(metrics.items()):
         print(f"  {name}: {value:.4f}")
+
+    if minimum_metrics:
+        violations = check_minimum_metrics(metrics, minimum_metrics)
+        if violations:
+            print("\nminimum_metrics violations:")
+            for msg in violations:
+                print(f"  {msg}")
+            sys.exit(1)
 
 
 def compare_reports(path_a: str, path_b: str) -> None:
@@ -147,8 +179,21 @@ def compare_reports(path_a: str, path_b: str) -> None:
         print(f"  {key:<23} {val_a:>10.4f} {val_b:>10.4f} {delta:>+9.4f} {arrow}")
 
     print(f"\n{improvements} improved, {regressions} regressed.")
+    should_exit_nonzero = False
     if regressions > 0:
         print("WARNING: regressions detected (delta < -0.05)")
+        should_exit_nonzero = True
+
+    minimum_metrics: dict[str, float] = report_b.get("minimum_metrics", {})
+    if minimum_metrics:
+        violations = check_minimum_metrics(metrics_b, minimum_metrics)
+        if violations:
+            print("\nminimum_metrics violations in experiment report:")
+            for msg in violations:
+                print(f"  {msg}")
+            should_exit_nonzero = True
+
+    if should_exit_nonzero:
         sys.exit(1)
 
 

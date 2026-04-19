@@ -205,7 +205,7 @@ Verify: `pnpm --filter @finsentinel/api test -- src/rag/__tests__/rag-retrieval.
 
 Verify: `pnpm --filter @finsentinel/api test -- src/rag/__tests__/rag-retrieval-flag-off.regression.spec.ts`
 
-- [ ] **(Step 3)** Extend the golden-set schema to support both required and acceptable matches:
+- [x] **(Step 3)** Extend the golden-set schema to support both required and acceptable matches:
 
 ```json
 {
@@ -225,7 +225,7 @@ Verify: `pnpm --filter @finsentinel/api test -- src/rag/__tests__/rag-retrieval-
 
 Verify: evaluator tests show `expected_chunk_ids` drive strict recall and `acceptable_chunk_ids` drive a separate lenient recall metric without hiding strict misses.
 
-- [ ] **(Step 4)** Add support for `minimum_metrics` in evaluation config:
+- [x] **(Step 4)** Add support for `minimum_metrics` in evaluation config:
 
 ```yaml
 retrieval:
@@ -236,7 +236,7 @@ minimum_metrics:
   mrr@10: 0.55
 ```
 
-- [ ] **(Step 5)** Update `compare_reports` and `run_evaluation` so an experiment fails when configured minimum metrics are not met.
+- [x] **(Step 5)** Update `compare_reports` and `run_evaluation` so an experiment fails when configured minimum metrics are not met.
 
 Verify: `python services/evaluation-runner/run_evaluation.py run --dataset services/evaluation-runner/datasets/golden.json --output services/evaluation-runner/reports/offline.json --corpus services/evaluation-runner/datasets/corpus.json`
 
@@ -614,6 +614,25 @@ Performance review:
 ## Final Outcome
 
 Planning complete. No implementation has been applied yet. The next correct action is Task 1, Step 1: expose stable `chunkId`/`sourceId` on `RagSearchResult` across single-stage, multi-stage, and fallback paths. Without stable chunk IDs the evaluator cannot score anything that follows.
+
+### Progress Log
+
+**2026-04-19 — T1.A done** (prior session): stable `chunkId`/`sourceId` returned from API; flag-off regression test added.
+
+**2026-04-19 — T1.B done**: strict/lenient recall split + `minimum_metrics` gate implemented.
+- `GoldenEntry.acceptable_chunk_ids` added (optional, default empty).
+- `TopKEvaluator.evaluate()` now returns `strict.*` and `lenient.*` namespaces for recall and MRR; precision kept strict-only.
+- `check_minimum_metrics()` helper factored out of `run_evaluation.py` for testability.
+- `run_evaluation` writes report first, then enforces thresholds and exits 1 on any violation.
+- `compare_reports` also enforces `minimum_metrics` recorded in the experiment report.
+- `configs/baseline.yaml` has conservative thresholds (30/45/60/25 for strict.recall@5/10, lenient.recall@10, strict.mrr@10).
+- `configs/cloud-multistage.yaml` created with Phase-2 targets from design spec §2.
+- `datasets/golden.json` backfilled with `acceptable_chunk_ids: []` on all 25 entries.
+- 23 tests pass (17 topk + 9 run_evaluation + 1 ragas).
+- Smoke run with corpus confirms all baseline thresholds pass (actual: strict.recall@10 = 1.00).
+- `evaluators/conftest.py` added to fix pre-existing test import path issue (bare imports need path fixture).
+
+Next: T1.C — golden set candidate export CLI.
 
 ## GSTACK REVIEW REPORT
 

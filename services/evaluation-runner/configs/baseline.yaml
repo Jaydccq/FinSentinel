@@ -3,3 +3,8 @@ api_base_url: "http://localhost:3001"
 retrieval:
   endpoint: "/api/rag/search"
   top_k: 10
+minimum_metrics:
+  strict.recall@5: 0.30
+  strict.recall@10: 0.45
+  lenient.recall@10: 0.60
+  strict.mrr@10: 0.25
