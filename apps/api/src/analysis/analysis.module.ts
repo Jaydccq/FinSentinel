@@ -146,8 +146,6 @@ import { RagRetrievalService } from '../rag/rag-retrieval.service';
           },
         };
 
-        // Retrieval: delegate to RagRetrievalService.search().
-        // Maps RagSearchResult[] → { id, snippet }[].
         const ragAdapter = {
           retrieve: async (
             query: string,
