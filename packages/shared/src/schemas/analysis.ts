@@ -59,6 +59,26 @@ export const approvalStatusSchema = z.enum([
 ]);
 export type ApprovalStatus = z.infer<typeof approvalStatusSchema>;
 
+export const analysisPresetSchema = z.enum([
+  'FAST_RISK_CHECK',
+  'STANDARD_ANALYSIS',
+  'DEEP_THESIS',
+  'EXECUTION_READY',
+]);
+export type AnalysisPreset = z.infer<typeof analysisPresetSchema>;
+
+export const researchDepthSchema = z.enum(['SHALLOW', 'STANDARD', 'DEEP']);
+export type ResearchDepth = z.infer<typeof researchDepthSchema>;
+
+export const roleSummarySchema = z.object({
+  roleKey: z.string(),
+  status: z.enum(['PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'SKIPPED']),
+  durationMs: z.number().int().nonnegative(),
+  toolCallCount: z.number().int().nonnegative(),
+  summary: z.string(),
+});
+export type RoleSummary = z.infer<typeof roleSummarySchema>;
+
 // ── Context layers ───────────────────────────────────────────────────────────
 export const contextLayerSchema = z.object({
   summary: z.string(),
@@ -147,7 +167,8 @@ export const createRunRequestSchema = z.object({
   portfolioId: z.string().uuid().optional(),
   parentChatSessionId: z.string().uuid().optional(),
   enabledTeams: z.array(analysisStageKeySchema).optional(),
-  researchDepth: z.enum(['SHALLOW', 'STANDARD', 'DEEP']).optional(),
+  researchDepth: researchDepthSchema.optional(),
+  preset: analysisPresetSchema.default('STANDARD_ANALYSIS'),
 });
 export type CreateRunRequest = z.infer<typeof createRunRequestSchema>;
 
