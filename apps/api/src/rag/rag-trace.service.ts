@@ -14,6 +14,13 @@ export interface RagTraceInput {
   lanes: string[];
   resultChunkIds: string[];
   laneCounts: Record<string, number>;
+  /**
+   * Representation types (e.g. 'canonical', 'contextual_text', 'sample_question')
+   * seen across the top-K packed chunks. Folded into lane_counts jsonb under the
+   * reserved __reps sub-key to avoid a schema migration:
+   *   lane_counts = { dense: 60, sparse: 45, __reps: ['canonical', 'contextual_text'] }
+   */
+  representationTypesSeen?: string[];
   timingsMs: Record<string, number>;
   fallbackFlags: string[];
   rerankReason?: string | null;
@@ -66,6 +73,14 @@ export class RagTraceService {
         query_hash: createHash('sha256').update(v.query).digest('hex'),
       }));
 
+      // Fold representationTypesSeen into lane_counts under the reserved __reps
+      // sub-key. This avoids a migration while surfacing provenance for failure
+      // mining. Consumers must treat __reps as a string[] in the jsonb object.
+      const laneCountsPayload: Record<string, unknown> = { ...input.laneCounts };
+      if (input.representationTypesSeen && input.representationTypesSeen.length > 0) {
+        laneCountsPayload['__reps'] = input.representationTypesSeen;
+      }
+
       const labelKind = alwaysLog ? 'always_logged' : 'sampled';
       this.metrics?.incrementCounter(
         'rag_trace_writes_total',
@@ -101,7 +116,7 @@ export class RagTraceService {
           ${JSON.stringify(input.filters)}::jsonb,
           ${input.lanes}::varchar[],
           ${input.resultChunkIds}::uuid[],
-          ${JSON.stringify(input.laneCounts)}::jsonb,
+          ${JSON.stringify(laneCountsPayload)}::jsonb,
           ${JSON.stringify(input.timingsMs)}::jsonb,
           ${input.fallbackFlags}::varchar[],
           ${input.rerankReason ?? null},

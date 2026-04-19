@@ -173,7 +173,7 @@ export class RagRetrievalService {
         regionId: opts.regionId,
         afterDate: opts.afterDate,
       };
-      const fused = await this.orchestrator!.orchestrate({
+      const { fused, laneCounts } = await this.orchestrator!.orchestrate({
         rewrittenQuery: plan.rewrittenQuery,
         lanes: plan.lanes,
         topKPerLane: plan.topKPerLane,
@@ -204,7 +204,8 @@ export class RagRetrievalService {
         maxChunksPerSource: 3,
       });
 
-      const results = packed.chunks.slice(0, safeTopK).map((c) => ({
+      const topPackedChunks = packed.chunks.slice(0, safeTopK);
+      const results = topPackedChunks.map((c) => ({
         chunkId: c.chunkId,
         sourceId: c.sourceId,
         content: c.content,
@@ -213,6 +214,21 @@ export class RagRetrievalService {
       }));
 
       resultChunkIds = results.map((r) => r.chunkId);
+
+      // Aggregate representationTypesSeen across the top-K packed chunks.
+      // We union over the fused candidates whose chunkId appears in the
+      // packed output so provenance survives through the full pipeline.
+      const packedChunkIdSet = new Set(resultChunkIds);
+      const repsSet = new Set<string>();
+      for (const candidate of fused) {
+        if (packedChunkIdSet.has(candidate.chunkId)) {
+          for (const rt of candidate.representationTypesSeen) {
+            repsSet.add(rt);
+          }
+        }
+      }
+      const representationTypesSeen = [...repsSet];
+
       const totalMs = Date.now() - startedAt;
 
       this.metrics.incrementCounter('rag_search_requests_total', 'Total RAG search requests by status', { status: 'success' });
@@ -231,7 +247,8 @@ export class RagRetrievalService {
         filters: { docType: opts.docType ?? null, sector: opts.sector ?? null, regionId: opts.regionId ?? null, afterDate: opts.afterDate ?? null },
         lanes: planLanes,
         resultChunkIds,
-        laneCounts: {},
+        laneCounts,
+        representationTypesSeen,
         timingsMs,
         fallbackFlags: [...planFallbackFlags, ...fallbackFlags],
         rerankReason,

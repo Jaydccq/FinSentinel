@@ -10,6 +10,7 @@ import { ContextPackerService } from '../context-packer.service';
 import { ContextExpanderService } from '../context-expander.service';
 import { RetrievalPlannerService } from '../retrieval-planner.service';
 import { RetrievalOrchestratorService } from '../retrieval-orchestrator.service';
+import { RagTraceService } from '../rag-trace.service';
 
 describe('RagRetrievalService', () => {
   let service: RagRetrievalService;
@@ -166,8 +167,8 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
       metadata: {},
       rrfScore: 0.05,
       lanes: ['dense'],
-      representationTypesSeen: [],
-      variantKindsSeen: [],
+      representationTypesSeen: ['canonical'],
+      variantKindsSeen: ['original'],
     };
 
     const rerankedCandidate = { ...fusedCandidate, rerankScore: 0.9, fallbackReason: null };
@@ -182,7 +183,7 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     };
 
     const mockOrchestrator = {
-      orchestrate: vi.fn().mockResolvedValue([fusedCandidate]),
+      orchestrate: vi.fn().mockResolvedValue({ fused: [fusedCandidate], laneCounts: { dense: 20 } }),
     };
 
     const mockReranker = {
@@ -200,6 +201,10 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
         ],
         totalTokenEstimate: 10,
       }),
+    };
+
+    const mockTrace = {
+      recordTrace: vi.fn().mockResolvedValue(undefined),
     };
 
     const module = await Test.createTestingModule({
@@ -226,6 +231,7 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
         { provide: RerankService, useValue: mockReranker },
         { provide: ContextPackerService, useValue: mockPacker },
         { provide: ContextExpanderService, useValue: mockExpander },
+        { provide: RagTraceService, useValue: mockTrace },
       ],
     }).compile();
 
@@ -243,6 +249,12 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     );
     expect(results).toHaveLength(1);
     expect(results[0]!.chunkId).toBe('c1');
+
+    // Trace must receive non-empty laneCounts and representationTypesSeen
+    expect(mockTrace.recordTrace).toHaveBeenCalledOnce();
+    const traceArg = (mockTrace.recordTrace as Mock).mock.calls[0][0] as Record<string, unknown>;
+    expect(traceArg['laneCounts']).toEqual({ dense: 20 });
+    expect(traceArg['representationTypesSeen']).toEqual(['canonical']);
   });
 
   it('skips expander when it is not provided (Optional dep)', async () => {
@@ -262,7 +274,9 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const mockPlanner = {
       plan: vi.fn().mockResolvedValue({ rewrittenQuery: 'q', lanes: ['dense'], topKPerLane: 20 }),
     };
-    const mockOrchestrator = { orchestrate: vi.fn().mockResolvedValue([fusedCandidate]) };
+    const mockOrchestrator = {
+      orchestrate: vi.fn().mockResolvedValue({ fused: [fusedCandidate], laneCounts: { dense: 1 } }),
+    };
     const mockReranker = { rerank: vi.fn().mockResolvedValue([rerankedCandidate]) };
     const mockPacker = {
       pack: vi.fn().mockReturnValue({

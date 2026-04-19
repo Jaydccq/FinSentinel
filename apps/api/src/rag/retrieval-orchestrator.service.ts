@@ -23,6 +23,22 @@ export interface OrchestrationRequest {
   queryClass?: QueryClass;
 }
 
+/**
+ * Result returned by orchestrate().
+ *
+ * laneCounts maps each requested lane name to the total number of candidates
+ * collected across all variant fan-outs. A lane that was requested but whose
+ * Promise.allSettled bucket rejected is included with value 0, so consumers
+ * can distinguish "ran and returned empty" from "never ran" — lanes that were
+ * never requested are omitted entirely.
+ *
+ * Example: 4 variants × 20 dense candidates each → laneCounts.dense = 80.
+ */
+export interface OrchestrationResult {
+  fused: FusedCandidate[];
+  laneCounts: Record<string, number>;
+}
+
 @Injectable()
 export class RetrievalOrchestratorService {
   private readonly logger = new Logger(RetrievalOrchestratorService.name);
@@ -36,7 +52,7 @@ export class RetrievalOrchestratorService {
     @Optional() private readonly graphRetrieval?: GraphRetrievalService,
   ) {}
 
-  async orchestrate(request: OrchestrationRequest): Promise<FusedCandidate[]> {
+  async orchestrate(request: OrchestrationRequest): Promise<OrchestrationResult> {
     const { rewrittenQuery, lanes, topKPerLane, filters, rrfK = 60 } = request;
 
     // Apply metadata pre-filter before dispatching lanes (v1: passes through explicit filters).
@@ -54,6 +70,13 @@ export class RetrievalOrchestratorService {
       { kind: 'original' as VariantKind, query: rewrittenQuery },
     ];
 
+    // Initialise lane count accumulators — requested lanes start at 0 so a
+    // rejected variant bucket doesn't silently omit the key.
+    const laneCounts: Record<string, number> = {};
+    for (const lane of lanes) {
+      laneCounts[lane] = 0;
+    }
+
     // Run each variant's lanes in parallel.
     const variantPromises = variants.map((variant) =>
       this.runVariantLanes(variant, lanes, topKPerLane, effectiveFilters, request.entityNames),
@@ -64,13 +87,21 @@ export class RetrievalOrchestratorService {
 
     for (const result of settled) {
       if (result.status === 'fulfilled') {
-        allLaneResults.push(...result.value);
+        for (const laneResult of result.value) {
+          allLaneResults.push(laneResult);
+          // Accumulate per-lane candidate counts across all variant fan-outs.
+          const laneName = laneResult[0]?.lane;
+          if (laneName) {
+            laneCounts[laneName] = (laneCounts[laneName] ?? 0) + laneResult.length;
+          }
+        }
       } else {
         this.logger.warn(`Variant lanes failed: ${result.reason}`);
       }
     }
 
-    return this.fusion.fuse(allLaneResults, rrfK);
+    const fused = this.fusion.fuse(allLaneResults, rrfK);
+    return { fused, laneCounts };
   }
 
   /**

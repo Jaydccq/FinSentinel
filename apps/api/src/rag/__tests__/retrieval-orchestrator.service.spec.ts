@@ -49,14 +49,14 @@ describe('RetrievalOrchestratorService', () => {
     expect(mockChunkStore.searchRepresentations).toHaveBeenCalled();
     expect(mockSparseSearch.search).toHaveBeenCalled();
     expect(mockFusion.fuse).toHaveBeenCalledWith(expect.any(Array), 60);
-    expect(result).toHaveLength(1);
+    expect(result.fused).toHaveLength(1);
   });
 
   it('skips sparse lane when not in plan', async () => {
     mockChunkStore.searchRepresentations.mockResolvedValueOnce([]);
     mockFusion.fuse.mockReturnValueOnce([]);
 
-    await service.orchestrate({
+    const result = await service.orchestrate({
       rewrittenQuery: 'test',
       lanes: ['dense'],
       topKPerLane: 5,
@@ -65,6 +65,8 @@ describe('RetrievalOrchestratorService', () => {
 
     expect(mockChunkStore.searchRepresentations).toHaveBeenCalled();
     expect(mockSparseSearch.search).not.toHaveBeenCalled();
+    // sparse was never requested — must be absent from laneCounts entirely
+    expect(result.laneCounts).not.toHaveProperty('sparse');
   });
 
   it('handles lane failures gracefully via Promise.allSettled', async () => {
@@ -72,14 +74,17 @@ describe('RetrievalOrchestratorService', () => {
     mockSparseSearch.search.mockResolvedValueOnce([]);
     mockFusion.fuse.mockReturnValueOnce([]);
 
-    await expect(service.orchestrate({
+    const result = await service.orchestrate({
       rewrittenQuery: 'test',
       lanes: ['dense', 'sparse'],
       topKPerLane: 5,
       filters: {},
-    })).resolves.not.toThrow();
+    });
 
+    expect(result.fused).toBeDefined();
     expect(mockFusion.fuse).toHaveBeenCalled();
+    // dense lane failed — key must still be present with value 0
+    expect(result.laneCounts['dense']).toBe(0);
   });
 
   it('dense lane calls searchRepresentations for all three representation types', async () => {
@@ -177,5 +182,71 @@ describe('RetrievalOrchestratorService', () => {
       expect.objectContaining({ docType: 'SEC_FILING', sector: 'tech' }),
       expect.any(Number),
     );
+  });
+
+  it('laneCounts.dense equals total candidates returned across all variants', async () => {
+    // Each of 2 variants returns 3 dense candidates → total should be 6.
+    mockChunkStore.searchRepresentations
+      .mockResolvedValueOnce([
+        { chunkId: 'a', sourceId: 's1', content: 'c', metadata: {}, similarity: 0.9, representationType: 'canonical' },
+        { chunkId: 'b', sourceId: 's1', content: 'c', metadata: {}, similarity: 0.8, representationType: 'canonical' },
+        { chunkId: 'c', sourceId: 's1', content: 'c', metadata: {}, similarity: 0.7, representationType: 'canonical' },
+      ])
+      .mockResolvedValueOnce([
+        { chunkId: 'd', sourceId: 's2', content: 'c', metadata: {}, similarity: 0.9, representationType: 'canonical' },
+        { chunkId: 'e', sourceId: 's2', content: 'c', metadata: {}, similarity: 0.8, representationType: 'canonical' },
+        { chunkId: 'f', sourceId: 's2', content: 'c', metadata: {}, similarity: 0.7, representationType: 'canonical' },
+      ]);
+    mockFusion.fuse.mockReturnValue([]);
+
+    const result = await service.orchestrate({
+      rewrittenQuery: 'q',
+      lanes: ['dense'],
+      topKPerLane: 5,
+      filters: {},
+      variants: [
+        { kind: 'original', query: 'q1' },
+        { kind: 'rewrite', query: 'q2' },
+      ],
+    });
+
+    // 3 candidates per variant × 2 variants = 6 total in dense lane
+    expect(result.laneCounts['dense']).toBe(6);
+  });
+
+  it('failed lane key is present with value 0, successful lane key has correct count', async () => {
+    // dense embedding throws; sparse returns 2 candidates
+    mockChunkStore.searchRepresentations.mockRejectedValueOnce(new Error('embed failed'));
+    mockSparseSearch.search.mockResolvedValueOnce([
+      { chunkId: 'x', sourceId: 's1', content: 'c', metadata: {}, score: 0.9 },
+      { chunkId: 'y', sourceId: 's1', content: 'c', metadata: {}, score: 0.8 },
+    ]);
+    mockFusion.fuse.mockReturnValueOnce([]);
+
+    const result = await service.orchestrate({
+      rewrittenQuery: 'q',
+      lanes: ['dense', 'sparse'],
+      topKPerLane: 5,
+      filters: {},
+    });
+
+    expect(result.laneCounts['dense']).toBe(0);
+    expect(result.laneCounts['sparse']).toBe(2);
+  });
+
+  it('unrequested lane is absent from laneCounts', async () => {
+    mockChunkStore.searchRepresentations.mockResolvedValueOnce([]);
+    mockFusion.fuse.mockReturnValueOnce([]);
+
+    const result = await service.orchestrate({
+      rewrittenQuery: 'q',
+      lanes: ['dense'],
+      topKPerLane: 5,
+      filters: {},
+    });
+
+    expect(Object.keys(result.laneCounts)).toEqual(['dense']);
+    expect(result.laneCounts).not.toHaveProperty('sparse');
+    expect(result.laneCounts).not.toHaveProperty('graph');
   });
 });

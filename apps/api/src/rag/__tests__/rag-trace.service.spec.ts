@@ -233,6 +233,51 @@ describe('RagTraceService — error handling', () => {
   });
 });
 
+describe('RagTraceService — representationTypesSeen __reps sub-key', () => {
+  it('folds representationTypesSeen into lane_counts.__reps when present', async () => {
+    const executeFn = vi.fn().mockResolvedValue([]);
+    const svc = new RagTraceService(makeDb(executeFn) as any, makeConfigService() as any, makeMetrics() as any);
+
+    await svc.recordTrace(baseInput({
+      laneCounts: { dense: 60, sparse: 45 },
+      representationTypesSeen: ['canonical', 'contextual_text'],
+    }));
+
+    const serialised = JSON.stringify(executeFn.mock.calls[0]);
+    // The serialised INSERT payload must contain the __reps key with the rep types.
+    expect(serialised).toContain('__reps');
+    expect(serialised).toContain('canonical');
+    expect(serialised).toContain('contextual_text');
+    // Numeric lane counts must also survive.
+    expect(serialised).toContain('"dense"');
+    expect(serialised).toContain('"sparse"');
+  });
+
+  it('omits __reps sub-key when representationTypesSeen is empty', async () => {
+    const executeFn = vi.fn().mockResolvedValue([]);
+    const svc = new RagTraceService(makeDb(executeFn) as any, makeConfigService() as any, makeMetrics() as any);
+
+    await svc.recordTrace(baseInput({
+      laneCounts: { dense: 30 },
+      representationTypesSeen: [],
+    }));
+
+    const serialised = JSON.stringify(executeFn.mock.calls[0]);
+    expect(serialised).not.toContain('__reps');
+  });
+
+  it('omits __reps sub-key when representationTypesSeen is absent', async () => {
+    const executeFn = vi.fn().mockResolvedValue([]);
+    const svc = new RagTraceService(makeDb(executeFn) as any, makeConfigService() as any, makeMetrics() as any);
+
+    // baseInput does not set representationTypesSeen
+    await svc.recordTrace(baseInput());
+
+    const serialised = JSON.stringify(executeFn.mock.calls[0]);
+    expect(serialised).not.toContain('__reps');
+  });
+});
+
 describe('RagTraceService — INSERT column completeness', () => {
   it('INSERT SQL references all required columns', async () => {
     const executeFn = vi.fn().mockResolvedValue([]);
