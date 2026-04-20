@@ -90,17 +90,25 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
   it('returns single-stage result even when multi-stage throws inside shadow', async () => {
     const { mockPlanner, mockOrchestrator, mockReranker, mockPacker } = makeMultiStageMocks();
 
-    // Multi-stage throws inside shadow
-    mockPlanner.plan.mockRejectedValueOnce(new Error('multi stage explosion'));
+    // Make BOTH the planner AND the fallback embedding fail so searchMultiStage
+    // cannot recover internally — this causes the error to surface out of
+    // searchMultiStage entirely, reaching runShadow's try/catch.
+    mockPlanner.plan.mockRejectedValue(new Error('multi stage explosion'));
+
+    const mockEmbedding = {
+      // First call: single-stage (primary) — succeeds
+      // Subsequent calls: shadow's dense-fallback inside searchMultiStage — also fails
+      embedQuery: vi.fn()
+        .mockResolvedValueOnce([1, 0])  // single-stage primary call
+        .mockRejectedValue(new Error('embed also fails in shadow')),
+    };
 
     const mockTrace = {
       recordTrace: vi.fn().mockResolvedValue(undefined),
       recordShadowComparison: vi.fn().mockResolvedValue(undefined),
     };
 
-    // ShadowRunnerService that actually executes the task (no stubbing needed — but
-    // we need the task to be executed synchronously for test assertions). We stub
-    // enqueue to immediately run the callback and return 'executed'.
+    // ShadowRunnerService that actually executes the task inline.
     const mockShadowRunner = {
       enqueue: vi.fn().mockImplementation(async (task: () => Promise<unknown>) => {
         try {
@@ -115,7 +123,7 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
     const module = await Test.createTestingModule({
       providers: [
         RagRetrievalService,
-        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
+        { provide: RagEmbeddingService, useValue: mockEmbedding },
         { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([makeSingleStageChunk()]) } },
         {
           provide: MetricsService,
@@ -146,6 +154,12 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
     // User gets single-stage results — no 5xx propagated
     expect(results).toHaveLength(1);
     expect(results[0]!.chunkId).toBe('ss-chunk-1');
+
+    // Flush the microtask/task queue so the fire-and-forget shadow promise resolves.
+    // The shadow chain has several awaits (enqueue → task → searchMultiStage throw
+    // → recordShadowComparison), so we drain with a setImmediate tick which runs
+    // after all pending microtasks.
+    await new Promise<void>((resolve) => setImmediate(resolve));
 
     // Shadow ran and recorded a comparison row with multiStageError set
     expect(mockTrace.recordShadowComparison).toHaveBeenCalledOnce();

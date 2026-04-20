@@ -1,5 +1,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createHash } from 'node:crypto';
 import { RagEmbeddingService } from './rag-embedding.service';
 import { RagChunkStoreService } from './rag-chunk-store.service';
 import { MetricsService } from '../common/services/metrics.service';
@@ -9,6 +10,8 @@ import { RerankService } from './rerank.service';
 import { ContextPackerService } from './context-packer.service';
 import { ContextExpanderService } from './context-expander.service';
 import { RagTraceService } from './rag-trace.service';
+import { RolloutGateService, type StickinessInput } from './rollout-gate.service';
+import { ShadowRunnerService } from './shadow-runner.service';
 import { normaliseRerankScore, clampUnit } from './score-normalisation';
 
 /**
@@ -53,6 +56,10 @@ export interface RagSearchOptions {
   sector?: string;
   regionId?: string;
   afterDate?: string;
+  /** Query class hint from the caller — used by the canary rollout gate. */
+  queryClass?: string;
+  /** Stickiness signals for deterministic canary assignment. */
+  stickiness?: StickinessInput;
 }
 
 @Injectable()
@@ -60,6 +67,8 @@ export class RagRetrievalService {
   private readonly logger = new Logger(RagRetrievalService.name);
   private readonly similarityThreshold: number;
   private readonly multiStageEnabled: boolean;
+  private readonly rolloutMode: 'off' | 'shadow' | 'canary' | 'on';
+  private readonly shadowSampleRate: number;
 
   constructor(
     private readonly embeddingService: RagEmbeddingService,
@@ -72,9 +81,13 @@ export class RagRetrievalService {
     @Optional() private readonly contextPacker?: ContextPackerService,
     @Optional() private readonly contextExpander?: ContextExpanderService,
     @Optional() private readonly ragTrace?: RagTraceService,
+    @Optional() private readonly rolloutGate?: RolloutGateService,
+    @Optional() private readonly shadowRunner?: ShadowRunnerService,
   ) {
     this.similarityThreshold = configService.get<number>('RAG_SIMILARITY_THRESHOLD', 0.65);
     this.multiStageEnabled = configService.get<string>('RAG_MULTI_STAGE_ENABLED', 'false') === 'true';
+    this.rolloutMode = configService.get<'off' | 'shadow' | 'canary' | 'on'>('rag.rollout.mode', 'off') as 'off' | 'shadow' | 'canary' | 'on';
+    this.shadowSampleRate = configService.get<number>('rag.rollout.shadowSampleRate', 1.0) as number;
   }
 
   async search(
@@ -85,7 +98,6 @@ export class RagRetrievalService {
     regionId?: string,
     afterDate?: string,
   ): Promise<RagSearchResult[]> {
-    const startedAt = Date.now();
     const opts: RagSearchOptions =
       typeof queryOrOptions === 'string'
         ? { query: queryOrOptions, topK, docType, sector, regionId, afterDate }
@@ -93,10 +105,56 @@ export class RagRetrievalService {
 
     const safeTopK = Math.min(Math.max(opts.topK ?? 5, 1), 50);
 
-    // Delegate to multi-stage pipeline when enabled and all services are available
-    if (this.multiStageEnabled && this.planner && this.orchestrator && this.reranker && this.contextPacker) {
+    const pipelineChoice = this.choosePipeline(opts);
+
+    this.metrics.incrementCounter(
+      'rag_retrieval_pipeline',
+      'Pipeline selection count',
+      { mode: pipelineChoice, query_class: opts.queryClass ?? 'unknown' },
+    );
+
+    if (pipelineChoice === 'multi_stage' && this.multiStagePossible()) {
       return this.searchMultiStage(opts, safeTopK);
     }
+
+    // Single-stage path (authoritative)
+    const singleStart = Date.now();
+    const results = await this.searchSingleStage(opts, safeTopK);
+    const singleLatencyMs = Date.now() - singleStart;
+
+    // Fire-and-forget shadow when mode is 'shadow' and multi-stage deps are present
+    if (this.rolloutMode === 'shadow' && this.multiStagePossible() && Math.random() <= this.shadowSampleRate) {
+      void this.runShadow(opts, results, singleLatencyMs);
+    }
+
+    return results;
+  }
+
+  private choosePipeline(opts: RagSearchOptions): 'multi_stage' | 'single_stage' {
+    if (this.rolloutMode === 'off') {
+      return this.multiStageEnabled ? 'multi_stage' : 'single_stage';
+    }
+    if (this.rolloutMode === 'on') {
+      return this.multiStagePossible() ? 'multi_stage' : 'single_stage';
+    }
+    if (this.rolloutMode === 'shadow') {
+      return 'single_stage';
+    }
+    // canary
+    if (!this.rolloutGate || !opts.queryClass) return 'single_stage';
+    const decision = this.rolloutGate.decide(
+      opts.queryClass as import('./retrieval-planner.service').QueryClass,
+      opts.stickiness ?? {},
+    );
+    return decision.pipeline;
+  }
+
+  private multiStagePossible(): boolean {
+    return !!(this.planner && this.orchestrator && this.reranker && this.contextPacker);
+  }
+
+  private async searchSingleStage(opts: RagSearchOptions, safeTopK: number): Promise<RagSearchResult[]> {
+    const startedAt = Date.now();
 
     this.logger.debug(
       `RAG search: query="${opts.query.substring(0, 50)}..." topK=${safeTopK} ` +
@@ -170,6 +228,60 @@ export class RagRetrievalService {
       );
       throw error;
     }
+  }
+
+  private async runShadow(
+    opts: RagSearchOptions,
+    singleResults: RagSearchResult[],
+    singleLatencyMs: number,
+  ): Promise<void> {
+    if (!this.shadowRunner) return;
+
+    const queryHash = createHash('sha256').update(opts.query).digest('hex');
+    const queryClass = (opts.queryClass ?? 'unknown') as string;
+
+    const outcome = await this.shadowRunner.enqueue(async () => {
+      const startedAt = Date.now();
+      let multiIds: string[] = [];
+      let multiError: string | null = null;
+      try {
+        const multi = await this.searchMultiStage(opts, opts.topK ?? 5);
+        multiIds = multi.map((r) => r.chunkId);
+      } catch (err) {
+        multiError = err instanceof Error ? err.message : String(err);
+      }
+      await this.ragTrace?.recordShadowComparison({
+        queryHash,
+        queryClass,
+        singleStageChunkIds: singleResults.map((r) => r.chunkId),
+        multiStageChunkIds: multiIds,
+        singleStageLatencyMs: singleLatencyMs,
+        multiStageLatencyMs: multiError ? null : Date.now() - startedAt,
+        shadowTimedOut: false,
+        shadowDroppedBackpressure: false,
+        multiStageError: multiError,
+      });
+    });
+
+    if (outcome === 'dropped_backpressure' || outcome === 'timed_out') {
+      await this.ragTrace?.recordShadowComparison({
+        queryHash,
+        queryClass,
+        singleStageChunkIds: singleResults.map((r) => r.chunkId),
+        multiStageChunkIds: [],
+        singleStageLatencyMs: singleLatencyMs,
+        multiStageLatencyMs: null,
+        shadowTimedOut: outcome === 'timed_out',
+        shadowDroppedBackpressure: outcome === 'dropped_backpressure',
+        multiStageError: outcome,
+      });
+    }
+
+    this.metrics?.incrementCounter?.(
+      'rag_shadow_outcome_total',
+      'Shadow runner outcome counts',
+      { outcome },
+    );
   }
 
   private async searchMultiStage(
