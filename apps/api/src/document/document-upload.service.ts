@@ -1,13 +1,11 @@
 import { Injectable, Logger, Inject, BadRequestException, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { documents, eq } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import { HybridStorageService } from '../storage/hybrid.storage';
 import { DocumentParseService } from './document-parse.service';
 import { DocumentVectorService } from './document-vector.service';
 import { VectorizeProducer } from '../queue/vectorize.producer';
-
-/** Maximum file size: 50 MB */
-const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 /** Allowed MIME types for document upload. */
 const ALLOWED_MIME_TYPES = new Set([
@@ -18,6 +16,9 @@ const ALLOWED_MIME_TYPES = new Set([
   'text/xml',
   'application/json',
   'application/xml',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]);
 
 export interface UploadedFile {
@@ -50,6 +51,7 @@ export class DocumentUploadService {
     private readonly storage: HybridStorageService,
     private readonly parseService: DocumentParseService,
     private readonly vectorService: DocumentVectorService,
+    private readonly config: ConfigService,
     @Optional() private readonly vectorizeProducer?: VectorizeProducer,
   ) {}
 
@@ -157,9 +159,10 @@ export class DocumentUploadService {
       throw new BadRequestException('File is empty');
     }
 
-    if (file.buffer.length > MAX_FILE_SIZE) {
+    const maxBytes = this.config.get<number>('rag.parser.uploadMaxBytes', 100 * 1024 * 1024);
+    if (file.buffer.length > maxBytes) {
       throw new BadRequestException(
-        `File exceeds maximum size of ${MAX_FILE_SIZE / (1024 * 1024)} MB`,
+        `File exceeds maximum size of ${Math.floor(maxBytes / (1024 * 1024))} MB`,
       );
     }
 
