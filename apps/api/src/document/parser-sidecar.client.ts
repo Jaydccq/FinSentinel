@@ -102,6 +102,10 @@ export class ParserSidecarClient {
         this.logger.warn(
           `Parser sidecar circuit breaker opened after ${this.consecutiveFailures} consecutive failures`,
         );
+        // Reset the counter when the circuit opens so that after the cooldown,
+        // recovery requires CIRCUIT_FAILURE_THRESHOLD new consecutive failures —
+        // not a single probe failure. Matches the R4 QueryEntityExtractor pattern.
+        this.consecutiveFailures = 0;
       }
       throw err;
     } finally {

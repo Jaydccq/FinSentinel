@@ -128,6 +128,27 @@ describe('ParserSidecarClient behaviour', () => {
     ).rejects.toThrow('PARSER_EMPTY_OUTPUT');
   });
 
+  it('after cooldown, a single probe failure does NOT immediately re-open the circuit', async () => {
+    global.fetch = vi.fn().mockRejectedValue(new Error('500'));
+    const client = new ParserSidecarClient({ url: 'http://x', timeoutMs: 1000, minMarkdownChars: 10 });
+
+    for (let i = 0; i < 3; i++) {
+      await expect(client.parse(Buffer.from('x'), 'application/pdf', 'x.pdf')).rejects.toThrow();
+    }
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+
+    // Force the cooldown to expire by reaching into private state.
+    (client as unknown as { circuitOpenUntil: number }).circuitOpenUntil = 0;
+
+    // Next call should STILL reach fetch — the probe failure alone shouldn't re-open.
+    await expect(client.parse(Buffer.from('x'), 'application/pdf', 'x.pdf')).rejects.toThrow();
+    expect(global.fetch).toHaveBeenCalledTimes(4);
+
+    // And one more: circuit should still be closed since only 1 post-cooldown failure so far.
+    await expect(client.parse(Buffer.from('x'), 'application/pdf', 'x.pdf')).rejects.toThrow();
+    expect(global.fetch).toHaveBeenCalledTimes(5);
+  });
+
   it('succeeds on happy path', async () => {
     const payload = wellFormedPayload();
 
