@@ -377,4 +377,90 @@ describe('RetrievalPlannerService', () => {
     const plan = await makeService().plan('AAPL earnings analysis and why did revenue grow?');
     expect(plan.queryClass).toBe('multi_part');
   });
+
+  // ── R3.3: rerankQuery field on the plan ──────────────────────────────────
+
+  it('R3.3: exact_lookup plan.rerankQuery === originalQuery (literal text, not rewritten)', async () => {
+    const rewrite = makeRewrite((_q) => Promise.resolve('some paraphrased form'));
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(
+      'AAPL Q4 2025 EPS',
+    );
+    expect(plan.queryClass).toBe('exact_lookup');
+    expect(plan.rerankQuery).toBe('AAPL Q4 2025 EPS');
+    expect(plan.rerankQuery).toBe(plan.originalQuery);
+    // Guard: rewriter must NOT have been invoked, so rewrittenQuery falls
+    // back to originalQuery for backward-compat — but rerankQuery still
+    // points at the literal original text.
+    expect(rewrite.rewrite).not.toHaveBeenCalled();
+  });
+
+  it('R3.3: factoid plan.rerankQuery === rewrittenQuery when rewrite ran', async () => {
+    const rewrite = makeRewrite((_q) => Promise.resolve('rewritten factoid query'));
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(
+      'What is the current Apple revenue?',
+    );
+    expect(plan.queryClass).toBe('factoid');
+    expect(plan.rewrittenQuery).toBe('rewritten factoid query');
+    expect(plan.rerankQuery).toBe('rewritten factoid query');
+    expect(plan.rerankQuery).toBe(plan.rewrittenQuery);
+  });
+
+  it('R3.3: relational plan.rerankQuery === rewrittenQuery when rewrite ran', async () => {
+    const rewrite = makeRewrite((_q) => Promise.resolve('rewritten relational query'));
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(
+      "Who are TSMC's competitors?",
+    );
+    expect(plan.queryClass).toBe('relational');
+    expect(plan.rerankQuery).toBe('rewritten relational query');
+  });
+
+  it('R3.3: analytical plan.rerankQuery === rewrittenQuery when rewrite ran', async () => {
+    const longQuery =
+      'Analyze the long-term competitive outlook for NVIDIA versus AMD in the AI accelerator market given supply chain constraints.';
+    const rewrite = makeRewrite((_q) => Promise.resolve('rewritten analytical query'));
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(longQuery);
+    expect(plan.queryClass).toBe('analytical');
+    expect(plan.rerankQuery).toBe('rewritten analytical query');
+  });
+
+  it('R3.3: multi_part plan.rerankQuery === rewrittenQuery when rewrite ran', async () => {
+    const rewrite = makeRewrite((_q) => Promise.resolve('rewritten multi part query'));
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(
+      'What is AAPL revenue? And what is the margin?',
+    );
+    expect(plan.queryClass).toBe('multi_part');
+    expect(plan.rerankQuery).toBe('rewritten multi part query');
+  });
+
+  it('R3.3: non-exact_lookup query with rewrite DISABLED falls back to originalQuery (never empty)', async () => {
+    // When rewrite is disabled, rewrittenQuery === originalQuery by the planner's
+    // current contract. rerankQuery must still be populated and non-empty.
+    const rewrite = makeRewrite((q) => Promise.resolve(q));
+    const plan = await makeService({ rewriteEnabled: false }, rewrite).plan(
+      'What is the current Apple revenue?',
+    );
+    expect(plan.queryClass).toBe('factoid');
+    expect(plan.rewrittenQuery).toBe('What is the current Apple revenue?');
+    expect(plan.rerankQuery).toBe('What is the current Apple revenue?');
+    expect(plan.rerankQuery.length).toBeGreaterThan(0);
+    // The rewriter must not have been called since the flag is off.
+    expect(rewrite.rewrite).not.toHaveBeenCalled();
+  });
+
+  it('R3.3: rerankQuery is always populated (non-empty) for non-empty queries across all classes', async () => {
+    const svc = makeService({ rewriteEnabled: true }, makeRewrite((q) => Promise.resolve(q)));
+    const cases = [
+      'AAPL Q4 2025 EPS', // exact_lookup
+      'What is Apple revenue?', // factoid
+      "Who are TSMC's competitors?", // relational
+      'Analyze the impact of interest rate changes on Apple and Microsoft earnings over the last decade.', // analytical
+      'What is AAPL revenue? And what is the margin?', // multi_part
+    ];
+    for (const q of cases) {
+      const plan = await svc.plan(q);
+      expect(plan.rerankQuery).toBeDefined();
+      expect(typeof plan.rerankQuery).toBe('string');
+      expect(plan.rerankQuery.length).toBeGreaterThan(0);
+    }
+  });
 });
