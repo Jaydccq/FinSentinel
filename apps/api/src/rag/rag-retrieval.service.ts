@@ -85,7 +85,7 @@ export class RagRetrievalService {
     @Optional() private readonly shadowRunner?: ShadowRunnerService,
   ) {
     this.similarityThreshold = configService.get<number>('RAG_SIMILARITY_THRESHOLD', 0.65);
-    this.multiStageEnabled = configService.get<string>('RAG_MULTI_STAGE_ENABLED', 'false') === 'true';
+    this.multiStageEnabled = configService.get<boolean>('rag.multiStageEnabled', true) as boolean;
     this.rolloutMode = configService.get<'off' | 'shadow' | 'canary' | 'on'>('rag.rollout.mode', 'off') as 'off' | 'shadow' | 'canary' | 'on';
     this.shadowSampleRate = configService.get<number>('rag.rollout.shadowSampleRate', 1.0) as number;
   }

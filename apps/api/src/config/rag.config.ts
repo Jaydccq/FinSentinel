@@ -143,6 +143,7 @@ function parsePrefilterMode(raw: string | undefined): PreFilterModeEnv {
 }
 
 export const ragConfig = registerAs('rag', () => ({
+  multiStageEnabled: process.env['RAG_MULTI_STAGE_ENABLED'] !== 'false',
   chunking: {
     chunkSize: Number(process.env['RAG_CHUNK_SIZE']) || 500,
     chunkOverlap: Number(process.env['RAG_CHUNK_OVERLAP']) || 50,
