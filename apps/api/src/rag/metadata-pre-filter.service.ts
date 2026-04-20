@@ -63,6 +63,10 @@ export class MetadataPreFilterService {
 
     const { hardMinConfidence } = this.config;
 
+    // NOTE: ExtractedEntities also carries sectors[] and regions[] that this
+    // service currently discards. They will be mapped onto SparseSearchFilters.sector
+    // / .regionId in R4.3 once the SQL consumption path lands for those columns.
+    // See [RAG-TD-R4-01] in docs/exec-plans/tech-debt-tracker.md.
     const highTickers = extracted.tickers
       .filter((t) => t.confidence >= hardMinConfidence)
       .map((t) => t.value);

@@ -158,3 +158,31 @@
   commit `997a63a`. Harmless today but misleading for the next reader.
   Fix: update the plan snippet to match the landed code, or note that the
   Drizzle/Zod alignment was done post-hoc.
+
+## 2026-04-20 — carried over from R4.2 review findings
+
+- **[RAG-TD-R4-01] `MetadataPreFilterService` discards sectors[] and regions[] from ExtractedEntities.**
+  `buildFilter` iterates only `tickers` and `issuerNames` from the extractor
+  result; `sectors: EntityHit<string>[]` and `regions: EntityHit<string>[]`
+  are silently dropped. R4.3 will wire the SQL consumption path for
+  `SparseSearchFilters.sector` and `.regionId`. At that point, map
+  above/below-threshold sector and region hits into the same soft/hard split
+  used for tickers / issuers. Until then this is an invisible no-op in the
+  LLM-extraction path (the regex path never populates sectors/regions anyway).
+
+- **[RAG-TD-R4-02] `QueryClass` union excludes `colloquial`, but the R4 plan and env defaults reference it.**
+  `retrieval-planner.service.ts` defines `QueryClass = 'exact_lookup' | 'factoid' |
+  'relational' | 'analytical' | 'multi_part'`. The R4 plan and the default JSON
+  for `RAG_METADATA_MIN_CANDIDATES_BY_CLASS` (to be parsed in R4.4) both use a
+  `colloquial` bucket that the type system never emits. Without a fix, R4.5's
+  guardrail (`minCandidatesByClass[queryClass]`) silently becomes a no-op for
+  any traffic that would have been `colloquial` (there is none, because the
+  classifier cannot produce it). Two resolutions:
+  (a) Add `'colloquial'` to the `QueryClass` union and teach the classifier
+      how to emit it; update R4's `MIN_CANDIDATES_BY_CLASS` default to the
+      5-class map (drop `colloquial`).
+  (b) Strip `colloquial` from the R4 plan text and from any env-default JSON
+      in `rag.config.ts` before R4.4 ships.
+  Blocks: R4.4 (config wiring) and R4.5 (guardrail). Current workaround: the
+  R4.2 spec casts `'colloquial' as any` with a FIXME. Track and resolve before
+  R4.4 lands.

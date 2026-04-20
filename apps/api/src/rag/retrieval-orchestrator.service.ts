@@ -65,6 +65,9 @@ export class RetrievalOrchestratorService {
     );
 
     // Strip PreFilter-only fields so downstream lanes see a plain SparseSearchFilters.
+    // R4.3 will use `softFilter` as a per-lane ORDER BY boost (non-matching rows
+    // stay retrievable; matching rows rank higher). For R4.2 we only consume the
+    // hardFilter.
     const { candidateDocIds: _unused, appliedMode: _appliedMode, softFilter: _soft, hardFilter } = preFilter;
     const effectiveFilters = hardFilter;
 
