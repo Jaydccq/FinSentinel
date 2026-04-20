@@ -17,6 +17,13 @@ export interface StructuredChunk {
 }
 
 export interface StructuredDocument {
+  sourceFormat: 'plain' | 'markdown';
   chunks: StructuredChunk[];
-  sourceFormat: 'markdown' | 'plain';
+  // R5.6: parser-origin metadata when the source was handled by the sidecar.
+  // Undefined for non-sidecar paths. R6 consumes `pageCount` / `parserVersion`
+  // for doc-type-aware chunking; today they flow through to downstream
+  // metadata without chunker behaviour change.
+  sourceMimeType?: string;
+  pageCount?: number;
+  parserVersion?: string;
 }

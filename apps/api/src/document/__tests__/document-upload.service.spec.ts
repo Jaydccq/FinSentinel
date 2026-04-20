@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DocumentUploadService } from '../document-upload.service';
 import { DocumentParseService } from '../document-parse.service';
 import { DocumentVectorService } from '../document-vector.service';
@@ -35,6 +36,7 @@ function createMockStorage() {
 function createMockParseService() {
   return {
     parseToCleanText: vi.fn().mockReturnValue('Parsed text content that is sufficiently long for testing purposes.'),
+    parseToMarkdown: vi.fn().mockResolvedValue('# Parsed markdown content that is sufficiently long for testing purposes.'),
   };
 }
 
@@ -57,6 +59,13 @@ describe('DocumentUploadService', () => {
     mockParseService = createMockParseService();
     mockVectorService = createMockVectorService();
 
+    const mockConfigService = {
+      get: vi.fn().mockImplementation((key: string, defaultValue?: unknown) => {
+        if (key === 'rag.parser.uploadMaxBytes') return 100 * 1024 * 1024;
+        return defaultValue;
+      }),
+    };
+
     const module = await Test.createTestingModule({
       providers: [
         DocumentUploadService,
@@ -64,6 +73,7 @@ describe('DocumentUploadService', () => {
         { provide: HybridStorageService, useValue: mockStorage },
         { provide: DocumentParseService, useValue: mockParseService },
         { provide: DocumentVectorService, useValue: mockVectorService },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
@@ -86,7 +96,7 @@ describe('DocumentUploadService', () => {
 
   it('rejects files exceeding max size', async () => {
     const file = {
-      buffer: Buffer.alloc(51 * 1024 * 1024), // 51 MB
+      buffer: Buffer.alloc(101 * 1024 * 1024), // 101 MB > 100 MB cap
       mimetype: 'text/plain',
       originalname: 'huge.txt',
     };
@@ -209,15 +219,49 @@ describe('DocumentUploadService', () => {
     expect(result.id).toBe('doc-uuid-123');
   });
 
-  it('rejects PDF uploads until PDF parsing is implemented', async () => {
-    const file = {
-      buffer: Buffer.from('%PDF-1.4 binary content'),
-      mimetype: 'application/pdf',
-      originalname: 'unsupported.pdf',
-    };
+  // ── R5.3: PDF / DOC / DOCX MIME whitelist ──────────────────────────────
 
-    await expect(service.upload(file, 'user-1', 'RESEARCH')).rejects.toThrow(
-      BadRequestException,
+  it('accepts application/pdf MIME — sync path calls parseToMarkdown', async () => {
+    const file = { buffer: Buffer.alloc(1000), mimetype: 'application/pdf', originalname: 'sample.pdf' };
+    const result = await service.upload(file as any, 'user-1', 'SEC_FILING');
+    expect(result).toHaveProperty('id');
+    expect(mockParseService.parseToMarkdown).toHaveBeenCalledWith(
+      file.buffer,
+      'application/pdf',
+      'sample.pdf',
     );
+    expect(mockParseService.parseToCleanText).not.toHaveBeenCalledWith(
+      file.buffer,
+      'application/pdf',
+    );
+  });
+
+  it('accepts DOCX MIME — sync path calls parseToMarkdown', async () => {
+    const docxMime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    const file = {
+      buffer: Buffer.alloc(1000),
+      mimetype: docxMime,
+      originalname: 'sample.docx',
+    };
+    const result = await service.upload(file as any, 'user-1', 'SEC_FILING');
+    expect(result).toHaveProperty('id');
+    expect(mockParseService.parseToMarkdown).toHaveBeenCalledWith(
+      file.buffer,
+      docxMime,
+      'sample.docx',
+    );
+  });
+
+  it('PDF upload lands as FAILED when parseToMarkdown throws (sidecar unavailable)', async () => {
+    mockParseService.parseToMarkdown.mockRejectedValueOnce(new Error('PARSER_SIDECAR_UNAVAILABLE'));
+    const file = { buffer: Buffer.alloc(1000), mimetype: 'application/pdf', originalname: 'sample.pdf' };
+    const result = await service.upload(file as any, 'user-1', 'SEC_FILING');
+    expect(result.status).toBe('FAILED');
+  });
+
+  it('rejects oversized PDF before reaching storage', async () => {
+    // 101 MiB > default 100 MiB cap
+    const file = { buffer: Buffer.alloc(101 * 1024 * 1024), mimetype: 'application/pdf', originalname: 'big.pdf' };
+    await expect(service.upload(file as any, 'user-1', 'SEC_FILING')).rejects.toThrow(/exceeds maximum size/);
   });
 });

@@ -177,4 +177,10 @@ export const ragConfig = registerAs('rag', () => ({
     llmConcurrency: Number(process.env['RAG_METADATA_LLM_CONCURRENCY']) || 4,
     minCandidatesByClass: parseMinCandidatesByClass(process.env['RAG_METADATA_MIN_CANDIDATES_BY_CLASS']),
   },
+  parser: {
+    url: process.env['PARSER_URL'] ?? 'http://localhost:8110',
+    timeoutMs: Number(process.env['RAG_PARSER_TIMEOUT_MS']) || 30_000,
+    minMarkdownChars: Number(process.env['RAG_PARSER_MIN_MARKDOWN_CHARS']) || 50,
+    uploadMaxBytes: Number(process.env['RAG_UPLOAD_MAX_BYTES']) || 100 * 1024 * 1024,
+  },
 }));
