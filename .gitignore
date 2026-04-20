@@ -106,6 +106,15 @@ docs/exec-plans/*
 docs/runbooks/*
 !docs/runbooks/2026-04-16-multi-agent-runtime-rollout.md
 !docs/runbooks/2026-04-19-rag-wave2-rollout.md
+!docs/superpowers/
+docs/superpowers/*
+!docs/superpowers/plans/
+docs/superpowers/plans/*
+!docs/superpowers/plans/2026-04-20-rag-wave2-remaining-index.md
+!docs/superpowers/plans/2026-04-20-rag-wave2-r4-metadata-soft-routing.md
+!docs/superpowers/plans/2026-04-20-rag-wave2-r5-pdf-word-sidecar.md
+!docs/superpowers/plans/2026-04-20-rag-wave2-r6-doctype-chunking.md
+!docs/superpowers/plans/2026-04-20-rag-wave2-r7-shadow-canary-rollout.md
 work-log/
 work-logs/
 
