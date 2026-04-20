@@ -1,6 +1,11 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { StructuredChunk, StructuredDocument } from './structured-document';
+import { classifyDocType } from './chunkers/doc-type-classifier';
+import { DefaultChunker } from './chunkers/default-chunker';
+import { ReportChunker } from './chunkers/report-chunker';
+import { QaChunker } from './chunkers/qa-chunker';
+import { TableChunker } from './chunkers/table-chunker';
 
 export interface ChunkingConfig {
   chunkSize: number;
@@ -26,6 +31,10 @@ export interface ChunkingConfig {
 export class DocumentChunkingService {
   private readonly logger = new Logger(DocumentChunkingService.name);
   private readonly config: ChunkingConfig;
+  private readonly reportChunker: ReportChunker;
+  private readonly qaChunker: QaChunker;
+  private readonly tableChunker: TableChunker;
+  private readonly defaultChunker: DefaultChunker;
 
   constructor(@Inject(ConfigService) configService: ConfigService) {
     this.config = {
@@ -34,6 +43,10 @@ export class DocumentChunkingService {
       minChunkSizeChars: configService.get<number>('rag.chunking.minChunkSizeChars', 200),
       maxNumChunks: configService.get<number>('rag.chunking.maxNumChunks', 10000),
     };
+    this.reportChunker = new ReportChunker(this.config);
+    this.qaChunker = new QaChunker({ chunkSize: this.config.chunkSize });
+    this.tableChunker = new TableChunker({ chunkSize: this.config.chunkSize });
+    this.defaultChunker = new DefaultChunker(this.config);
   }
 
   /**
@@ -87,65 +100,13 @@ export class DocumentChunkingService {
    * @returns Array of StructuredChunks ready for embedding
    */
   chunkStructured(doc: StructuredDocument): StructuredChunk[] {
-    const { chunkSize, minChunkSizeChars, maxNumChunks } = this.config;
-    const output: StructuredChunk[] = [];
-
-    for (const inputChunk of doc.chunks) {
-      if (inputChunk.modality !== 'text') {
-        // Tables, images: emit as-is, truncate only if absurdly large
-        const truncateAt = chunkSize * 4;
-        if (inputChunk.text.length > truncateAt) {
-          this.logger.warn(
-            `Non-text chunk (modality=${inputChunk.modality}) exceeds 4x chunkSize ` +
-            `(${inputChunk.text.length} chars); truncating`,
-          );
-          output.push({
-            ...inputChunk,
-            text: inputChunk.text.slice(0, truncateAt) + ' [truncated]',
-          });
-        } else {
-          output.push(inputChunk);
-        }
-        continue;
-      }
-
-      // Text block
-      if (!inputChunk.text || inputChunk.text.trim().length === 0) {
-        continue;
-      }
-
-      if (inputChunk.text.length <= chunkSize) {
-        if (inputChunk.text.trim().length >= minChunkSizeChars) {
-          output.push(inputChunk);
-        }
-      } else {
-        // Split the section text using the same paragraph/sentence/word logic
-        const segments = this.splitIntoSegments(inputChunk.text);
-        const splitTexts = this.mergeWithOverlap(segments).filter(
-          (t) => t.trim().length >= minChunkSizeChars,
-        );
-        for (const splitText of splitTexts) {
-          output.push({
-            text: splitText,
-            title: inputChunk.title,
-            sectionPath: inputChunk.sectionPath,
-            parentId: null,
-            modality: 'text',
-            pageStart: inputChunk.pageStart,
-            pageEnd: inputChunk.pageEnd,
-          });
-        }
-      }
-
-      if (output.length >= maxNumChunks) {
-        this.logger.warn(
-          `Structured chunk count reached max (${maxNumChunks}), truncating`,
-        );
-        return output.slice(0, maxNumChunks);
-      }
+    const docType = classifyDocType(doc);
+    switch (docType) {
+      case 'report':      return this.reportChunker.chunk(doc);
+      case 'qa':          return this.qaChunker.chunk(doc);
+      case 'table_heavy': return this.tableChunker.chunk(doc);
+      default:            return this.defaultChunker.chunk(doc);
     }
-
-    return output;
   }
 
   /**

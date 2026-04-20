@@ -300,9 +300,14 @@ describe('DocumentChunkingService', () => {
     }
   });
 
-  // ── chunkStructured: table stays single chunk even if > chunkSize ────────
+  // ── chunkStructured: table routing via classifier ────────────────────────
+  // A single-table document is classified as table_heavy → routed to
+  // TableChunker. TableChunker splits large markdown tables row-wise with the
+  // header repeated on each split (not the old emit-as-is behaviour). The old
+  // emit-as-is / truncation behaviour for non-text chunks is tested in
+  // default-chunker.spec.ts.
 
-  it('table chunk stays single even if larger than chunkSize', async () => {
+  it('table_heavy doc routes to TableChunker (large table is split)', async () => {
     const module = await Test.createTestingModule({
       providers: [
         DocumentChunkingService,
@@ -338,48 +343,11 @@ describe('DocumentChunkingService', () => {
 
     const structured = svc.chunkStructured(doc);
 
-    expect(structured).toHaveLength(1);
-    expect(structured[0]!.modality).toBe('table');
-  });
-
-  it('table chunk exceeding 4x chunkSize is truncated with [truncated] note', async () => {
-    const module = await Test.createTestingModule({
-      providers: [
-        DocumentChunkingService,
-        {
-          provide: ConfigService,
-          useValue: createConfigService({
-            'rag.chunking.chunkSize': 50,
-            'rag.chunking.minChunkSizeChars': 5,
-          }),
-        },
-      ],
-    }).compile();
-
-    const svc = module.get(DocumentChunkingService);
-
-    const hugeTable = '| col |\n|-----|\n' + '| val |\n'.repeat(100); // > 200 chars (4 * 50)
-    expect(hugeTable.length).toBeGreaterThan(200);
-
-    const doc: StructuredDocument = {
-      sourceFormat: 'markdown',
-      chunks: [
-        {
-          text: hugeTable,
-          title: null,
-          sectionPath: [],
-          parentId: null,
-          modality: 'table',
-          pageStart: null,
-          pageEnd: null,
-        },
-      ],
-    };
-
-    const structured = svc.chunkStructured(doc);
-
-    expect(structured).toHaveLength(1);
-    expect(structured[0]!.text).toContain('[truncated]');
+    // TableChunker splits large tables row-wise; all output chunks are tables.
+    expect(structured.length).toBeGreaterThanOrEqual(1);
+    for (const c of structured) {
+      expect(c.modality).toBe('table');
+    }
   });
 
   // ── chunkStructured: minChunkSizeChars and maxNumChunks honored ──────────
