@@ -120,6 +120,9 @@ export class NewsEnrichConsumer implements OnModuleInit, OnModuleDestroy {
     let documentId: string | undefined;
     if (fullContent) {
       try {
+        // News items carry no filename signal, so the R4.0 issuer/ticker
+        // extractor relies on `title` as its docTitle input (no
+        // `__originalFileName` sentinel is passed on this path).
         const chunkCount = await this.vectorService.vectorize(
           newsItemId,
           fullContent,

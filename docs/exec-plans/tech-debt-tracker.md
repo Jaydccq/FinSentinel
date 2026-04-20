@@ -227,3 +227,42 @@
   document_chunks USING gin (metadata);` (use `jsonb_ops`, not
   `jsonb_path_ops`, because `?|` requires the full operator class).
   Schedule before Wave 2 ships to production.
+- **[RAG-TD-R4-06] Extractor output `docType` and `timeRange` are silently
+  discarded by `MetadataPreFilterService.buildFilter`.**
+  `QueryEntityExtractorService.regexPass` deterministically extracts
+  `docType` (e.g. `'10-K'`, confidence 0.9) and `timeRange`
+  (e.g. `FY2024`, confidence 0.95). These fields have obvious SQL
+  targets — `SparseSearchFilters.docType` and `.afterDate` — but
+  `buildFilter` iterates only `tickers` and `issuerNames` from
+  `extracted`, so a query like `"AAPL 10-K FY2024"` restricts only on
+  ticker at the SQL layer. Unlike `[RAG-TD-R4-01]` (sectors/regions —
+  no reliable regex path), docType and timeRange extraction already
+  works end-to-end. Fix: route the two fields through `buildFilter`
+  into `hardFilter` when they are above `hardMinConfidence`, merged
+  with caller-supplied explicit filters (explicit wins on conflict).
+  Impact: the biggest precision miss of R4 on the primary
+  `exact_lookup` use case. Schedule alongside `[RAG-TD-R4-03]`.
+- **[RAG-TD-R4-07] `PreFilter.softFilter` is computed but never
+  consumed.**
+  R4.2 landed the soft/hard split per spec: below-threshold hits go
+  into `softFilter`. The orchestrator at
+  `apps/api/src/rag/retrieval-orchestrator.service.ts` destructures it
+  as `softFilter: _soft` and discards it. The plan's stated intent is
+  that `softFilter` becomes a per-lane `ORDER BY` boost (non-matching
+  rows stay retrievable; matching rows rank higher) — no R4 task
+  shipped that. The dead output stays silently ignored until a
+  follow-up wires it into sparse ranking. Fix: extend
+  `SparseSearchService` to accept `softFilter` and bias `ts_rank_cd`
+  via a CASE expression on `metadata->>'issuerName'` etc., or a
+  post-fusion re-rank step. Scope with a prototype + eval-delta
+  measurement before committing to a design.
+- **[RAG-TD-R4-08] LLM fallback invocation rate has no observability.**
+  `QueryEntityExtractorService.runLlmFallback` emits no Prometheus
+  counter on success. Only the error paths carry a `fallbackFlag`
+  (DEBUG log) and the downgrade path has
+  `rag_metadata_prefilter_downgrade_total`. When an operator flips
+  `RAG_METADATA_LLM_FALLBACK_ENABLED=true` in staging, Grafana cannot
+  tell them how often the LLM is actually invoked or at what cost.
+  Fix: add `rag_entity_llm_fallback_total{result}` with labels
+  `success | empty | timeout | error | circuit_open` at the call site.
+  Blocks cost validation for the flag flip.
