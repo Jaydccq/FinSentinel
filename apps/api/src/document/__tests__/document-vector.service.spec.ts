@@ -239,6 +239,52 @@ describe('DocumentVectorService', () => {
     );
   });
 
+  // ── Issuer/ticker extraction wired into chunk metadata ───────────────────
+
+  it('writes issuerName + tickers into chunk metadata when extractable', async () => {
+    // Override the markdown-structure mock for THIS test so the extractor
+    // sees recognisable issuer text in the sample.
+    const recognisableChunks: StructuredChunk[] = [
+      { text: 'Apple Inc. reported revenue of $383B. AAPL remains our top pick.',
+        title: null, sectionPath: [], parentId: null, modality: 'text',
+        pageStart: null, pageEnd: null },
+    ];
+    mockMarkdownStructure.parse.mockReturnValueOnce({
+      sourceFormat: 'plain', chunks: recognisableChunks,
+    });
+    mockChunking.chunkStructured.mockReturnValueOnce(recognisableChunks);
+    mockEmbeddingService.embedChunks.mockResolvedValueOnce([[1, 0, 0]]);
+
+    await service.vectorize('doc-id-1', 'Apple Inc. reported revenue of $383B. AAPL remains our top pick.', {
+      doc_type: 'RESEARCH',
+      sector: 'Technology',
+      region_id: 'US',
+      source: 'AAPL_research.md',
+      date: '2026-01-01',
+    });
+
+    const call = mockChunkStore.replaceChunks.mock.calls[0];
+    const persistedChunks = call[2];
+    expect(persistedChunks[0].metadata.tickers).toEqual(['AAPL']);
+    expect(persistedChunks[0].metadata.issuerName).toBe('Apple Inc.');
+  });
+
+  it('always sets metadata.tickers (empty array when nothing extractable)', async () => {
+    // Relies on the default markdown-structure mock which produces chunks with bland text.
+    await service.vectorize('doc-id-2', 'some text', {
+      doc_type: 'NEWS',
+      sector: 'General',
+      region_id: 'US',
+      source: 'general-news.txt',
+      date: '2026-01-01',
+    });
+
+    const call = mockChunkStore.replaceChunks.mock.calls[0];
+    const firstChunk = call[2][0];
+    expect(firstChunk.metadata.tickers).toEqual([]);
+    expect(firstChunk.metadata.issuerName).toBeUndefined();
+  });
+
   // ── End-to-end with real MarkdownStructureService ────────────────────────
 
   it('end-to-end: real MarkdownStructureService produces section_path metadata for markdown', async () => {
