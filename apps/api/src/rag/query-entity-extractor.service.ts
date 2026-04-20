@@ -7,6 +7,8 @@ export interface EntityHit<T> { value: T; confidence: number; }
 export interface ExtractedEntities {
   tickers: EntityHit<string>[];
   issuerNames: EntityHit<string>[];
+  // '10-K' | '10-Q' | '8-K' are regex-reachable; 'news' | 'research' | 'filing' | 'other'
+  // are reserved for the R4.1c LLM path.
   docType?: EntityHit<'10-K' | '10-Q' | '8-K' | 'news' | 'research' | 'filing' | 'other'>;
   timeRange?: { after?: Date; before?: Date; confidence: number };
   sectors: EntityHit<string>[];
@@ -36,8 +38,12 @@ export class QueryEntityExtractorService {
 
   async extract(query: string): Promise<ExtractedEntities> {
     const regexHits = this.regexPass(query);
+    // If ANY structured signal came out of regex, skip the LLM fallback. issuerNames
+    // is included today for R4.1c forward-compat — the regex path does not populate
+    // it, but when the LLM path lands, this predicate should cover that field too.
     const hasAnyHit =
       regexHits.tickers.length > 0 ||
+      regexHits.issuerNames.length > 0 ||
       regexHits.docType !== undefined ||
       regexHits.timeRange !== undefined;
 
@@ -65,7 +71,8 @@ export class QueryEntityExtractorService {
       }
     }
 
-    // DocType — literal matches on the five canonical shapes.
+    // DocType — five input patterns ("10-K", "10-Q", "8-K", "annual report",
+    // "quarterly report") normalised down to three canonical output values.
     let docType: ExtractedEntities['docType'];
     const dt = query.match(DOC_TYPE_RE);
     if (dt?.[1]) {

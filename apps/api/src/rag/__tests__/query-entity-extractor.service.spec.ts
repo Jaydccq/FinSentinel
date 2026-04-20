@@ -23,7 +23,7 @@ describe('QueryEntityExtractorService (regex path)', () => {
     expect(result.timeRange?.after).toBeInstanceOf(Date);
   });
 
-  it('returns empty + no fallbackFlag when regex is empty but LLM fallback is disabled', async () => {
+  it('returns llm_disabled flag when regex produces no hits and LLM fallback is off', async () => {
     const result = await service.extract('what is going on with the market');
     expect(result.tickers).toEqual([]);
     expect(result.docType).toBeUndefined();
