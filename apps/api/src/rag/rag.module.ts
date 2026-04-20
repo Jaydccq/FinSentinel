@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommonModule } from '../common/common.module';
 import { QueueModule } from '../queue/queue.module';
+import { ParserSidecarClient } from '../document/parser-sidecar.client';
 import { RagRetrievalService } from './rag-retrieval.service';
 import { QueryRewriteService } from './query-rewrite.service';
 import { RagEmbeddingService } from './rag-embedding.service';
@@ -144,6 +145,16 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     ContextExpanderService,
     RagTraceService,
     RagTraceRetentionService,
+    {
+      provide: 'PARSER_SIDECAR_CONFIG',
+      useFactory: (configService: ConfigService) => ({
+        url: configService.get<string>('rag.parser.url', 'http://localhost:8110'),
+        timeoutMs: configService.get<number>('rag.parser.timeoutMs', 30_000),
+        minMarkdownChars: configService.get<number>('rag.parser.minMarkdownChars', 50),
+      }),
+      inject: [ConfigService],
+    },
+    ParserSidecarClient,
   ],
   exports: [
     RagRetrievalService,
@@ -168,6 +179,7 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     ContextExpanderService,
     RagTraceService,
     RagTraceRetentionService,
+    ParserSidecarClient,
   ],
 })
 export class RagModule {}

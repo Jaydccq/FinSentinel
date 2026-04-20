@@ -7,6 +7,7 @@ import { VECTORIZE_QUEUE } from './queue.constants';
 import { DocumentParseService } from '../document/document-parse.service';
 import { DocumentVectorService } from '../document/document-vector.service';
 import { HybridStorageService } from '../storage/hybrid.storage';
+import { ParserSidecarClient } from '../document/parser-sidecar.client';
 import { GraphEnrichProducer } from './graph-enrich.producer';
 import { RepresentationEnrichProducer } from './representation-enrich.producer';
 
@@ -35,6 +36,7 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
     private readonly parseService: DocumentParseService,
     private readonly vectorService: DocumentVectorService,
     private readonly storage: HybridStorageService,
+    @Optional() @Inject(ParserSidecarClient) private readonly parserSidecar?: ParserSidecarClient,
     @Optional() @Inject(GraphEnrichProducer) private readonly graphEnrichProducer?: GraphEnrichProducer,
     @Optional() @Inject(RepresentationEnrichProducer) private readonly representationEnrichProducer?: RepresentationEnrichProducer,
   ) {}
@@ -104,8 +106,31 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
     // 3. Determine MIME type from file extension
     const mimeType = this.guessMimeType(doc.originalFileName);
 
-    // 4. Parse to clean text
-    const text = this.parseService.parseToCleanText(content, mimeType);
+    // 4. Parse to clean text — PDF/DOC/DOCX go through the parser sidecar when
+    //    available; all other MIME types use the synchronous parseService path.
+    const SIDECAR_MIMES = new Set([
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]);
+
+    let text: string;
+    try {
+      if (SIDECAR_MIMES.has(mimeType) && this.parserSidecar) {
+        const result = await this.parserSidecar.parse(content, mimeType, doc.originalFileName);
+        text = result.markdown;
+      } else {
+        text = this.parseService.parseToCleanText(content, mimeType);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Document ${docId} parse failed: ${msg}`);
+      await this.db
+        .update(documents)
+        .set({ status: 'FAILED' })
+        .where(eq(documents.id, docId));
+      throw err;
+    }
 
     if (!text) {
       await this.db
@@ -172,6 +197,8 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
       xml: 'text/xml',
       json: 'application/json',
       pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     };
     return mimeMap[ext] ?? 'text/plain';
   }
