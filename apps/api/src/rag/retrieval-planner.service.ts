@@ -115,14 +115,38 @@ export class RetrievalPlannerService {
     // Build variants -- original is always first
     const variants: QueryVariant[] = [{ kind: 'original', query }];
 
-    // Rewrite variant
+    // Rewrite variant.
+    // R3.2: exact_lookup queries contain precise literal tokens (tickers,
+    // filings sections, ISIN/CUSIP, quoted phrases). Rewriting those tokens
+    // dilutes precision, so we skip rewrite entirely for that class —
+    // regardless of RAG_QUERY_REWRITE_ENABLED.
     let rewrittenQuery = query;
-    if (this.rewriteEnabled && query.trim()) {
+    const shouldRewrite =
+      this.rewriteEnabled && queryClass !== 'exact_lookup' && query.trim().length > 0;
+    if (shouldRewrite) {
       const rewrite = await this.queryRewrite.rewrite(query);
       rewrittenQuery = rewrite;
       if (rewrite !== query) {
         variants.push({ kind: 'rewrite', query: rewrite });
       }
+    }
+
+    // R3.2: exact_lookup short-circuits BEFORE the HyDE and decompose
+    // branches are even considered. The branches below gate on
+    // `queryClass === 'analytical'` / `'multi_part'` respectively, which
+    // already excludes exact_lookup by precedence — but we make the
+    // intent explicit here so a future refactor that widens either class
+    // gate cannot accidentally re-enable expansion for exact_lookup.
+    if (queryClass === 'exact_lookup') {
+      return {
+        originalQuery: query,
+        rewrittenQuery,
+        queryClass,
+        variants,
+        lanes,
+        topKPerLane,
+        fallbackFlags,
+      };
     }
 
     // HyDE variant -- analytical class only, gated by flag
