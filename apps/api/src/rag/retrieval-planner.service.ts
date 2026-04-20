@@ -25,6 +25,18 @@ export interface RetrievalPlan {
   originalQuery: string;
   /** Kept for backward compatibility with T5's orchestrator (plan.rewrittenQuery). */
   rewrittenQuery: string;
+  /**
+   * Query text the reranker should score candidates against.
+   *
+   * R3.3 selection rule:
+   *   - `exact_lookup` → `originalQuery` (literal tokens must survive)
+   *   - else → `rewrittenQuery` (paraphrase aids semantic rerank),
+   *     with fallback to `originalQuery` when `rewrittenQuery` is empty.
+   *
+   * Always non-empty when the input query is non-empty — guarantees the
+   * reranker sidecar never receives an empty string.
+   */
+  rerankQuery: string;
   queryClass: QueryClass;
   variants: QueryVariant[];
   lanes: Array<'dense' | 'sparse' | 'graph'>;
@@ -131,6 +143,12 @@ export class RetrievalPlannerService {
       }
     }
 
+    // R3.3: rerankQuery selection.
+    // - exact_lookup → originalQuery (preserve literal tickers/filings/quotes)
+    // - else → rewrittenQuery, falling back to originalQuery when the
+    //   rewriter is disabled or returned an empty string.
+    const rerankQuery = this.selectRerankQuery(queryClass, query, rewrittenQuery);
+
     // R3.2: exact_lookup short-circuits BEFORE the HyDE and decompose
     // branches are even considered. The branches below gate on
     // `queryClass === 'analytical'` / `'multi_part'` respectively, which
@@ -141,6 +159,7 @@ export class RetrievalPlannerService {
       return {
         originalQuery: query,
         rewrittenQuery,
+        rerankQuery,
         queryClass,
         variants,
         lanes,
@@ -177,12 +196,31 @@ export class RetrievalPlannerService {
     return {
       originalQuery: query,
       rewrittenQuery,
+      rerankQuery,
       queryClass,
       variants,
       lanes,
       topKPerLane,
       fallbackFlags,
     };
+  }
+
+  /**
+   * R3.3: select the query text the reranker should score against.
+   *
+   * - `exact_lookup` → the literal `originalQuery` (never paraphrase
+   *   tickers, filings sections, ISIN/CUSIP, or quoted phrases).
+   * - anything else → `rewrittenQuery` when non-empty, else
+   *   `originalQuery` as a safety fallback so we never ship an empty
+   *   string to the reranker sidecar.
+   */
+  private selectRerankQuery(
+    queryClass: QueryClass,
+    originalQuery: string,
+    rewrittenQuery: string,
+  ): string {
+    if (queryClass === 'exact_lookup') return originalQuery;
+    return rewrittenQuery.length > 0 ? rewrittenQuery : originalQuery;
   }
 
   /**
