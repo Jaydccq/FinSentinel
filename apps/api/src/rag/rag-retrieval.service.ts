@@ -257,6 +257,14 @@ export class RagRetrievalService {
       const results: RagSearchResult[] = topPackedChunks.map((c) => {
         const r = rerankedByChunkId.get(c.chunkId);
         if (!r) {
+          // Defensive: ContextPackerService should only emit chunks that
+          // came from the reranker, so this branch is unreachable under the
+          // current contract. Keep similarity finite (0.5) so `* 100`
+          // downstream produces a sane percentage, but log once so any
+          // future drift becomes observable instead of silent.
+          this.logger.warn(
+            `packed chunk ${c.chunkId} missing from reranker map — neutral similarity 0.5 emitted`,
+          );
           return {
             chunkId: c.chunkId,
             sourceId: c.sourceId,
