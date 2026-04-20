@@ -23,6 +23,18 @@ import type { RepresentationType } from '@finsentinel/db';
  * `keyword_entity` today stores a comma-separated blob in `content` (entities,
  * tickers, keywords are not separated upstream by the LLM schema in
  * chunk-representation.service.ts). We weight the whole blob at A.
+ * Splitting into separate fields is tracked in docs/exec-plans/tech-debt-tracker.md
+ * as [RAG-TD-01].
+ *
+ * Known asymmetry: canonical `document_chunks.search_vector` is built in
+ * `rag-chunk-store.service.ts` using `to_tsvector('english', content)` at
+ * B-weight for chunk content, while representation rows here use `'simple'`
+ * uniformly. Both are probed by `websearch_to_tsquery('simple', …)` in
+ * SparseSearchService — that works for overlapping tokens but English-stemmed
+ * canonical lexemes (e.g. `run` for "running") will not match simple-tokenised
+ * query lexemes (`running`). Intentional for Wave 2: the representation lane
+ * is the clean `'simple'`-tokenised surface; coordinated migration of the
+ * canonical-chunk tsvector is a separate follow-up [RAG-TD-02].
  */
 
 export interface TsvectorInputs {
