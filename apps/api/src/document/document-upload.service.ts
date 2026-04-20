@@ -113,8 +113,16 @@ export class DocumentUploadService {
     }
 
     // Synchronous fallback (used when QueueModule is not loaded)
+    const SIDECAR_MIMES = new Set([
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]);
+
     try {
-      const text = this.parseService.parseToCleanText(file.buffer, file.mimetype);
+      const text = SIDECAR_MIMES.has(file.mimetype)
+        ? await this.parseService.parseToMarkdown(file.buffer, file.mimetype, file.originalname)
+        : this.parseService.parseToCleanText(file.buffer, file.mimetype);
       const uploadDate = new Date().toISOString().slice(0, 10);
 
       if (text) {

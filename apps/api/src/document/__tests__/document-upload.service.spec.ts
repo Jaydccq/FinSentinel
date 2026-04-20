@@ -36,6 +36,7 @@ function createMockStorage() {
 function createMockParseService() {
   return {
     parseToCleanText: vi.fn().mockReturnValue('Parsed text content that is sufficiently long for testing purposes.'),
+    parseToMarkdown: vi.fn().mockResolvedValue('# Parsed markdown content that is sufficiently long for testing purposes.'),
   };
 }
 
@@ -220,18 +221,42 @@ describe('DocumentUploadService', () => {
 
   // ── R5.3: PDF / DOC / DOCX MIME whitelist ──────────────────────────────
 
-  it('accepts application/pdf MIME', async () => {
+  it('accepts application/pdf MIME — sync path calls parseToMarkdown', async () => {
     const file = { buffer: Buffer.alloc(1000), mimetype: 'application/pdf', originalname: 'sample.pdf' };
-    await expect(service.upload(file as any, 'user-1', 'SEC_FILING')).resolves.toHaveProperty('id');
+    const result = await service.upload(file as any, 'user-1', 'SEC_FILING');
+    expect(result).toHaveProperty('id');
+    expect(mockParseService.parseToMarkdown).toHaveBeenCalledWith(
+      file.buffer,
+      'application/pdf',
+      'sample.pdf',
+    );
+    expect(mockParseService.parseToCleanText).not.toHaveBeenCalledWith(
+      file.buffer,
+      'application/pdf',
+    );
   });
 
-  it('accepts DOCX MIME', async () => {
+  it('accepts DOCX MIME — sync path calls parseToMarkdown', async () => {
+    const docxMime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     const file = {
       buffer: Buffer.alloc(1000),
-      mimetype: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      mimetype: docxMime,
       originalname: 'sample.docx',
     };
-    await expect(service.upload(file as any, 'user-1', 'SEC_FILING')).resolves.toHaveProperty('id');
+    const result = await service.upload(file as any, 'user-1', 'SEC_FILING');
+    expect(result).toHaveProperty('id');
+    expect(mockParseService.parseToMarkdown).toHaveBeenCalledWith(
+      file.buffer,
+      docxMime,
+      'sample.docx',
+    );
+  });
+
+  it('PDF upload lands as FAILED when parseToMarkdown throws (sidecar unavailable)', async () => {
+    mockParseService.parseToMarkdown.mockRejectedValueOnce(new Error('PARSER_SIDECAR_UNAVAILABLE'));
+    const file = { buffer: Buffer.alloc(1000), mimetype: 'application/pdf', originalname: 'sample.pdf' };
+    const result = await service.upload(file as any, 'user-1', 'SEC_FILING');
+    expect(result.status).toBe('FAILED');
   });
 
   it('rejects oversized PDF before reaching storage', async () => {
