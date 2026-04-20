@@ -41,6 +41,45 @@ function parseSparseWeights(raw: string | undefined): [number, number, number, n
   return SparseWeightsSchema.parse(tuple);
 }
 
+/**
+ * Parse `RAG_METADATA_MIN_CANDIDATES_BY_CLASS` (JSON map of QueryClass to int).
+ * Falls back to the 5-class default when unset. Rejects malformed JSON with a
+ * clear error at config load so retrieval never sees a partially-parsed map.
+ *
+ * IMPORTANT: the `QueryClass` union in retrieval-planner.service.ts does NOT
+ * include `colloquial` (see [RAG-TD-R4-02] in tech-debt-tracker.md). The env
+ * key accepts extra keys but they are silently ignored at lookup time.
+ */
+function parseMinCandidatesByClass(
+  raw: string | undefined,
+): Record<string, number> {
+  const fallback: Record<string, number> = {
+    exact_lookup: 5,
+    factoid: 15,
+    relational: 20,
+    analytical: 30,
+    multi_part: 30,
+  };
+  if (!raw || !raw.trim()) return fallback;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      const n = Number(v);
+      if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+        throw new Error(
+          `RAG_METADATA_MIN_CANDIDATES_BY_CLASS has non-integer value for "${k}": ${JSON.stringify(v)}`,
+        );
+      }
+      out[k] = n;
+    }
+    return out;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`RAG_METADATA_MIN_CANDIDATES_BY_CLASS must be valid JSON; got "${raw}" (${msg})`);
+  }
+}
+
 export const ragConfig = registerAs('rag', () => ({
   chunking: {
     chunkSize: Number(process.env['RAG_CHUNK_SIZE']) || 500,
@@ -111,5 +150,13 @@ export const ragConfig = registerAs('rag', () => ({
     piiEnabled: process.env['RAG_QUERY_LOG_PII_ENABLED'] === 'true',
     // Retention is gated off by default — operator must opt in.
     retentionEnabled: process.env['RAG_QUERY_LOG_RETENTION_ENABLED'] === 'true',
+  },
+  metadataPrefilter: {
+    mode: (process.env['RAG_METADATA_PREFILTER_MODE'] ?? 'soft') as 'off' | 'soft' | 'hard',
+    hardMinConfidence: Number(process.env['RAG_METADATA_HARD_FILTER_MIN_CONFIDENCE']) || 0.85,
+    llmFallbackEnabled: process.env['RAG_METADATA_LLM_FALLBACK_ENABLED'] === 'true',
+    llmTimeoutMs: Number(process.env['RAG_METADATA_LLM_TIMEOUT_MS']) || 1500,
+    llmConcurrency: Number(process.env['RAG_METADATA_LLM_CONCURRENCY']) || 4,
+    minCandidatesByClass: parseMinCandidatesByClass(process.env['RAG_METADATA_MIN_CANDIDATES_BY_CLASS']),
   },
 }));

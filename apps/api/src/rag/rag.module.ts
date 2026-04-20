@@ -20,7 +20,7 @@ import { GoldenCandidatesService, GOLDEN_LLM_CLIENT } from './eval/golden-candid
 import { ChunkRepresentationService, REPRESENTATION_LLM_CLIENT } from './chunk-representation.service';
 import { RepresentationAdminService } from './admin/representation-admin.service';
 import { MetadataPreFilterService } from './metadata-pre-filter.service';
-import { QueryEntityExtractorService } from './query-entity-extractor.service';
+import { QueryEntityExtractorService, METADATA_ENTITY_LLM_CLIENT } from './query-entity-extractor.service';
 import { ContextExpanderService } from './context-expander.service';
 import { RagTraceService } from './rag-trace.service';
 import { RagTraceRetentionService } from './rag-trace-retention.service';
@@ -102,24 +102,44 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
       inject: [aiConfig.KEY],
     },
     {
-      // Default config — R4.4 replaces this factory with a ConfigService-backed version.
       provide: MetadataPreFilterService,
-      useFactory: () => new MetadataPreFilterService({
-        mode: 'soft',
-        hardMinConfidence: 0.85,
-        minCandidatesByClass: {},
+      useFactory: (configService: ConfigService) => new MetadataPreFilterService({
+        mode: configService.get<'off' | 'soft' | 'hard'>('rag.metadataPrefilter.mode', 'soft'),
+        hardMinConfidence: configService.get<number>('rag.metadataPrefilter.hardMinConfidence', 0.85),
+        minCandidatesByClass: configService.get<Record<string, number>>('rag.metadataPrefilter.minCandidatesByClass', {}),
       }),
+      inject: [ConfigService],
     },
     {
-      // LLM fallback disabled until R4.4 reads RAG_METADATA_LLM_FALLBACK_ENABLED.
+      provide: METADATA_ENTITY_LLM_CLIENT,
+      useFactory: (aiCfg: ConfigType<typeof aiConfig>) => {
+        const model = createOpenRouterModel({
+          modelId: aiCfg.model,
+          baseUrl: aiCfg.openrouterBaseUrl,
+        });
+        return {
+          async complete(prompt: string): Promise<string> {
+            return generateAgentText({ model, systemPrompt: '', prompt, tools: {} });
+          },
+        };
+      },
+      inject: [aiConfig.KEY],
+    },
+    {
       provide: QueryEntityExtractorService,
-      useFactory: () => new QueryEntityExtractorService({
-        llmFallbackEnabled: false,
-        llmClient: null,
-        hardMinConfidence: 0.85,
-        timeoutMs: 1500,
-        concurrency: 4,
+      useFactory: (
+        configService: ConfigService,
+        llmClient: { complete: (prompt: string) => Promise<string> },
+      ) => new QueryEntityExtractorService({
+        llmFallbackEnabled: configService.get<boolean>('rag.metadataPrefilter.llmFallbackEnabled', false),
+        llmClient: configService.get<boolean>('rag.metadataPrefilter.llmFallbackEnabled', false)
+          ? llmClient
+          : null,
+        hardMinConfidence: configService.get<number>('rag.metadataPrefilter.hardMinConfidence', 0.85),
+        timeoutMs: configService.get<number>('rag.metadataPrefilter.llmTimeoutMs', 1500),
+        concurrency: configService.get<number>('rag.metadataPrefilter.llmConcurrency', 4),
       }),
+      inject: [ConfigService, METADATA_ENTITY_LLM_CLIENT],
     },
     ContextExpanderService,
     RagTraceService,

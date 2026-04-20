@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { RetrievalOrchestratorService } from '../retrieval-orchestrator.service';
 import { MetadataPreFilterService } from '../metadata-pre-filter.service';
 
+// Matches the rag.config defaults; R4.4 reads these from env in production.
 const makeMetadataPreFilter = () =>
   new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
 
