@@ -329,7 +329,7 @@ describe('RetrievalOrchestratorService', () => {
     expect(mockMetricsR45.incrementCounter).toHaveBeenCalledWith(
       'rag_metadata_prefilter_downgrade_total',
       expect.any(String),
-      expect.objectContaining({ class: 'analytical' }),
+      expect.objectContaining({ query_class: 'analytical' }),
     );
   });
 

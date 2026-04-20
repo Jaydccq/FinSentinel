@@ -114,6 +114,16 @@ export class MetadataPreFilterService {
   }
 
   /**
+   * Return the minimum-candidates threshold configured for a given query class,
+   * or `undefined` when no threshold is set (in which case the guardrail is off).
+   * Exposed as a narrow helper so the orchestrator's WARN log can surface the
+   * threshold value without reaching into the private `config` field.
+   */
+  getThreshold(queryClass: QueryClass): number | undefined {
+    return this.config.minCandidatesByClass[queryClass];
+  }
+
+  /**
    * Check whether a candidate count meets the minimum threshold for the given
    * query class. When it doesn't, the orchestrator should re-run retrieval
    * without the hard ticker/issuer filter.

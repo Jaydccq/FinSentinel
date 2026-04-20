@@ -130,22 +130,24 @@ export class RetrievalOrchestratorService {
     const totalCandidates = allLaneResults.reduce((sum, lane) => sum + lane.length, 0);
     if (this.metadataPreFilter.shouldDowngrade(request.queryClass, totalCandidates, hardFilterHadHints)) {
       const threshold = request.queryClass
-        ? (this.metadataPreFilter['config'].minCandidatesByClass[request.queryClass] ?? 0)
+        ? (this.metadataPreFilter.getThreshold(request.queryClass) ?? 0)
         : 0;
       this.logger.warn(
         `metadata prefilter downgraded: class=${request.queryClass} ` +
-        `candidates=${totalCandidates} threshold=${threshold}`,
+        `candidates=${totalCandidates} threshold=${threshold} ` +
+        `tickers=${JSON.stringify(effectiveFilters.tickers ?? [])} ` +
+        `issuerName=${JSON.stringify(effectiveFilters.issuerName ?? [])}`,
       );
       this.metrics?.incrementCounter(
         'rag_metadata_prefilter_downgrade_total',
         'Total metadata prefilter hard→soft downgrades by query class',
-        { class: request.queryClass! },
+        { query_class: request.queryClass! },
       );
 
-      // Strip ticker/issuer hints from the effective filters and re-run.
-      const downgradedFilters: SparseSearchFilters = { ...effectiveFilters };
-      delete (downgradedFilters as Record<string, unknown>)['tickers'];
-      delete (downgradedFilters as Record<string, unknown>)['issuerName'];
+      // Strip tickers/issuerName and re-run. NOTE: dense lane (searchRepresentations)
+      // never consumed these fields (see [RAG-TD-R4-03] in tech-debt-tracker),
+      // so the re-run affects only the sparse lane's WHERE clauses.
+      const { tickers: _strippedTickers, issuerName: _strippedIssuer, ...downgradedFilters } = effectiveFilters;
 
       const downgradedPromises = variants.map((variant) =>
         this.runVariantLanes(variant, lanes, topKPerLane, downgradedFilters, request.entityNames),
