@@ -186,3 +186,44 @@
   Blocks: R4.4 (config wiring) and R4.5 (guardrail). Current workaround: the
   R4.2 spec casts `'colloquial' as any` with a FIXME. Track and resolve before
   R4.4 lands.
+
+- **[RAG-TD-R4-03] Dense lane silently ignores `tickers` / `issuerName` filters.**
+  After R4.3, `SparseSearchService` consumes both JSONB filters via
+  `(metadata->'tickers') ?| $::text[]` and
+  `metadata->>'issuerName' = ANY($::text[])`. The dense lane in
+  `RagChunkStoreService.searchRepresentations`
+  (`apps/api/src/rag/rag-chunk-store.service.ts`) receives the full
+  `SparseSearchFilters` object but its local `RagChunkSearchFilters` type
+  omits the two new fields, so they are silently dropped. Impact: a
+  high-confidence ticker produces a hard SQL filter on the sparse lane
+  but the dense lane retrieves any ticker; the two result sets merge via
+  RRF and dense-lane noise dilutes precision on `exact_lookup` queries.
+  Fix: add `tickers?: string[]` and `issuerName?: string[]` to
+  `RagChunkSearchFilters` and mirror the WHERE clauses in the dense
+  lane's SQL builder. Scheduled for a follow-up after R4.5.
+- **[RAG-TD-R4-04] `issuerName` metadata key is camelCase; every other
+  key is snake_case.**
+  `document_chunks.metadata` stores `doc_type`, `sector`, `region_id`,
+  `date`, `source_type`, `source_id`, `chunk_index`, `section_path` —
+  all snake_case. R4.0c and R4.3 introduce `issuerName` and `tickers`
+  with `issuerName` as the lone camelCase key. This is a latent trap:
+  a future writer that follows the snake_case convention and writes
+  `issuer_name` will silently mismatch the `metadata->>'issuerName'`
+  reader in `SparseSearchService`. Fix: either rename to
+  `issuer_name` everywhere (writer + reader + backfill) or document
+  the exception explicitly in `document-vector.service.ts` +
+  `sparse-search.service.ts`. Low effort, zero data-migration risk
+  because the key is only days old.
+- **[RAG-TD-R4-05] No GIN index on `document_chunks.metadata` for JSONB
+  filters.**
+  `SparseSearchService` now applies `(metadata->'tickers') ?| ...` and
+  `metadata->>'issuerName' = ANY(...)` on the hot path. Migration V9
+  creates `document_chunks.metadata` as `jsonb NOT NULL` with no
+  functional index. V16 adds GIN on representation `search_vector` but
+  not on canonical-chunk `metadata`. Effect: every retrieval call with
+  a ticker filter triggers a seq-scan on `document_chunks`. At
+  production scale this is not acceptable. Fix: add a V18 migration
+  creating `CREATE INDEX document_chunks_metadata_gin_idx ON
+  document_chunks USING gin (metadata);` (use `jsonb_ops`, not
+  `jsonb_path_ops`, because `?|` requires the full operator class).
+  Schedule before Wave 2 ships to production.

@@ -297,5 +297,6 @@ describe('RetrievalOrchestratorService', () => {
     const callFilters = mockSparseSearch.search.mock.calls[0][1];
     expect(callFilters.tickers).toEqual(['AAPL']);
     expect(callFilters.docType).toBe('SEC_FILING');
+    expect(callFilters.issuerName).toBeUndefined();
   });
 });
