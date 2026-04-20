@@ -103,6 +103,62 @@ describe('SparseSearchService', () => {
     expect(sqlStr).toContain('keyword_entity');
   });
 
+  describe('entity hint filters (R4.3)', () => {
+    it('adds tickers JSONB ?| filter clause when tickers are provided', async () => {
+      mockDb.execute.mockResolvedValueOnce([]);
+      await service.search('AAPL 10-K', { tickers: ['AAPL'] }, 5);
+
+      const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
+      expect(sqlStr).toContain('tickers');
+      expect(sqlStr).toContain('?|');
+      expect(sqlStr).toContain('AAPL');
+    });
+
+    it('adds issuerName = ANY filter clause when issuerName is provided', async () => {
+      mockDb.execute.mockResolvedValueOnce([]);
+      await service.search('Apple Inc annual report', { issuerName: ['Apple Inc'] }, 5);
+
+      const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
+      expect(sqlStr).toContain('issuerName');
+      expect(sqlStr).toContain('Apple Inc');
+    });
+
+    it('adds tickers filter to both canonical and rep clauses', async () => {
+      mockDb.execute.mockResolvedValueOnce([]);
+      await service.search('TSLA earnings', { tickers: ['TSLA'] }, 5);
+
+      const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
+      // Both chunkFilterClauses (metadata->'tickers') and repFilterClauses (dc.metadata->'tickers')
+      const tickerOccurrences = (sqlStr.match(/tickers/g) ?? []).length;
+      expect(tickerOccurrences).toBeGreaterThanOrEqual(2);
+    });
+
+    it('adds issuerName filter to both canonical and rep clauses', async () => {
+      mockDb.execute.mockResolvedValueOnce([]);
+      await service.search('Tesla filing', { issuerName: ['Tesla'] }, 5);
+
+      const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
+      const issuerOccurrences = (sqlStr.match(/issuerName/g) ?? []).length;
+      expect(issuerOccurrences).toBeGreaterThanOrEqual(2);
+    });
+
+    it('does not add tickers filter when tickers array is empty', async () => {
+      mockDb.execute.mockResolvedValueOnce([]);
+      await service.search('some query', { tickers: [] }, 5);
+
+      const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
+      expect(sqlStr).not.toContain('?|');
+    });
+
+    it('does not add issuerName filter when issuerName array is empty', async () => {
+      mockDb.execute.mockResolvedValueOnce([]);
+      await service.search('some query', { issuerName: [] }, 5);
+
+      const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
+      expect(sqlStr).not.toContain('issuerName');
+    });
+  });
+
   describe('field-weighted ranking (R2.3/R2.4)', () => {
     it('threads the weight vector into ts_rank_cd as a float4[] parameter', async () => {
       // R2.3: the current service must use `ts_rank_cd(weights, vector, query)`,

@@ -5,12 +5,19 @@ import { MetadataPreFilterService } from '../metadata-pre-filter.service';
 const makeMetadataPreFilter = () =>
   new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
 
+const makeQueryEntityExtractor = () => ({
+  extract: vi.fn().mockResolvedValue({
+    tickers: [], issuerNames: [], sectors: [], regions: [],
+  }),
+});
+
 describe('RetrievalOrchestratorService', () => {
   let service: RetrievalOrchestratorService;
   let mockChunkStore: { search: Mock; searchRepresentations: Mock };
   let mockSparseSearch: { search: Mock };
   let mockEmbeddingService: { embedQuery: Mock };
   let mockFusion: { fuse: Mock };
+  let mockQueryEntityExtractor: { extract: Mock };
 
   beforeEach(() => {
     mockEmbeddingService = { embedQuery: vi.fn().mockResolvedValue([1, 0]) };
@@ -20,12 +27,14 @@ describe('RetrievalOrchestratorService', () => {
     };
     mockSparseSearch = { search: vi.fn().mockResolvedValue([]) };
     mockFusion = { fuse: vi.fn().mockReturnValue([]) };
+    mockQueryEntityExtractor = makeQueryEntityExtractor();
     service = new RetrievalOrchestratorService(
       mockChunkStore as any,
       mockSparseSearch as any,
       mockEmbeddingService as any,
       mockFusion as any,
       makeMetadataPreFilter(),
+      mockQueryEntityExtractor as any,
     );
   });
 
@@ -249,5 +258,44 @@ describe('RetrievalOrchestratorService', () => {
     expect(Object.keys(result.laneCounts)).toEqual(['dense']);
     expect(result.laneCounts).not.toHaveProperty('sparse');
     expect(result.laneCounts).not.toHaveProperty('graph');
+  });
+
+  it('passes extracted ticker hint into sparse lane filters (R4.3)', async () => {
+    mockQueryEntityExtractor.extract.mockResolvedValueOnce({
+      tickers: [{ value: 'AAPL', confidence: 0.95 }],
+      issuerNames: [], sectors: [], regions: [],
+    });
+    mockSparseSearch.search.mockResolvedValueOnce([]);
+    mockFusion.fuse.mockReturnValueOnce([]);
+
+    // Build a fresh orchestrator with MetadataPreFilterService in 'hard' mode so
+    // the high-confidence AAPL ticker goes straight to hardFilter.tickers.
+    const hardPreFilter = new MetadataPreFilterService({
+      mode: 'hard',
+      hardMinConfidence: 0.85,
+      minCandidatesByClass: {},
+    });
+    const localExtractor = { extract: mockQueryEntityExtractor.extract };
+    const localOrchestrator = new RetrievalOrchestratorService(
+      mockChunkStore as any,
+      mockSparseSearch as any,
+      mockEmbeddingService as any,
+      mockFusion as any,
+      hardPreFilter,
+      localExtractor as any,
+    );
+
+    await localOrchestrator.orchestrate({
+      rewrittenQuery: 'AAPL 10-K',
+      lanes: ['sparse'],
+      topKPerLane: 5,
+      filters: { docType: 'SEC_FILING' },
+      queryClass: 'exact_lookup',
+    });
+
+    // sparseSearch.search is called as (query, filters, topK)
+    const callFilters = mockSparseSearch.search.mock.calls[0][1];
+    expect(callFilters.tickers).toEqual(['AAPL']);
+    expect(callFilters.docType).toBe('SEC_FILING');
   });
 });
