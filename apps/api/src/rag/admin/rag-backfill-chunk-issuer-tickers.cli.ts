@@ -49,11 +49,10 @@
 
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { Module } from '@nestjs/common';
+import { Module, type Type } from '@nestjs/common';
 import { fileURLToPath } from 'node:url';
 import { sql } from 'drizzle-orm';
 import type { DrizzleDB } from '@finsentinel/db';
-import { AppConfigModule, DatabaseModule } from '../../config';
 import { extractIssuerAndTickers } from '../../document/metadata-extractors/issuer-ticker-extractor';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -325,11 +324,17 @@ function buildDbUpdater(db: DrizzleDB): ChunkRowUpdater {
 
 // ── NestJS bootstrap module (only for runtime; tests bypass this) ─────────────
 
-@Module({
-  imports: [AppConfigModule, DatabaseModule],
-  providers: [],
-})
-class BackfillChunkIssuerTickersCliModule {}
+async function createBackfillChunkIssuerTickersCliModule(): Promise<Type<unknown>> {
+  const { AppConfigModule, DatabaseModule } = await import('../../config');
+
+  @Module({
+    imports: [AppConfigModule, DatabaseModule],
+    providers: [],
+  })
+  class BackfillChunkIssuerTickersCliModule {}
+
+  return BackfillChunkIssuerTickersCliModule;
+}
 
 // ── Main entrypoint ───────────────────────────────────────────────────────────
 
@@ -365,6 +370,8 @@ async function main(): Promise<void> {
     });
   }
 
+  const BackfillChunkIssuerTickersCliModule =
+    await createBackfillChunkIssuerTickersCliModule();
   const app = await NestFactory.createApplicationContext(BackfillChunkIssuerTickersCliModule, {
     logger: ['error', 'warn', 'log'],
   });

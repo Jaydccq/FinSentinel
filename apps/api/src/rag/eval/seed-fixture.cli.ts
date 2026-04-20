@@ -33,14 +33,13 @@
 
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { Module } from '@nestjs/common';
+import { Module, type Type } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sql } from 'drizzle-orm';
 import type { DrizzleDB } from '@finsentinel/db';
-import { AppConfigModule, DatabaseModule } from '../../config';
 import { RagChunkStoreService } from '../rag-chunk-store.service';
 import { RagEmbeddingService } from '../rag-embedding.service';
 
@@ -343,11 +342,17 @@ async function seedOneDocumentGroup(
 
 // ── Bootstrap module ──────────────────────────────────────────────────────────
 
-@Module({
-  imports: [AppConfigModule, DatabaseModule],
-  providers: [RagChunkStoreService, RagEmbeddingService],
-})
-class SeedFixtureCliModule {}
+async function createSeedFixtureCliModule(): Promise<Type<unknown>> {
+  const { AppConfigModule, DatabaseModule } = await import('../../config');
+
+  @Module({
+    imports: [AppConfigModule, DatabaseModule],
+    providers: [RagChunkStoreService, RagEmbeddingService],
+  })
+  class SeedFixtureCliModule {}
+
+  return SeedFixtureCliModule;
+}
 
 // ── Main entrypoint ───────────────────────────────────────────────────────────
 
@@ -411,6 +416,7 @@ async function main(): Promise<void> {
   requireDatabaseUrl();
   guardProductionAccidents();
 
+  const SeedFixtureCliModule = await createSeedFixtureCliModule();
   const app = await NestFactory.createApplicationContext(SeedFixtureCliModule, {
     logger: ['error', 'warn', 'log'],
   });
@@ -466,4 +472,3 @@ if (isEntrypoint) {
     process.exit(2);
   });
 }
-

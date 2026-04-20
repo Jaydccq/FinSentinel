@@ -37,13 +37,12 @@
 
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { Module } from '@nestjs/common';
+import { Module, type Type } from '@nestjs/common';
 import { fileURLToPath } from 'node:url';
 import type { SQL } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import type { DrizzleDB } from '@finsentinel/db';
 import { REPRESENTATION_TYPES, type RepresentationType } from '@finsentinel/db';
-import { AppConfigModule, DatabaseModule } from '../../config';
 import { buildRepresentationTsvector } from '../chunk-representation.tsvector';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -325,11 +324,17 @@ function buildDbUpdater(db: DrizzleDB): BackfillRowUpdater {
 
 // ── NestJS bootstrap module (only for runtime; tests bypass this) ─────────────
 
-@Module({
-  imports: [AppConfigModule, DatabaseModule],
-  providers: [],
-})
-class BackfillSparseCliModule {}
+async function createBackfillSparseCliModule(): Promise<Type<unknown>> {
+  const { AppConfigModule, DatabaseModule } = await import('../../config');
+
+  @Module({
+    imports: [AppConfigModule, DatabaseModule],
+    providers: [],
+  })
+  class BackfillSparseCliModule {}
+
+  return BackfillSparseCliModule;
+}
 
 // ── Main entrypoint ───────────────────────────────────────────────────────────
 
@@ -365,6 +370,7 @@ async function main(): Promise<void> {
     });
   }
 
+  const BackfillSparseCliModule = await createBackfillSparseCliModule();
   const app = await NestFactory.createApplicationContext(BackfillSparseCliModule, {
     logger: ['error', 'warn', 'log'],
   });

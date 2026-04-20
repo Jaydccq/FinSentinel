@@ -22,11 +22,11 @@
 
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { Module } from '@nestjs/common';
+import { Module, type Type } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
-import { AppConfigModule, DatabaseModule } from '../../config';
+import { fileURLToPath } from 'node:url';
 import { RepresentationAdminService } from './representation-admin.service';
 import { RepresentationEnrichProducer } from '../../queue/representation-enrich.producer';
 import {
@@ -36,34 +36,40 @@ import {
 
 // ── Minimal bootstrap module ──────────────────────────────────────────────────
 
-@Module({
-  imports: [AppConfigModule, DatabaseModule],
-  providers: [
-    {
-      provide: 'BULLMQ_CONNECTION',
-      useFactory: (configService: ConfigService): ConnectionOptions => {
-        const redisUrl = configService.get<string>('REDIS_URL')!;
-        const parsed = new URL(redisUrl);
-        return {
-          host: parsed.hostname,
-          port: Number(parsed.port) || 6379,
-          password: parsed.password || undefined,
-          db: parsed.pathname ? Number(parsed.pathname.slice(1)) || 0 : 0,
-        };
+async function createReindexCliModule(): Promise<Type<unknown>> {
+  const { AppConfigModule, DatabaseModule } = await import('../../config');
+
+  @Module({
+    imports: [AppConfigModule, DatabaseModule],
+    providers: [
+      {
+        provide: 'BULLMQ_CONNECTION',
+        useFactory: (configService: ConfigService): ConnectionOptions => {
+          const redisUrl = configService.get<string>('REDIS_URL')!;
+          const parsed = new URL(redisUrl);
+          return {
+            host: parsed.hostname,
+            port: Number(parsed.port) || 6379,
+            password: parsed.password || undefined,
+            db: parsed.pathname ? Number(parsed.pathname.slice(1)) || 0 : 0,
+          };
+        },
+        inject: [ConfigService],
       },
-      inject: [ConfigService],
-    },
-    {
-      provide: REPRESENTATION_ENRICH_QUEUE_TOKEN,
-      useFactory: (connection: ConnectionOptions) =>
-        new Queue(REPRESENTATION_ENRICH_QUEUE, { connection }),
-      inject: ['BULLMQ_CONNECTION'],
-    },
-    RepresentationEnrichProducer,
-    RepresentationAdminService,
-  ],
-})
-class ReindexCliModule {}
+      {
+        provide: REPRESENTATION_ENRICH_QUEUE_TOKEN,
+        useFactory: (connection: ConnectionOptions) =>
+          new Queue(REPRESENTATION_ENRICH_QUEUE, { connection }),
+        inject: ['BULLMQ_CONNECTION'],
+      },
+      RepresentationEnrichProducer,
+      RepresentationAdminService,
+    ],
+  })
+  class ReindexCliModule {}
+
+  return ReindexCliModule;
+}
 
 // ── CLI argument parsing ───────────────────────────────────────────────────────
 
@@ -163,6 +169,7 @@ async function main() {
     process.exit(1);
   }
 
+  const ReindexCliModule = await createReindexCliModule();
   const app = await NestFactory.createApplicationContext(ReindexCliModule, {
     logger: ['error', 'warn'],
   });
@@ -241,7 +248,17 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('rag:repr:reindex CLI failed:', err);
-  process.exit(1);
-});
+const isEntrypoint = (() => {
+  try {
+    return fileURLToPath(import.meta.url) === process.argv[1];
+  } catch {
+    return false;
+  }
+})();
+
+if (isEntrypoint) {
+  main().catch((err) => {
+    console.error('rag:repr:reindex CLI failed:', err);
+    process.exit(1);
+  });
+}

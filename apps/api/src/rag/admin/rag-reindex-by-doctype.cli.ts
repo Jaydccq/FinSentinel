@@ -35,14 +35,13 @@
 
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { Module, Inject } from '@nestjs/common';
+import { Module, type Type } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 import { fileURLToPath } from 'node:url';
 import { sql } from 'drizzle-orm';
 import type { DrizzleDB } from '@finsentinel/db';
-import { AppConfigModule, DatabaseModule } from '../../config';
 import {
   REPRESENTATION_ENRICH_QUEUE,
   REPRESENTATION_ENRICH_QUEUE_TOKEN,
@@ -396,54 +395,60 @@ function buildDrainWaiter(queue: Queue, logger: ReindexProgressLogger): DrainWai
 // Minimal module that wires only what the reindex CLI needs at runtime.
 // Heavy modules (QueueModule, DocumentModule) are intentionally avoided to
 // prevent pulling in BullMQ consumers/workers, auth guards, etc.
-@Module({
-  imports: [AppConfigModule, DatabaseModule],
-  providers: [
-    {
-      provide: 'BULLMQ_CONNECTION',
-      useFactory: (configService: ConfigService): ConnectionOptions => {
-        const redisUrl = configService.get<string>('REDIS_URL')!;
-        const parsed = new URL(redisUrl);
-        return {
-          host: parsed.hostname,
-          port: Number(parsed.port) || 6379,
-          password: parsed.password || undefined,
-          db: parsed.pathname ? Number(parsed.pathname.slice(1)) || 0 : 0,
-        };
+async function createReindexByDoctypeCliModule(): Promise<Type<unknown>> {
+  const { AppConfigModule, DatabaseModule } = await import('../../config');
+
+  @Module({
+    imports: [AppConfigModule, DatabaseModule],
+    providers: [
+      {
+        provide: 'BULLMQ_CONNECTION',
+        useFactory: (configService: ConfigService): ConnectionOptions => {
+          const redisUrl = configService.get<string>('REDIS_URL')!;
+          const parsed = new URL(redisUrl);
+          return {
+            host: parsed.hostname,
+            port: Number(parsed.port) || 6379,
+            password: parsed.password || undefined,
+            db: parsed.pathname ? Number(parsed.pathname.slice(1)) || 0 : 0,
+          };
+        },
+        inject: [ConfigService],
       },
-      inject: [ConfigService],
-    },
-    {
-      provide: REPRESENTATION_ENRICH_QUEUE_TOKEN,
-      useFactory: (connection: ConnectionOptions) =>
-        new Queue(REPRESENTATION_ENRICH_QUEUE, { connection }),
-      inject: ['BULLMQ_CONNECTION'],
-    },
-    // Storage chain
-    RustfsStorageService,
-    GoogleDriveStorageService,
-    {
-      provide: 'HOT_STORAGE',
-      useExisting: RustfsStorageService,
-    },
-    {
-      provide: 'COLD_STORAGE',
-      useExisting: GoogleDriveStorageService,
-    },
-    HybridStorageService,
-    // Document pipeline services
-    TextCleaningService,
-    DocumentParseService,
-    DocumentChunkingService,
-    MarkdownStructureService,
-    // MetricsService is needed by DocumentVectorService
-    MetricsService,
-    RagEmbeddingService,
-    RagChunkStoreService,
-    DocumentVectorService,
-  ],
-})
-class ReindexByDoctypeCliModule {}
+      {
+        provide: REPRESENTATION_ENRICH_QUEUE_TOKEN,
+        useFactory: (connection: ConnectionOptions) =>
+          new Queue(REPRESENTATION_ENRICH_QUEUE, { connection }),
+        inject: ['BULLMQ_CONNECTION'],
+      },
+      // Storage chain
+      RustfsStorageService,
+      GoogleDriveStorageService,
+      {
+        provide: 'HOT_STORAGE',
+        useExisting: RustfsStorageService,
+      },
+      {
+        provide: 'COLD_STORAGE',
+        useExisting: GoogleDriveStorageService,
+      },
+      HybridStorageService,
+      // Document pipeline services
+      TextCleaningService,
+      DocumentParseService,
+      DocumentChunkingService,
+      MarkdownStructureService,
+      // MetricsService is needed by DocumentVectorService
+      MetricsService,
+      RagEmbeddingService,
+      RagChunkStoreService,
+      DocumentVectorService,
+    ],
+  })
+  class ReindexByDoctypeCliModule {}
+
+  return ReindexByDoctypeCliModule;
+}
 
 // ── Main entrypoint ────────────────────────────────────────────────────────────
 
@@ -479,6 +484,7 @@ async function main(): Promise<void> {
     });
   }
 
+  const ReindexByDoctypeCliModule = await createReindexByDoctypeCliModule();
   const app = await NestFactory.createApplicationContext(ReindexByDoctypeCliModule, {
     logger: ['error', 'warn', 'log'],
   });

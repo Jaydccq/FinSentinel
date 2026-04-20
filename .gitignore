@@ -96,6 +96,7 @@ docs/exec-plans/*
 !docs/exec-plans/2026-04-19-rag-redesign-design.md
 !docs/exec-plans/2026-04-19-desktop-rag-parity-notes.md
 !docs/exec-plans/2026-04-19-rag-wave2-production-rollout-plan.md
+!docs/exec-plans/2026-04-20-ci-cli-env-import-fix.md
 !docs/exec-plans/2026-04-17-pi-mono-refactor-plan.md
 !docs/exec-plans/2026-04-18-resume-technical-guide.md
 !docs/technical-guides/

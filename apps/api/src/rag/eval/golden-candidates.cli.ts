@@ -15,11 +15,17 @@
 
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { Module } from '@nestjs/common';
+import { Module, type Type } from '@nestjs/common';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
-import { AppConfigModule, DatabaseModule } from '../../config';
+import {
+  createOpenAICompatibleModel,
+  DEFAULT_NVIDIA_BASE_URL,
+  DEFAULT_OPENROUTER_BASE_URL,
+  DEFAULT_OPENROUTER_TEXT_MODEL,
+  type AiProvider,
+  generateAgentText,
+} from '@finsentinel/ai-runtime';
 import { GoldenCandidatesService, GOLDEN_LLM_CLIENT } from './golden-candidates.service';
 import type { LlmTextClient } from './golden-candidates.service';
 
@@ -32,6 +38,24 @@ const DEFAULT_OUTPUT = resolve(
   REPO_ROOT,
   'services/evaluation-runner/datasets/golden-candidates-draft.json',
 );
+
+function resolveProvider(): AiProvider {
+  return process.env['AI_PROVIDER'] === 'nvidia' ? 'nvidia' : 'openrouter';
+}
+
+function resolveApiKey(provider: AiProvider): string | undefined {
+  return provider === 'nvidia'
+    ? process.env['NVIDIA_API_KEY']
+    : process.env['OPENROUTER_API_KEY'];
+}
+
+function resolveBaseUrl(provider: AiProvider): string {
+  if (provider === 'nvidia') {
+    return process.env['NVIDIA_BASE_URL'] || DEFAULT_NVIDIA_BASE_URL;
+  }
+
+  return process.env['OPENROUTER_BASE_URL'] || DEFAULT_OPENROUTER_BASE_URL;
+}
 
 // ── GOLDEN_LLM_CLIENT factory (exported for unit testing) ────────────────────
 
@@ -47,22 +71,28 @@ export function makeGoldenLlmClientFactory(argv: string[]): LlmTextClient {
     return stub;
   }
 
-  const apiKey = process.env['OPENROUTER_API_KEY'];
+  const provider = resolveProvider();
+  const apiKey = resolveApiKey(provider);
   if (!apiKey) {
     throw new Error(
-      'Missing OPENROUTER_API_KEY. Set it or pass --dry-run to exercise without LLM.',
+      `Missing ${provider === 'nvidia' ? 'NVIDIA_API_KEY' : 'OPENROUTER_API_KEY'}. Set it or pass --dry-run to exercise without LLM.`,
     );
   }
+  if (provider === 'nvidia' && !process.env['AI_MODEL']) {
+    throw new Error('Missing AI_MODEL. Set it to a NVIDIA Build model id or pass --dry-run.');
+  }
 
-  const model = createOpenRouterModel({
-    modelId: process.env['AI_MODEL'] || 'google/gemini-3-flash-preview',
-    baseUrl: process.env['OPENROUTER_BASE_URL'] || 'https://openrouter.ai/api/v1',
+  const model = createOpenAICompatibleModel({
+    provider,
+    modelId: process.env['AI_MODEL'] || DEFAULT_OPENROUTER_TEXT_MODEL,
+    baseUrl: resolveBaseUrl(provider),
   });
 
   const client: LlmTextClient = {
     async generate(systemPrompt: string, userPrompt: string): Promise<string> {
       return generateAgentText({
         model,
+        apiKey,
         systemPrompt,
         prompt: userPrompt,
         tools: {},
@@ -75,17 +105,23 @@ export function makeGoldenLlmClientFactory(argv: string[]): LlmTextClient {
 
 // ── Minimal bootstrap module ──────────────────────────────────────────────────
 
-@Module({
-  imports: [AppConfigModule, DatabaseModule],
-  providers: [
-    GoldenCandidatesService,
-    {
-      provide: GOLDEN_LLM_CLIENT,
-      useFactory: () => makeGoldenLlmClientFactory(process.argv),
-    },
-  ],
-})
-class GoldenCandidatesCliModule {}
+async function createGoldenCandidatesCliModule(): Promise<Type<unknown>> {
+  const { AppConfigModule, DatabaseModule } = await import('../../config');
+
+  @Module({
+    imports: [AppConfigModule, DatabaseModule],
+    providers: [
+      GoldenCandidatesService,
+      {
+        provide: GOLDEN_LLM_CLIENT,
+        useFactory: () => makeGoldenLlmClientFactory(process.argv),
+      },
+    ],
+  })
+  class GoldenCandidatesCliModule {}
+
+  return GoldenCandidatesCliModule;
+}
 
 // ── CLI argument parsing ───────────────────────────────────────────────────────
 
@@ -130,6 +166,7 @@ async function main() {
 
   const cliArgs = parseArgs(process.argv.slice(2));
 
+  const GoldenCandidatesCliModule = await createGoldenCandidatesCliModule();
   const app = await NestFactory.createApplicationContext(GoldenCandidatesCliModule, {
     logger: ['error', 'warn', 'log'],
   });
@@ -173,7 +210,17 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('golden-candidates CLI failed:', err);
-  process.exit(1);
-});
+const isEntrypoint = (() => {
+  try {
+    return fileURLToPath(import.meta.url) === process.argv[1];
+  } catch {
+    return false;
+  }
+})();
+
+if (isEntrypoint) {
+  main().catch((err) => {
+    console.error('golden-candidates CLI failed:', err);
+    process.exit(1);
+  });
+}
