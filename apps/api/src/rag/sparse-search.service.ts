@@ -8,6 +8,8 @@ export interface SparseSearchFilters {
   sector?: string;
   regionId?: string;
   afterDate?: string;
+  tickers?: string[];    // NEW — populated by MetadataPreFilterService; SQL consumption in R4.3
+  issuerName?: string[]; // NEW — populated by MetadataPreFilterService; SQL consumption in R4.3
 }
 
 export interface SparseCandidate {

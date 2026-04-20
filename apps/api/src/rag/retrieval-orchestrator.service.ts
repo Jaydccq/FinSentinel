@@ -55,15 +55,18 @@ export class RetrievalOrchestratorService {
   async orchestrate(request: OrchestrationRequest): Promise<OrchestrationResult> {
     const { rewrittenQuery, lanes, topKPerLane, filters, rrfK = 60 } = request;
 
-    // Apply metadata pre-filter before dispatching lanes (v1: passes through explicit filters).
+    // Apply metadata pre-filter before dispatching lanes.
+    // R4.3 will pass the QueryEntityExtractorService result instead of null.
     const preFilter = this.metadataPreFilter.buildFilter(
       rewrittenQuery,
       request.queryClass,
       filters,
+      null, // R4.3 will pass the QueryEntityExtractorService result here.
     );
 
-    // Strip the PreFilter-only field so we only pass SparseSearchFilters downstream.
-    const { candidateDocIds: _unusedInV1, ...effectiveFilters } = preFilter;
+    // Strip PreFilter-only fields so downstream lanes see a plain SparseSearchFilters.
+    const { candidateDocIds: _unused, appliedMode: _appliedMode, softFilter: _soft, hardFilter } = preFilter;
+    const effectiveFilters = hardFilter;
 
     // Determine variants to run, capped at MAX_VARIANTS.
     const variants = request.variants?.slice(0, MAX_VARIANTS) ?? [

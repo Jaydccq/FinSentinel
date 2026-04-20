@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { RetrievalOrchestratorService } from '../retrieval-orchestrator.service';
 import { MetadataPreFilterService } from '../metadata-pre-filter.service';
 
-const makeMetadataPreFilter = () => new MetadataPreFilterService();
+const makeMetadataPreFilter = () =>
+  new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
 
 describe('RetrievalOrchestratorService', () => {
   let service: RetrievalOrchestratorService;

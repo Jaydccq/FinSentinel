@@ -100,7 +100,15 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
       },
       inject: [aiConfig.KEY],
     },
-    MetadataPreFilterService,
+    {
+      // Default config — R4.4 replaces this factory with a ConfigService-backed version.
+      provide: MetadataPreFilterService,
+      useFactory: () => new MetadataPreFilterService({
+        mode: 'soft',
+        hardMinConfidence: 0.85,
+        minCandidatesByClass: {},
+      }),
+    },
     ContextExpanderService,
     RagTraceService,
     RagTraceRetentionService,
