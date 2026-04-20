@@ -32,13 +32,16 @@ export class DocumentVectorService {
    *
    * @param docId - UUID of the source document
    * @param text - Cleaned plain text to vectorize
-   * @param metadata - Metadata to attach to each chunk (doc_type, sector, region_id, source, date)
+   * @param metadata - Metadata to attach to each chunk (doc_type, sector, region_id, source, date).
+   *   The `source` field doubles as a fallback extractor input when `__originalFileName` is absent.
+   * @param metadata.__originalFileName - Optional internal hint consumed by the issuer/ticker extractor.
+   *   Stripped before persistence — never appears in the stored chunk metadata.
    * @returns Number of chunks created
    */
   async vectorize(
     docId: string,
     text: string,
-    metadata: Record<string, string>,
+    metadata: Record<string, string> & { __originalFileName?: string },
   ): Promise<number> {
     const sourceType = metadata['doc_type'] === 'NEWS' ? 'news' : 'document';
     const startedAt = Date.now();
@@ -60,9 +63,12 @@ export class DocumentVectorService {
       return 0;
     }
 
+    // Destructure the sentinel key once; persistedMetadata is what gets stored.
+    const { __originalFileName: originalFileName, ...persistedMetadata } = metadata;
+
     this.logger.log(
       `Vectorizing document ${docId}: ${structuredChunks.length} chunks ` +
-      `(format=${structuredDoc.sourceFormat}), metadata=${JSON.stringify(metadata)}`,
+      `(format=${structuredDoc.sourceFormat}), metadata=${JSON.stringify(persistedMetadata)}`,
     );
 
     try {
@@ -73,10 +79,6 @@ export class DocumentVectorService {
           `Embedding count mismatch for ${docId}: expected ${structuredChunks.length}, got ${embeddings.length}`,
         );
       }
-
-      // Destructure the sentinel key once; persistedMetadata is what gets stored.
-      const { __originalFileName: originalFileName, ...persistedMetadata } =
-        metadata as Record<string, string | undefined>;
 
       const sampleText = structuredChunks.slice(0, 3).map((c) => c.text).join('\n');
       const { issuerName, tickers } = extractIssuerAndTickers({
