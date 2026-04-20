@@ -943,6 +943,15 @@ _(Fill in as phases execute.)_
   - **R5.7** Runbook section with env var table, container name, health endpoint, stub-vs-real warning, and kill switch. Gated `upload-pdf-e2e.spec.ts` skeleton (skipped unless `RAG_PARSER_E2E=1` + Postgres + Redis + sidecar all available).
   - **Tech-debt entry:** `[RAG-TD-R5-01]` tracks replacement of the stub with a real parser (MinerU / pdfplumber / commercial OCR) — blocks meaningful PDF evaluation in Wave 2 eval buckets.
   - **Non-exit-criterion honoured:** R5 exit validates plumbing only. Stub returns fixed Markdown regardless of input, so actual PDF quality remains unmeasured until the real parser ships.
+- **2026-04-20 R6 landed on `feat/rag-wave2-r6`:** 7 tasks, 14 commits on top of `fa5b21a` (R5 merge). 1430/1430 api tests green, typecheck clean, offline eval gate unchanged (`strict.recall@5 = 0.9867`). R6 highlights:
+  - **R6.1** Char-vs-token benchmark run on 3 fixture files (EN short, EN long, CJK news). Decision: **chars**. 500-char window yields ~125 EN tokens / ~271 CJK tokens per chunk — well under any embedding provider's 8192-token ceiling. Token path produces 3x fewer, larger chunks that crowd the ceiling. Avoiding a `tiktoken` dependency for no retrieval benefit. Decision block recorded at Task R6.1 of the R6 plan.
+  - **R6.2** `ReportChunker` — section-aware semantic chunking; long sections split on sentence boundaries preserving `sectionPath`; non-text modalities pass through.
+  - **R6.3** `QaChunker` — detects Q:/A: and Question:/Answer: line prefixes, pairs them into single chunks.
+  - **R6.4** `TableChunker` — small tables whole; large tables split row-wise with header row preserved on every split.
+  - **R6.5** `classifyDocType` heuristic (tables≥40%→table_heavy; question lines≥20%→qa; ≥3 distinct sectionPaths→report; else default) + `DocumentChunkingService.chunkStructured` refactored to a pure dispatch. Existing `chunkStructured` body relocated to `DefaultChunker` byte-identical; 2 service tests were updated to reflect routing (not behaviour change).
+  - **R6.6** `rag:reindex:by-doctype` CLI (standalone NestFactory bootstrap mirroring sparse / chunk-issuer-tickers CLIs). Flags: `--dry-run`, `--batch`, `--force`, `--max-wait-seconds`. Idempotency via `documents.meta->>'chunker_version' === 'v2-doctype'`. Drain+wait checkpoint after every batch blocks on BullMQ `representation-enrich` queue draining with a 30s stability window before proceeding. V18 migration adds `documents.meta jsonb NOT NULL DEFAULT '{}'` and the Drizzle schema is updated.
+  - **Scope note — PDF reindex deferred:** the CLI skips PDF/DOC/DOCX because re-chunking requires the parser sidecar. Inline comment flags this as [RAG-TD-R6-01] (to be filed) — a follow-up will wire the sidecar path once R5 is production-validated.
+  - **R6.7 eval verification:** offline `ci-offline.yaml` gate green with identical recall/MRR to R1 baseline. Same caveat as R2.6 / R3.6: offline CorpusRetriever bypasses `DocumentChunkingService.chunkStructured` entirely, so per-bucket chunker deltas (`table_numeric`, `long_doc`, `exact_lookup`) defer to live-API CI.
 - _(next entries per phase)_
 
 ## Final Outcome
