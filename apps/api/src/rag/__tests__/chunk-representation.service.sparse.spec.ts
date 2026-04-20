@@ -129,22 +129,23 @@ async function buildService(
  */
 function getSqlText(fragment: unknown): string {
   if (!fragment || typeof fragment !== 'object') return String(fragment);
-  const f = fragment as {
-    queryChunks?: unknown[];
-    sql?: string;
-    chunks?: unknown[];
-  };
+  const f = fragment as { queryChunks?: unknown[]; chunks?: unknown[] };
   const chunks = f.queryChunks ?? f.chunks;
   if (!chunks) return String(fragment);
+  // Drizzle template chunks are either a StringChunk ({value: [string]}) for
+  // literals or a parameter value for bindings. Only literals contribute SQL
+  // text; parameter values must be rendered as a placeholder so tests can't
+  // accidentally assert on user-supplied data.
   return chunks
     .map((c) => {
-      if (typeof c === 'string') return c;
       if (c && typeof c === 'object') {
-        const asRec = c as { value?: unknown; toString?: () => string };
-        if ('value' in asRec) return '<<param>>';
-        if (typeof asRec.toString === 'function') return asRec.toString();
+        const rec = c as { value?: unknown };
+        if (Array.isArray(rec.value) && rec.value.every((v) => typeof v === 'string')) {
+          return (rec.value as string[]).join('');
+        }
+        return '<<param>>';
       }
-      return '';
+      return '<<param>>';
     })
     .join('');
 }
