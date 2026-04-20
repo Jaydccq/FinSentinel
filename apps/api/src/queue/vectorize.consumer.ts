@@ -123,6 +123,7 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
       region_id: 'US',
       source: doc.originalFileName,
       date: new Date().toISOString().split('T')[0]!,
+      __originalFileName: doc.originalFileName,
     });
 
     // 6. Update status

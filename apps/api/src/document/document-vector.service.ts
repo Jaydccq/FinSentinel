@@ -4,6 +4,7 @@ import { MarkdownStructureService } from './markdown-structure.service';
 import { RagEmbeddingService } from '../rag/rag-embedding.service';
 import { RagChunkStoreService } from '../rag/rag-chunk-store.service';
 import { MetricsService } from '../common/services/metrics.service';
+import { extractIssuerAndTickers } from './metadata-extractors/issuer-ticker-extractor';
 
 /**
  * Document vectorization service -- embeds text chunks into pgvector.
@@ -31,13 +32,16 @@ export class DocumentVectorService {
    *
    * @param docId - UUID of the source document
    * @param text - Cleaned plain text to vectorize
-   * @param metadata - Metadata to attach to each chunk (doc_type, sector, region_id, source, date)
+   * @param metadata - Metadata to attach to each chunk (doc_type, sector, region_id, source, date).
+   *   The `source` field doubles as a fallback extractor input when `__originalFileName` is absent.
+   * @param metadata.__originalFileName - Optional internal hint consumed by the issuer/ticker extractor.
+   *   Stripped before persistence — never appears in the stored chunk metadata.
    * @returns Number of chunks created
    */
   async vectorize(
     docId: string,
     text: string,
-    metadata: Record<string, string>,
+    metadata: Record<string, string> & { __originalFileName?: string },
   ): Promise<number> {
     const sourceType = metadata['doc_type'] === 'NEWS' ? 'news' : 'document';
     const startedAt = Date.now();
@@ -59,9 +63,12 @@ export class DocumentVectorService {
       return 0;
     }
 
+    // Destructure the sentinel key once; persistedMetadata is what gets stored.
+    const { __originalFileName: originalFileName, ...persistedMetadata } = metadata;
+
     this.logger.log(
       `Vectorizing document ${docId}: ${structuredChunks.length} chunks ` +
-      `(format=${structuredDoc.sourceFormat}), metadata=${JSON.stringify(metadata)}`,
+      `(format=${structuredDoc.sourceFormat}), metadata=${JSON.stringify(persistedMetadata)}`,
     );
 
     try {
@@ -72,6 +79,13 @@ export class DocumentVectorService {
           `Embedding count mismatch for ${docId}: expected ${structuredChunks.length}, got ${embeddings.length}`,
         );
       }
+
+      const sampleText = structuredChunks.slice(0, 3).map((c) => c.text).join('\n');
+      const { issuerName, tickers } = extractIssuerAndTickers({
+        originalFileName: originalFileName ?? persistedMetadata['source'] ?? null,
+        docTitle: persistedMetadata['title'] ?? null,
+        chunkText: sampleText,
+      });
 
       await this.ragChunkStore.replaceChunks(
         sourceType,
@@ -84,7 +98,7 @@ export class DocumentVectorService {
             : null,
           title: chunk.title,
           metadata: {
-            ...metadata,
+            ...persistedMetadata,
             source_type: sourceType,
             source_id: docId,
             chunk_index: index,
@@ -92,7 +106,9 @@ export class DocumentVectorService {
             section_path: chunk.sectionPath.length > 0
               ? chunk.sectionPath.join(' / ')
               : null,
-            title: chunk.title ?? metadata['title'] ?? null,
+            title: chunk.title ?? persistedMetadata['title'] ?? null,
+            tickers,
+            ...(issuerName ? { issuerName } : {}),
           },
         })),
       );

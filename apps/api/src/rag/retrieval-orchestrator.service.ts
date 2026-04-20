@@ -5,6 +5,8 @@ import { SparseSearchService, type SparseSearchFilters } from './sparse-search.s
 import { RetrievalFusionService, type RankedCandidate, type FusedCandidate } from './retrieval-fusion.service';
 import { GraphRetrievalService } from './graph-retrieval.service';
 import { MetadataPreFilterService } from './metadata-pre-filter.service';
+import { QueryEntityExtractorService } from './query-entity-extractor.service';
+import type { MetricsService } from '../common/services/metrics.service';
 import type { QueryClass, QueryVariant, VariantKind } from './retrieval-planner.service';
 
 /** Maximum number of query variants processed in parallel per orchestrate call. */
@@ -49,21 +51,43 @@ export class RetrievalOrchestratorService {
     private readonly embeddingService: RagEmbeddingService,
     private readonly fusion: RetrievalFusionService,
     private readonly metadataPreFilter: MetadataPreFilterService,
+    private readonly queryEntityExtractor: QueryEntityExtractorService,
     @Optional() private readonly graphRetrieval?: GraphRetrievalService,
+    @Optional() private readonly metrics?: MetricsService,
   ) {}
 
   async orchestrate(request: OrchestrationRequest): Promise<OrchestrationResult> {
     const { rewrittenQuery, lanes, topKPerLane, filters, rrfK = 60 } = request;
 
-    // Apply metadata pre-filter before dispatching lanes (v1: passes through explicit filters).
+    // Apply metadata pre-filter before dispatching lanes.
+    const extracted = await this.queryEntityExtractor.extract(rewrittenQuery);
     const preFilter = this.metadataPreFilter.buildFilter(
       rewrittenQuery,
       request.queryClass,
       filters,
+      extracted,
     );
 
-    // Strip the PreFilter-only field so we only pass SparseSearchFilters downstream.
-    const { candidateDocIds: _unusedInV1, ...effectiveFilters } = preFilter;
+    // Strip PreFilter-only fields so downstream lanes see a plain SparseSearchFilters.
+    // R4.3 will use `softFilter` as a per-lane ORDER BY boost (non-matching rows
+    // stay retrievable; matching rows rank higher). For now we only consume the
+    // hardFilter. softFilter is a future task — do NOT consume it here.
+    const { candidateDocIds: _unused, appliedMode: _appliedMode, softFilter: _soft, hardFilter } = preFilter;
+    const effectiveFilters = hardFilter;
+
+    // R4.5: determine whether the hard filter carried ticker/issuer hints.
+    // The orchestrator owns this check because MetadataPreFilterService cannot
+    // distinguish "explicit caller filter" from "entity-extracted hint".
+    const hardFilterHadHints =
+      (effectiveFilters.tickers?.length ?? 0) > 0 ||
+      (effectiveFilters.issuerName?.length ?? 0) > 0;
+
+    this.logger.debug(
+      `metadata prefilter: appliedMode=${preFilter.appliedMode} ` +
+      `tickers=${JSON.stringify(effectiveFilters.tickers ?? [])} ` +
+      `issuerName=${JSON.stringify(effectiveFilters.issuerName ?? [])} ` +
+      `fallbackFlag=${extracted.fallbackFlag ?? 'none'}`,
+    );
 
     // Determine variants to run, capped at MAX_VARIANTS.
     const variants = request.variants?.slice(0, MAX_VARIANTS) ?? [
@@ -83,7 +107,7 @@ export class RetrievalOrchestratorService {
     );
 
     const settled = await Promise.allSettled(variantPromises);
-    const allLaneResults: RankedCandidate[][] = [];
+    let allLaneResults: RankedCandidate[][] = [];
 
     for (const result of settled) {
       if (result.status === 'fulfilled') {
@@ -97,6 +121,55 @@ export class RetrievalOrchestratorService {
         }
       } else {
         this.logger.warn(`Variant lanes failed: ${result.reason}`);
+      }
+    }
+
+    // R4.5 min-candidates guardrail: if the post-fusion candidate count is below
+    // the configured threshold for the query class AND a hard filter with ticker/issuer
+    // hints was applied, downgrade to a soft (no-hint) re-run to recover recall.
+    const totalCandidates = allLaneResults.reduce((sum, lane) => sum + lane.length, 0);
+    if (this.metadataPreFilter.shouldDowngrade(request.queryClass, totalCandidates, hardFilterHadHints)) {
+      const threshold = request.queryClass
+        ? (this.metadataPreFilter.getThreshold(request.queryClass) ?? 0)
+        : 0;
+      this.logger.warn(
+        `metadata prefilter downgraded: class=${request.queryClass} ` +
+        `candidates=${totalCandidates} threshold=${threshold} ` +
+        `tickers=${JSON.stringify(effectiveFilters.tickers ?? [])} ` +
+        `issuerName=${JSON.stringify(effectiveFilters.issuerName ?? [])}`,
+      );
+      this.metrics?.incrementCounter(
+        'rag_metadata_prefilter_downgrade_total',
+        'Total metadata prefilter hard→soft downgrades by query class',
+        { query_class: request.queryClass! },
+      );
+
+      // Strip tickers/issuerName and re-run. NOTE: dense lane (searchRepresentations)
+      // never consumed these fields (see [RAG-TD-R4-03] in tech-debt-tracker),
+      // so the re-run affects only the sparse lane's WHERE clauses.
+      const { tickers: _strippedTickers, issuerName: _strippedIssuer, ...downgradedFilters } = effectiveFilters;
+
+      const downgradedPromises = variants.map((variant) =>
+        this.runVariantLanes(variant, lanes, topKPerLane, downgradedFilters, request.entityNames),
+      );
+      const downgradedSettled = await Promise.allSettled(downgradedPromises);
+      allLaneResults = [];
+      // Reset lane counters for the fresh run.
+      for (const lane of lanes) {
+        laneCounts[lane] = 0;
+      }
+      for (const result of downgradedSettled) {
+        if (result.status === 'fulfilled') {
+          for (const laneResult of result.value) {
+            allLaneResults.push(laneResult);
+            const laneName = laneResult[0]?.lane;
+            if (laneName) {
+              laneCounts[laneName] = (laneCounts[laneName] ?? 0) + laneResult.length;
+            }
+          }
+        } else {
+          this.logger.warn(`Downgraded variant lanes failed: ${result.reason}`);
+        }
       }
     }
 

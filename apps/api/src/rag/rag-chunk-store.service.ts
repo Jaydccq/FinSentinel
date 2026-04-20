@@ -13,7 +13,11 @@ export interface RagChunkRecord {
   metadata: Record<string, unknown>;
 }
 
-interface RagChunkSearchFilters {
+// NOTE: this interface intentionally does NOT carry `tickers` / `issuerName`
+// from `SparseSearchFilters`. The dense lane silently ignores those fields
+// today — tracked as [RAG-TD-R4-03] in docs/exec-plans/tech-debt-tracker.md.
+// Scheduled for a follow-up after R4.5.
+export interface RagChunkSearchFilters {
   docType?: string;
   sector?: string;
   regionId?: string;

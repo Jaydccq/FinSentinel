@@ -2,7 +2,15 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { RetrievalOrchestratorService } from '../retrieval-orchestrator.service';
 import { MetadataPreFilterService } from '../metadata-pre-filter.service';
 
-const makeMetadataPreFilter = () => new MetadataPreFilterService();
+// Matches the rag.config defaults; R4.4 reads these from env in production.
+const makeMetadataPreFilter = () =>
+  new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+
+const makeQueryEntityExtractor = () => ({
+  extract: vi.fn().mockResolvedValue({
+    tickers: [], issuerNames: [], sectors: [], regions: [],
+  }),
+});
 
 describe('RetrievalOrchestratorService', () => {
   let service: RetrievalOrchestratorService;
@@ -10,6 +18,7 @@ describe('RetrievalOrchestratorService', () => {
   let mockSparseSearch: { search: Mock };
   let mockEmbeddingService: { embedQuery: Mock };
   let mockFusion: { fuse: Mock };
+  let mockQueryEntityExtractor: { extract: Mock };
 
   beforeEach(() => {
     mockEmbeddingService = { embedQuery: vi.fn().mockResolvedValue([1, 0]) };
@@ -19,12 +28,14 @@ describe('RetrievalOrchestratorService', () => {
     };
     mockSparseSearch = { search: vi.fn().mockResolvedValue([]) };
     mockFusion = { fuse: vi.fn().mockReturnValue([]) };
+    mockQueryEntityExtractor = makeQueryEntityExtractor();
     service = new RetrievalOrchestratorService(
       mockChunkStore as any,
       mockSparseSearch as any,
       mockEmbeddingService as any,
       mockFusion as any,
       makeMetadataPreFilter(),
+      mockQueryEntityExtractor as any,
     );
   });
 
@@ -248,5 +259,117 @@ describe('RetrievalOrchestratorService', () => {
     expect(Object.keys(result.laneCounts)).toEqual(['dense']);
     expect(result.laneCounts).not.toHaveProperty('sparse');
     expect(result.laneCounts).not.toHaveProperty('graph');
+  });
+
+  it('downgrades hard filter to soft when candidate count < class threshold (R4.5)', async () => {
+    // First fan-out returns 2 sparse candidates (below analytical threshold of 10).
+    // Second (downgraded) fan-out returns 30 sparse candidates.
+    const mockQueryEntityExtractorR45 = {
+      extract: vi.fn().mockResolvedValue({
+        tickers: [{ value: 'AAPL', confidence: 0.95 }],
+        issuerNames: [], sectors: [], regions: [],
+      }),
+    };
+
+    let sparseCallCount = 0;
+    const mockSparseSearchR45 = {
+      search: vi.fn().mockImplementation(() => {
+        sparseCallCount++;
+        if (sparseCallCount === 1) {
+          // First call (hard filter with tickers): 2 results — below threshold
+          return Promise.resolve([
+            { chunkId: 'x1', sourceId: 's1', content: 'c', metadata: {}, score: 0.9 },
+            { chunkId: 'x2', sourceId: 's1', content: 'c', metadata: {}, score: 0.8 },
+          ]);
+        }
+        // Second call (downgraded, no tickers): 30 results
+        return Promise.resolve(
+          Array.from({ length: 30 }, (_, i) => ({
+            chunkId: `y${i}`, sourceId: 's2', content: 'c', metadata: {}, score: 0.5,
+          })),
+        );
+      }),
+    };
+
+    const mockMetricsR45 = { incrementCounter: vi.fn() };
+
+    // Use a real MetadataPreFilterService in 'hard' mode with a tight threshold.
+    const hardPreFilterR45 = new MetadataPreFilterService({
+      mode: 'hard',
+      hardMinConfidence: 0.85,
+      minCandidatesByClass: { analytical: 10 },
+    });
+
+    const localOrchestrator = new RetrievalOrchestratorService(
+      mockChunkStore as any,
+      mockSparseSearchR45 as any,
+      mockEmbeddingService as any,
+      mockFusion as any,
+      hardPreFilterR45,
+      mockQueryEntityExtractorR45 as any,
+      undefined,          // graphRetrieval (Optional)
+      mockMetricsR45 as any,
+    );
+
+    await localOrchestrator.orchestrate({
+      rewrittenQuery: 'AAPL analytical query',
+      lanes: ['sparse'],
+      topKPerLane: 50,
+      filters: {},
+      queryClass: 'analytical',
+    });
+
+    // sparse should have been called twice: once with ticker filter, once without
+    expect(mockSparseSearchR45.search).toHaveBeenCalledTimes(2);
+    // First call should include tickers filter
+    expect(mockSparseSearchR45.search.mock.calls[0]![1].tickers).toEqual(['AAPL']);
+    // Second call (downgraded) should NOT include tickers filter
+    expect(mockSparseSearchR45.search.mock.calls[1]![1].tickers).toBeUndefined();
+    // Metrics counter should have been incremented for the downgrade
+    expect(mockMetricsR45.incrementCounter).toHaveBeenCalledWith(
+      'rag_metadata_prefilter_downgrade_total',
+      expect.any(String),
+      expect.objectContaining({ query_class: 'analytical' }),
+    );
+  });
+
+  it('passes extracted ticker hint into sparse lane filters (R4.3)', async () => {
+    mockQueryEntityExtractor.extract.mockResolvedValueOnce({
+      tickers: [{ value: 'AAPL', confidence: 0.95 }],
+      issuerNames: [], sectors: [], regions: [],
+    });
+    mockSparseSearch.search.mockResolvedValueOnce([]);
+    mockFusion.fuse.mockReturnValueOnce([]);
+
+    // Build a fresh orchestrator with MetadataPreFilterService in 'hard' mode so
+    // the high-confidence AAPL ticker goes straight to hardFilter.tickers.
+    const hardPreFilter = new MetadataPreFilterService({
+      mode: 'hard',
+      hardMinConfidence: 0.85,
+      minCandidatesByClass: {},
+    });
+    const localExtractor = { extract: mockQueryEntityExtractor.extract };
+    const localOrchestrator = new RetrievalOrchestratorService(
+      mockChunkStore as any,
+      mockSparseSearch as any,
+      mockEmbeddingService as any,
+      mockFusion as any,
+      hardPreFilter,
+      localExtractor as any,
+    );
+
+    await localOrchestrator.orchestrate({
+      rewrittenQuery: 'AAPL 10-K',
+      lanes: ['sparse'],
+      topKPerLane: 5,
+      filters: { docType: 'SEC_FILING' },
+      queryClass: 'exact_lookup',
+    });
+
+    // sparseSearch.search is called as (query, filters, topK)
+    const callFilters = mockSparseSearch.search.mock.calls[0][1];
+    expect(callFilters.tickers).toEqual(['AAPL']);
+    expect(callFilters.docType).toBe('SEC_FILING');
+    expect(callFilters.issuerName).toBeUndefined();
   });
 });
