@@ -109,6 +109,28 @@ git commit -m "bench(rag): token-vs-char chunking benchmark + R6.1 decision"
 
 **Do not start R6.2 until the decision is recorded.**
 
+### Decision (2026-04-20)
+
+**Chosen unit: chars. Default chunk size: 500 chars (existing default).**
+
+Benchmark (`apps/api/test/bench/chunking-unit-benchmark.ts`) on 3 representative fixtures (EN short ~700 chars, EN long ~3,540 chars, CJK news ~554 chars) shows both approaches complete in under 0.2 ms total — wall-clock is irrelevant at this corpus size and will not differ meaningfully at production scale either, since both are purely CPU-bound string operations.
+
+The critical signal is the per-chunk token envelope:
+
+| Branch | Mean tokens/chunk | P95 tokens/chunk | Max P95 |
+|--------|:-----------------:|:----------------:|:-------:|
+| Char (500-char window) | 111 EN / 271 CJK | 124 EN / 271 CJK | 271 |
+| Token (480-token limit, heuristic) | 443 (pooled) | 447 | 447 |
+
+The char-based splitter produces chunks of ~125 EN tokens and ~271 CJK tokens — both well under the 480-token target and far below the 8,192-token embedding-provider hard limit. The token-based splitter also stays under the limit, but produces roughly 3× fewer, larger chunks that are closer to the ceiling and harder to rerank precisely.
+
+`tiktoken` is not currently in the dependency tree (~2 MB); adding it for no material retrieval benefit would violate the simplicity-first principle. The heuristic is good enough to verify the envelope; a production-grade tokenizer can be introduced if R6.x eval data shows recall regression attributable to chunk boundary placement.
+
+**Decision: stick with chars for Wave 2.** Doc-type-aware chunking (R6.2–R6.5) is the actual R6 value, not the unit choice. If a future eval reveals CJK recall degradation, re-open this decision and compare with real tiktoken counts.
+
+Benchmark script: `apps/api/test/bench/chunking-unit-benchmark.ts`
+Re-run: `pnpm --filter @finsentinel/api exec tsx test/bench/chunking-unit-benchmark.ts`
+
 ---
 
 ## Task R6.2a: Write failing report-chunker test
