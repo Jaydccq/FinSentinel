@@ -30,6 +30,7 @@ export { analysisApprovals } from './analysis-approvals';
 export { contextJournalEntries } from './context-journal-entries';
 export { executionReviewLedgers } from './execution-review-ledgers';
 export { ragQueryLogs } from './rag-query-logs';
+export { ragShadowComparisons } from './rag-shadow-comparisons';
 
 // Relations
 export {
