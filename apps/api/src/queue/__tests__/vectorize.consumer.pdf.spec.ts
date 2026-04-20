@@ -222,3 +222,80 @@ describe('VectorizeConsumer PDF routing (R5.4)', () => {
     );
   });
 });
+
+// ── R5.6 — parser metadata threaded onto chunk metadata ──────────────────────
+
+describe('VectorizeConsumer parser metadata (R5.6)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('threads parser metadata (pageCount, parserVersion, sourceMimeType) onto persisted chunk metadata', async () => {
+    const sidecar = {
+      parse: vi.fn().mockResolvedValue({
+        markdown: '# Doc\n\nBody content above threshold so the parser_empty_output check does not fire.',
+        metadata: {
+          pageCount: 42,
+          headings: [],
+          tableCount: 0,
+          parserVersion: 'stub-0.1',
+          sourceMimeType: 'application/pdf',
+        },
+      }),
+    };
+
+    const vectorServiceCalls: Record<string, string>[] = [];
+    const vectorService = {
+      vectorize: vi.fn().mockImplementation((_id: string, _text: string, metadata: Record<string, string>) => {
+        vectorServiceCalls.push(metadata);
+        return Promise.resolve(1);
+      }),
+    };
+
+    const { consumer } = await buildConsumer(
+      makeDocRow({ originalFileName: 'report.pdf' }),
+      sidecar,
+      { parseToCleanText: vi.fn() },
+      vectorService,
+    );
+
+    await consumer.process(createMockJob({ docId: 'doc-uuid-pdf' }));
+
+    expect(vectorServiceCalls).toHaveLength(1);
+    const persisted = vectorServiceCalls[0]!;
+    expect(persisted.parser_page_count).toBe('42');
+    expect(persisted.parser_version).toBe('stub-0.1');
+    expect(persisted.parser_source_mime).toBe('application/pdf');
+  });
+
+  it('does NOT attach parser_* keys when the non-sidecar path is used', async () => {
+    const sidecar = { parse: vi.fn() };
+    const parseService = {
+      parseToCleanText: vi.fn().mockReturnValue(
+        'plain text content long enough to pass the empty-text guard without issue',
+      ),
+    };
+
+    const vectorServiceCalls: Record<string, string>[] = [];
+    const vectorService = {
+      vectorize: vi.fn().mockImplementation((_id: string, _text: string, metadata: Record<string, string>) => {
+        vectorServiceCalls.push(metadata);
+        return Promise.resolve(1);
+      }),
+    };
+
+    const { consumer } = await buildConsumer(
+      makeDocRow({ originalFileName: 'readme.txt', storageKey: 'documents/user-1/readme.txt' }),
+      sidecar,
+      parseService,
+      vectorService,
+    );
+
+    await consumer.process(createMockJob({ docId: 'doc-uuid-pdf' }));
+
+    const persisted = vectorServiceCalls[0]!;
+    expect(persisted.parser_page_count).toBeUndefined();
+    expect(persisted.parser_version).toBeUndefined();
+    expect(persisted.parser_source_mime).toBeUndefined();
+  });
+});

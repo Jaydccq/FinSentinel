@@ -299,4 +299,30 @@ describe('MarkdownStructureService', () => {
     const ruleChunk = result.chunks.find((c) => c.text.includes('---'));
     expect(ruleChunk?.sectionPath).toEqual([]);
   });
+
+  // ── R5.6: hints parameter threads through to StructuredDocument ──────────
+
+  it('attaches hint fields to StructuredDocument when provided', () => {
+    const md = '# hi\n\nbody';
+    const doc = service.parse(md, { pageCount: 5, parserVersion: 'v1', sourceMimeType: 'application/pdf' });
+    expect(doc.pageCount).toBe(5);
+    expect(doc.parserVersion).toBe('v1');
+    expect(doc.sourceMimeType).toBe('application/pdf');
+  });
+
+  it('omits hint fields when hints are not provided', () => {
+    const md = '# hi\n\nbody';
+    const doc = service.parse(md);
+    expect(doc.pageCount).toBeUndefined();
+    expect(doc.parserVersion).toBeUndefined();
+    expect(doc.sourceMimeType).toBeUndefined();
+  });
+
+  it('omits individual hint fields that are undefined in the hints object', () => {
+    const md = '# hi\n\nbody';
+    const doc = service.parse(md, { pageCount: 10 });
+    expect(doc.pageCount).toBe(10);
+    expect(doc.parserVersion).toBeUndefined();
+    expect(doc.sourceMimeType).toBeUndefined();
+  });
 });

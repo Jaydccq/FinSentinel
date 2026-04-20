@@ -115,10 +115,16 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
     ]);
 
     let text: string;
+    let sidecarHints: { sourceMimeType: string; pageCount: number; parserVersion: string } | undefined;
     try {
       if (SIDECAR_MIMES.has(mimeType) && this.parserSidecar) {
         const result = await this.parserSidecar.parse(content, mimeType, doc.originalFileName);
         text = result.markdown;
+        sidecarHints = {
+          sourceMimeType: result.metadata.sourceMimeType,
+          pageCount: result.metadata.pageCount,
+          parserVersion: result.metadata.parserVersion,
+        };
       } else {
         text = this.parseService.parseToCleanText(content, mimeType);
       }
@@ -149,6 +155,11 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
       source: doc.originalFileName,
       date: new Date().toISOString().split('T')[0]!,
       __originalFileName: doc.originalFileName,
+      ...(sidecarHints ? {
+        parser_page_count: String(sidecarHints.pageCount),
+        parser_version: sidecarHints.parserVersion,
+        parser_source_mime: sidecarHints.sourceMimeType,
+      } : {}),
     });
 
     // 6. Update status

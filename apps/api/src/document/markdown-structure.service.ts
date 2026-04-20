@@ -39,8 +39,16 @@ export class MarkdownStructureService {
    *
    * Non-markdown input (no ATX or setext headings found) returns a single
    * 'text' chunk with empty sectionPath and null title.
+   *
+   * @param hints - Optional parser-origin metadata from the sidecar (R5.6).
+   *   When provided, the fields are attached to the returned StructuredDocument
+   *   without affecting how the text is parsed. R6 will consume these hints
+   *   for doc-type-aware chunking.
    */
-  parse(markdown: string): StructuredDocument {
+  parse(
+    markdown: string,
+    hints?: { sourceMimeType?: string; pageCount?: number; parserVersion?: string },
+  ): StructuredDocument {
     if (!markdown || markdown.trim().length === 0) {
       return { chunks: [], sourceFormat: 'plain' };
     }
@@ -51,8 +59,11 @@ export class MarkdownStructureService {
     const hasHeadings = chunks.some((c) => c.sectionPath.length > 0);
 
     return {
-      chunks,
       sourceFormat: hasHeadings ? 'markdown' : 'plain',
+      chunks,
+      ...(hints?.sourceMimeType !== undefined ? { sourceMimeType: hints.sourceMimeType } : {}),
+      ...(hints?.pageCount !== undefined ? { pageCount: hints.pageCount } : {}),
+      ...(hints?.parserVersion !== undefined ? { parserVersion: hints.parserVersion } : {}),
     };
   }
 

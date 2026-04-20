@@ -95,4 +95,34 @@ export class DocumentParseService {
     const result = await this.parserSidecar.parse(content, mimeType, fileName);
     return this.textCleaning.clean(result.markdown);
   }
+
+  /**
+   * Parse a PDF, DOC, or DOCX buffer by delegating to the parser sidecar,
+   * returning the cleaned markdown together with the full sidecar metadata.
+   *
+   * R5.6: callers that need parser-origin metadata (pageCount, parserVersion,
+   * sourceMimeType) should use this method instead of parseToMarkdown.
+   *
+   * @param content  - File content as a Buffer
+   * @param mimeType - MIME type (must be a SIDECAR_MIME_TYPE)
+   * @param fileName - Original file name (used for FormData upload to sidecar)
+   * @returns Object with cleaned markdown and parser metadata fields
+   * @throws Error('PARSER_SIDECAR_UNAVAILABLE') if no sidecar is injected
+   */
+  async parseToMarkdownWithMetadata(
+    content: Buffer,
+    mimeType: string,
+    fileName: string,
+  ): Promise<{ markdown: string; pageCount: number; parserVersion: string; sourceMimeType: string }> {
+    if (!this.parserSidecar) {
+      throw new Error('PARSER_SIDECAR_UNAVAILABLE');
+    }
+    const result = await this.parserSidecar.parse(content, mimeType, fileName);
+    return {
+      markdown: this.textCleaning.clean(result.markdown),
+      pageCount: result.metadata.pageCount,
+      parserVersion: result.metadata.parserVersion,
+      sourceMimeType: result.metadata.sourceMimeType,
+    };
+  }
 }
