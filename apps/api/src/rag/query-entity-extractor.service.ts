@@ -1,6 +1,26 @@
 // apps/api/src/rag/query-entity-extractor.service.ts
 import { Injectable, Logger } from '@nestjs/common';
+import { z } from 'zod';
 import { isKnownTicker } from './ticker-whitelist';
+
+// Duck-typed LLM client — keeps the service decoupled from @finsentinel/ai-runtime.
+// The runtime adapter is wired in Task R4.4.
+interface LlmClientLike {
+  complete(prompt: string): Promise<string>;
+}
+
+const LlmResponseSchema = z.object({
+  tickers: z.array(z.object({ value: z.string(), confidence: z.number().min(0).max(1) })),
+  issuerNames: z.array(z.object({ value: z.string(), confidence: z.number().min(0).max(1) })),
+  sectors: z.array(z.object({ value: z.string(), confidence: z.number().min(0).max(1) })),
+  regions: z.array(z.object({ value: z.string(), confidence: z.number().min(0).max(1) })),
+  docType: z.object({ value: z.string(), confidence: z.number().min(0).max(1) }).nullable(),
+  timeRange: z.object({
+    after: z.string().nullable().optional(),
+    before: z.string().nullable().optional(),
+    confidence: z.number().min(0).max(1),
+  }).nullable(),
+});
 
 export interface EntityHit<T> { value: T; confidence: number; }
 
@@ -30,9 +50,19 @@ const Q_RE = /\bQ([1-4])\s*20(\d{2})\b/i;
 const YEAR_RE = /\b(20\d{2})\b/;
 const DOC_TYPE_RE = /\b(10-K|10-Q|8-K|annual report|quarterly report)\b/i;
 
+const CIRCUIT_OPEN_DURATION_MS = 30_000;
+const CIRCUIT_FAILURE_THRESHOLD = 3;
+
 @Injectable()
 export class QueryEntityExtractorService {
   private readonly logger = new Logger(QueryEntityExtractorService.name);
+
+  // Circuit-breaker state (per-instance, not shared across requests)
+  private consecutiveFailures = 0;
+  private circuitOpenUntil = 0;
+
+  // Concurrency tracking
+  private inflightCount = 0;
 
   constructor(private readonly config: QueryEntityExtractorConfig) {}
 
@@ -56,8 +86,89 @@ export class QueryEntityExtractorService {
       return { ...regexHits, fallbackFlag: 'llm_disabled' };
     }
 
-    // LLM fallback branch is wired in R4.1c. For now, behave as if disabled.
-    return { ...regexHits, fallbackFlag: 'llm_disabled' };
+    // Circuit breaker — open if within cooldown window.
+    if (Date.now() < this.circuitOpenUntil) {
+      return { ...regexHits, fallbackFlag: 'llm_circuit_open' };
+    }
+
+    // Concurrency cap — treat saturation the same as circuit open for observers.
+    if (this.inflightCount >= this.config.concurrency) {
+      return { ...regexHits, fallbackFlag: 'llm_circuit_open' };
+    }
+
+    return this.runLlmFallback(query, regexHits);
+  }
+
+  private async runLlmFallback(
+    query: string,
+    regexHits: ExtractedEntities,
+  ): Promise<ExtractedEntities> {
+    const client = this.config.llmClient as LlmClientLike | null;
+    if (!client) {
+      return { ...regexHits, fallbackFlag: 'llm_disabled' };
+    }
+
+    this.inflightCount++;
+    try {
+      const prompt = this.buildPrompt(query);
+
+      // Race the LLM call against the timeout.
+      const raw = await Promise.race([
+        client.complete(prompt),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('__llm_timeout__')), this.config.timeoutMs),
+        ),
+      ]);
+
+      // Parse and validate the response.
+      let parsed: z.infer<typeof LlmResponseSchema>;
+      try {
+        parsed = LlmResponseSchema.parse(JSON.parse(raw));
+      } catch {
+        // Invalid / unexpected shape → treat as empty.
+        this.logger.warn('LLM response failed zod parse; returning llm_empty');
+        return { ...regexHits, fallbackFlag: 'llm_empty' };
+      }
+
+      // Successful parse — reset the circuit and merge results.
+      // Merge rules: regex tickers / docType / timeRange are authoritative;
+      // LLM fills issuerNames / sectors / regions.
+      this.consecutiveFailures = 0;
+      return {
+        tickers: regexHits.tickers,
+        issuerNames: parsed.issuerNames,
+        sectors: parsed.sectors,
+        regions: parsed.regions,
+        ...(regexHits.docType ? { docType: regexHits.docType } : {}),
+        ...(regexHits.timeRange ? { timeRange: regexHits.timeRange } : {}),
+      };
+    } catch (err: unknown) {
+      const isTimeout =
+        err instanceof Error && err.message === '__llm_timeout__';
+
+      this.consecutiveFailures++;
+      if (this.consecutiveFailures >= CIRCUIT_FAILURE_THRESHOLD) {
+        this.circuitOpenUntil = Date.now() + CIRCUIT_OPEN_DURATION_MS;
+        this.logger.warn(
+          `LLM circuit breaker opened after ${this.consecutiveFailures} consecutive failures`,
+        );
+      }
+
+      const flag = isTimeout ? 'llm_timeout' : 'llm_error';
+      return { ...regexHits, fallbackFlag: flag };
+    } finally {
+      this.inflightCount--;
+    }
+  }
+
+  private buildPrompt(query: string): string {
+    return (
+      'Extract financial entities from the following query. ' +
+      'Return a JSON object with keys: tickers, issuerNames, sectors, regions, docType, timeRange. ' +
+      'Each array item has { value: string, confidence: number (0-1) }. ' +
+      'docType and timeRange may be null.\n\n' +
+      `Query: ${query}`
+    );
   }
 
   private regexPass(query: string): ExtractedEntities {
