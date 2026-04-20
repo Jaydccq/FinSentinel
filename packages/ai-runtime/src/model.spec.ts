@@ -1,6 +1,12 @@
 import type { Model } from '@mariozechner/pi-ai';
 import { describe, expect, it } from 'vitest';
-import { createOpenRouterModel } from './model';
+import {
+  createNvidiaModel,
+  createOpenAICompatibleModel,
+  createOpenRouterModel,
+  DEFAULT_NVIDIA_BASE_URL,
+  DEFAULT_OPENROUTER_BASE_URL,
+} from './model';
 
 describe('createOpenRouterModel', () => {
   it('creates an OpenRouter OpenAI-compatible Pi model', () => {
@@ -22,7 +28,7 @@ describe('createOpenRouterModel', () => {
   it('uses the default OpenRouter base URL', () => {
     const model = createOpenRouterModel({ modelId: 'openai/gpt-4o-mini' });
 
-    expect(model.baseUrl).toBe('https://openrouter.ai/api/v1');
+    expect(model.baseUrl).toBe(DEFAULT_OPENROUTER_BASE_URL);
     expect(model.reasoning).toBe(false);
     expect(model.compat).toMatchObject({
       thinkingFormat: 'openrouter',
@@ -82,5 +88,48 @@ describe('createOpenRouterModel', () => {
       thinkingFormat: 'openrouter',
       supportsStore: false,
     });
+  });
+});
+
+describe('createOpenAICompatibleModel', () => {
+  it('creates an NVIDIA OpenAI-compatible Pi model', () => {
+    const model = createOpenAICompatibleModel({
+      provider: 'nvidia',
+      modelId: 'meta/llama-3.1-70b-instruct',
+    });
+
+    expect(model.id).toBe('meta/llama-3.1-70b-instruct');
+    expect(model.provider).toBe('nvidia');
+    expect(model.api).toBe('openai-completions');
+    expect(model.baseUrl).toBe(DEFAULT_NVIDIA_BASE_URL);
+    expect(model.compat).toMatchObject({
+      supportsStore: false,
+      supportsDeveloperRole: false,
+      supportsReasoningEffort: false,
+      supportsUsageInStreaming: false,
+      maxTokensField: 'max_tokens',
+      supportsStrictMode: false,
+    });
+  });
+
+  it('defaults to OpenRouter for backwards compatibility', () => {
+    const model = createOpenAICompatibleModel({ modelId: 'openai/gpt-4o-mini' });
+
+    expect(model.provider).toBe('openrouter');
+    expect(model.baseUrl).toBe(DEFAULT_OPENROUTER_BASE_URL);
+    expect(model.compat).toMatchObject({
+      thinkingFormat: 'openrouter',
+      supportsStore: false,
+    });
+  });
+
+  it('creates an NVIDIA model through the convenience helper', () => {
+    const model = createNvidiaModel({
+      modelId: 'nvidia/test-model',
+      baseUrl: 'https://nvidia.example/v1',
+    });
+
+    expect(model.provider).toBe('nvidia');
+    expect(model.baseUrl).toBe('https://nvidia.example/v1');
   });
 });

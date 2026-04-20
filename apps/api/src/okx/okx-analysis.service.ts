@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import {
-  createOpenRouterModel,
+  createOpenAICompatibleModel,
   streamAgentTextFromMessages,
 } from '@finsentinel/ai-runtime';
 import { aiConfig } from '../config/ai.config';
@@ -24,9 +24,10 @@ export class OkxAnalysisService {
   constructor(
     @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
   ) {
-    this.model = createOpenRouterModel({
+    this.model = createOpenAICompatibleModel({
+      provider: this.aiCfg.provider ?? 'openrouter',
       modelId: this.aiCfg.model,
-      baseUrl: this.aiCfg.openrouterBaseUrl,
+      baseUrl: this.aiCfg.baseUrl ?? this.aiCfg.openrouterBaseUrl,
     });
   }
 
@@ -87,6 +88,7 @@ export class OkxAnalysisService {
 
     const textStream = streamAgentTextFromMessages({
       model: this.model,
+      apiKey: this.aiCfg.apiKey ?? this.aiCfg.openrouterApiKey,
       systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
       tools: {},

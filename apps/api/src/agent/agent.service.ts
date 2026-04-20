@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import {
-  createOpenRouterModel,
+  createOpenAICompatibleModel,
   streamAgentTextFromMessages,
 } from '@finsentinel/ai-runtime';
 import { ToolRegistry } from './tool-registry';
@@ -28,9 +28,10 @@ export class AgentService {
     @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
     @Inject(personaConfig.KEY) private readonly persona: ConfigType<typeof personaConfig>,
   ) {
-    this.model = createOpenRouterModel({
+    this.model = createOpenAICompatibleModel({
+      provider: this.aiCfg.provider ?? 'openrouter',
       modelId: this.aiCfg.model,
-      baseUrl: this.aiCfg.openrouterBaseUrl,
+      baseUrl: this.aiCfg.baseUrl ?? this.aiCfg.openrouterBaseUrl,
     });
   }
 
@@ -62,6 +63,7 @@ export class AgentService {
     // 4. Stream from LLM
     const textStream = streamAgentTextFromMessages({
       model: this.model,
+      apiKey: this.aiCfg.apiKey ?? this.aiCfg.openrouterApiKey,
       systemPrompt,
       messages: messages.map((m) => ({
         role: m.role as 'user' | 'assistant',

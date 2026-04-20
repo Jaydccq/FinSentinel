@@ -22,7 +22,7 @@ import { aiConfig } from '../../config/ai.config';
 // Mock generateAgentText to return a realistic-length summary
 // (production summaries are typically 200-400 chars for 20+ messages)
 vi.mock('@finsentinel/ai-runtime', () => ({
-  createOpenRouterModel: vi.fn(() => 'mock-model'),
+  createOpenAICompatibleModel: vi.fn(() => 'mock-model'),
   generateAgentText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => {
     // Simulate LLM compression: return a summary ~15-20% the length of input
     const summaryLength = Math.min(1200, Math.floor(prompt.length * 0.18));

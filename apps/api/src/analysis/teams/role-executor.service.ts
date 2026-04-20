@@ -1,6 +1,6 @@
 import { Injectable, Inject, Optional } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
-import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
+import { createOpenAICompatibleModel, generateAgentText } from '@finsentinel/ai-runtime';
 import type { FinToolSet } from '@finsentinel/ai-runtime';
 import {
   stageStructuredOutputSchema,
@@ -90,6 +90,7 @@ export const ROLE_EXECUTOR_LLM_TOKEN = 'ROLE_EXECUTOR_LLM';
 @Injectable()
 export class RoleExecutorService {
   private readonly model: unknown;
+  private readonly apiKey?: string;
 
   constructor(
     private readonly toolRegistry: ToolRegistry,
@@ -99,12 +100,15 @@ export class RoleExecutorService {
     aiCfg?: ConfigType<typeof aiConfig>,
   ) {
     if (aiCfg) {
-      this.model = createOpenRouterModel({
+      this.model = createOpenAICompatibleModel({
+        provider: aiCfg.provider ?? 'openrouter',
         modelId: aiCfg.model,
-        baseUrl: aiCfg.openrouterBaseUrl,
+        baseUrl: aiCfg.baseUrl ?? aiCfg.openrouterBaseUrl,
       });
+      this.apiKey = aiCfg.apiKey ?? aiCfg.openrouterApiKey;
     } else {
       this.model = undefined;
+      this.apiKey = undefined;
     }
   }
 
@@ -191,6 +195,7 @@ export class RoleExecutorService {
       generate: async (args) => ({
         text: await generateAgentText({
           model: args.model as never,
+          apiKey: this.apiKey,
           systemPrompt: args.system,
           prompt: args.prompt,
           tools: args.tools,

@@ -1,9 +1,13 @@
-export interface OpenRouterEmbeddingClientOptions {
+import { DEFAULT_OPENROUTER_BASE_URL } from './model';
+
+export interface OpenAICompatibleEmbeddingClientOptions {
   apiKey: string;
   model: string;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
 }
+
+export type OpenRouterEmbeddingClientOptions = OpenAICompatibleEmbeddingClientOptions;
 
 interface OpenRouterEmbeddingResponseItem {
   embedding?: unknown;
@@ -15,13 +19,13 @@ interface OpenRouterEmbeddingResponseBody {
 
 const RESPONSE_SNIPPET_LIMIT = 500;
 
-export class OpenRouterEmbeddingClient {
+export class OpenAICompatibleEmbeddingClient {
   private readonly baseUrl: string;
 
   private readonly fetchImpl: typeof fetch;
 
-  constructor(private readonly options: OpenRouterEmbeddingClientOptions) {
-    this.baseUrl = options.baseUrl?.replace(/\/$/, '') ?? 'https://openrouter.ai/api/v1';
+  constructor(private readonly options: OpenAICompatibleEmbeddingClientOptions) {
+    this.baseUrl = options.baseUrl?.replace(/\/$/, '') ?? DEFAULT_OPENROUTER_BASE_URL;
     this.fetchImpl = options.fetchImpl ?? fetch;
   }
 
@@ -106,3 +110,5 @@ export class OpenRouterEmbeddingClient {
     return embedding;
   }
 }
+
+export class OpenRouterEmbeddingClient extends OpenAICompatibleEmbeddingClient {}

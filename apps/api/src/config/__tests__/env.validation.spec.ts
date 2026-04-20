@@ -21,7 +21,12 @@ describe('envSchema', () => {
   it('applies default values', () => {
     const result = envSchema.parse(validConfig);
     expect(result.JWT_EXPIRATION).toBe(86400000);
+    expect(result.AI_PROVIDER).toBe('openrouter');
     expect(result.AI_MODEL).toBe('google/gemini-3-flash-preview');
+    expect(result.AI_EMBEDDING_PROVIDER).toBe('openrouter');
+    expect(result.AI_EMBEDDING_MODEL).toBe('text-embedding-3-small');
+    expect(result.OPENROUTER_BASE_URL).toBe('https://openrouter.ai/api/v1');
+    expect(result.NVIDIA_BASE_URL).toBe('https://integrate.api.nvidia.com/v1');
     expect(result.APP_AGENT_PERSONA).toBe('default');
     expect(result.APP_TRADING_DEFAULT_MODE).toBe('PAPER');
     expect(result.APP_CRYPTO_NEWS_ENABLED).toBe(false);
@@ -109,7 +114,10 @@ describe('envSchema', () => {
     const result = envSchema.safeParse({
       ...validConfig,
       JWT_EXPIRATION: '3600000',
+      AI_PROVIDER: 'openrouter',
+      AI_EMBEDDING_PROVIDER: 'openrouter',
       AI_MODEL: 'anthropic/claude-4-sonnet',
+      AI_EMBEDDING_MODEL: 'text-embedding-3-large',
       APP_AGENT_PERSONA: 'aggressive',
       APP_TRADING_DEFAULT_MODE: 'LIVE',
       ALPACA_API_KEY: 'ak-test',
@@ -203,6 +211,20 @@ describe('envSchema', () => {
       APPROVAL_AUTO_DISPATCH_ENABLED: 'true',
     });
     expect(result.success).toBe(true);
+  });
+
+  it('accepts NVIDIA as text and embedding provider without OpenRouter credentials', () => {
+    const { OPENROUTER_API_KEY, ...rest } = validConfig;
+    const result = envSchema.parse({
+      ...rest,
+      AI_PROVIDER: 'nvidia',
+      NVIDIA_API_KEY: 'nvapi-test',
+      AI_MODEL: 'nvidia/test-model',
+    });
+
+    expect(result.AI_PROVIDER).toBe('nvidia');
+    expect(result.AI_EMBEDDING_PROVIDER).toBe('nvidia');
+    expect(result.AI_EMBEDDING_MODEL).toBe('nvidia/nv-embed-v1');
   });
 
   // ── coercion ────────────────────────────────────────────────────────
@@ -304,6 +326,33 @@ describe('envSchema', () => {
   it('rejects missing OPENROUTER_API_KEY', () => {
     const { OPENROUTER_API_KEY, ...rest } = validConfig;
     const result = envSchema.safeParse(rest);
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing NVIDIA_API_KEY when NVIDIA provider is selected', () => {
+    const result = envSchema.safeParse({
+      ...validConfig,
+      AI_PROVIDER: 'nvidia',
+      AI_MODEL: 'nvidia/test-model',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects missing AI_MODEL when NVIDIA text provider is selected', () => {
+    const { OPENROUTER_API_KEY, ...rest } = validConfig;
+    const result = envSchema.safeParse({
+      ...rest,
+      AI_PROVIDER: 'nvidia',
+      NVIDIA_API_KEY: 'nvapi-test',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('rejects invalid AI_PROVIDER value', () => {
+    const result = envSchema.safeParse({
+      ...validConfig,
+      AI_PROVIDER: 'unsupported-provider',
+    });
     expect(result.success).toBe(false);
   });
 

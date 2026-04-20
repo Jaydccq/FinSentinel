@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ConfigType } from '@nestjs/config';
-import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
+import { createOpenAICompatibleModel, generateAgentText } from '@finsentinel/ai-runtime';
 import { chatMessages, chatSessionMemories, eq, and, asc } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import { sql } from 'drizzle-orm';
@@ -12,7 +12,7 @@ import { aiConfig } from '../config/ai.config';
  * Chat context compaction service.
  *
  * When a chat session exceeds the configured message threshold,
- * the oldest messages are summarized via LLM (OpenRouter) and stored in
+ * the oldest messages are summarized via the configured LLM and stored in
  * `chatSessionMemories`. The summary is prepended to the user's
  * next message to maintain context without sending all history.
  *
@@ -42,9 +42,10 @@ export class ChatCompactionService {
     this.recentWindow = configService.get<number>('chat.compaction.recentWindow', 10);
     this.maxSummaryChars = configService.get<number>('chat.compaction.maxSummaryChars', 1200);
 
-    this.model = createOpenRouterModel({
+    this.model = createOpenAICompatibleModel({
+      provider: this.aiCfg.provider ?? 'openrouter',
       modelId: this.aiCfg.model,
-      baseUrl: this.aiCfg.openrouterBaseUrl,
+      baseUrl: this.aiCfg.baseUrl ?? this.aiCfg.openrouterBaseUrl,
     });
   }
 
@@ -162,7 +163,7 @@ export class ChatCompactionService {
   }
 
   /**
-   * Generate a summary of old messages using LLM (OpenRouter).
+   * Generate a summary of old messages using the configured LLM.
    *
    * Falls back to truncation if the LLM call fails.
    */
@@ -176,6 +177,7 @@ export class ChatCompactionService {
     try {
       const text = await generateAgentText({
         model: this.model,
+        apiKey: this.aiCfg.apiKey ?? this.aiCfg.openrouterApiKey,
         systemPrompt:
           `You are a financial assistant summarizer. Produce a concise summary ` +
           `of the conversation below, capturing key topics, tickers, decisions, ` +

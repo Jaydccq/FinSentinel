@@ -6,7 +6,7 @@ import { aiConfig } from '../../config/ai.config';
 import { ContextJournalService } from '../../analysis/context-journal.service';
 
 vi.mock('@finsentinel/ai-runtime', () => ({
-  createOpenRouterModel: vi.fn(() => 'mock-model'),
+  createOpenAICompatibleModel: vi.fn(() => 'mock-model'),
   generateAgentText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => prompt),
 }));
 

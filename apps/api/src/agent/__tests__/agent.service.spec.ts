@@ -7,10 +7,10 @@ import { aiConfig } from '../../config/ai.config';
 import { personaConfig } from '../../config/persona.config';
 
 const mockStreamAgentTextFromMessages = vi.fn();
-const mockCreateOpenRouterModel = vi.fn();
+const mockCreateOpenAICompatibleModel = vi.fn();
 
 vi.mock('@finsentinel/ai-runtime', () => ({
-  createOpenRouterModel: (...args: unknown[]) => mockCreateOpenRouterModel(...args),
+  createOpenAICompatibleModel: (...args: unknown[]) => mockCreateOpenAICompatibleModel(...args),
   streamAgentTextFromMessages: (...args: unknown[]) => mockStreamAgentTextFromMessages(...args),
 }));
 
@@ -35,7 +35,7 @@ describe('AgentService', () => {
       getProfileSummary: vi.fn().mockResolvedValue('Risk tolerance: MODERATE'),
     };
 
-    mockCreateOpenRouterModel.mockReturnValue('mock-model');
+    mockCreateOpenAICompatibleModel.mockReturnValue('mock-model');
     mockStreamAgentTextFromMessages.mockReturnValue(
       (async function* () {
         yield 'Hello ';
@@ -112,11 +112,13 @@ describe('AgentService', () => {
         'session-789',
       );
 
-      expect(mockCreateOpenRouterModel).toHaveBeenCalledWith({
+      expect(mockCreateOpenAICompatibleModel).toHaveBeenCalledWith({
+        provider: 'openrouter',
         modelId: 'google/gemini-3-flash-preview',
         baseUrl: 'https://openrouter.example/api/v1',
       });
       expect(mockStreamAgentTextFromMessages.mock.calls[0]![0].model).toBe('mock-model');
+      expect(mockStreamAgentTextFromMessages.mock.calls[0]![0].apiKey).toBe('test-key');
     });
   });
 

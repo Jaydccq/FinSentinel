@@ -93,6 +93,7 @@ docs/exec-plans/*
 !docs/exec-plans/2026-04-17-execution-review-ledger-implementation-plan.md
 !docs/exec-plans/2026-04-18-high-quality-strategy-engine.md
 !docs/exec-plans/2026-04-19-rag-redesign-plan.md
+!docs/exec-plans/2026-04-20-nvidia-model-provider.md
 !docs/exec-plans/2026-04-19-rag-redesign-design.md
 !docs/exec-plans/2026-04-19-desktop-rag-parity-notes.md
 !docs/exec-plans/2026-04-19-rag-wave2-production-rollout-plan.md

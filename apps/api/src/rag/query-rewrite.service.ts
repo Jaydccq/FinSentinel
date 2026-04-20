@@ -1,13 +1,13 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ConfigType } from '@nestjs/config';
-import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
+import { createOpenAICompatibleModel, generateAgentText } from '@finsentinel/ai-runtime';
 import { aiConfig } from '../config/ai.config';
 
 /**
  * Query rewrite service for RAG retrieval enhancement.
  *
- * Rewrites user queries via LLM (OpenRouter) to be more specific and
+ * Rewrites user queries via the configured LLM to be more specific and
  * effective for searching a financial document database.
  *
  * Config (from rag.config.ts):
@@ -28,9 +28,10 @@ export class QueryRewriteService {
     this.enabled = configService.get<boolean>('rag.retrieval.queryRewriteEnabled', true);
     this.maxLength = configService.get<number>('rag.retrieval.queryRewriteMaxLength', 80);
 
-    this.model = createOpenRouterModel({
+    this.model = createOpenAICompatibleModel({
+      provider: this.aiCfg.provider ?? 'openrouter',
       modelId: this.aiCfg.model,
-      baseUrl: this.aiCfg.openrouterBaseUrl,
+      baseUrl: this.aiCfg.baseUrl ?? this.aiCfg.openrouterBaseUrl,
     });
   }
 
@@ -72,6 +73,7 @@ export class QueryRewriteService {
     try {
       const text = await generateAgentText({
         model: this.model,
+        apiKey: this.aiCfg.apiKey ?? this.aiCfg.openrouterApiKey,
         systemPrompt:
           `You are a financial search query optimizer. Rewrite the following ` +
           `query to be more specific and effective for searching a financial ` +

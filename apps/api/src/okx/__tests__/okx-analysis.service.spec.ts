@@ -4,10 +4,10 @@ import { OkxAnalysisService } from '../okx-analysis.service';
 import { aiConfig } from '../../config/ai.config';
 
 const mockStreamAgentTextFromMessages = vi.fn();
-const mockCreateOpenRouterModel = vi.fn();
+const mockCreateOpenAICompatibleModel = vi.fn();
 
 vi.mock('@finsentinel/ai-runtime', () => ({
-  createOpenRouterModel: (...args: unknown[]) => mockCreateOpenRouterModel(...args),
+  createOpenAICompatibleModel: (...args: unknown[]) => mockCreateOpenAICompatibleModel(...args),
   streamAgentTextFromMessages: (...args: unknown[]) => mockStreamAgentTextFromMessages(...args),
 }));
 
@@ -17,7 +17,7 @@ describe('OkxAnalysisService', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    mockCreateOpenRouterModel.mockReturnValue('mock-model');
+    mockCreateOpenAICompatibleModel.mockReturnValue('mock-model');
     mockStreamAgentTextFromMessages.mockReturnValue(
       (async function* () {
         yield 'Hello ';
@@ -65,7 +65,8 @@ describe('OkxAnalysisService', () => {
     const stream = await service.streamAnalysis('BTC-USDT-SWAP', 'session-okx');
 
     expect(stream).toBeInstanceOf(ReadableStream);
-    expect(mockCreateOpenRouterModel).toHaveBeenCalledWith({
+    expect(mockCreateOpenAICompatibleModel).toHaveBeenCalledWith({
+      provider: 'openrouter',
       modelId: 'google/gemini-3-flash-preview',
       baseUrl: 'https://openrouter.example/api/v1',
     });
@@ -81,6 +82,7 @@ describe('OkxAnalysisService', () => {
     ]);
     expect(callArgs.tools).toEqual({});
     expect(callArgs.maxTurns).toBe(1);
+    expect(callArgs.apiKey).toBe('test-key');
 
     const reader = stream.getReader();
     const decoder = new TextDecoder();

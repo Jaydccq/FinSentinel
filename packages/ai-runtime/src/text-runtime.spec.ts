@@ -40,6 +40,33 @@ describe('generateAgentText', () => {
     }
   });
 
+  it('passes an explicit API key to the provider', async () => {
+    const provider = registerFauxProvider({
+      models: [{ id: 'test-model' }],
+    });
+
+    try {
+      provider.setResponses([
+        (_context, options) => {
+          expect(options?.apiKey).toBe('provider-key');
+          return fauxAssistantMessage([fauxText('key received')]);
+        },
+      ]);
+
+      const text = await generateAgentText({
+        model: provider.getModel(),
+        apiKey: 'provider-key',
+        systemPrompt: 'You are concise.',
+        tools: {},
+        prompt: 'Say hello',
+      });
+
+      expect(text).toBe('key received');
+    } finally {
+      provider.unregister();
+    }
+  });
+
   it('executes a tool call and continues to final text', async () => {
     const provider = registerFauxProvider({
       models: [{ id: 'test-model' }],

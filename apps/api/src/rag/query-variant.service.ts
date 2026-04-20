@@ -1,7 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { z } from 'zod';
-import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
+import { createOpenAICompatibleModel, generateAgentText } from '@finsentinel/ai-runtime';
 import { aiConfig } from '../config/ai.config';
 import { QueryRewriteService } from './query-rewrite.service';
 
@@ -36,9 +36,10 @@ export class QueryVariantService {
     private readonly queryRewrite: QueryRewriteService,
     @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
   ) {
-    this.model = createOpenRouterModel({
+    this.model = createOpenAICompatibleModel({
+      provider: this.aiCfg.provider ?? 'openrouter',
       modelId: this.aiCfg.model,
-      baseUrl: this.aiCfg.openrouterBaseUrl,
+      baseUrl: this.aiCfg.baseUrl ?? this.aiCfg.openrouterBaseUrl,
     });
   }
 
@@ -59,6 +60,7 @@ export class QueryVariantService {
     try {
       const raw = await generateAgentText({
         model: this.model,
+        apiKey: this.aiCfg.apiKey ?? this.aiCfg.openrouterApiKey,
         systemPrompt: HYDE_SYSTEM_PROMPT,
         prompt: query,
         tools: {},
@@ -85,6 +87,7 @@ export class QueryVariantService {
     try {
       const raw = await generateAgentText({
         model: this.model,
+        apiKey: this.aiCfg.apiKey ?? this.aiCfg.openrouterApiKey,
         systemPrompt: DECOMPOSE_SYSTEM_PROMPT,
         prompt: query,
         tools: {},

@@ -5,7 +5,7 @@ import { QueryRewriteService } from '../query-rewrite.service';
 import { aiConfig } from '../../config/ai.config';
 
 vi.mock('@finsentinel/ai-runtime', () => ({
-  createOpenRouterModel: vi.fn(() => 'mock-model'),
+  createOpenAICompatibleModel: vi.fn(() => 'mock-model'),
   generateAgentText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => prompt.trim()),
 }));
 

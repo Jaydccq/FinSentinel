@@ -195,6 +195,7 @@ describe('ApiKeyService', () => {
     it('contains expected key names', () => {
       expect(KNOWN_KEY_NAMES).toContain('POLYGON');
       expect(KNOWN_KEY_NAMES).toContain('OPENROUTER');
+      expect(KNOWN_KEY_NAMES).toContain('NVIDIA_API_KEY');
       expect(KNOWN_KEY_NAMES).toContain('FMP');
       expect(KNOWN_KEY_NAMES).toContain('FIRECRAWL');
       expect(KNOWN_KEY_NAMES).toContain('OKX_API_KEY');

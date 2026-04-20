@@ -27,7 +27,7 @@ import { RagTraceService } from './rag-trace.service';
 import { RagTraceRetentionService } from './rag-trace-retention.service';
 import { RolloutGateService } from './rollout-gate.service';
 import { ShadowRunnerService } from './shadow-runner.service';
-import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
+import { createOpenAICompatibleModel, generateAgentText } from '@finsentinel/ai-runtime';
 import { ConfigType } from '@nestjs/config';
 import { aiConfig } from '../config/ai.config';
 import type { LlmTextClient } from './eval/golden-candidates.service';
@@ -75,13 +75,20 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     {
       provide: GOLDEN_LLM_CLIENT,
       useFactory: (aiCfg: ConfigType<typeof aiConfig>): LlmTextClient => {
-        const model = createOpenRouterModel({
+        const model = createOpenAICompatibleModel({
+          provider: aiCfg.provider ?? 'openrouter',
           modelId: aiCfg.model,
-          baseUrl: aiCfg.openrouterBaseUrl,
+          baseUrl: aiCfg.baseUrl ?? aiCfg.openrouterBaseUrl,
         });
         return {
           async generate(systemPrompt: string, userPrompt: string): Promise<string> {
-            return generateAgentText({ model, systemPrompt, prompt: userPrompt, tools: {} });
+            return generateAgentText({
+              model,
+              apiKey: aiCfg.apiKey ?? aiCfg.openrouterApiKey,
+              systemPrompt,
+              prompt: userPrompt,
+              tools: {},
+            });
           },
         };
       },
@@ -92,13 +99,20 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     {
       provide: REPRESENTATION_LLM_CLIENT,
       useFactory: (aiCfg: ConfigType<typeof aiConfig>): LlmTextClient => {
-        const model = createOpenRouterModel({
+        const model = createOpenAICompatibleModel({
+          provider: aiCfg.provider ?? 'openrouter',
           modelId: aiCfg.model,
-          baseUrl: aiCfg.openrouterBaseUrl,
+          baseUrl: aiCfg.baseUrl ?? aiCfg.openrouterBaseUrl,
         });
         return {
           async generate(systemPrompt: string, userPrompt: string): Promise<string> {
-            return generateAgentText({ model, systemPrompt, prompt: userPrompt, tools: {} });
+            return generateAgentText({
+              model,
+              apiKey: aiCfg.apiKey ?? aiCfg.openrouterApiKey,
+              systemPrompt,
+              prompt: userPrompt,
+              tools: {},
+            });
           },
         };
       },
@@ -116,13 +130,20 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     {
       provide: METADATA_ENTITY_LLM_CLIENT,
       useFactory: (aiCfg: ConfigType<typeof aiConfig>) => {
-        const model = createOpenRouterModel({
+        const model = createOpenAICompatibleModel({
+          provider: aiCfg.provider ?? 'openrouter',
           modelId: aiCfg.model,
-          baseUrl: aiCfg.openrouterBaseUrl,
+          baseUrl: aiCfg.baseUrl ?? aiCfg.openrouterBaseUrl,
         });
         return {
           async complete(prompt: string): Promise<string> {
-            return generateAgentText({ model, systemPrompt: '', prompt, tools: {} });
+            return generateAgentText({
+              model,
+              apiKey: aiCfg.apiKey ?? aiCfg.openrouterApiKey,
+              systemPrompt: '',
+              prompt,
+              tools: {},
+            });
           },
         };
       },

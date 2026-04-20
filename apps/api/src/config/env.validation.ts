@@ -1,4 +1,11 @@
 import { z } from 'zod';
+import {
+  AI_PROVIDERS,
+  DEFAULT_NVIDIA_EMBEDDING_MODEL,
+  DEFAULT_OPENROUTER_EMBEDDING_MODEL,
+  DEFAULT_OPENROUTER_TEXT_MODEL,
+  type AiProvider,
+} from '@finsentinel/ai-runtime';
 
 /**
  * Custom boolean coercion that correctly handles env-var strings.
@@ -12,16 +19,34 @@ const envBoolean = z
     return val === 'true' || val === '1';
   });
 
-/**
- * Zod schema that validates ALL environment variables at application startup.
- *
- * Required fields fail fast if missing; optional subsystems (crypto news,
- * twitter, OKX) are gated by boolean feature flags that default to false.
- *
- * String→number / string→boolean coercion handles the fact that process.env
- * values are always strings.
- */
-export const envSchema = z.object({
+const aiProvider = z.enum(AI_PROVIDERS);
+const optionalEnvString = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().optional(),
+);
+const optionalAiProvider = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  aiProvider.optional(),
+);
+
+function hasValue(value: string | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function addMissingKeyIssue(
+  ctx: z.RefinementCtx,
+  key: 'OPENROUTER_API_KEY' | 'NVIDIA_API_KEY',
+  provider: AiProvider,
+  use: 'text' | 'embedding',
+) {
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    path: [key],
+    message: `${key} is required when ${use} AI provider is ${provider}`,
+  });
+}
+
+const baseEnvSchema = z.object({
   // ── Database ──────────────────────────────────────────────────────
   DATABASE_URL: z.string().url(),
 
@@ -33,9 +58,14 @@ export const envSchema = z.object({
   JWT_EXPIRATION: z.coerce.number().default(86400000),
 
   // ── AI / LLM ─────────────────────────────────────────────────────
-  OPENROUTER_API_KEY: z.string().min(1),
-  AI_MODEL: z.string().default('google/gemini-3-flash-preview'),
-  AI_EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
+  AI_PROVIDER: aiProvider.default('openrouter'),
+  AI_EMBEDDING_PROVIDER: optionalAiProvider,
+  OPENROUTER_API_KEY: optionalEnvString,
+  OPENROUTER_BASE_URL: z.string().url().default('https://openrouter.ai/api/v1'),
+  NVIDIA_API_KEY: optionalEnvString,
+  NVIDIA_BASE_URL: z.string().url().default('https://integrate.api.nvidia.com/v1'),
+  AI_MODEL: optionalEnvString,
+  AI_EMBEDDING_MODEL: optionalEnvString,
 
   // ── Market Data ──────────────────────────────────────────────────
   POLYGON_API_KEY: z.string().min(1),
@@ -190,6 +220,55 @@ export const envSchema = z.object({
     .enum(['development', 'production', 'test'])
     .default('development'),
 });
+
+/**
+ * Zod schema that validates ALL environment variables at application startup.
+ *
+ * Required fields fail fast if missing; optional subsystems (crypto news,
+ * twitter, OKX) are gated by boolean feature flags that default to false.
+ *
+ * String→number / string→boolean coercion handles the fact that process.env
+ * values are always strings.
+ */
+export const envSchema = baseEnvSchema
+  .superRefine((value, ctx) => {
+    const textProvider = value.AI_PROVIDER;
+    const embeddingProvider = value.AI_EMBEDDING_PROVIDER ?? textProvider;
+
+    if (textProvider === 'openrouter' && !hasValue(value.OPENROUTER_API_KEY)) {
+      addMissingKeyIssue(ctx, 'OPENROUTER_API_KEY', textProvider, 'text');
+    }
+    if (textProvider === 'nvidia' && !hasValue(value.NVIDIA_API_KEY)) {
+      addMissingKeyIssue(ctx, 'NVIDIA_API_KEY', textProvider, 'text');
+    }
+    if (embeddingProvider === 'openrouter' && !hasValue(value.OPENROUTER_API_KEY)) {
+      addMissingKeyIssue(ctx, 'OPENROUTER_API_KEY', embeddingProvider, 'embedding');
+    }
+    if (embeddingProvider === 'nvidia' && !hasValue(value.NVIDIA_API_KEY)) {
+      addMissingKeyIssue(ctx, 'NVIDIA_API_KEY', embeddingProvider, 'embedding');
+    }
+    if (textProvider === 'nvidia' && !hasValue(value.AI_MODEL)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AI_MODEL'],
+        message: 'AI_MODEL is required when AI_PROVIDER is nvidia',
+      });
+    }
+  })
+  .transform((value) => {
+    const embeddingProvider = value.AI_EMBEDDING_PROVIDER ?? value.AI_PROVIDER;
+
+    return {
+      ...value,
+      AI_MODEL: value.AI_MODEL ?? DEFAULT_OPENROUTER_TEXT_MODEL,
+      AI_EMBEDDING_PROVIDER: embeddingProvider,
+      AI_EMBEDDING_MODEL:
+        value.AI_EMBEDDING_MODEL ??
+        (embeddingProvider === 'nvidia'
+          ? DEFAULT_NVIDIA_EMBEDDING_MODEL
+          : DEFAULT_OPENROUTER_EMBEDDING_MODEL),
+    };
+  });
 
 /** Inferred TypeScript type for the validated environment. */
 export type EnvConfig = z.infer<typeof envSchema>;

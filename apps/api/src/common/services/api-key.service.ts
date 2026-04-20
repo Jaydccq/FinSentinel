@@ -9,6 +9,7 @@ import { EncryptionService } from './encryption.service';
 export const KNOWN_KEY_NAMES = [
   'POLYGON',
   'OPENROUTER',
+  'NVIDIA_API_KEY',
   'FMP',
   'FIRECRAWL',
   'OKX_API_KEY',
@@ -31,6 +32,7 @@ export interface ApiKeyStatus {
 const API_KEY_METADATA: Record<KnownKeyName, { label: string; category: string }> = {
   POLYGON: { label: 'Polygon', category: 'Market Data' },
   OPENROUTER: { label: 'OpenRouter', category: 'AI' },
+  NVIDIA_API_KEY: { label: 'NVIDIA API Key', category: 'AI' },
   FMP: { label: 'Financial Modeling Prep', category: 'Market Data' },
   FIRECRAWL: { label: 'Firecrawl', category: 'News' },
   OKX_API_KEY: { label: 'OKX API Key', category: 'Trading' },

@@ -14,7 +14,6 @@ import type { DrizzleDB } from '@finsentinel/db';
 import { aiConfig } from '../config/ai.config';
 import { RagEmbeddingService } from './rag-embedding.service';
 import { MetricsService } from '../common/services/metrics.service';
-import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
 import type { LlmTextClient } from './eval/golden-candidates.service';
 import { buildRepresentationTsvector } from './chunk-representation.tsvector';
 

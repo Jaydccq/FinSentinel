@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RagEmbeddingService } from '../rag-embedding.service';
 
-const { embedQuery, embedChunks, openRouterEmbeddingClientMock } = vi.hoisted(() => {
+const { embedQuery, embedChunks, openAICompatibleEmbeddingClientMock } = vi.hoisted(() => {
   const embedQuery = vi.fn();
   const embedChunks = vi.fn();
 
   return {
     embedQuery,
     embedChunks,
-    openRouterEmbeddingClientMock: vi.fn(function OpenRouterEmbeddingClientMock() {
+    openAICompatibleEmbeddingClientMock: vi.fn(function OpenAICompatibleEmbeddingClientMock() {
       return {
         embedQuery,
         embedChunks,
@@ -18,7 +18,7 @@ const { embedQuery, embedChunks, openRouterEmbeddingClientMock } = vi.hoisted(()
 });
 
 vi.mock('@finsentinel/ai-runtime', () => ({
-  OpenRouterEmbeddingClient: openRouterEmbeddingClientMock,
+  OpenAICompatibleEmbeddingClient: openAICompatibleEmbeddingClientMock,
 }));
 
 const mockAiConfig = {
@@ -36,7 +36,7 @@ describe('RagEmbeddingService', () => {
   it('passes ai config into the runtime embedding client', () => {
     new RagEmbeddingService(mockAiConfig);
 
-    expect(openRouterEmbeddingClientMock).toHaveBeenCalledWith({
+    expect(openAICompatibleEmbeddingClientMock).toHaveBeenCalledWith({
       apiKey: 'test-key',
       baseUrl: 'https://openrouter.example/v1',
       model: 'text-embedding-3-small',

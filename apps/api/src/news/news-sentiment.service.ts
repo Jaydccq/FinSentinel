@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import {
+  DEFAULT_OPENROUTER_BASE_URL,
+  DEFAULT_OPENROUTER_TEXT_MODEL,
+} from '@finsentinel/ai-runtime';
 
 /**
  * Sentiment classification result.
@@ -11,8 +15,13 @@ const VALID_SENTIMENTS = new Set<string>(['POSITIVE', 'NEGATIVE', 'NEUTRAL']);
 const SENTIMENT_PROMPT =
   'Classify the financial sentiment of this article as POSITIVE, NEGATIVE, or NEUTRAL. Respond with only one word.';
 
+function normalizeOpenAIBaseUrl(value: string): string {
+  const trimmed = value.replace(/\/$/, '');
+  return trimmed.endsWith('/v1') ? trimmed : `${trimmed}/v1`;
+}
+
 /**
- * Uses an LLM (via OpenRouter / OpenAI-compatible API) to classify
+ * Uses an LLM via the configured OpenAI-compatible API to classify
  * the financial sentiment of a news article.
  *
  * Input: title + summary
@@ -26,14 +35,15 @@ export class NewsSentimentService {
   private readonly baseUrl: string;
 
   constructor(configService: ConfigService) {
-    this.apiKey = configService.get<string>('OPENROUTER_API_KEY', '');
-    this.model = configService.get<string>(
-      'AI_MODEL',
-      'google/gemini-3-flash-preview',
-    );
-    this.baseUrl = configService.get<string>(
-      'OPENROUTER_BASE_URL',
-      'https://openrouter.ai/api',
+    this.apiKey =
+      configService.get<string>('ai.apiKey') ||
+      configService.get<string>('OPENROUTER_API_KEY', '');
+    this.model =
+      configService.get<string>('ai.model') ||
+      configService.get<string>('AI_MODEL', DEFAULT_OPENROUTER_TEXT_MODEL);
+    this.baseUrl = normalizeOpenAIBaseUrl(
+      configService.get<string>('ai.baseUrl') ||
+        configService.get<string>('OPENROUTER_BASE_URL', DEFAULT_OPENROUTER_BASE_URL),
     );
   }
 
@@ -50,7 +60,7 @@ export class NewsSentimentService {
       : `Title: ${title}`;
 
     try {
-      const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+      const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

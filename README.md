@@ -88,10 +88,15 @@ Minimum API environment variables:
 - `DATABASE_URL`
 - `REDIS_URL`
 - `JWT_SECRET`
-- `OPENROUTER_API_KEY`
+- `OPENROUTER_API_KEY` when `AI_PROVIDER=openrouter`
+- `NVIDIA_API_KEY` when `AI_PROVIDER=nvidia`
 - `POLYGON_API_KEY`
 
 Common optional variables:
+- `AI_PROVIDER` (`openrouter` by default; set `nvidia` for NVIDIA Build/NIM)
+- `AI_MODEL`
+- `AI_EMBEDDING_PROVIDER`
+- `AI_EMBEDDING_MODEL`
 - `ENCRYPTION_AES_KEY`
 - `APP_AGENT_PERSONA`
 - `APP_TRADING_DEFAULT_MODE`
@@ -108,6 +113,14 @@ Common optional variables:
 - `RAG_REINDEX_ENABLED`
 - `RAG_REINDEX_INTERVAL_MS`
 - `RAG_REINDEX_STARTUP_DELAY_MS`
+
+NVIDIA Build example:
+
+```bash
+AI_PROVIDER=nvidia
+NVIDIA_API_KEY=nvapi-your-token
+AI_MODEL=your-nvidia-build-model-id
+```
 - `RAG_REINDEX_DOCUMENT_BATCH_SIZE`
 - `RAG_REINDEX_NEWS_BATCH_SIZE`
 - `RAG_REINDEX_FORCE`

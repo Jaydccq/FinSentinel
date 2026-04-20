@@ -4,7 +4,7 @@
 #   docker compose -f docker-compose.prod.yml up --build
 #
 # Required environment variables (via .env file or shell):
-#   JWT_SECRET, OPENROUTER_API_KEY, POLYGON_API_KEY
+#   JWT_SECRET, POLYGON_API_KEY, plus OPENROUTER_API_KEY or NVIDIA_API_KEY
 
 services:
   api:
@@ -18,8 +18,12 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRATION=${JWT_EXPIRATION:-86400000}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - AI_MODEL=${AI_MODEL:-google/gemini-3-flash-preview}
+      - AI_PROVIDER=${AI_PROVIDER:-openrouter}
+      - AI_MODEL=${AI_MODEL:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_BASE_URL=${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      - NVIDIA_API_KEY=${NVIDIA_API_KEY:-}
+      - NVIDIA_BASE_URL=${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1}
       - POLYGON_API_KEY=${POLYGON_API_KEY}
       - APP_TRADING_DEFAULT_MODE=${APP_TRADING_DEFAULT_MODE:-PAPER}
       - APP_AGENT_PERSONA=${APP_AGENT_PERSONA:-default}

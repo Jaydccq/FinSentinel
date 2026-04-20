@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import {
-  createOpenRouterModel,
+  createOpenAICompatibleModel,
   streamAgentTextFromMessages,
 } from '@finsentinel/ai-runtime';
 import { ToolRegistry } from './tool-registry';
@@ -46,6 +46,7 @@ export class StockAnalysisService {
 
     const textStream = streamAgentTextFromMessages({
       model: this.getModel(),
+      apiKey: this.aiCfg.apiKey ?? this.aiCfg.openrouterApiKey,
       systemPrompt: STOCK_ANALYSIS_SYSTEM_PROMPT,
       messages: messages.map((m) => ({
         role: m.role as 'user' | 'assistant',
@@ -61,9 +62,10 @@ export class StockAnalysisService {
   // ── Internal ──────────────────────────────────────────────────────────────
 
   private getModel() {
-    return createOpenRouterModel({
+    return createOpenAICompatibleModel({
+      provider: this.aiCfg.provider ?? 'openrouter',
       modelId: this.aiCfg.model,
-      baseUrl: this.aiCfg.openrouterBaseUrl,
+      baseUrl: this.aiCfg.baseUrl ?? this.aiCfg.openrouterBaseUrl,
     });
   }
 

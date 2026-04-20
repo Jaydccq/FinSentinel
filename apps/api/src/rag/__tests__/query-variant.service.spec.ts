@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { QueryVariantService } from '../query-variant.service';
 
 vi.mock('@finsentinel/ai-runtime', () => ({
-  createOpenRouterModel: vi.fn(() => 'mock-model'),
+  createOpenAICompatibleModel: vi.fn(() => 'mock-model'),
   generateAgentText: vi.fn(),
 }));
 

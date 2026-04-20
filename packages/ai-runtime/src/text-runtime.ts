@@ -24,6 +24,7 @@ export interface ChatMessageInput {
 
 export interface AgentTextOptions {
   model: Model<any>;
+  apiKey?: string;
   systemPrompt: string;
   tools: FinToolSet;
   maxTurns?: number;
@@ -78,6 +79,7 @@ async function createAgent(options: AgentTextOptions, messages?: ChatMessageInpu
       tools: toAgentTools(options.tools),
       messages: messages ? toAgentMessages(messages, options.model) : [],
     },
+    getApiKey: options.apiKey ? async () => options.apiKey : undefined,
     toolExecution: 'parallel',
   });
 
@@ -234,6 +236,7 @@ function runAgentText(
 export async function generateAgentText(options: GenerateAgentTextOptions): Promise<string> {
   const stream = await streamAgentTextFromMessages({
     model: options.model,
+    apiKey: options.apiKey,
     systemPrompt: options.systemPrompt,
     tools: options.tools,
     maxTurns: options.maxTurns,
