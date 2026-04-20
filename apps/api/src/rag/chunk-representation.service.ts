@@ -16,6 +16,7 @@ import { RagEmbeddingService } from './rag-embedding.service';
 import { MetricsService } from '../common/services/metrics.service';
 import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
 import type { LlmTextClient } from './eval/golden-candidates.service';
+import { buildRepresentationTsvector } from './chunk-representation.tsvector';
 
 // ── Public constants ───────────────────────────────────────────────────────────
 
@@ -240,6 +241,16 @@ export class ChunkRepresentationService {
 
     const keywordContent = parsed.keywords.join(', ');
     const summaryContent = parsed.summary;
+    const sampleQuestionContent = parsed.sample_questions.join(' ');
+
+    // Shared tsvector inputs — title/sectionPath/chunkContent come from the parent
+    // chunk, representationContent is the per-row payload. Each call returns a
+    // parameterised Drizzle sql`` fragment; never sql.raw with user text.
+    const tsvectorBase = {
+      title: chunk.metaTitle,
+      sectionPath: chunk.sectionPath,
+      chunkContent: chunk.content,
+    };
 
     try {
       await this.db.insert(documentChunkRepresentations).values([
@@ -249,7 +260,10 @@ export class ChunkRepresentationService {
           representationType: 'contextual_text',
           content: parsed.contextual,
           embedding: contextualEmbedding,
-          searchVector: null,
+          searchVector: buildRepresentationTsvector('contextual_text', {
+            ...tsvectorBase,
+            representationContent: parsed.contextual,
+          }),
           weight: 1.0,
           metadata: versionMeta,
           createdAt: now,
@@ -259,9 +273,12 @@ export class ChunkRepresentationService {
           id: randomUUID(),
           chunkId,
           representationType: 'sample_question',
-          content: parsed.sample_questions.join(' '),
+          content: sampleQuestionContent,
           embedding: sampleQuestionEmbedding,
-          searchVector: null,
+          searchVector: buildRepresentationTsvector('sample_question', {
+            ...tsvectorBase,
+            representationContent: sampleQuestionContent,
+          }),
           weight: 1.0,
           metadata: versionMeta,
           createdAt: now,
@@ -273,7 +290,10 @@ export class ChunkRepresentationService {
           representationType: 'summary',
           content: summaryContent,
           embedding: null,
-          searchVector: null,
+          searchVector: buildRepresentationTsvector('summary', {
+            ...tsvectorBase,
+            representationContent: summaryContent,
+          }),
           weight: 0.8,
           metadata: versionMeta,
           createdAt: now,
@@ -285,13 +305,25 @@ export class ChunkRepresentationService {
           representationType: 'keyword_entity',
           content: keywordContent,
           embedding: null,
-          searchVector: null,
+          searchVector: buildRepresentationTsvector('keyword_entity', {
+            ...tsvectorBase,
+            representationContent: keywordContent,
+          }),
           weight: 0.6,
           metadata: versionMeta,
           createdAt: now,
           updatedAt: now,
         },
       ]);
+      // R2.7: record per-type writes of search_vector. Lets operators observe
+      // sparse-lane health distinct from the umbrella rag_representation_enrich_total.
+      for (const type of ['contextual_text', 'sample_question', 'summary', 'keyword_entity'] as const) {
+        this.metrics.incrementCounter(
+          'rag_representation_sparse_populated_total',
+          'Count of representation rows written with non-null search_vector',
+          { type, source: 'insert' },
+        );
+      }
     } catch (err) {
       await this.db
         .update(documentChunks)

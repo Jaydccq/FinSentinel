@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommonModule } from '../common/common.module';
 import { QueueModule } from '../queue/queue.module';
 import { RagRetrievalService } from './rag-retrieval.service';
@@ -47,7 +48,18 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     RagChunkStoreService,
     RagReindexService,
     RagBackfillSchedulerService,
-    SparseSearchService,
+    {
+      // SparseSearchService receives ConfigService so `RAG_SPARSE_WEIGHTS`
+      // env-var-driven weight vector actually propagates to production.
+      // Without this factory Nest constructs the service with only DRIZZLE_DB
+      // and the optional second arg stays undefined, so the env knob would be
+      // decorative. See sparse-search.service.ts for the typed constructor.
+      provide: SparseSearchService,
+      useFactory: (db: unknown, config: ConfigService) => {
+        return new SparseSearchService(db as never, config);
+      },
+      inject: ['DRIZZLE_DB', ConfigService],
+    },
     RetrievalFusionService,
     RetrievalOrchestratorService,
     RerankService,

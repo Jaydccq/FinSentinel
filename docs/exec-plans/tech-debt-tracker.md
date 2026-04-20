@@ -131,6 +131,26 @@
   real execution-result reference (or the JSON-stringified
   `ExecuteResult`) as `executionResultRef`. Low priority until the
   ledger becomes the primary post-trade audit source.
+- **[RAG-TD-01] `keyword_entity` representation writes a comma-separated blob at A-weight.**
+  `chunk-representation.tsvector.ts` weights the full `keywords.join(', ')` blob
+  at setweight A for `keyword_entity` rows, because the LLM response schema in
+  `chunk-representation.service.ts:38-54` returns a single flat `keywords` array
+  without separating entities / tickers / keywords. Plan R2.2 called for
+  A=entities / B=tickers / C=keywords. Closing this requires (a) extending the
+  LLM prompt + Zod schema to return separate fields, (b) bumping
+  `CURRENT_REPRESENTATION_VERSION` so the idempotency check re-runs old chunks,
+  (c) a backfill pass. Scoped outside R2.2 because the fix is prompt + schema +
+  version change, not insert-time wiring.
+- **[RAG-TD-02] Canonical-chunk tsvector uses `'english'` while representations use `'simple'`.**
+  `rag-chunk-store.service.ts:87-95` builds `document_chunks.search_vector` with
+  `to_tsvector('english', content)` at B-weight. `chunk-representation.tsvector.ts`
+  uses `'simple'` everywhere. `SparseSearchService` probes both with
+  `websearch_to_tsquery('simple', …)`. Intentional for Wave 2 (representation
+  lane is the clean `'simple'` surface), but stemmer-asymmetric lookups on the
+  same query produce different scores on canonical vs representation rows. A
+  coordinated migration that switches both sides — and the eval gate — in one
+  change can close this once R2.6 shows the benefit justifies the churn.
+
 - **[PHASE3-TD-03] Plan document contains a stale test snippet.**
   `docs/exec-plans/2026-04-18-openalice-remaining-work-plan.md` Task 3.2
   Step 1 still references the pre-fix Drizzle property name

@@ -1,4 +1,45 @@
 import { registerAs } from '@nestjs/config';
+import { z } from 'zod';
+
+/**
+ * Parses `RAG_SPARSE_WEIGHTS` (PG array literal like `"{0.1,0.2,0.4,1.0}"`)
+ * into a typed 4-number tuple read as (D, C, B, A) — the reading order that
+ * Postgres `ts_rank_cd(weights, vector, query)` expects. Higher index = higher
+ * weight for the A-labelled lexemes (title + section_path + entities in the
+ * representation-lane tsvectors; see `chunk-representation.tsvector.ts`).
+ *
+ * Invalid input (wrong length, non-numeric, out-of-range) fails fast at config
+ * load rather than producing a silent mis-ranked query at retrieval time.
+ * Values are bounded to the [0, 1] range consistent with Postgres docs and the
+ * default `'{0.1, 0.2, 0.4, 1.0}'` vector.
+ */
+const SparseWeightsSchema = z
+  .tuple([
+    z.number().min(0).max(1),
+    z.number().min(0).max(1),
+    z.number().min(0).max(1),
+    z.number().min(0).max(1),
+  ])
+  .describe('ts_rank_cd weights as [D, C, B, A] — higher = more weight for that slot');
+
+function parseSparseWeights(raw: string | undefined): [number, number, number, number] {
+  const fallback: [number, number, number, number] = [0.1, 0.2, 0.4, 1.0];
+  if (!raw || !raw.trim()) return fallback;
+  // Accept PG array literal `{…}` or a bare CSV; strip braces + whitespace.
+  const stripped = raw.trim().replace(/^\{/, '').replace(/\}$/, '');
+  const parts = stripped
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .map((s) => Number(s));
+  if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
+    throw new Error(
+      `RAG_SPARSE_WEIGHTS must be a 4-element numeric PG array literal like "{0.1,0.2,0.4,1.0}"; got "${raw}"`,
+    );
+  }
+  const tuple: [number, number, number, number] = [parts[0]!, parts[1]!, parts[2]!, parts[3]!];
+  return SparseWeightsSchema.parse(tuple);
+}
 
 export const ragConfig = registerAs('rag', () => ({
   chunking: {
@@ -17,6 +58,14 @@ export const ragConfig = registerAs('rag', () => ({
       process.env['RAG_QUERY_REWRITE_ENABLED'] !== 'false',
     hydeEnabled: process.env['RAG_HYDE_ENABLED'] === 'true',
     queryDecomposeEnabled: process.env['RAG_QUERY_DECOMPOSE_ENABLED'] === 'true',
+    /**
+     * Field-weighted sparse ranking weight vector for `ts_rank_cd`. Four
+     * numbers reading (D, C, B, A). Default `[0.1, 0.2, 0.4, 1.0]` gives the
+     * A-weight slot (title + section_path + entities on representation rows)
+     * a 10x multiplier over D-slot lexemes. Configure via `RAG_SPARSE_WEIGHTS`
+     * as a PG array literal: `RAG_SPARSE_WEIGHTS="{0.1,0.2,0.4,1.0}"`.
+     */
+    sparseWeights: parseSparseWeights(process.env['RAG_SPARSE_WEIGHTS']),
   },
   backfill: {
     enabled: process.env['RAG_REINDEX_ENABLED'] !== 'false',

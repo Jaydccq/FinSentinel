@@ -173,6 +173,45 @@ git commit -m "chore(eval): rebaseline offline report after <reason>"
 - Report baselines are kept for at least 90 days for audit. They are committed
   files, so `git log services/evaluation-runner/reports/` is the record.
 
+## Running the sparse backfill
+
+After Phase R2 merges, any representation rows written BEFORE R2.2 landed still
+have `search_vector = NULL` and are invisible to the sparse lane. The
+`rag:backfill:sparse` CLI fills them in without regenerating embeddings or
+calling the LLM.
+
+**Dry run** (counts candidates, no writes):
+
+```
+pnpm --filter @finsentinel/api cli rag:backfill:sparse --dry-run
+```
+
+**Wet run** against the ephemeral CI / test DB (idempotent — re-running on a
+fully backfilled DB touches zero rows):
+
+```
+pnpm --filter @finsentinel/api cli rag:backfill:sparse
+```
+
+**Wet run against the Homebrew-native dev DB** (requires explicit confirmation
+env var, same pattern as `seed-fixture`):
+
+```
+SPARSE_BACKFILL_CONFIRM=1 pnpm --filter @finsentinel/api cli rag:backfill:sparse
+```
+
+Optional flags:
+
+- `--batch-size <N>` — rows per UPDATE batch, default 500.
+- `--representation-type <type>` — scope to one of `contextual_text |
+  sample_question | summary | keyword_entity`; omit to backfill all types.
+- `--output-summary <path>` — write a JSON summary (candidates scanned, rows
+  updated, batches processed) to the given path for CI pipelines.
+
+The CLI imports `buildRepresentationTsvector` from R2.2, so the backfilled
+`search_vector` is identical to what a fresh insert would produce today. No
+LLM calls, no embedding recompute, no other column touched.
+
 ## Known limitations and follow-up items
 
 ### Live-API CI path deferred

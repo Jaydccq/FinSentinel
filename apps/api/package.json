@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit --project tsconfig.typecheck.json",
     "rag:golden:export": "tsx src/rag/eval/golden-candidates.cli.ts",
     "rag:eval:seed-fixture": "tsx src/rag/eval/seed-fixture.cli.ts",
+    "rag:backfill:sparse": "tsx src/rag/admin/rag-backfill-representation-sparse.cli.ts",
     "rag:backfill:representations": "tsx src/rag/admin/rag-backfill-representations.cli.ts",
     "rag:repr:reindex": "tsx src/rag/admin/rag-repr-reindex.cli.ts"
   },
