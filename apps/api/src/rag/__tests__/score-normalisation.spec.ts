@@ -14,11 +14,21 @@ describe('normaliseRerankScore (sigmoid)', () => {
     }
   });
 
-  it('is bounded in (0, 1) for all finite inputs', () => {
-    for (const x of [-1000, -10, -1, 0, 1, 10, 1000]) {
+  it('is strictly in (0, 1) for realistic reranker-score magnitudes', () => {
+    // BGE-style cross-encoders typically return scores in roughly [-10, +10].
+    for (const x of [-10, -1, 0, 1, 10]) {
       const y = normaliseRerankScore(x);
       expect(y).toBeGreaterThan(0);
       expect(y).toBeLessThan(1);
+    }
+  });
+
+  it('is bounded in [0, 1] for extreme inputs (saturation)', () => {
+    for (const x of [-1000, -50, 50, 1000]) {
+      const y = normaliseRerankScore(x);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(1);
+      expect(Number.isFinite(y)).toBe(true);
     }
   });
 
