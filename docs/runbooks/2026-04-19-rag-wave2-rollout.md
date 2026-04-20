@@ -259,3 +259,68 @@ would fail on empty buckets.
 | Target CI config (post R1.1) | `services/evaluation-runner/configs/wave2-buckets.yaml` |
 | Golden set | `services/evaluation-runner/datasets/golden.json` |
 | Corpus | `services/evaluation-runner/datasets/corpus.json` |
+
+## R5 — Parser sidecar
+
+**What this phase shipped:** a FastAPI stub sidecar that returns fixed
+Markdown for any upload. Real PDF/Word parsing (MinerU, pdfplumber, or a
+commercial OCR service) is a separate follow-up work-item; R5 validates
+only the plumbing + distribution artefacts.
+
+### Environment variables
+
+| Variable                         | Default                   | Purpose                                                    |
+|----------------------------------|---------------------------|------------------------------------------------------------|
+| `PARSER_URL`                     | `http://localhost:8110`   | Base URL for the sidecar (used in compose: `http://parser:8110`). |
+| `RAG_PARSER_TIMEOUT_MS`          | `30000`                   | Per-request timeout for a sidecar call.                    |
+| `RAG_PARSER_MIN_MARKDOWN_CHARS`  | `50`                      | Below this length the client throws `PARSER_EMPTY_OUTPUT`. |
+| `RAG_UPLOAD_MAX_BYTES`           | `104857600` (100 MiB)     | Hard upload cap applied before any sidecar call.           |
+
+### Container / service
+
+- Service name in `docker-compose.yml`: `parser`.
+- Health endpoint: `GET /health` returns `{"status":"ok","version":"stub-0.1"}`.
+- Image built by `services/parser/Dockerfile` (python:3.12-slim, exposes 8110).
+- CI workflow: `.github/workflows/parser-build.yml` (builds + smoke-tests on push/PR that touches `services/parser/**`).
+
+### Stub vs. real parser
+
+The merged sidecar is a **stub**. For any uploaded file it returns the
+same fixed Markdown template:
+
+```
+# <filename>
+
+## Section 1
+
+Stub parser output for <N> bytes.
+
+## Section 2
+
+Placeholder content for plumbing tests.
+```
+
+Do NOT interpret the R5 E2E pass as "PDF ingestion works in production" —
+it proves the *plumbing* works (MIME whitelist, upload cap, sidecar
+routing, chunk metadata enrichment). Replacing the stub with a real
+parser is a separate follow-up scheduled independently.
+
+### Run the E2E locally
+
+```bash
+docker compose up -d parser
+RAG_PARSER_E2E=1 pnpm --filter @finsentinel/api test -- upload-pdf-e2e
+```
+
+The test uploads a fake PDF fixture, runs the full ingestion path
+through the stub, and asserts a chunk gets persisted with
+`metadata.parser_version` set.
+
+### Kill switch
+
+- Omit `PARSER_URL` (or set it to an unreachable host) to force all
+  PDF/Word uploads to fail at the sidecar call. `VectorizeConsumer`
+  marks the document `FAILED` on parse errors; the document row and
+  DB state remain consistent.
+- Synchronous uploads (when `VectorizeProducer` is absent) get
+  `PARSER_SIDECAR_UNAVAILABLE` and land as `FAILED` too.

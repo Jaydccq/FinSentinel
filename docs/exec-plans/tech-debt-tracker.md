@@ -266,3 +266,13 @@
   Fix: add `rag_entity_llm_fallback_total{result}` with labels
   `success | empty | timeout | error | circuit_open` at the call site.
   Blocks cost validation for the flag flip.
+
+## 2026-04-20 — carried over from R5 Parser Sidecar
+
+- **[RAG-TD-R5-01] Real parser sidecar replacing the R5 stub.**
+  The `services/parser/` sidecar returns fixed Markdown regardless of
+  input. Distribution artefacts (Dockerfile, compose service, CI
+  workflow, health endpoint) all ship today, but R5 never validates PDF
+  extraction quality. Replace the stub with one of: MinerU, pdfplumber +
+  heading heuristics, or a commercial OCR API. Blocks: meaningful PDF
+  evaluation in Wave 2 eval buckets. Owner + timing: separate work-item.
