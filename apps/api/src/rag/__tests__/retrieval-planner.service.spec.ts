@@ -122,7 +122,10 @@ describe('RetrievalPlannerService', () => {
   it('factoid short query produces variants=[original, rewrite], no hyde or subquery', async () => {
     const rewrite = makeRewrite((_q) => Promise.resolve('rewritten query'));
     const variant = makeVariant();
-    const plan = await makeService({}, rewrite, variant).plan('What is AAPL EPS?');
+    // Plain-english factoid: no ticker + time anchor, no section identifier,
+    // no numeric identifier (EPS / P/E), no quoted phrase — so classifier
+    // resolves to factoid (R3.1 precedence: exact_lookup > … > factoid).
+    const plan = await makeService({}, rewrite, variant).plan('What is the current Apple revenue?');
     expect(plan.queryClass).toBe('factoid');
     expect(plan.variants.map((v) => v.kind)).toEqual(['original', 'rewrite']);
     expect(variant.hyde).not.toHaveBeenCalled();
@@ -357,9 +360,12 @@ describe('RetrievalPlannerService', () => {
 
   it('factoid queries still get rewritten when rewrite is enabled (regression guard for non-exact_lookup)', async () => {
     const rewrite = makeRewrite((_q) => Promise.resolve('rewritten factoid'));
-    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan('What is AAPL EPS?');
+    // Plain-english factoid — no ticker/section/numeric/quote triggers.
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(
+      'What is the current Apple revenue?',
+    );
     expect(plan.queryClass).toBe('factoid');
-    expect(rewrite.rewrite).toHaveBeenCalledWith('What is AAPL EPS?');
+    expect(rewrite.rewrite).toHaveBeenCalledWith('What is the current Apple revenue?');
     expect(plan.variants.map((v) => v.kind)).toContain('rewrite');
   });
 
