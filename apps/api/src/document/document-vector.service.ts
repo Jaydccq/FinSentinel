@@ -4,6 +4,7 @@ import { MarkdownStructureService } from './markdown-structure.service';
 import { RagEmbeddingService } from '../rag/rag-embedding.service';
 import { RagChunkStoreService } from '../rag/rag-chunk-store.service';
 import { MetricsService } from '../common/services/metrics.service';
+import { extractIssuerAndTickers } from './metadata-extractors/issuer-ticker-extractor';
 
 /**
  * Document vectorization service -- embeds text chunks into pgvector.
@@ -73,6 +74,17 @@ export class DocumentVectorService {
         );
       }
 
+      // Destructure the sentinel key once; persistedMetadata is what gets stored.
+      const { __originalFileName: originalFileName, ...persistedMetadata } =
+        metadata as Record<string, string | undefined>;
+
+      const sampleText = structuredChunks.slice(0, 3).map((c) => c.text).join('\n');
+      const { issuerName, tickers } = extractIssuerAndTickers({
+        originalFileName: originalFileName ?? persistedMetadata['source'] ?? null,
+        docTitle: persistedMetadata['title'] ?? null,
+        chunkText: sampleText,
+      });
+
       await this.ragChunkStore.replaceChunks(
         sourceType,
         docId,
@@ -84,7 +96,7 @@ export class DocumentVectorService {
             : null,
           title: chunk.title,
           metadata: {
-            ...metadata,
+            ...persistedMetadata,
             source_type: sourceType,
             source_id: docId,
             chunk_index: index,
@@ -92,7 +104,9 @@ export class DocumentVectorService {
             section_path: chunk.sectionPath.length > 0
               ? chunk.sectionPath.join(' / ')
               : null,
-            title: chunk.title ?? metadata['title'] ?? null,
+            title: chunk.title ?? persistedMetadata['title'] ?? null,
+            tickers,
+            ...(issuerName ? { issuerName } : {}),
           },
         })),
       );

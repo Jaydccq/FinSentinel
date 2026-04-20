@@ -122,6 +122,7 @@ export class DocumentUploadService {
           region_id: 'US',
           source: file.originalname,
           date: uploadDate,
+          __originalFileName: file.originalname,
         });
 
         await this.db

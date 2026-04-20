@@ -129,6 +129,7 @@ export class NewsEnrichConsumer implements OnModuleInit, OnModuleDestroy {
             region_id: 'US',
             source: item.source,
             date: new Date().toISOString().split('T')[0]!,
+            title: item.title,
           },
         );
         this.logger.log(
