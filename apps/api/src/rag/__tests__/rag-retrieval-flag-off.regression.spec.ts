@@ -61,7 +61,7 @@ describe('RagRetrievalService flag-off regression', () => {
           useValue: {
             get: (key: string, defaultVal: unknown) => {
               if (key === 'RAG_SIMILARITY_THRESHOLD') return 0.65;
-              if (key === 'RAG_MULTI_STAGE_ENABLED') return 'false';
+              if (key === 'rag.multiStageEnabled') return false;
               return defaultVal;
             },
           },

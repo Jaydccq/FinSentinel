@@ -5,6 +5,18 @@ import { sql } from 'drizzle-orm';
 import { MetricsService } from '../common/services/metrics.service';
 import type { DrizzleDB } from '@finsentinel/db';
 
+export interface ShadowComparisonInput {
+  queryHash: string;
+  queryClass: string;
+  singleStageChunkIds: string[];
+  multiStageChunkIds: string[];
+  singleStageLatencyMs: number | null;
+  multiStageLatencyMs: number | null;
+  shadowTimedOut: boolean;
+  shadowDroppedBackpressure: boolean;
+  multiStageError: string | null;
+}
+
 export interface RagTraceInput {
   userId?: string | null;
   query: string;
@@ -126,6 +138,35 @@ export class RagTraceService {
       `);
     } catch (err) {
       this.logger.warn(`RagTraceService.recordTrace failed: ${err}`);
+    }
+  }
+
+  async recordShadowComparison(input: ShadowComparisonInput): Promise<void> {
+    try {
+      await this.db.execute(sql`
+        INSERT INTO rag_shadow_comparisons (
+          id, query_hash, query_class,
+          single_stage_chunk_ids, multi_stage_chunk_ids,
+          single_stage_latency_ms, multi_stage_latency_ms,
+          shadow_timed_out, shadow_dropped_backpressure,
+          multi_stage_error, created_at
+        ) VALUES (
+          gen_random_uuid(),
+          ${input.queryHash},
+          ${input.queryClass},
+          ${input.singleStageChunkIds}::text[],
+          ${input.multiStageChunkIds}::text[],
+          ${input.singleStageLatencyMs},
+          ${input.multiStageLatencyMs},
+          ${input.shadowTimedOut},
+          ${input.shadowDroppedBackpressure},
+          ${input.multiStageError},
+          now()
+        )
+      `);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Failed to persist shadow comparison: ${msg}`);
     }
   }
 

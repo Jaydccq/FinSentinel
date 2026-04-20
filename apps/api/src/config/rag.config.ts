@@ -85,6 +85,50 @@ function parseMinCandidatesByClass(
   return out;
 }
 
+const VALID_ROLLOUT_MODES = ['off', 'shadow', 'canary', 'on'] as const;
+type RolloutModeEnv = typeof VALID_ROLLOUT_MODES[number];
+
+function parseRolloutMode(raw: string | undefined): RolloutModeEnv {
+  const value = raw ?? 'off';
+  if (!(VALID_ROLLOUT_MODES as readonly string[]).includes(value)) {
+    throw new Error(
+      `RAG_ROLLOUT_MODE must be one of: ${VALID_ROLLOUT_MODES.join(', ')}; got "${value}"`,
+    );
+  }
+  return value as RolloutModeEnv;
+}
+
+function parseCanaryPercent(raw: string | undefined): Record<string, number> {
+  const fallback: Record<string, number> = {
+    exact_lookup: 100,
+    factoid: 10,
+    relational: 10,
+    analytical: 10,
+    multi_part: 10,
+  };
+  if (!raw || !raw.trim()) return fallback;
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(raw) as Record<string, unknown>;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `RAG_ROLLOUT_CANARY_PERCENT_BY_CLASS must be valid JSON; got "${raw}" (${msg})`,
+    );
+  }
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(parsed)) {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 0 || n > 100) {
+      throw new Error(
+        `RAG_ROLLOUT_CANARY_PERCENT_BY_CLASS has invalid value for "${k}": ${JSON.stringify(v)} (must be 0..100)`,
+      );
+    }
+    out[k] = n;
+  }
+  return out;
+}
+
 const VALID_PREFILTER_MODES = ['off', 'soft', 'hard'] as const;
 type PreFilterModeEnv = typeof VALID_PREFILTER_MODES[number];
 
@@ -99,6 +143,7 @@ function parsePrefilterMode(raw: string | undefined): PreFilterModeEnv {
 }
 
 export const ragConfig = registerAs('rag', () => ({
+  multiStageEnabled: process.env['RAG_MULTI_STAGE_ENABLED'] !== 'false',
   chunking: {
     chunkSize: Number(process.env['RAG_CHUNK_SIZE']) || 500,
     chunkOverlap: Number(process.env['RAG_CHUNK_OVERLAP']) || 50,
@@ -182,5 +227,14 @@ export const ragConfig = registerAs('rag', () => ({
     timeoutMs: Number(process.env['RAG_PARSER_TIMEOUT_MS']) || 30_000,
     minMarkdownChars: Number(process.env['RAG_PARSER_MIN_MARKDOWN_CHARS']) || 50,
     uploadMaxBytes: Number(process.env['RAG_UPLOAD_MAX_BYTES']) || 100 * 1024 * 1024,
+  },
+  rollout: {
+    mode: parseRolloutMode(process.env['RAG_ROLLOUT_MODE']),
+    shadowSampleRate: Number(process.env['RAG_SHADOW_SAMPLE_RATE'] ?? '1.0'),
+    shadowTimeoutMs: Number(process.env['RAG_SHADOW_TIMEOUT_MS']) || 2000,
+    shadowConcurrency: Number(process.env['RAG_SHADOW_CONCURRENCY']) || 4,
+    shadowMaxQueueDepth: Number(process.env['RAG_SHADOW_MAX_QUEUE_DEPTH']) || 200,
+    canaryPercentByClass: parseCanaryPercent(process.env['RAG_ROLLOUT_CANARY_PERCENT_BY_CLASS']),
+    anonMultiplier: Number(process.env['RAG_ROLLOUT_ANON_PERCENT_MULTIPLIER']) || 0.5,
   },
 }));
