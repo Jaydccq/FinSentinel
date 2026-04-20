@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, bigint, integer, timestamp, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, bigint, integer, timestamp, index, jsonb } from 'drizzle-orm/pg-core';
 import { users } from './users';
 
 export const documents = pgTable('documents', {
@@ -16,6 +16,8 @@ export const documents = pgTable('documents', {
   storageTier: varchar('storage_tier', { length: 50 }).notNull().default('HOT'),
   archivedAt: timestamp('archived_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+  /** CLI-stamped metadata. Includes chunker_version set by rag:reindex:by-doctype. */
+  meta: jsonb('meta').notNull().default({}),
 }, (table) => [
   index('idx_documents_user_id').on(table.userId),
 ]);
