@@ -3,8 +3,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
 import { isKnownTicker } from './ticker-whitelist';
 
-// Duck-typed LLM client — keeps the service decoupled from @finsentinel/ai-runtime.
-// The runtime adapter is wired in Task R4.4.
+/**
+ * Module-private duck type the service expects callers to match.
+ * Deliberately omits AbortSignal — on timeout the service orphans the
+ * in-flight promise and swallows its eventual settlement. The R4.4
+ * OpenRouter adapter MUST NOT rely on downstream cancellation through
+ * this interface; if cancellation becomes important, widen the interface
+ * there and thread AbortSignal through.
+ */
 interface LlmClientLike {
   complete(prompt: string): Promise<string>;
 }
@@ -109,16 +115,16 @@ export class QueryEntityExtractorService {
     }
 
     this.inflightCount++;
+    let timerId: ReturnType<typeof setTimeout> | undefined;
     try {
       const prompt = this.buildPrompt(query);
 
       // Race the LLM call against the timeout.
-      const raw = await Promise.race([
-        client.complete(prompt),
-        new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('__llm_timeout__')), this.config.timeoutMs),
-        ),
-      ]);
+      const timer = new Promise<never>((_, reject) => {
+        timerId = setTimeout(() => reject(new Error('__llm_timeout__')), this.config.timeoutMs);
+      });
+      const raw = await Promise.race([client.complete(prompt), timer]);
+      clearTimeout(timerId);
 
       // Parse and validate the response.
       let parsed: z.infer<typeof LlmResponseSchema>;
@@ -127,6 +133,12 @@ export class QueryEntityExtractorService {
       } catch {
         // Invalid / unexpected shape → treat as empty.
         this.logger.warn('LLM response failed zod parse; returning llm_empty');
+        // Parse failures (zod reject, malformed JSON) intentionally do NOT increment
+        // consecutiveFailures. Rationale: a persistent schema mismatch from the upstream
+        // model is a prompt/model issue, not a connectivity failure — the circuit breaker
+        // is not the right tool for it. The master flag (llmFallbackEnabled) is the
+        // operator escape hatch. Track llm_empty rate separately via observability if
+        // this becomes a cost concern.
         return { ...regexHits, fallbackFlag: 'llm_empty' };
       }
 
@@ -143,6 +155,7 @@ export class QueryEntityExtractorService {
         ...(regexHits.timeRange ? { timeRange: regexHits.timeRange } : {}),
       };
     } catch (err: unknown) {
+      clearTimeout(timerId);
       const isTimeout =
         err instanceof Error && err.message === '__llm_timeout__';
 
@@ -152,6 +165,10 @@ export class QueryEntityExtractorService {
         this.logger.warn(
           `LLM circuit breaker opened after ${this.consecutiveFailures} consecutive failures`,
         );
+        // Reset the counter when the circuit opens so that after the cooldown,
+        // recovery requires CIRCUIT_FAILURE_THRESHOLD new consecutive failures —
+        // not a single probe failure. This matches the standard half-open pattern.
+        this.consecutiveFailures = 0;
       }
 
       const flag = isTimeout ? 'llm_timeout' : 'llm_error';

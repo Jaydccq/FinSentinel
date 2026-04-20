@@ -110,4 +110,36 @@ describe('QueryEntityExtractorService (LLM fallback)', () => {
     await service.extract('AAPL 10-K FY2024');
     expect(llm.complete).not.toHaveBeenCalled();
   });
+
+  it('after cooldown, a single probe failure does NOT immediately re-open the circuit', async () => {
+    let failCount = 0;
+    const llm = { complete: vi.fn().mockImplementation(async () => {
+      failCount++;
+      throw new Error('429');
+    }) };
+    const service = new QueryEntityExtractorService({
+      llmFallbackEnabled: true, llmClient: llm,
+      hardMinConfidence: 0.85, timeoutMs: 1500, concurrency: 4,
+    });
+
+    // Open the circuit with 3 failures.
+    for (let i = 0; i < 3; i++) await service.extract('no regex hits ' + i);
+    expect(llm.complete).toHaveBeenCalledTimes(3);
+
+    // Manually move the clock past the cooldown by reaching into the
+    // private state — this is the least invasive way to test the half-open
+    // window without vi.useFakeTimers() interfering with Promise.race.
+    (service as unknown as { circuitOpenUntil: number }).circuitOpenUntil = 0;
+
+    // One probe failure: circuit should NOT immediately re-open; it should
+    // just register as the first of a new 3-count.
+    const probe = await service.extract('new query no regex');
+    expect(probe.fallbackFlag).toBe('llm_error');
+    expect(llm.complete).toHaveBeenCalledTimes(4);
+
+    // Next call should STILL reach the LLM (circuit not yet re-opened).
+    const next = await service.extract('yet another query no regex');
+    expect(next.fallbackFlag).toBe('llm_error');
+    expect(llm.complete).toHaveBeenCalledTimes(5);
+  });
 });
