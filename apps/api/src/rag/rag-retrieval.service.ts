@@ -9,13 +9,41 @@ import { RerankService } from './rerank.service';
 import { ContextPackerService } from './context-packer.service';
 import { ContextExpanderService } from './context-expander.service';
 import { RagTraceService } from './rag-trace.service';
+import { normaliseRerankScore, clampUnit } from './score-normalisation';
 
+/**
+ * Result shape returned by `RagRetrievalService.search(...)`.
+ *
+ * `similarity` is REQUIRED on every path so downstream consumers such as
+ * `news-analysis.service.ts:120` (`result.similarity * 100` → `{N.N}% match`
+ * formatter) and the Python evaluator keep working unchanged when the
+ * multi-stage pipeline is enabled. The semantics vary by `scoreSource`:
+ *
+ *   - 'cosine' (single-stage)  : raw pgvector cosine similarity, already in [0, 1].
+ *   - 'rerank' (multi-stage ok): sigmoid-normalised reranker score, in (0, 1).
+ *   - 'rrf'    (multi-stage fb): RRF fused score, clamped to [0, 1].
+ *
+ * All three are monotonic within their respective paths; values across
+ * paths are NOT directly comparable.
+ *
+ * Optional fields expose raw provenance for traces / debugging without
+ * requiring downstream consumers to handle them:
+ *   - `rankScore`   : raw reranker score (set iff reranker succeeded).
+ *   - `fusionScore` : raw RRF score (set iff reranker fell back).
+ *   - `scoreSource` : which path produced `similarity`.
+ */
 export interface RagSearchResult {
   chunkId: string;
   sourceId: string;
   content: string;
   metadata: Record<string, unknown>;
   similarity: number;
+  /** Raw reranker score when `scoreSource === 'rerank'`. Undefined otherwise. */
+  rankScore?: number;
+  /** Raw RRF fused score when `scoreSource === 'rrf'`. Undefined otherwise. */
+  fusionScore?: number;
+  /** Provenance tag — which pipeline produced `similarity`. */
+  scoreSource?: 'cosine' | 'rerank' | 'rrf';
 }
 
 export interface RagSearchOptions {
@@ -96,6 +124,7 @@ export class RagRetrievalService {
           content: row.content,
           metadata: row.metadata,
           similarity: row.similarity,
+          scoreSource: 'cosine' as const,
         }));
 
       const durationSecs = (Date.now() - startedAt) / 1000;
@@ -207,14 +236,57 @@ export class RagRetrievalService {
         maxChunksPerSource: 3,
       });
 
+      // R3.5: join packed chunks back to the reranked list by chunkId so we
+      // can surface a per-chunk similarity. The packer discards scores when
+      // it dedups/diversifies, so we recover them via a chunkId index.
+      //
+      // Score semantics per path:
+      //   - reranker succeeded (fallbackReason === null): use the raw
+      //     rerankScore, sigmoid-normalise it to (0, 1). Stamp `rankScore`
+      //     + `scoreSource = 'rerank'` for provenance.
+      //   - reranker fell back to RRF: the rerank.service copies the RRF
+      //     score into `rerankScore`, so we also treat that number as the
+      //     RRF value. Clamp it to [0, 1] (it's already bounded by RRF
+      //     construction) and stamp `fusionScore` + `scoreSource = 'rrf'`.
+      //   - no match in the reranked list (defensive branch — shouldn't
+      //     happen given the packer only emits chunks it saw): fall back
+      //     to a neutral 0.5 so `similarity * 100` still prints a sane
+      //     percentage and downstream never sees NaN.
+      const rerankedByChunkId = new Map(reranked.map((r) => [r.chunkId, r]));
       const topPackedChunks = packed.chunks.slice(0, safeTopK);
-      const results = topPackedChunks.map((c) => ({
-        chunkId: c.chunkId,
-        sourceId: c.sourceId,
-        content: c.content,
-        metadata: c.metadata,
-        similarity: 1.0, // reranked results don't have cosine similarity
-      }));
+      const results: RagSearchResult[] = topPackedChunks.map((c) => {
+        const r = rerankedByChunkId.get(c.chunkId);
+        if (!r) {
+          return {
+            chunkId: c.chunkId,
+            sourceId: c.sourceId,
+            content: c.content,
+            metadata: c.metadata,
+            similarity: 0.5,
+          };
+        }
+        if (r.fallbackReason === null) {
+          return {
+            chunkId: c.chunkId,
+            sourceId: c.sourceId,
+            content: c.content,
+            metadata: c.metadata,
+            similarity: normaliseRerankScore(r.rerankScore),
+            rankScore: r.rerankScore,
+            scoreSource: 'rerank' as const,
+          };
+        }
+        // Reranker fell back to RRF — rerankScore was filled from rrfScore.
+        return {
+          chunkId: c.chunkId,
+          sourceId: c.sourceId,
+          content: c.content,
+          metadata: c.metadata,
+          similarity: clampUnit(r.rerankScore),
+          fusionScore: r.rerankScore,
+          scoreSource: 'rrf' as const,
+        };
+      });
 
       resultChunkIds = results.map((r) => r.chunkId);
 
@@ -310,7 +382,14 @@ export class RagRetrievalService {
       .filter((row) => row.similarity >= this.similarityThreshold)
       .sort((left, right) => right.similarity - left.similarity)
       .slice(0, safeTopK)
-      .map((row) => ({ chunkId: row.id, sourceId: row.sourceId, content: row.content, metadata: row.metadata, similarity: row.similarity }));
+      .map((row) => ({
+        chunkId: row.id,
+        sourceId: row.sourceId,
+        content: row.content,
+        metadata: row.metadata,
+        similarity: row.similarity,
+        scoreSource: 'cosine' as const,
+      }));
   }
 
   getThreshold(): number {
