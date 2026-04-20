@@ -122,7 +122,10 @@ describe('RetrievalPlannerService', () => {
   it('factoid short query produces variants=[original, rewrite], no hyde or subquery', async () => {
     const rewrite = makeRewrite((_q) => Promise.resolve('rewritten query'));
     const variant = makeVariant();
-    const plan = await makeService({}, rewrite, variant).plan('What is AAPL EPS?');
+    // Plain-english factoid: no ticker + time anchor, no section identifier,
+    // no numeric identifier (EPS / P/E), no quoted phrase — so classifier
+    // resolves to factoid (R3.1 precedence: exact_lookup > … > factoid).
+    const plan = await makeService({}, rewrite, variant).plan('What is the current Apple revenue?');
     expect(plan.queryClass).toBe('factoid');
     expect(plan.variants.map((v) => v.kind)).toEqual(['original', 'rewrite']);
     expect(variant.hyde).not.toHaveBeenCalled();
@@ -289,5 +292,175 @@ describe('RetrievalPlannerService', () => {
   it('fallbackFlags is empty when nothing fails', async () => {
     const plan = await makeService().plan('What is Apple revenue?');
     expect(plan.fallbackFlags).toEqual([]);
+  });
+
+  // ── R3.1/R3.2: exact_lookup query class + rewrite gating ─────────────────
+
+  it('classifies "AAPL Q4 2025 EPS" as exact_lookup (whitelisted ticker + time anchor)', async () => {
+    const plan = await makeService().plan('AAPL Q4 2025 EPS');
+    expect(plan.queryClass).toBe('exact_lookup');
+  });
+
+  it('classifies "Item 1A risk factors" as exact_lookup (section identifier)', async () => {
+    const plan = await makeService().plan('Item 1A risk factors');
+    expect(plan.queryClass).toBe('exact_lookup');
+  });
+
+  it('classifies quoted phrase query ("net sales" earnings) as exact_lookup', async () => {
+    const plan = await makeService().plan('find "net sales" in the latest earnings');
+    expect(plan.queryClass).toBe('exact_lookup');
+  });
+
+  it('does NOT classify "why did Apple services grow" as exact_lookup (colloquial, no ticker/section/numeric/quote)', async () => {
+    const plan = await makeService().plan('why did Apple services grow');
+    expect(plan.queryClass).not.toBe('exact_lookup');
+  });
+
+  it('does NOT classify bare "THE Q4 2025" as exact_lookup (ticker candidate fails whitelist AND triple-gate)', async () => {
+    // "THE" is an ALLCAPS token that matches /\b[A-Z]{2,5}\b/ but is NOT in the
+    // curated whitelist. Without a doc_type keyword (revenue/earnings/10-K/...)
+    // the triple-gate fallback also fails, so the query should not be classified
+    // as exact_lookup.
+    const plan = await makeService().plan('THE Q4 2025');
+    expect(plan.queryClass).not.toBe('exact_lookup');
+  });
+
+  it('exact_lookup plan emits ONLY the original variant (no rewrite variant)', async () => {
+    const rewrite = makeRewrite((_q) => Promise.resolve('a rewritten form'));
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan('AAPL Q4 2025 EPS');
+    expect(plan.queryClass).toBe('exact_lookup');
+    expect(plan.variants).toHaveLength(1);
+    expect(plan.variants[0]).toEqual({ kind: 'original', query: 'AAPL Q4 2025 EPS' });
+    // rewrite LLM must NOT be invoked at all for exact_lookup
+    expect(rewrite.rewrite).not.toHaveBeenCalled();
+  });
+
+  it('exact_lookup plan skips HyDE even when RAG_HYDE_ENABLED=true', async () => {
+    const variant = makeVariant({ hyde: vi.fn().mockResolvedValue('hypothetical passage') });
+    const plan = await makeService({ hydeEnabled: true }, makeRewrite(), variant).plan(
+      'AAPL Q4 2025 EPS',
+    );
+    expect(plan.queryClass).toBe('exact_lookup');
+    expect(plan.variants.map((v) => v.kind)).not.toContain('hyde');
+    expect(variant.hyde).not.toHaveBeenCalled();
+  });
+
+  it('exact_lookup plan skips decomposition even when RAG_QUERY_DECOMPOSE_ENABLED=true', async () => {
+    const variant = makeVariant({ decompose: vi.fn().mockResolvedValue(['sub1?', 'sub2?']) });
+    // Use a section-identifier query that ALSO looks multi_part (two question marks).
+    // Precedence: exact_lookup > multi_part, so exact_lookup should win and decompose
+    // must NOT be called.
+    const plan = await makeService({ decomposeEnabled: true }, makeRewrite(), variant).plan(
+      'What about Item 1A? And Section 2.1?',
+    );
+    expect(plan.queryClass).toBe('exact_lookup');
+    expect(plan.variants.map((v) => v.kind)).not.toContain('subquery');
+    expect(variant.decompose).not.toHaveBeenCalled();
+  });
+
+  it('factoid queries still get rewritten when rewrite is enabled (regression guard for non-exact_lookup)', async () => {
+    const rewrite = makeRewrite((_q) => Promise.resolve('rewritten factoid'));
+    // Plain-english factoid — no ticker/section/numeric/quote triggers.
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(
+      'What is the current Apple revenue?',
+    );
+    expect(plan.queryClass).toBe('factoid');
+    expect(rewrite.rewrite).toHaveBeenCalledWith('What is the current Apple revenue?');
+    expect(plan.variants.map((v) => v.kind)).toContain('rewrite');
+  });
+
+  it('precedence: "AAPL earnings analysis and why did revenue grow?" → multi_part (AAPL whitelisted but NO time-anchor, so exact_lookup falls through; multi_part wins via "and" + "?")', async () => {
+    // Per spec precedence: exact_lookup > multi_part > analytical > relational > factoid.
+    // AAPL is whitelisted but the query lacks a Q[1-4] / FY / 20\d\d anchor, and has no
+    // section/numeric/quote pattern. So exact_lookup heuristics do NOT fire, and the
+    // query falls through to multi_part (contains "and" + "?").
+    const plan = await makeService().plan('AAPL earnings analysis and why did revenue grow?');
+    expect(plan.queryClass).toBe('multi_part');
+  });
+
+  // ── R3.3: rerankQuery field on the plan ──────────────────────────────────
+
+  it('R3.3: exact_lookup plan.rerankQuery === originalQuery (literal text, not rewritten)', async () => {
+    const rewrite = makeRewrite((_q) => Promise.resolve('some paraphrased form'));
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(
+      'AAPL Q4 2025 EPS',
+    );
+    expect(plan.queryClass).toBe('exact_lookup');
+    expect(plan.rerankQuery).toBe('AAPL Q4 2025 EPS');
+    expect(plan.rerankQuery).toBe(plan.originalQuery);
+    // Guard: rewriter must NOT have been invoked, so rewrittenQuery falls
+    // back to originalQuery for backward-compat — but rerankQuery still
+    // points at the literal original text.
+    expect(rewrite.rewrite).not.toHaveBeenCalled();
+  });
+
+  it('R3.3: factoid plan.rerankQuery === rewrittenQuery when rewrite ran', async () => {
+    const rewrite = makeRewrite((_q) => Promise.resolve('rewritten factoid query'));
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(
+      'What is the current Apple revenue?',
+    );
+    expect(plan.queryClass).toBe('factoid');
+    expect(plan.rewrittenQuery).toBe('rewritten factoid query');
+    expect(plan.rerankQuery).toBe('rewritten factoid query');
+    expect(plan.rerankQuery).toBe(plan.rewrittenQuery);
+  });
+
+  it('R3.3: relational plan.rerankQuery === rewrittenQuery when rewrite ran', async () => {
+    const rewrite = makeRewrite((_q) => Promise.resolve('rewritten relational query'));
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(
+      "Who are TSMC's competitors?",
+    );
+    expect(plan.queryClass).toBe('relational');
+    expect(plan.rerankQuery).toBe('rewritten relational query');
+  });
+
+  it('R3.3: analytical plan.rerankQuery === rewrittenQuery when rewrite ran', async () => {
+    const longQuery =
+      'Analyze the long-term competitive outlook for NVIDIA versus AMD in the AI accelerator market given supply chain constraints.';
+    const rewrite = makeRewrite((_q) => Promise.resolve('rewritten analytical query'));
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(longQuery);
+    expect(plan.queryClass).toBe('analytical');
+    expect(plan.rerankQuery).toBe('rewritten analytical query');
+  });
+
+  it('R3.3: multi_part plan.rerankQuery === rewrittenQuery when rewrite ran', async () => {
+    const rewrite = makeRewrite((_q) => Promise.resolve('rewritten multi part query'));
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(
+      'What is AAPL revenue? And what is the margin?',
+    );
+    expect(plan.queryClass).toBe('multi_part');
+    expect(plan.rerankQuery).toBe('rewritten multi part query');
+  });
+
+  it('R3.3: non-exact_lookup query with rewrite DISABLED falls back to originalQuery (never empty)', async () => {
+    // When rewrite is disabled, rewrittenQuery === originalQuery by the planner's
+    // current contract. rerankQuery must still be populated and non-empty.
+    const rewrite = makeRewrite((q) => Promise.resolve(q));
+    const plan = await makeService({ rewriteEnabled: false }, rewrite).plan(
+      'What is the current Apple revenue?',
+    );
+    expect(plan.queryClass).toBe('factoid');
+    expect(plan.rewrittenQuery).toBe('What is the current Apple revenue?');
+    expect(plan.rerankQuery).toBe('What is the current Apple revenue?');
+    expect(plan.rerankQuery.length).toBeGreaterThan(0);
+    // The rewriter must not have been called since the flag is off.
+    expect(rewrite.rewrite).not.toHaveBeenCalled();
+  });
+
+  it('R3.3: rerankQuery is always populated (non-empty) for non-empty queries across all classes', async () => {
+    const svc = makeService({ rewriteEnabled: true }, makeRewrite((q) => Promise.resolve(q)));
+    const cases = [
+      'AAPL Q4 2025 EPS', // exact_lookup
+      'What is Apple revenue?', // factoid
+      "Who are TSMC's competitors?", // relational
+      'Analyze the impact of interest rate changes on Apple and Microsoft earnings over the last decade.', // analytical
+      'What is AAPL revenue? And what is the margin?', // multi_part
+    ];
+    for (const q of cases) {
+      const plan = await svc.plan(q);
+      expect(plan.rerankQuery).toBeDefined();
+      expect(typeof plan.rerankQuery).toBe('string');
+      expect(plan.rerankQuery.length).toBeGreaterThan(0);
+    }
   });
 });

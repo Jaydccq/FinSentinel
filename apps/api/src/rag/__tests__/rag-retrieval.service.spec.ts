@@ -177,6 +177,7 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const mockPlanner = {
       plan: vi.fn().mockResolvedValue({
         rewrittenQuery: 'AAPL revenue 2026',
+        rerankQuery: 'AAPL revenue 2026',
         lanes: ['dense'],
         topKPerLane: 20,
       }),
@@ -257,6 +258,163 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     expect(traceArg['representationTypesSeen']).toEqual(['canonical']);
   });
 
+  it('R3.4: passes plan.rerankQuery (NOT plan.rewrittenQuery) to reranker for exact_lookup queries', async () => {
+    // Verifies the full R3.3+R3.4 thread: when the planner returns an
+    // exact_lookup plan with rerankQuery === originalQuery (literal text,
+    // NOT a paraphrase), searchMultiStage must pass that literal text to
+    // reranker.rerank(...) — otherwise BM25/cross-encoder would score
+    // against a paraphrase that destroys exact-match precision.
+    const fusedCandidate = {
+      chunkId: 'c1',
+      sourceId: 'src-1',
+      content: 'Apple Q4 2025 EPS $1.64',
+      metadata: {},
+      rrfScore: 0.05,
+      lanes: ['dense'],
+      representationTypesSeen: ['canonical'],
+      variantKindsSeen: ['original'],
+    };
+    const rerankedCandidate = { ...fusedCandidate, rerankScore: 0.9, fallbackReason: null };
+
+    const mockPlanner = {
+      plan: vi.fn().mockResolvedValue({
+        originalQuery: 'AAPL Q4 2025 EPS',
+        // Simulate the planner accidentally producing a paraphrase on
+        // rewrittenQuery (would be a bug, but test-isolates the contract
+        // that searchMultiStage must NOT pass rewrittenQuery). The real
+        // planner sets rewrittenQuery = originalQuery for exact_lookup,
+        // but by diverging them here we prove the service picks rerankQuery.
+        rewrittenQuery: 'Apple fourth-quarter 2025 earnings per share paraphrase',
+        rerankQuery: 'AAPL Q4 2025 EPS', // ← the literal original query
+        queryClass: 'exact_lookup',
+        variants: [{ kind: 'original', query: 'AAPL Q4 2025 EPS' }],
+        lanes: ['dense', 'sparse'],
+        topKPerLane: 20,
+        fallbackFlags: [],
+      }),
+    };
+    const mockOrchestrator = {
+      orchestrate: vi.fn().mockResolvedValue({ fused: [fusedCandidate], laneCounts: { dense: 1 } }),
+    };
+    const mockReranker = { rerank: vi.fn().mockResolvedValue([rerankedCandidate]) };
+    const mockPacker = {
+      pack: vi.fn().mockReturnValue({
+        chunks: [{ chunkId: 'c1', sourceId: 'src-1', content: 'Apple Q4 2025 EPS $1.64', metadata: {} }],
+        totalTokenEstimate: 5,
+      }),
+    };
+
+    const module = await Test.createTestingModule({
+      providers: [
+        RagRetrievalService,
+        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
+        { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([]) } },
+        {
+          provide: MetricsService,
+          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn() },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string, defaultVal: unknown) => {
+              if (key === 'RAG_SIMILARITY_THRESHOLD') return 0.65;
+              if (key === 'RAG_MULTI_STAGE_ENABLED') return 'true';
+              return defaultVal;
+            },
+          },
+        },
+        { provide: RetrievalPlannerService, useValue: mockPlanner },
+        { provide: RetrievalOrchestratorService, useValue: mockOrchestrator },
+        { provide: RerankService, useValue: mockReranker },
+        { provide: ContextPackerService, useValue: mockPacker },
+      ],
+    }).compile();
+
+    const svc = module.get(RagRetrievalService);
+    await svc.search('AAPL Q4 2025 EPS', 5);
+
+    expect(mockReranker.rerank).toHaveBeenCalledOnce();
+    const [queryArg] = (mockReranker.rerank as Mock).mock.calls[0];
+    expect(queryArg).toBe('AAPL Q4 2025 EPS');
+  });
+
+  it('R3.4: passes plan.rerankQuery (= rewrittenQuery) to reranker for non-exact_lookup queries', async () => {
+    // Parallel assertion: for a factoid plan where the rewriter produced a
+    // paraphrase, rerankQuery === rewrittenQuery, and searchMultiStage
+    // must pass THAT text to the reranker (NOT the original).
+    const fusedCandidate = {
+      chunkId: 'c1',
+      sourceId: 'src-1',
+      content: 'Apple revenue grew 12% year-over-year.',
+      metadata: {},
+      rrfScore: 0.05,
+      lanes: ['dense'],
+      representationTypesSeen: ['canonical'],
+      variantKindsSeen: ['original'],
+    };
+    const rerankedCandidate = { ...fusedCandidate, rerankScore: 0.9, fallbackReason: null };
+
+    const mockPlanner = {
+      plan: vi.fn().mockResolvedValue({
+        originalQuery: 'how is apple doing',
+        rewrittenQuery: 'Apple Inc. recent revenue growth',
+        rerankQuery: 'Apple Inc. recent revenue growth', // === rewrittenQuery
+        queryClass: 'factoid',
+        variants: [
+          { kind: 'original', query: 'how is apple doing' },
+          { kind: 'rewrite', query: 'Apple Inc. recent revenue growth' },
+        ],
+        lanes: ['dense', 'sparse'],
+        topKPerLane: 20,
+        fallbackFlags: [],
+      }),
+    };
+    const mockOrchestrator = {
+      orchestrate: vi.fn().mockResolvedValue({ fused: [fusedCandidate], laneCounts: { dense: 1 } }),
+    };
+    const mockReranker = { rerank: vi.fn().mockResolvedValue([rerankedCandidate]) };
+    const mockPacker = {
+      pack: vi.fn().mockReturnValue({
+        chunks: [{ chunkId: 'c1', sourceId: 'src-1', content: 'Apple revenue grew 12% year-over-year.', metadata: {} }],
+        totalTokenEstimate: 5,
+      }),
+    };
+
+    const module = await Test.createTestingModule({
+      providers: [
+        RagRetrievalService,
+        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
+        { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([]) } },
+        {
+          provide: MetricsService,
+          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn() },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: (key: string, defaultVal: unknown) => {
+              if (key === 'RAG_SIMILARITY_THRESHOLD') return 0.65;
+              if (key === 'RAG_MULTI_STAGE_ENABLED') return 'true';
+              return defaultVal;
+            },
+          },
+        },
+        { provide: RetrievalPlannerService, useValue: mockPlanner },
+        { provide: RetrievalOrchestratorService, useValue: mockOrchestrator },
+        { provide: RerankService, useValue: mockReranker },
+        { provide: ContextPackerService, useValue: mockPacker },
+      ],
+    }).compile();
+
+    const svc = module.get(RagRetrievalService);
+    await svc.search('how is apple doing', 5);
+
+    expect(mockReranker.rerank).toHaveBeenCalledOnce();
+    const [queryArg] = (mockReranker.rerank as Mock).mock.calls[0];
+    expect(queryArg).toBe('Apple Inc. recent revenue growth');
+    expect(queryArg).not.toBe('how is apple doing');
+  });
+
   it('skips expander when it is not provided (Optional dep)', async () => {
     const fusedCandidate = {
       chunkId: 'c1',
@@ -272,7 +430,7 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const rerankedCandidate = { ...fusedCandidate, rerankScore: 0.9, fallbackReason: null };
 
     const mockPlanner = {
-      plan: vi.fn().mockResolvedValue({ rewrittenQuery: 'q', lanes: ['dense'], topKPerLane: 20 }),
+      plan: vi.fn().mockResolvedValue({ rewrittenQuery: 'q', rerankQuery: 'q', lanes: ['dense'], topKPerLane: 20 }),
     };
     const mockOrchestrator = {
       orchestrate: vi.fn().mockResolvedValue({ fused: [fusedCandidate], laneCounts: { dense: 1 } }),
