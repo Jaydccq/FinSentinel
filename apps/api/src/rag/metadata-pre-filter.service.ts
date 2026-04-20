@@ -112,4 +112,27 @@ export class MetadataPreFilterService {
       appliedMode: 'soft',
     };
   }
+
+  /**
+   * Check whether a candidate count meets the minimum threshold for the given
+   * query class. When it doesn't, the orchestrator should re-run retrieval
+   * without the hard ticker/issuer filter.
+   *
+   * Returns `true` when the count is below threshold AND a hard filter was
+   * actually applied (downgrade needed).
+   * Returns `false` when the count is adequate, when no class is provided,
+   * or when the hard filter had no hints (no point downgrading).
+   *
+   * `queryClass === undefined` short-circuits to `false` (no class, no threshold).
+   */
+  shouldDowngrade(
+    queryClass: QueryClass | undefined,
+    candidateCount: number,
+    hardFilterHadHints: boolean,
+  ): boolean {
+    if (!queryClass || !hardFilterHadHints) return false;
+    const threshold = this.config.minCandidatesByClass[queryClass];
+    if (threshold === undefined || threshold <= 0) return false;
+    return candidateCount < threshold;
+  }
 }

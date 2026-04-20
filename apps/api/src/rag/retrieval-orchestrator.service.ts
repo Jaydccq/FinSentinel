@@ -6,6 +6,7 @@ import { RetrievalFusionService, type RankedCandidate, type FusedCandidate } fro
 import { GraphRetrievalService } from './graph-retrieval.service';
 import { MetadataPreFilterService } from './metadata-pre-filter.service';
 import { QueryEntityExtractorService } from './query-entity-extractor.service';
+import type { MetricsService } from '../common/services/metrics.service';
 import type { QueryClass, QueryVariant, VariantKind } from './retrieval-planner.service';
 
 /** Maximum number of query variants processed in parallel per orchestrate call. */
@@ -52,6 +53,7 @@ export class RetrievalOrchestratorService {
     private readonly metadataPreFilter: MetadataPreFilterService,
     private readonly queryEntityExtractor: QueryEntityExtractorService,
     @Optional() private readonly graphRetrieval?: GraphRetrievalService,
+    @Optional() private readonly metrics?: MetricsService,
   ) {}
 
   async orchestrate(request: OrchestrationRequest): Promise<OrchestrationResult> {
@@ -72,6 +74,13 @@ export class RetrievalOrchestratorService {
     // hardFilter. softFilter is a future task — do NOT consume it here.
     const { candidateDocIds: _unused, appliedMode: _appliedMode, softFilter: _soft, hardFilter } = preFilter;
     const effectiveFilters = hardFilter;
+
+    // R4.5: determine whether the hard filter carried ticker/issuer hints.
+    // The orchestrator owns this check because MetadataPreFilterService cannot
+    // distinguish "explicit caller filter" from "entity-extracted hint".
+    const hardFilterHadHints =
+      (effectiveFilters.tickers?.length ?? 0) > 0 ||
+      (effectiveFilters.issuerName?.length ?? 0) > 0;
 
     this.logger.debug(
       `metadata prefilter: appliedMode=${preFilter.appliedMode} ` +
@@ -98,7 +107,7 @@ export class RetrievalOrchestratorService {
     );
 
     const settled = await Promise.allSettled(variantPromises);
-    const allLaneResults: RankedCandidate[][] = [];
+    let allLaneResults: RankedCandidate[][] = [];
 
     for (const result of settled) {
       if (result.status === 'fulfilled') {
@@ -112,6 +121,53 @@ export class RetrievalOrchestratorService {
         }
       } else {
         this.logger.warn(`Variant lanes failed: ${result.reason}`);
+      }
+    }
+
+    // R4.5 min-candidates guardrail: if the post-fusion candidate count is below
+    // the configured threshold for the query class AND a hard filter with ticker/issuer
+    // hints was applied, downgrade to a soft (no-hint) re-run to recover recall.
+    const totalCandidates = allLaneResults.reduce((sum, lane) => sum + lane.length, 0);
+    if (this.metadataPreFilter.shouldDowngrade(request.queryClass, totalCandidates, hardFilterHadHints)) {
+      const threshold = request.queryClass
+        ? (this.metadataPreFilter['config'].minCandidatesByClass[request.queryClass] ?? 0)
+        : 0;
+      this.logger.warn(
+        `metadata prefilter downgraded: class=${request.queryClass} ` +
+        `candidates=${totalCandidates} threshold=${threshold}`,
+      );
+      this.metrics?.incrementCounter(
+        'rag_metadata_prefilter_downgrade_total',
+        'Total metadata prefilter hard→soft downgrades by query class',
+        { class: request.queryClass! },
+      );
+
+      // Strip ticker/issuer hints from the effective filters and re-run.
+      const downgradedFilters: SparseSearchFilters = { ...effectiveFilters };
+      delete (downgradedFilters as Record<string, unknown>)['tickers'];
+      delete (downgradedFilters as Record<string, unknown>)['issuerName'];
+
+      const downgradedPromises = variants.map((variant) =>
+        this.runVariantLanes(variant, lanes, topKPerLane, downgradedFilters, request.entityNames),
+      );
+      const downgradedSettled = await Promise.allSettled(downgradedPromises);
+      allLaneResults = [];
+      // Reset lane counters for the fresh run.
+      for (const lane of lanes) {
+        laneCounts[lane] = 0;
+      }
+      for (const result of downgradedSettled) {
+        if (result.status === 'fulfilled') {
+          for (const laneResult of result.value) {
+            allLaneResults.push(laneResult);
+            const laneName = laneResult[0]?.lane;
+            if (laneName) {
+              laneCounts[laneName] = (laneCounts[laneName] ?? 0) + laneResult.length;
+            }
+          }
+        } else {
+          this.logger.warn(`Downgraded variant lanes failed: ${result.reason}`);
+        }
       }
     }
 
