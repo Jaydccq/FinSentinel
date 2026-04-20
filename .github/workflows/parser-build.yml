@@ -1,0 +1,26 @@
+name: parser-sidecar-build
+
+on:
+  pull_request:
+    paths:
+      - 'services/parser/**'
+      - '.github/workflows/parser-build.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'services/parser/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build parser image
+        run: docker build -t finsentinel-parser:ci services/parser
+      - name: Start and smoke-test
+        run: |
+          docker run -d --name parser -p 8110:8110 finsentinel-parser:ci
+          for i in {1..20}; do curl -fsS http://localhost:8110/health && break; sleep 1; done
+          curl -fsS -F file=@services/parser/app.py http://localhost:8110/parse | python3 -m json.tool
+          docker rm -f parser

@@ -59,6 +59,18 @@ services:
       timeout: 10s
       retries: 3
 
+  parser:
+    build:
+      context: ./services/parser
+      dockerfile: Dockerfile
+    ports:
+      - "8110:8110"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8110/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
   api:
     build:
       context: .
