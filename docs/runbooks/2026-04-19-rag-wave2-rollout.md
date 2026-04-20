@@ -324,3 +324,90 @@ through the stub, and asserts a chunk gets persisted with
   DB state remain consistent.
 - Synchronous uploads (when `VectorizeProducer` is absent) get
   `PARSER_SIDECAR_UNAVAILABLE` and land as `FAILED` too.
+
+## R7 — Rollout ramp
+
+The R7 phase ships the instrumentation to roll the multi-stage retrieval
+pipeline from shadow → canary → default safely. This section covers the
+operational playbook.
+
+### Environment variables
+
+| Variable                                     | Default                                                              | Purpose                                                                             |
+|----------------------------------------------|----------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| `RAG_ROLLOUT_MODE`                           | `off`                                                                | `off` / `shadow` / `canary` / `on`. Fail-fast validation at config load.            |
+| `RAG_SHADOW_SAMPLE_RATE`                     | `1.0`                                                                | Sample rate for shadow comparison rows (0..1).                                       |
+| `RAG_SHADOW_TIMEOUT_MS`                      | `2000`                                                               | Per-request shadow timeout. User-visible latency unaffected (fire-and-forget).       |
+| `RAG_SHADOW_CONCURRENCY`                     | `4`                                                                  | Max simultaneous shadow runs in the background.                                      |
+| `RAG_SHADOW_MAX_QUEUE_DEPTH`                 | `200`                                                                | Queue cap before new shadow work is dropped with `shadow_dropped_backpressure=true`. |
+| `RAG_ROLLOUT_CANARY_PERCENT_BY_CLASS`        | `{"exact_lookup":100,"factoid":10,"relational":10,"analytical":10,"multi_part":10}` | JSON map, percentages 0..100.                            |
+| `RAG_ROLLOUT_ANON_PERCENT_MULTIPLIER`        | `0.5`                                                                | Anon traffic canary percent = class percent × multiplier.                            |
+
+### Ramp schedule
+
+| Step | Duration | `RAG_ROLLOUT_MODE` | Other knobs                                                | Rollback trigger                                        |
+|------|----------|--------------------|-------------------------------------------------------------|---------------------------------------------------------|
+| 1    | 7 days   | `shadow`           | defaults                                                     | shadow timeout rate > 5% (watch `rag_shadow_outcome_total`) |
+| 2    | 3 days   | `canary`           | `RAG_ROLLOUT_CANARY_PERCENT_BY_CLASS='{"exact_lookup":100,"factoid":10,"relational":10,"analytical":10,"multi_part":10}'` (default) | error rate regression per `rag_retrieval_pipeline{mode}` |
+| 3    | 3 days   | `canary`           | bump all classes to 50 (`{"exact_lookup":100,"factoid":50,"relational":50,"analytical":50,"multi_part":50}`) | P95 latency +30% vs single-stage baseline               |
+| 4    | 3 days   | `canary`           | all classes 100                                              | eval gate regression                                     |
+| 5    | —        | `on`               | flip default `RAG_MULTI_STAGE_ENABLED=true` (R7.7)           | —                                                        |
+
+Single-stage code retirement lands **30 clean days** after Step 5 (tracked in R7.8).
+
+### Kill switches
+
+- `RAG_ROLLOUT_MODE=off` — reverts to whatever `RAG_MULTI_STAGE_ENABLED` dictates, canary disabled. Canary traffic returns to a pure-legacy serve immediately on config re-read.
+- `RAG_MULTI_STAGE_ENABLED=false` — forces single-stage regardless of gate. Takes effect on next process restart (factory-scoped singleton).
+- Drop the shadow queue: set `RAG_SHADOW_MAX_QUEUE_DEPTH=0` — every new shadow dispatch returns `dropped_backpressure`, persisted rows stay but no new work.
+
+Both `RAG_ROLLOUT_MODE=off` and `RAG_MULTI_STAGE_ENABLED=false` are hard escape hatches. Apply whichever is faster to roll via your orchestrator.
+
+### Dashboards to watch during ramp
+
+- `rag_retrieval_pipeline{mode, query_class}` — traffic split between single_stage and multi_stage.
+- `rag_shadow_outcome_total{outcome}` — `executed` / `timed_out` / `dropped_backpressure` / `errored` counts on the shadow path.
+- Existing `rag_search_duration_seconds{status}` histogram — per-pipeline latency P50/P95/P99 (add a `pipeline` label dimension in a follow-up if needed).
+- `rag_metadata_prefilter_downgrade_total{query_class}` (from R4.5) — spikes here during ramp are expected as multi-stage trips guardrails more often.
+
+### Monitoring alerts (spec only — dashboards live in ops repo)
+
+Paging conditions:
+
+- `rag_shadow_outcome_total{outcome="timed_out"}` > 5% of total for 10 consecutive minutes → shadow pipeline is unstable, pause ramp.
+- Error rate on `rag_retrieval_pipeline{mode="multi_stage"}` > single-stage baseline + 20% for 5 consecutive minutes → rollback ramp step.
+- P95 latency on `rag_search_duration_seconds{pipeline="multi_stage"}` > 1.3× single-stage baseline for 5 consecutive minutes → rollback ramp step.
+
+### Running the offline shadow analyser
+
+```bash
+DATABASE_URL=postgresql://... \
+  python services/evaluation-runner/analyse_shadow.py \
+    --since "now() - interval '7 days'" \
+    --out reports/shadow-analysis.md
+```
+
+The analyser output is the primary gate between Step 1 → Step 2. Team review is required before ramping canary percentages.
+
+### Applying the migration
+
+Before flipping `RAG_ROLLOUT_MODE=shadow`:
+
+```bash
+pnpm --filter @finsentinel/db db:migrate
+```
+
+V19 (`rag_shadow_comparisons`) must be live in the target database or shadow writes will fail silently (via the `try/catch` in `RagTraceService.recordShadowComparison`).
+
+### Retirement window (30 days, see R7.8)
+
+Once Step 5 flips the default, the single-stage branch in
+`RagRetrievalService` stays callable for **30 clean days**. "Clean" means:
+
+- No paging alert on the multi-stage path.
+- No eval gate regression.
+- No parser or reranker sidecar incident requiring single-stage fallback.
+
+Deletion is a separate follow-up commit tracked as R7.8. Revert via
+`RAG_MULTI_STAGE_ENABLED=false` is the faster rollback path than a code
+revert.
