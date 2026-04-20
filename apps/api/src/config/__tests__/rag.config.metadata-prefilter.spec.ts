@@ -27,6 +27,11 @@ describe('ragConfig.metadataPrefilter', () => {
     expect(ragConfig().metadataPrefilter.mode).toBe('hard');
   });
 
+  it('throws on invalid RAG_METADATA_PREFILTER_MODE', () => {
+    process.env['RAG_METADATA_PREFILTER_MODE'] = 'hrd';
+    expect(() => ragConfig()).toThrow(/RAG_METADATA_PREFILTER_MODE must be one of/);
+  });
+
   it('parses RAG_METADATA_MIN_CANDIDATES_BY_CLASS as JSON', () => {
     process.env['RAG_METADATA_MIN_CANDIDATES_BY_CLASS'] = '{"exact_lookup":10,"factoid":20}';
     const cfg = ragConfig();

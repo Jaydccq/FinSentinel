@@ -1,9 +1,9 @@
 // apps/api/src/rag/query-entity-extractor.service.ts
 import { Injectable, Logger } from '@nestjs/common';
-
-export const METADATA_ENTITY_LLM_CLIENT = Symbol('METADATA_ENTITY_LLM_CLIENT');
 import { z } from 'zod';
 import { isKnownTicker } from './ticker-whitelist';
+
+export const METADATA_ENTITY_LLM_CLIENT = 'METADATA_ENTITY_LLM_CLIENT' as const;
 
 /**
  * Module-private duck type the service expects callers to match.

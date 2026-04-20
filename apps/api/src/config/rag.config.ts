@@ -61,23 +61,41 @@ function parseMinCandidatesByClass(
     multi_part: 30,
   };
   if (!raw || !raw.trim()) return fallback;
+
+  let parsed: Record<string, unknown>;
   try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const out: Record<string, number> = {};
-    for (const [k, v] of Object.entries(parsed)) {
-      const n = Number(v);
-      if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
-        throw new Error(
-          `RAG_METADATA_MIN_CANDIDATES_BY_CLASS has non-integer value for "${k}": ${JSON.stringify(v)}`,
-        );
-      }
-      out[k] = n;
-    }
-    return out;
+    parsed = JSON.parse(raw) as Record<string, unknown>;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    throw new Error(`RAG_METADATA_MIN_CANDIDATES_BY_CLASS must be valid JSON; got "${raw}" (${msg})`);
+    throw new Error(
+      `RAG_METADATA_MIN_CANDIDATES_BY_CLASS must be valid JSON; got "${raw}" (${msg})`,
+    );
   }
+
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(parsed)) {
+    const n = Number(v);
+    if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) {
+      throw new Error(
+        `RAG_METADATA_MIN_CANDIDATES_BY_CLASS has non-integer value for "${k}": ${JSON.stringify(v)}`,
+      );
+    }
+    out[k] = n;
+  }
+  return out;
+}
+
+const VALID_PREFILTER_MODES = ['off', 'soft', 'hard'] as const;
+type PreFilterModeEnv = typeof VALID_PREFILTER_MODES[number];
+
+function parsePrefilterMode(raw: string | undefined): PreFilterModeEnv {
+  const value = raw ?? 'soft';
+  if (!(VALID_PREFILTER_MODES as readonly string[]).includes(value)) {
+    throw new Error(
+      `RAG_METADATA_PREFILTER_MODE must be one of: ${VALID_PREFILTER_MODES.join(', ')}; got "${value}"`,
+    );
+  }
+  return value as PreFilterModeEnv;
 }
 
 export const ragConfig = registerAs('rag', () => ({
@@ -152,7 +170,7 @@ export const ragConfig = registerAs('rag', () => ({
     retentionEnabled: process.env['RAG_QUERY_LOG_RETENTION_ENABLED'] === 'true',
   },
   metadataPrefilter: {
-    mode: (process.env['RAG_METADATA_PREFILTER_MODE'] ?? 'soft') as 'off' | 'soft' | 'hard',
+    mode: parsePrefilterMode(process.env['RAG_METADATA_PREFILTER_MODE']),
     hardMinConfidence: Number(process.env['RAG_METADATA_HARD_FILTER_MIN_CONFIDENCE']) || 0.85,
     llmFallbackEnabled: process.env['RAG_METADATA_LLM_FALLBACK_ENABLED'] === 'true',
     llmTimeoutMs: Number(process.env['RAG_METADATA_LLM_TIMEOUT_MS']) || 1500,
