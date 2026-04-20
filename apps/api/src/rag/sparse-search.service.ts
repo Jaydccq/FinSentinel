@@ -117,6 +117,14 @@ export class SparseSearchService {
       chunkFilterClauses.push(sql`metadata->>'date' >= ${filters.afterDate}`);
       repFilterClauses.push(sql`dc.metadata->>'date' >= ${filters.afterDate}`);
     }
+    if (filters.tickers && filters.tickers.length > 0) {
+      chunkFilterClauses.push(sql`(metadata->'tickers') ?| ${filters.tickers}::text[]`);
+      repFilterClauses.push(sql`(dc.metadata->'tickers') ?| ${filters.tickers}::text[]`);
+    }
+    if (filters.issuerName && filters.issuerName.length > 0) {
+      chunkFilterClauses.push(sql`metadata->>'issuerName' = ANY(${filters.issuerName}::text[])`);
+      repFilterClauses.push(sql`dc.metadata->>'issuerName' = ANY(${filters.issuerName}::text[])`);
+    }
 
     const rows = await this.db.execute(sql`
       WITH canonical_ranked AS (

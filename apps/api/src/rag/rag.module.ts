@@ -20,6 +20,7 @@ import { GoldenCandidatesService, GOLDEN_LLM_CLIENT } from './eval/golden-candid
 import { ChunkRepresentationService, REPRESENTATION_LLM_CLIENT } from './chunk-representation.service';
 import { RepresentationAdminService } from './admin/representation-admin.service';
 import { MetadataPreFilterService } from './metadata-pre-filter.service';
+import { QueryEntityExtractorService } from './query-entity-extractor.service';
 import { ContextExpanderService } from './context-expander.service';
 import { RagTraceService } from './rag-trace.service';
 import { RagTraceRetentionService } from './rag-trace-retention.service';
@@ -109,6 +110,17 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
         minCandidatesByClass: {},
       }),
     },
+    {
+      // LLM fallback disabled until R4.4 reads RAG_METADATA_LLM_FALLBACK_ENABLED.
+      provide: QueryEntityExtractorService,
+      useFactory: () => new QueryEntityExtractorService({
+        llmFallbackEnabled: false,
+        llmClient: null,
+        hardMinConfidence: 0.85,
+        timeoutMs: 1500,
+        concurrency: 4,
+      }),
+    },
     ContextExpanderService,
     RagTraceService,
     RagTraceRetentionService,
@@ -132,6 +144,7 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     ChunkRepresentationService,
     RepresentationAdminService,
     MetadataPreFilterService,
+    QueryEntityExtractorService,
     ContextExpanderService,
     RagTraceService,
     RagTraceRetentionService,

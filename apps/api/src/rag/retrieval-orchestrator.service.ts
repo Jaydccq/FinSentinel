@@ -5,6 +5,7 @@ import { SparseSearchService, type SparseSearchFilters } from './sparse-search.s
 import { RetrievalFusionService, type RankedCandidate, type FusedCandidate } from './retrieval-fusion.service';
 import { GraphRetrievalService } from './graph-retrieval.service';
 import { MetadataPreFilterService } from './metadata-pre-filter.service';
+import { QueryEntityExtractorService } from './query-entity-extractor.service';
 import type { QueryClass, QueryVariant, VariantKind } from './retrieval-planner.service';
 
 /** Maximum number of query variants processed in parallel per orchestrate call. */
@@ -49,6 +50,7 @@ export class RetrievalOrchestratorService {
     private readonly embeddingService: RagEmbeddingService,
     private readonly fusion: RetrievalFusionService,
     private readonly metadataPreFilter: MetadataPreFilterService,
+    private readonly queryEntityExtractor: QueryEntityExtractorService,
     @Optional() private readonly graphRetrieval?: GraphRetrievalService,
   ) {}
 
@@ -56,20 +58,27 @@ export class RetrievalOrchestratorService {
     const { rewrittenQuery, lanes, topKPerLane, filters, rrfK = 60 } = request;
 
     // Apply metadata pre-filter before dispatching lanes.
-    // R4.3 will pass the QueryEntityExtractorService result instead of null.
+    const extracted = await this.queryEntityExtractor.extract(rewrittenQuery);
     const preFilter = this.metadataPreFilter.buildFilter(
       rewrittenQuery,
       request.queryClass,
       filters,
-      null, // R4.3 will pass the QueryEntityExtractorService result here.
+      extracted,
     );
 
     // Strip PreFilter-only fields so downstream lanes see a plain SparseSearchFilters.
     // R4.3 will use `softFilter` as a per-lane ORDER BY boost (non-matching rows
-    // stay retrievable; matching rows rank higher). For R4.2 we only consume the
-    // hardFilter.
+    // stay retrievable; matching rows rank higher). For now we only consume the
+    // hardFilter. softFilter is a future task — do NOT consume it here.
     const { candidateDocIds: _unused, appliedMode: _appliedMode, softFilter: _soft, hardFilter } = preFilter;
     const effectiveFilters = hardFilter;
+
+    this.logger.debug(
+      `metadata prefilter: appliedMode=${preFilter.appliedMode} ` +
+      `tickers=${JSON.stringify(effectiveFilters.tickers ?? [])} ` +
+      `issuerName=${JSON.stringify(effectiveFilters.issuerName ?? [])} ` +
+      `fallbackFlag=${extracted.fallbackFlag ?? 'none'}`,
+    );
 
     // Determine variants to run, capped at MAX_VARIANTS.
     const variants = request.variants?.slice(0, MAX_VARIANTS) ?? [
