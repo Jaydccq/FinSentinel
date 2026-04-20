@@ -29,6 +29,10 @@
  *     CHUNK_TICKERS_BACKFILL_CONFIRM=1 (or FIXTURE_SEED_CONFIRM=1 for parity
  *     with the seed-fixture allow-list).
  *   - Dry-run bypasses the guard and prints only.
+ *   - FIXTURE_SEED_CONFIRM=1 also bypasses the guard (parity with sparse CLI).
+ *     Unlike fixture seeding, a --force backfill overwrites existing metadata
+ *     and is NOT reversible without a DB snapshot — operators should not
+ *     set both env vars in the same shell session.
  *
  * Idempotency:
  *   Without --force the SELECT filter is `NOT (metadata ? 'tickers')`, so
@@ -118,7 +122,7 @@ function parsePositiveInt(flag: string, raw: string): number {
   return n;
 }
 
-export function parseArgs(argv: string[]): BackfillCliArgs {
+export function parseBackfillArgs(argv: string[]): BackfillCliArgs {
   const args: BackfillCliArgs = {
     dryRun: false,
     batchSize: DEFAULT_BATCH_SIZE,
@@ -184,8 +188,9 @@ export interface BackfillRunOptions {
   logger: BackfillProgressLogger;
 }
 
-// Limit chunkText to first 2KB — enough to land an issuer mention without
-// blowing cost on giant chunks.
+// Limit chunkText to first 2000 characters — enough to land an issuer mention
+// without blowing cost on giant chunks. The value is a character count, not a
+// byte count. Ticker symbols are always ASCII so the slice is never mid-character.
 const CHUNK_TEXT_LIMIT = 2000;
 
 export async function backfillChunkIssuerTickers(
@@ -255,6 +260,12 @@ function buildDbFetcher(db: DrizzleDB, force: boolean): ChunkRowFetcher {
 
   return async (limit: number) => {
     const idempotencyFilter = force ? sql`` : sql`AND NOT (c.metadata ? 'tickers')`;
+    // The cursor (c.id > lastId) is always applied, not just under --dry-run.
+    // Under normal (non-force) wet-run, the `NOT (metadata ? 'tickers')` filter
+    // already drains the candidate set, so the cursor is belt-and-suspenders.
+    // Under --force, the idempotency filter is absent; the cursor becomes the
+    // ONLY mechanism preventing infinite re-fetch of the same rows. Do not
+    // strip this cursor when refactoring.
     const cursorFilter = lastId ? sql`AND c.id > ${lastId}` : sql``;
 
     const rows = await db.execute<{
@@ -334,7 +345,7 @@ function requireDatabaseUrl(): void {
 }
 
 async function main(): Promise<void> {
-  const cliArgs = parseArgs(process.argv.slice(2));
+  const cliArgs = parseBackfillArgs(process.argv.slice(2));
 
   console.log(
     `[backfill-chunk-tickers] batch_size=${cliArgs.batchSize} ` +

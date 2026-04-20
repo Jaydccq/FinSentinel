@@ -277,8 +277,15 @@ git commit -m "feat(rag): write issuerName and tickers into chunk metadata at in
 ## Task R4.0d: Backfill CLI for existing chunks
 
 **Files:**
-- Create: `apps/api/scripts/rag-backfill-chunk-issuer-tickers.ts`.
-- Register under `apps/api/src/cli/rag.cli.module.ts` following the existing `rag:backfill:sparse` pattern (the R2.5 command — read it as a template before writing).
+- Create: `apps/api/src/rag/admin/rag-backfill-chunk-issuer-tickers.cli.ts`.
+- Create: `apps/api/src/rag/admin/__tests__/rag-backfill-chunk-issuer-tickers.cli.spec.ts`.
+
+**Architectural decision (2026-04-20):** this CLI follows the standalone
+NestFactory bootstrap pattern from `rag-backfill-representation-sparse.cli.ts`,
+not nest-commander. The codebase does not use nest-commander for any rag:*
+CLI, and the standalone pattern supports pure-helper exports that the
+spec tests directly. The `apps/api/src/cli/rag.cli.module.ts` registration
+step from an earlier draft is N/A — no shared CLI module exists.
 
 - [ ] **Step 1: Inspect the existing sparse-backfill CLI**
 

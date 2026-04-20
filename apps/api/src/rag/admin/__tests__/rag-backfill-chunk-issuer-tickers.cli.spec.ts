@@ -17,7 +17,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   isObviouslyEphemeralDb,
-  parseArgs,
+  parseBackfillArgs,
   guardProductionAccidents,
   backfillChunkIssuerTickers,
   type BackfillCliArgs,
@@ -26,11 +26,11 @@ import {
   type ChunkRowUpdater,
 } from '../rag-backfill-chunk-issuer-tickers.cli';
 
-// ── parseArgs ─────────────────────────────────────────────────────────────────
+// ── parseBackfillArgs ─────────────────────────────────────────────────────────
 
-describe('parseArgs', () => {
+describe('parseBackfillArgs', () => {
   it('returns sensible defaults when argv is empty', () => {
-    const args = parseArgs([]);
+    const args = parseBackfillArgs([]);
     expect(args.dryRun).toBe(false);
     expect(args.batchSize).toBe(500);
     expect(args.progressEveryBatches).toBe(1);
@@ -38,40 +38,40 @@ describe('parseArgs', () => {
   });
 
   it('--dry-run flips dryRun on', () => {
-    expect(parseArgs(['--dry-run']).dryRun).toBe(true);
+    expect(parseBackfillArgs(['--dry-run']).dryRun).toBe(true);
   });
 
   it('--batch-size <N> accepts positive integers', () => {
-    expect(parseArgs(['--batch-size', '100']).batchSize).toBe(100);
-    expect(parseArgs(['--batch-size', '1']).batchSize).toBe(1);
+    expect(parseBackfillArgs(['--batch-size', '100']).batchSize).toBe(100);
+    expect(parseBackfillArgs(['--batch-size', '1']).batchSize).toBe(1);
   });
 
   it('--batch-size rejects zero / negative / NaN', () => {
-    expect(() => parseArgs(['--batch-size', '0'])).toThrow(/batch-size/);
-    expect(() => parseArgs(['--batch-size', '-5'])).toThrow(/batch-size/);
-    expect(() => parseArgs(['--batch-size', 'abc'])).toThrow(/batch-size/);
+    expect(() => parseBackfillArgs(['--batch-size', '0'])).toThrow(/batch-size/);
+    expect(() => parseBackfillArgs(['--batch-size', '-5'])).toThrow(/batch-size/);
+    expect(() => parseBackfillArgs(['--batch-size', 'abc'])).toThrow(/batch-size/);
   });
 
   it('--force flips force on', () => {
-    expect(parseArgs(['--force']).force).toBe(true);
+    expect(parseBackfillArgs(['--force']).force).toBe(true);
   });
 
   it('--progress-every <N> accepts positive integers', () => {
-    expect(parseArgs(['--progress-every', '10']).progressEveryBatches).toBe(10);
+    expect(parseBackfillArgs(['--progress-every', '10']).progressEveryBatches).toBe(10);
   });
 
   it('--progress-every rejects zero / NaN', () => {
-    expect(() => parseArgs(['--progress-every', '0'])).toThrow(/progress-every/);
-    expect(() => parseArgs(['--progress-every', 'xyz'])).toThrow(/progress-every/);
+    expect(() => parseBackfillArgs(['--progress-every', '0'])).toThrow(/progress-every/);
+    expect(() => parseBackfillArgs(['--progress-every', 'xyz'])).toThrow(/progress-every/);
   });
 
   it('rejects unknown flags', () => {
-    expect(() => parseArgs(['--where', "x='y'"])).toThrow(/unrecognized|--where/);
-    expect(() => parseArgs(['--bogus'])).toThrow(/unrecognized|--bogus/);
+    expect(() => parseBackfillArgs(['--where', "x='y'"])).toThrow(/unrecognized|--where/);
+    expect(() => parseBackfillArgs(['--bogus'])).toThrow(/unrecognized|--bogus/);
   });
 
   it('rejects unrecognized positional arguments', () => {
-    expect(() => parseArgs(['somearg'])).toThrow(/unrecognized/);
+    expect(() => parseBackfillArgs(['somearg'])).toThrow(/unrecognized/);
   });
 });
 
@@ -174,8 +174,18 @@ function makeRow(
 }
 
 describe('backfillChunkIssuerTickers', () => {
-  it('wet-run: 2 batches of 2 rows → updateRow called 4 times', async () => {
-    const batch1 = [makeRow('c1'), makeRow('c2')];
+  // --force flag behaviour is tested at the argparse layer; at the core-loop
+  // layer, force is transparent — the fetcher contract is "return whatever rows
+  // the caller wants processed", so --force's effect is purely a SQL concern.
+  it('wet-run: 2 batches of 2 rows each, then [] — updateRow called 4 times with correct payload shape', async () => {
+    // One recognisable row (AAPL) and three bland rows. The AAPL row lets us
+    // assert the payload-construction path produces a non-empty tickers array.
+    const aaplRow = makeRow('c1', {
+      content: 'Apple Inc. reported strong Q3 earnings. AAPL stock rose 5%.',
+      originalFileName: 'AAPL_10K_2024.pdf',
+      docTitle: 'Apple Inc. Annual Report 2024',
+    });
+    const batch1 = [aaplRow, makeRow('c2')];
     const batch2 = [makeRow('c3'), makeRow('c4')];
 
     const fetcher: ChunkRowFetcher = vi
@@ -184,7 +194,12 @@ describe('backfillChunkIssuerTickers', () => {
       .mockResolvedValueOnce(batch2)
       .mockResolvedValue([]);
 
-    const updater: ChunkRowUpdater = vi.fn().mockResolvedValue(undefined);
+    const capturedUpdates: Array<{ id: string; newFields: Record<string, unknown> }> = [];
+    const updater: ChunkRowUpdater = vi.fn().mockImplementation(
+      async (id: string, newFields: Record<string, unknown>) => {
+        capturedUpdates.push({ id, newFields });
+      },
+    );
 
     const summary = await backfillChunkIssuerTickers({
       fetchBatch: fetcher,
@@ -199,6 +214,18 @@ describe('backfillChunkIssuerTickers', () => {
     expect(summary.rowsUpdated).toBe(4);
     expect(summary.batchesProcessed).toBe(2);
     expect(updater).toHaveBeenCalledTimes(4);
+
+    // Every newFields payload must carry the tickers key as an array (shape assertion).
+    for (const { newFields } of capturedUpdates) {
+      expect(newFields).toHaveProperty('tickers');
+      expect(Array.isArray(newFields['tickers'])).toBe(true);
+    }
+
+    // The AAPL row (c1) must carry tickers: ['AAPL'] and issuerName: 'Apple Inc.'.
+    const aaplUpdate = capturedUpdates.find((u) => u.id === 'c1');
+    expect(aaplUpdate).toBeDefined();
+    expect((aaplUpdate!.newFields['tickers'] as string[])).toContain('AAPL');
+    expect(aaplUpdate!.newFields['issuerName']).toBe('Apple Inc.');
   });
 
   it('dry-run: 2 batches of 2 rows → updateRow called 0 times, candidatesScanned = 4', async () => {
