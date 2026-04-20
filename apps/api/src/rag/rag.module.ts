@@ -25,6 +25,8 @@ import { QueryEntityExtractorService, METADATA_ENTITY_LLM_CLIENT } from './query
 import { ContextExpanderService } from './context-expander.service';
 import { RagTraceService } from './rag-trace.service';
 import { RagTraceRetentionService } from './rag-trace-retention.service';
+import { RolloutGateService } from './rollout-gate.service';
+import { ShadowRunnerService } from './shadow-runner.service';
 import { createOpenRouterModel, generateAgentText } from '@finsentinel/ai-runtime';
 import { ConfigType } from '@nestjs/config';
 import { aiConfig } from '../config/ai.config';
@@ -142,6 +144,23 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
       }),
       inject: [ConfigService, METADATA_ENTITY_LLM_CLIENT],
     },
+    {
+      provide: RolloutGateService,
+      useFactory: (configService: ConfigService) => new RolloutGateService({
+        percentByClass: configService.get<Record<string, number>>('rag.rollout.canaryPercentByClass', {}),
+        anonMultiplier: configService.get<number>('rag.rollout.anonMultiplier', 0.5),
+      }),
+      inject: [ConfigService],
+    },
+    {
+      provide: ShadowRunnerService,
+      useFactory: (configService: ConfigService) => new ShadowRunnerService({
+        concurrency: configService.get<number>('rag.rollout.shadowConcurrency', 4),
+        maxQueueDepth: configService.get<number>('rag.rollout.shadowMaxQueueDepth', 200),
+        timeoutMs: configService.get<number>('rag.rollout.shadowTimeoutMs', 2000),
+      }),
+      inject: [ConfigService],
+    },
     ContextExpanderService,
     RagTraceService,
     RagTraceRetentionService,
@@ -176,6 +195,8 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     RepresentationAdminService,
     MetadataPreFilterService,
     QueryEntityExtractorService,
+    RolloutGateService,
+    ShadowRunnerService,
     ContextExpanderService,
     RagTraceService,
     RagTraceRetentionService,
