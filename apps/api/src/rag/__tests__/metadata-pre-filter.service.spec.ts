@@ -71,3 +71,40 @@ describe('MetadataPreFilterService.buildFilter (R4.2)', () => {
     expect(r.appliedMode).toBe('soft');
   });
 });
+
+describe('MetadataPreFilterService.shouldDowngrade', () => {
+  const makeSvc = (cfg: Partial<import('../metadata-pre-filter.service').PreFilterConfig> = {}) =>
+    new MetadataPreFilterService({
+      mode: 'soft',
+      hardMinConfidence: 0.85,
+      minCandidatesByClass: { exact_lookup: 5, analytical: 30 },
+      ...cfg,
+    });
+
+  it('returns false when queryClass is undefined', () => {
+    const svc = makeSvc();
+    expect(svc.shouldDowngrade(undefined, 2, true)).toBe(false);
+  });
+
+  it('returns false when hardFilterHadHints is false', () => {
+    const svc = makeSvc();
+    expect(svc.shouldDowngrade('analytical', 2, false)).toBe(false);
+  });
+
+  it('returns false when candidate count meets threshold', () => {
+    const svc = makeSvc();
+    expect(svc.shouldDowngrade('analytical', 30, true)).toBe(false);
+    expect(svc.shouldDowngrade('analytical', 31, true)).toBe(false);
+  });
+
+  it('returns true when candidate count is below threshold', () => {
+    const svc = makeSvc();
+    expect(svc.shouldDowngrade('analytical', 29, true)).toBe(true);
+    expect(svc.shouldDowngrade('exact_lookup', 2, true)).toBe(true);
+  });
+
+  it('returns false when the queryClass has no threshold configured', () => {
+    const svc = makeSvc({ minCandidatesByClass: {} });
+    expect(svc.shouldDowngrade('exact_lookup', 0, true)).toBe(false);
+  });
+});
