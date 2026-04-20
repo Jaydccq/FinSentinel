@@ -1,4 +1,4 @@
-import { extractIssuerAndTickers } from './issuer-ticker-extractor';
+import { extractIssuerAndTickers } from '../../metadata-extractors/issuer-ticker-extractor';
 
 describe('extractIssuerAndTickers', () => {
   it('pulls ticker from 10-K filename like "AAPL_10K_2024.pdf"', () => {

@@ -11,6 +11,8 @@ export interface IssuerTickerResult {
   tickers: string[];
 }
 
+// No trailing \b: the optional \. ends on a non-word char, so \b would
+// prevent the dot from ever matching (e.g. "Apple Inc." would capture as "Apple Inc").
 const ISSUER_REGEX =
   /\b([A-Z][a-zA-Z&.]+(?:\s+[A-Z][a-zA-Z&.]+)*\s+(?:Inc|Corp|Corporation|Company|Ltd|LLC|Holdings|Group|PLC)\.?)/;
 const TOKEN_REGEX = /\b[A-Z]{2,5}\b/g;
