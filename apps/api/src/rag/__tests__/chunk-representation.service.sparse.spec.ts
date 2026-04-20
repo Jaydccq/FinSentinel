@@ -231,4 +231,21 @@ describe('ChunkRepresentationService search_vector population (R2.1)', () => {
       ).toContain('setweight');
     }
   });
+
+  // ── R2.7: Prometheus counter for sparse-lane health ──────────────────────────
+  it('increments rag_representation_sparse_populated_total once per representation type on successful insert', async () => {
+    await service.enrichChunk('chunk-uuid-sparse');
+
+    const calls = (metrics.incrementCounter as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (args: unknown[]) => args[0] === 'rag_representation_sparse_populated_total',
+    );
+    expect(calls).toHaveLength(4);
+
+    const types = calls.map((args: unknown[]) => (args[2] as Record<string, string>).type).sort();
+    expect(types).toEqual(['contextual_text', 'keyword_entity', 'sample_question', 'summary']);
+
+    for (const call of calls) {
+      expect((call[2] as Record<string, string>).source).toBe('insert');
+    }
+  });
 });

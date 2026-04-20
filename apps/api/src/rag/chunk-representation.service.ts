@@ -315,6 +315,15 @@ export class ChunkRepresentationService {
           updatedAt: now,
         },
       ]);
+      // R2.7: record per-type writes of search_vector. Lets operators observe
+      // sparse-lane health distinct from the umbrella rag_representation_enrich_total.
+      for (const type of ['contextual_text', 'sample_question', 'summary', 'keyword_entity'] as const) {
+        this.metrics.incrementCounter(
+          'rag_representation_sparse_populated_total',
+          'Count of representation rows written with non-null search_vector',
+          { type, source: 'insert' },
+        );
+      }
     } catch (err) {
       await this.db
         .update(documentChunks)
