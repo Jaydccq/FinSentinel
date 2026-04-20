@@ -952,11 +952,30 @@ _(Fill in as phases execute.)_
   - **R6.6** `rag:reindex:by-doctype` CLI (standalone NestFactory bootstrap mirroring sparse / chunk-issuer-tickers CLIs). Flags: `--dry-run`, `--batch`, `--force`, `--max-wait-seconds`. Idempotency via `documents.meta->>'chunker_version' === 'v2-doctype'`. Drain+wait checkpoint after every batch blocks on BullMQ `representation-enrich` queue draining with a 30s stability window before proceeding. V18 migration adds `documents.meta jsonb NOT NULL DEFAULT '{}'` and the Drizzle schema is updated.
   - **Scope note — PDF reindex deferred:** the CLI skips PDF/DOC/DOCX because re-chunking requires the parser sidecar. Inline comment flags this as [RAG-TD-R6-01] (to be filed) — a follow-up will wire the sidecar path once R5 is production-validated.
   - **R6.7 eval verification:** offline `ci-offline.yaml` gate green with identical recall/MRR to R1 baseline. Same caveat as R2.6 / R3.6: offline CorpusRetriever bypasses `DocumentChunkingService.chunkStructured` entirely, so per-bucket chunker deltas (`table_numeric`, `long_doc`, `exact_lookup`) defer to live-API CI.
-- _(next entries per phase)_
+- **2026-04-20 R7 landed on `feat/rag-wave2-r7`:** 9 tasks, 14 commits on top of `368bb25` (R6 merge). 1456/1456 api tests green, typecheck clean. Full shadow → canary → default ramp now instrumented in code. R7 highlights:
+  - **R7.0** V19 migration for `rag_shadow_comparisons` (query_hash + class, per-pipeline chunk ID arrays + latency, shadow_timed_out / shadow_dropped_backpressure flags, optional multi_stage_error, created_at). Two indexes (created_at DESC; query_class + created_at). Drizzle schema + index.ts export landed.
+  - **R7.1** `RolloutGateService` — deterministic sticky canary (`sha256(key:hourFloor:class)` bucket 0..100), stickiness fallback chain `userId → sessionId → ipAddress → requestId`, anon-percent multiplier. 5 spec cases covering determinism, anon-multiplier distribution, stickinessSource tagging.
+  - **R7.2** `ShadowRunnerService` — fire-and-forget background runner with `concurrency` + `maxQueueDepth` + `timeoutMs` caps. Returns `ShadowOutcome` enum (`executed | timed_out | dropped_backpressure | errored`). 4 spec cases covering all branches.
+  - **R7.3** `RagRetrievalService` wires both services + `RagTraceService.recordShadowComparison`. Adds `choosePipeline()` dispatching four modes (`off` / `shadow` / `canary` / `on`), `multiStagePossible()` helper, and `searchSingleStage()` extraction. Emits `rag_retrieval_pipeline{mode,query_class}` counter per call and `rag_shadow_outcome_total{outcome}` from shadow. 4 new spec cases (shadow happy, timeout row, backpressure row, canary gate routing both ways).
+  - **R7.4** Python offline analyser at `services/evaluation-runner/analyse_shadow.py` — computes per-class overlap@5 / overlap@10, p50+p95 latency deltas, timed-out/dropped/errored counts. Emits Markdown. Gate between ramp Step 1 (shadow) and Step 2 (canary).
+  - **R7.5** Config `rag.rollout.*` section — `RAG_ROLLOUT_MODE` (fail-fast validated `off|shadow|canary|on`), `RAG_SHADOW_*` (sample rate, timeout, concurrency, max queue depth), `RAG_ROLLOUT_CANARY_PERCENT_BY_CLASS` (JSON, 0..100 validated), `RAG_ROLLOUT_ANON_PERCENT_MULTIPLIER`. 5-class canary default (exact_lookup=100, others=10). 7 new config spec cases. DI factories for both new services.
+  - **R7.6** Runbook `## R7 — Rollout ramp` section: env var reference, 5-step ramp schedule with rollback triggers, 3 kill switches, dashboards, paging alert conditions, V19 migration prerequisite, 30-day retirement window note.
+  - **R7.7 DEFAULT FLIPPED.** `RAG_MULTI_STAGE_ENABLED` now defaults to `true` at the config layer (`process.env['...']  !== 'false'`). Only literal `'false'` disables. Service reads through `rag.multiStageEnabled` (not raw env). Flag-off regression spec updated to use the new config key. 5 new config spec cases lock in the semantics.
+  - **R7.8 deferred (correct per spec).** Runbook carries an explicit retirement checklist. Single-stage code stays callable for 30 clean days after R7.7 ships; deletion is a later cleanup PR, NOT part of Wave 2.
+  - **Non-exit-criterion honoured:** ramp cadence (shadow → canary → 100% → flip) happens across calendar time in production. R7 lands the instrumentation and the default flip; actual ramp decisions are operator-driven per the runbook.
 
 ## Final Outcome
 
-_(Filled in after R7.7 ships.)_
+Wave 2 complete: all seven phases (R1 evaluation gate, R2 representation sparse lane, R3 intent-aware planner, R4 metadata soft routing, R5 PDF/Word sidecar, R6 doc-type-aware chunking, R7 shadow/canary/default rollout) are landed on `main`. `RAG_MULTI_STAGE_ENABLED` now defaults to on in code.
+
+Carry-over work tracked in `docs/exec-plans/tech-debt-tracker.md`:
+- `[RAG-TD-01]` / `[RAG-TD-02]` — representation tsvector weighting + english-vs-simple asymmetry.
+- `[RAG-TD-R4-01..08]` — metadata routing gaps (sectors/regions, colloquial type, dense-lane filter, camelCase issuerName key, GIN index, docType/timeRange routing, softFilter consumer, LLM invocation counter).
+- `[RAG-TD-R5-01]` — real parser sidecar replacing the R5 stub.
+- PDF reindex deferred in R6 per inline comment (to be filed as `[RAG-TD-R6-01]`).
+- R7.8 single-stage code retirement — scheduled 30 clean days after R7 ships.
+
+`R1.1` (golden-set labelling to N>=100) remains the one human-gated prerequisite before the CI gate swap from `ci-offline.yaml` to `wave2-buckets.yaml` can make bucket deltas meaningful.
 
 ---
 

@@ -411,3 +411,22 @@ Once Step 5 flips the default, the single-stage branch in
 Deletion is a separate follow-up commit tracked as R7.8. Revert via
 `RAG_MULTI_STAGE_ENABLED=false` is the faster rollback path than a code
 revert.
+
+### R7.8 — Single-stage retirement checklist (deferred work item)
+
+**Trigger:** 30 consecutive clean days with `RAG_MULTI_STAGE_ENABLED`
+defaulting on. Retirement is NOT part of R7 landing — it is a scheduled
+follow-up that happens only after the clean-window requirement is met.
+Keep `compare_reports/*.json` baselines for at least 90 days for audit.
+
+When the trigger is met, a single cleanup PR should:
+
+- [ ] Delete `searchSingleStage()` and the `pipelineChoice === 'single_stage'` branches in `RagRetrievalService.search()`.
+- [ ] Delete the `rolloutMode === 'off' && !this.multiStageEnabled` escape path in `choosePipeline()`.
+- [ ] Remove the `multiStageEnabled` config flag entirely from `rag.config.ts` + service reads (it has no meaning once the fallback path is gone).
+- [ ] Remove the flag-off regression test at `apps/api/src/rag/__tests__/rag-retrieval-flag-off.regression.spec.ts`.
+- [ ] Keep `RAG_ROLLOUT_MODE` and its `'off'` / `'shadow'` / `'canary'` / `'on'` values — they remain useful for future rollout work.
+- [ ] Update this runbook to mark R7.8 complete and remove the retirement-window section.
+
+**Out of scope for Wave 2.** Do not land this cleanup until explicitly
+scheduled post-rollout.
