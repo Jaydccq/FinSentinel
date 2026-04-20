@@ -177,6 +177,7 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const mockPlanner = {
       plan: vi.fn().mockResolvedValue({
         rewrittenQuery: 'AAPL revenue 2026',
+        rerankQuery: 'AAPL revenue 2026',
         lanes: ['dense'],
         topKPerLane: 20,
       }),
@@ -429,7 +430,7 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const rerankedCandidate = { ...fusedCandidate, rerankScore: 0.9, fallbackReason: null };
 
     const mockPlanner = {
-      plan: vi.fn().mockResolvedValue({ rewrittenQuery: 'q', lanes: ['dense'], topKPerLane: 20 }),
+      plan: vi.fn().mockResolvedValue({ rewrittenQuery: 'q', rerankQuery: 'q', lanes: ['dense'], topKPerLane: 20 }),
     };
     const mockOrchestrator = {
       orchestrate: vi.fn().mockResolvedValue({ fused: [fusedCandidate], laneCounts: { dense: 1 } }),

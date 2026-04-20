@@ -184,7 +184,10 @@ export class RagRetrievalService {
       timingsMs['orchestrate'] = Date.now() - orchestrateStart;
 
       const rerankStart = Date.now();
-      const reranked = await this.reranker!.rerank(plan.rewrittenQuery, fused, safeTopK * 2);
+      // R3.4: use plan.rerankQuery (literal original for exact_lookup,
+      // rewritten otherwise) so the reranker scores candidates against
+      // the right surface form per query class.
+      const reranked = await this.reranker!.rerank(plan.rerankQuery, fused, safeTopK * 2);
       timingsMs['rerank'] = Date.now() - rerankStart;
 
       // Collect rerank fallback reason from first result (all share same reason when fallback fires).
