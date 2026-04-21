@@ -13,15 +13,17 @@ export interface RagChunkRecord {
   metadata: Record<string, unknown>;
 }
 
-// NOTE: this interface intentionally does NOT carry `tickers` / `issuerName`
-// from `SparseSearchFilters`. The dense lane silently ignores those fields
-// today — tracked as [RAG-TD-R4-03] in docs/exec-plans/tech-debt-tracker.md.
-// Scheduled for a follow-up after R4.5.
+// P3.2 ([RAG-TD-R4-03]): the dense lane now mirrors the sparse lane's
+// ticker + issuerName JSONB filters so a high-confidence extraction
+// restricts BOTH lanes at the SQL layer. Prior behavior let dense-lane
+// noise dilute RRF precision on exact_lookup queries.
 export interface RagChunkSearchFilters {
   docType?: string;
   sector?: string;
   regionId?: string;
   afterDate?: string;
+  tickers?: string[];
+  issuerName?: string[];
   limit?: number;
 }
 
@@ -179,6 +181,13 @@ export class RagChunkStoreService {
     if (filters.afterDate) {
       metaFilterClauses.push(sql`dc.metadata->>'date' >= ${filters.afterDate}`);
     }
+    // P3.2: mirror sparse lane's ticker + issuerName JSONB filters ([RAG-TD-R4-03]).
+    if (filters.tickers && filters.tickers.length > 0) {
+      metaFilterClauses.push(sql`(dc.metadata->'tickers') ?| ${filters.tickers}::text[]`);
+    }
+    if (filters.issuerName && filters.issuerName.length > 0) {
+      metaFilterClauses.push(sql`dc.metadata->>'issuerName' = ANY(${filters.issuerName}::text[])`);
+    }
 
     const metaWhere =
       metaFilterClauses.length > 0
@@ -200,6 +209,13 @@ export class RagChunkStoreService {
       }
       if (filters.afterDate) {
         canonicalFilter.push(sql`metadata->>'date' >= ${filters.afterDate}`);
+      }
+      // P3.2: canonical lane also filters on tickers + issuerName ([RAG-TD-R4-03]).
+      if (filters.tickers && filters.tickers.length > 0) {
+        canonicalFilter.push(sql`(metadata->'tickers') ?| ${filters.tickers}::text[]`);
+      }
+      if (filters.issuerName && filters.issuerName.length > 0) {
+        canonicalFilter.push(sql`metadata->>'issuerName' = ANY(${filters.issuerName}::text[])`);
       }
       const canonicalWhere =
         canonicalFilter.length > 0

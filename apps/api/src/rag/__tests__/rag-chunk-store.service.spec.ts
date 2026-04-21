@@ -151,5 +151,60 @@ describe('RagChunkStoreService', () => {
       const canonical = results.filter(r => r.representationType === 'canonical');
       expect(canonical).toHaveLength(1);
     });
+
+    // ── P3.2: dense lane consumes tickers + issuerName ([RAG-TD-R4-03]) ─────
+
+    it('tickers filter injects a metadata->tickers ?| fragment in both canonical + rep SQL', async () => {
+      db.execute.mockResolvedValue([]);
+
+      await service.searchRepresentations(
+        [1, 0],
+        { tickers: ['AAPL', 'TSLA'] },
+        5,
+        ['canonical', 'contextual_text'],
+      );
+
+      const sqlStrings = db.execute.mock.calls.map((c: any[]) => JSON.stringify(c[0]));
+      // Both the canonical query (no alias) and the rep query (dc.) must
+      // emit the JSONB ?| operator against the tickers key.
+      expect(sqlStrings.some((s: string) => s.includes("metadata->'tickers'"))).toBe(true);
+      expect(sqlStrings.some((s: string) => s.includes('?|'))).toBe(true);
+      // The ticker values must be bound as params.
+      expect(sqlStrings.some((s: string) => s.includes('AAPL'))).toBe(true);
+    });
+
+    it('issuerName filter injects a metadata->>issuerName = ANY fragment in both SQLs', async () => {
+      db.execute.mockResolvedValue([]);
+
+      await service.searchRepresentations(
+        [1, 0],
+        { issuerName: ['Apple Inc.'] },
+        5,
+        ['canonical', 'contextual_text'],
+      );
+
+      const sqlStrings = db.execute.mock.calls.map((c: any[]) => JSON.stringify(c[0]));
+      expect(sqlStrings.some((s: string) => s.includes("metadata->>'issuerName'"))).toBe(true);
+      expect(sqlStrings.some((s: string) => s.includes('ANY'))).toBe(true);
+      expect(sqlStrings.some((s: string) => s.includes('Apple Inc.'))).toBe(true);
+    });
+
+    it('empty tickers array emits no ticker filter (length guard)', async () => {
+      db.execute.mockResolvedValue([]);
+
+      await service.searchRepresentations([1, 0], { tickers: [] }, 5, ['canonical']);
+
+      const sqlStrings = db.execute.mock.calls.map((c: any[]) => JSON.stringify(c[0]));
+      expect(sqlStrings.some((s: string) => s.includes('?|'))).toBe(false);
+    });
+
+    it('empty issuerName array emits no issuer filter (length guard)', async () => {
+      db.execute.mockResolvedValue([]);
+
+      await service.searchRepresentations([1, 0], { issuerName: [] }, 5, ['canonical']);
+
+      const sqlStrings = db.execute.mock.calls.map((c: any[]) => JSON.stringify(c[0]));
+      expect(sqlStrings.some((s: string) => s.includes("'issuerName'"))).toBe(false);
+    });
   });
 });
