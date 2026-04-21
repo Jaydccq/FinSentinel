@@ -17,4 +17,4 @@ app.include_router(parse_router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "stub-0.1"}
+    return {"status": "ok", "version": "pdfplumber-1.0+python-docx"}

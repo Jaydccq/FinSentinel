@@ -133,6 +133,10 @@ services/evaluation-runner/reports/*.json
 
 ### Python local venvs (evaluator dev) ###
 .venv-eval/
+# Python venvs under service directories (e.g. services/parser/.venv).
+**/.venv/
+services/parser/tests/__pycache__/
+services/parser/tests/fixtures/*.prev-*
 
 ### Node.js / TypeScript ###
 node_modules/
