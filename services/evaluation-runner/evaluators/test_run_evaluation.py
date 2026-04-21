@@ -616,3 +616,94 @@ def test_fetch_retrieval_results_omits_query_class_when_entry_has_no_tags():
 
     body = client.post.call_args.kwargs["json"]
     assert "queryClass" not in body
+
+
+# --- chunk_id remapping: seed-fixture UUID ↔ corpus "chunk-001" (P1.6 fix) ---
+
+
+def test_fetch_maps_seed_fixture_uuids_back_to_corpus_chunk_ids():
+    """When the API has been seeded via rag:eval:seed-fixture, each chunk row
+    has a deterministic UUID at `id`/`chunkId` and the original corpus id
+    preserved at `metadata.corpus_chunk_id`. The evaluator must map back to
+    the corpus form so it matches the golden set's expected_chunk_ids, which
+    carry values like "chunk-001". Without this mapping, live-API eval
+    returns 0% recall on every query against a seeded DB.
+    """
+    from unittest.mock import patch
+    from run_evaluation import fetch_retrieval_results
+
+    client_cls, client, _ = _make_mock_client({
+        "results": [
+            {
+                "chunkId": "00000000-0000-0000-0000-000000000001",
+                "content": "Apple revenue...",
+                "metadata": {"corpus_chunk_id": "chunk-001"},
+                "rankScore": 0.93,
+            },
+            {
+                "chunkId": "00000000-0000-0000-0000-000000000002",
+                "content": "iPhone market share...",
+                "metadata": {"corpus_chunk_id": "chunk-002"},
+                "fusionScore": 0.75,
+            },
+        ],
+    })
+    with patch("httpx.Client", client_cls):
+        out = fetch_retrieval_results(
+            "http://localhost:3001", "/api/rag/search",
+            [_make_entry("AAPL revenue")],
+            top_k=5,
+        )
+
+    assert len(out) == 1
+    chunk_ids = [c.chunk_id for c in out[0].chunks]
+    assert chunk_ids == ["chunk-001", "chunk-002"]
+
+
+def test_fetch_falls_back_to_chunk_id_when_no_corpus_id():
+    """Real production data (no corpus_chunk_id in metadata) still works —
+    falls back to chunkId/id in the existing order. Regression guard."""
+    from unittest.mock import patch
+    from run_evaluation import fetch_retrieval_results
+
+    client_cls, client, _ = _make_mock_client({
+        "results": [
+            {"chunkId": "real-prod-uuid-1", "content": "...", "rankScore": 0.5},
+        ],
+    })
+    with patch("httpx.Client", client_cls):
+        out = fetch_retrieval_results(
+            "http://x", "/api/rag/search",
+            [_make_entry("q")],
+            top_k=5,
+        )
+
+    assert out[0].chunks[0].chunk_id == "real-prod-uuid-1"
+
+
+def test_fetch_prefers_rank_score_then_fusion_then_similarity():
+    """Score source preference matches P1.4's documented shape."""
+    from unittest.mock import patch
+    from run_evaluation import fetch_retrieval_results
+
+    client_cls, _, _ = _make_mock_client({
+        "results": [
+            {"chunkId": "a", "metadata": {"corpus_chunk_id": "chunk-A"},
+             "rankScore": 0.9, "fusionScore": 0.5, "similarity": 0.1},
+            {"chunkId": "b", "metadata": {"corpus_chunk_id": "chunk-B"},
+             "fusionScore": 0.7, "similarity": 0.3},
+            {"chunkId": "c", "metadata": {"corpus_chunk_id": "chunk-C"},
+             "similarity": 0.6},
+        ],
+    })
+    with patch("httpx.Client", client_cls):
+        out = fetch_retrieval_results(
+            "http://x", "/api/rag/search",
+            [_make_entry("q")],
+            top_k=5,
+        )
+
+    chunks = out[0].chunks
+    assert chunks[0].score == 0.9   # rankScore wins
+    assert chunks[1].score == 0.7   # fusionScore wins
+    assert chunks[2].score == 0.6   # similarity falls through

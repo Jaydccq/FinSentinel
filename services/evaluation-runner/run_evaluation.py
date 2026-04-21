@@ -91,26 +91,50 @@ def fetch_retrieval_results(
                 )
                 resp.raise_for_status()
                 data = resp.json()
-                chunks = [
-                    RetrievedChunk(
-                        chunk_id=c.get("chunkId", c.get("id", "")),
-                        content=c.get("content", ""),
-                        score=c.get("similarity", c.get("score", 0)),
-                    )
-                    for c in data if isinstance(data, list)
-                ] if isinstance(data, list) else [
-                    RetrievedChunk(
-                        chunk_id=c.get("chunkId", c.get("id", "")),
-                        content=c.get("content", ""),
-                        score=c.get("similarity", c.get("score", 0)),
-                    )
-                    for c in data.get("results", data.get("chunks", []))
-                ]
+                chunk_list = data if isinstance(data, list) else data.get(
+                    "results", data.get("chunks", [])
+                )
+                chunks = [_coerce_chunk(c) for c in chunk_list]
                 results.append(RetrievalResult(chunks=chunks))
             except Exception as e:
                 print(f"  Warning: retrieval failed for '{entry.query[:50]}...': {e}")
                 results.append(RetrievalResult(chunks=[]))
     return results
+
+
+def _coerce_chunk(c: dict) -> RetrievedChunk:
+    """Normalise one API result into a RetrievedChunk.
+
+    When the API has been seeded via `rag:eval:seed-fixture` (the CLI that
+    hydrates datasets/corpus.json into document_chunks), each row's `id` is
+    a `deterministicChunkUuid(corpus_chunk_id)` and the original corpus
+    string is preserved at `metadata.corpus_chunk_id`. The golden set,
+    however, carries chunk IDs in their corpus form ("chunk-001"). So if
+    we naively use `chunkId`/`id` we get 0% recall on every query against
+    a seeded DB — the UUID and the string simply don't match.
+
+    Resolution: when `metadata.corpus_chunk_id` is present, it wins. This
+    preserves the corpus-native form and lets the offline evaluator's
+    metric comparisons work against live-API results. When the field is
+    absent (real production data, not seed-fixture), we fall back to
+    `chunkId` / `id` / `chunk_id` in order — unchanged from the prior
+    behavior.
+
+    This mapping is the inverse of what the seed CLI does on insert; see
+    `apps/api/src/rag/eval/seed-fixture.cli.ts` and
+    `deterministicChunkUuid()`.
+    """
+    metadata = c.get("metadata") or {}
+    corpus_id = metadata.get("corpus_chunk_id") if isinstance(metadata, dict) else None
+    if isinstance(corpus_id, str) and corpus_id:
+        chunk_id = corpus_id
+    else:
+        chunk_id = c.get("chunkId") or c.get("id") or c.get("chunk_id") or ""
+    return RetrievedChunk(
+        chunk_id=chunk_id,
+        content=c.get("content", ""),
+        score=c.get("rankScore") or c.get("fusionScore") or c.get("similarity") or c.get("score", 0),
+    )
 
 
 def run_evaluation(
