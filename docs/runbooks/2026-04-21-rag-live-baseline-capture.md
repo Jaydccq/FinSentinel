@@ -19,7 +19,7 @@ Fresh-DB migration required two upstream fixes (both landed this session):
 
 | Migration | Fix |
 |---|---|
-| V16 | `embedding vector` → `embedding vector(1536)` so HNSW can index the column |
+| V16 | `embedding vector` → `embedding vector(2048)` matching NVIDIA `llama-nemotron-embed-1b-v2`; no HNSW index (pgvector caps at 2000 dims); V22 is the bridge for DBs that applied an earlier V16 revision |
 | V21 | adds `meta_title / meta_source / meta_entities / search_vector` columns + `idx_document_chunks_fts` that the Drizzle schema referenced but no prior SQL created |
 
 ```bash

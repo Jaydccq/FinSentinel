@@ -785,12 +785,20 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
        only reachable programmatically; `wave2-buckets.yaml` had
        long referenced this endpoint with no implementation.
     3. Two migrations that had been drifting silently:
-       - **V16 edit**: `embedding vector` → `embedding vector(1536)`
-         so HNSW index creation stops failing on fresh DBs
-         (closes the "V16 HNSW dimension bug" tech-debt entry).
+       - **V16 edit**: `embedding vector` → `embedding vector(2048)`
+         matching the canonical NVIDIA embedding provider
+         (`nvidia/llama-nemotron-embed-1b-v2`); HNSW is not created
+         (pgvector caps HNSW at 2000 dims), dense rep-lane uses
+         seq-scan. Closes the "V16 HNSW dimension bug" tech-debt
+         entry. (An earlier revision of this edit declared
+         `vector(1536)`; see V22 bridge.)
        - **V21 new**: adds `meta_title / meta_source / meta_entities /
          search_vector` + `idx_document_chunks_fts` that the Drizzle
          schema referenced but no SQL created.
+       - **V22 new**: bridge migration for DBs that applied the
+         `vector(1536)` revision of V16 — drops the old HNSW index
+         and widens the column to `vector(2048)`. Idempotent on
+         fresh DBs that ran the current V16.
   Live-off baseline: overall recall@5=0.732, recall@10=0.741,
   mrr@10=0.733. See
   `services/evaluation-runner/reports/wave2-baseline-live-expansion-off-2026-04-21.json`.

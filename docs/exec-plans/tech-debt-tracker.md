@@ -69,14 +69,17 @@
      regression (`:` in jobId), renaming to `rep-enrich-<chunkId>`.
      Production enrichment path now works end-to-end against a
      local Redis + apps/api.
-  7. **Multi-provider embedding dim support** — NEW. V22
-     (`packages/db/migrations/V22__representations_embedding_2048.sql`)
-     enlarges `document_chunk_representations.embedding` to
-     `vector(2048)` because the NVIDIA default model is 2048-dim.
-     pgvector HNSW caps at 2000 so the HNSW index is dropped; queries
-     fall back to seq-scan (fine at 164 rows, revisit with IVFFlat
-     or provider swap at production scale). Open — production path
-     needs a decision.
+  7. **Canonical embedding provider = NVIDIA 2048-dim.** User
+     decision 2026-04-21: standardise on `nvidia/llama-nemotron-
+     embed-1b-v2` going forward. V16 rewritten to declare
+     `embedding vector(2048)` directly (no HNSW — pgvector caps
+     at 2000 dims), `STUB_EMBEDDING_DIM` in `seed-fixture.cli.ts` is
+     2048, `chunk-representation.service.spec.ts` +
+     `chunk-representation.service.sparse.spec.ts` mocks emit 2048-dim
+     vectors. V22 stays as a bridge for DBs that applied the older
+     `vector(1536)` V16 revision. Dense representation-lane retrieval
+     runs seq-scan (fine at current scale; swap to IVFFlat if the
+     representation row count grows past a few hundred thousand).
 
 ### V16 migration fails on a fresh DB — RESOLVED 2026-04-21
 
@@ -86,7 +89,7 @@
 - **Command:** `DATABASE_URL=... pnpm --filter @finsentinel/db db:migrate`
 - **Failure:** V16 declares
   `document_chunk_representations.embedding vector` without a dimension
-  (`vector` not `vector(1536)`), then tries to create
+  (`vector` not `vector(2048)`), then tries to create
   `idx_dcr_embedding_hnsw ... USING hnsw (embedding vector_cosine_ops)`.
   HNSW requires a typed-dimension column, so Postgres errors with
   `column does not have dimensions` (pgvector `hnswbuild.c:679`).
@@ -104,11 +107,14 @@
   in-place rehash (risky — the existing DB has a non-null hash
   already). Scope decision required.
 - **Status:** RESOLVED 2026-04-21. V16 edited in place to declare
-  `embedding vector(1536)` matching text-embedding-3-small (the
-  OpenRouter default). The migration runner applies by version number
-  and does not re-check checksum, so already-migrated dev DBs are
-  unaffected. Fresh DBs migrate V1..V21 cleanly now. NVIDIA
-  alternate-dimension support is a separate workstream.
+  `embedding vector(2048)` matching the canonical NVIDIA provider
+  (`nvidia/llama-nemotron-embed-1b-v2`), with no HNSW index (pgvector
+  HNSW caps at 2000 dims). V22 is a bridge migration for DBs that
+  applied an earlier revision (which had `vector(1536)` + HNSW); it
+  drops the index and widens the column, and is idempotent on DBs
+  that applied the current V16 directly. The migration runner applies
+  by version number and does not re-check checksum, so already-
+  migrated dev DBs skip the edited V16 and rely on V22.
 
 ### RepresentationAdminService DI bug in rag:backfill:representations CLI
 

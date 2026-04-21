@@ -1,22 +1,27 @@
 -- V16: Add document_chunk_representations side table + structural columns on document_chunks
 --
--- EDIT 2026-04-21 (P4 / tech-debt fix for fresh-DB migrations):
--- Original `embedding vector` (no dimension) broke HNSW build on fresh
--- DBs ("column does not have dimensions" — pgvector hnswbuild.c:679).
--- Changed to `vector(1536)` so fresh DBs migrate cleanly. Already-
--- migrated DBs are unaffected — the migration runner skips by version
--- number, not checksum (see packages/db/src/apply-migrations.ts). This
--- is a documented exception to "migrations are immutable once shipped."
--- Multi-provider embedding-dim support (e.g. NVIDIA nv-embed-v1's
--- alternate dimension) will require per-provider tables or optional-
--- HNSW rework — filed separately under RAG tech debt.
+-- EDITED 2026-04-21 to align with the canonical embedding provider
+-- (NVIDIA `nvidia/llama-nemotron-embed-1b-v2`, 2048-dim). The column
+-- is declared `vector(2048)` directly; no HNSW index is created here
+-- because pgvector's HNSW caps at 2000 dims. For smaller-dim
+-- deployments (e.g. 1536) operators can ALTER the column back and
+-- CREATE INDEX ... USING hnsw out-of-band — the downstream retrieval
+-- code is indifferent.
+--
+-- Historical note: an earlier revision of this file declared `vector`
+-- (no dim) which broke fresh-DB migrations on the HNSW create step,
+-- then briefly `vector(1536)` assuming text-embedding-3-small. V22
+-- exists as a bridge migration for DBs that applied those earlier
+-- revisions — it ALTERs to 2048 + drops HNSW. Fresh DBs that run
+-- this file directly skip V22's work via IF NOT EXISTS / ALTER-to-same
+-- idempotency, but keep V22 in the sequence for safety.
 
 CREATE TABLE IF NOT EXISTS document_chunk_representations (
   id uuid PRIMARY KEY,
   chunk_id uuid NOT NULL REFERENCES document_chunks(id) ON DELETE CASCADE,
   representation_type varchar(32) NOT NULL,
   content text NOT NULL,
-  embedding vector(1536),
+  embedding vector(2048),
   search_vector tsvector,
   weight real NOT NULL DEFAULT 1.0,
   metadata jsonb NOT NULL DEFAULT '{}',
@@ -30,9 +35,11 @@ CREATE TABLE IF NOT EXISTS document_chunk_representations (
 CREATE INDEX IF NOT EXISTS idx_dcr_chunk_type
   ON document_chunk_representations (chunk_id, representation_type);
 
-CREATE INDEX IF NOT EXISTS idx_dcr_embedding_hnsw
-  ON document_chunk_representations USING hnsw (embedding vector_cosine_ops)
-  WHERE representation_type IN ('contextual_text', 'sample_question');
+-- No HNSW index: pgvector caps HNSW at 2000 dims; our canonical
+-- embedding is 2048. Dense-lane retrieval uses a seq-scan over the
+-- representation rows (fine at the corpus scales we target in this
+-- plan; revisit with IVFFlat if representation row count grows past
+-- a few hundred thousand).
 
 CREATE INDEX IF NOT EXISTS idx_dcr_search_vector
   ON document_chunk_representations USING gin (search_vector)
@@ -48,6 +55,5 @@ ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS enrichment_status varchar(1
 -- ALTER TABLE document_chunks DROP COLUMN IF EXISTS section_path;
 -- ALTER TABLE document_chunks DROP COLUMN IF EXISTS parent_id;
 -- DROP INDEX IF EXISTS idx_dcr_search_vector;
--- DROP INDEX IF EXISTS idx_dcr_embedding_hnsw;
 -- DROP INDEX IF EXISTS idx_dcr_chunk_type;
 -- DROP TABLE IF EXISTS document_chunk_representations;

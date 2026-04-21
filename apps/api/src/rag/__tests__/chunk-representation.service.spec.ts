@@ -110,7 +110,9 @@ function createMockLlm(response: string = VALID_LLM_RESPONSE) {
 function createMockEmbeddingService() {
   return {
     embedQuery: vi.fn().mockImplementation(async (text: string) =>
-      Array(1536).fill(0).map((_, i) => i / 1536 + text.length * 0.0001),
+      // 2048-dim matches the canonical NVIDIA nvidia/llama-nemotron-embed-1b-v2
+      // provider (see seed-fixture.cli.ts STUB_EMBEDDING_DIM).
+      Array(2048).fill(0).map((_, i) => i / 2048 + text.length * 0.0001),
     ),
     embedChunks: vi.fn().mockResolvedValue([]),
   };

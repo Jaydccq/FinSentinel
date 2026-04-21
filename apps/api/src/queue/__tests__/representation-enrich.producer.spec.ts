@@ -84,7 +84,8 @@ describe('RepresentationEnrichProducer', () => {
         'representation-enrich',
         { chunkId: 'chunk-abc-123' },
         expect.objectContaining({
-          jobId: 'rep-enrich:chunk-abc-123',
+          // Hyphen separator — BullMQ 5.71+ rejects ':' in custom Job.id.
+          jobId: 'rep-enrich-chunk-abc-123',
           attempts: 3,
         }),
       );

@@ -52,8 +52,19 @@ import { RagEmbeddingService } from '../rag-embedding.service';
 export const CORPUS_CHUNK_ID_NAMESPACE = 'finsentinel:corpus-fixture:chunk-id';
 export const CORPUS_SOURCE_DOC_NAMESPACE = 'finsentinel:corpus-fixture:source-doc';
 
-/** Embedding dimension for stub vectors — matches text-embedding-3-small. */
-export const STUB_EMBEDDING_DIM = 1536;
+/**
+ * Embedding dimension for stub vectors. Matches the canonical provider:
+ * NVIDIA `nvidia/llama-nemotron-embed-1b-v2` at 2048 dims. This is the
+ * dimension `document_chunk_representations.embedding` is declared with
+ * after V16 (+ V22 bridge), so stub embeddings inserted into
+ * `document_chunks` during fixture seeding remain shape-compatible
+ * with the representation lane.
+ *
+ * If you swap the embedding provider (e.g. OpenAI text-embedding-3-small
+ * at 1536 dims), set this AND run a migration narrowing the column —
+ * seed-fixture and DB schema must agree.
+ */
+export const STUB_EMBEDDING_DIM = 2048;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
