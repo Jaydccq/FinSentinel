@@ -671,6 +671,42 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
   for when populated representations are available; see the top entry
   of `docs/exec-plans/tech-debt-tracker.md`.
 
+- 2026-04-21: Phase P3 complete — all four metadata-routing gaps closed
+  on `main` in 3 commits (b883c98, 5a134e2, 041d192). Merge order
+  followed the plan: P3.1/P3.4 bundled → P3.2 → P3.3.
+  - **P3.1 ([RAG-TD-R4-06])**: `MetadataPreFilterService.buildFilter`
+    now routes high-confidence `docType` and `timeRange.after` into
+    `hardFilter.docType` / `hardFilter.afterDate`, with explicit
+    caller filters winning on conflict. +8 test assertions cover high/
+    low-confidence routing, explicit-wins precedence, timeRange.before-
+    only (ignored), hard+soft mode mixes, and mode=off passthrough.
+  - **P3.2 ([RAG-TD-R4-03])**: `RagChunkStoreService.searchRepresentations`
+    dense lane now consumes `tickers` and `issuerName` in both the
+    canonical sub-query (no alias) and the representation sub-query
+    (`dc.` alias). Before this, a ticker hard filter applied only to
+    the sparse lane and the dense lane diluted RRF precision on
+    exact_lookup queries. +4 tests verify both lanes emit the JSONB
+    fragments and empty arrays emit nothing (length guard).
+  - **P3.3 ([RAG-TD-R4-07])**: `SparseSearchService` now consumes
+    `softFilter` as a `ts_rank_cd` CASE multiplier (1.15 — small enough
+    to re-rank without dominating, tunable). The orchestrator's
+    `_soft` discard is removed; softFilter flows PreFilter → search
+    filters → SQL boost. Non-matching rows stay retrievable
+    (regression-guarded). +5 tests in sparse-search.service.spec.ts.
+    Dense lane still ignores softFilter — documented as intentional.
+  - **P3.4 ([RAG-TD-R4-05])**: V20 migration adds a GIN index on
+    `document_chunks.metadata` using `jsonb_ops` (NOT `jsonb_path_ops`,
+    because `?|` requires the full operator class). Not end-to-end
+    validated on a fresh DB because V16 has a pre-existing HNSW
+    dimension bug that blocks clean migration — filed as tech debt,
+    out of scope here. SQL itself is `CREATE INDEX IF NOT EXISTS`,
+    two lines, trivially correct.
+
+  Full suite after P3: 1481 passed, 1 skipped. Typecheck clean.
+  Offline CorpusRetriever baseline unchanged (it bypasses the TS
+  retrieval stack). Live-API movement measurement stays blocked on
+  chunk_id remapping per P1 tech debt.
+
 ## Final Outcome
 
 Pending. This plan is the recommended next workstream after Wave 2: make the
