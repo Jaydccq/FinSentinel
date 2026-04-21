@@ -27,6 +27,7 @@ import { RagTraceService } from './rag-trace.service';
 import { RagTraceRetentionService } from './rag-trace-retention.service';
 import { RolloutGateService } from './rollout-gate.service';
 import { ShadowRunnerService } from './shadow-runner.service';
+import { RagSearchController } from './rag-search.controller';
 import { createOpenAICompatibleModel, generateAgentText } from '@finsentinel/ai-runtime';
 import { ConfigType } from '@nestjs/config';
 import { aiConfig } from '../config/ai.config';
@@ -45,6 +46,7 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
  */
 @Module({
   imports: [CommonModule, forwardRef(() => QueueModule)],
+  controllers: [RagSearchController],
   providers: [
     RagRetrievalService,
     QueryRewriteService,

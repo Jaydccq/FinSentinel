@@ -1,11 +1,22 @@
 -- V16: Add document_chunk_representations side table + structural columns on document_chunks
+--
+-- EDIT 2026-04-21 (P4 / tech-debt fix for fresh-DB migrations):
+-- Original `embedding vector` (no dimension) broke HNSW build on fresh
+-- DBs ("column does not have dimensions" — pgvector hnswbuild.c:679).
+-- Changed to `vector(1536)` so fresh DBs migrate cleanly. Already-
+-- migrated DBs are unaffected — the migration runner skips by version
+-- number, not checksum (see packages/db/src/apply-migrations.ts). This
+-- is a documented exception to "migrations are immutable once shipped."
+-- Multi-provider embedding-dim support (e.g. NVIDIA nv-embed-v1's
+-- alternate dimension) will require per-provider tables or optional-
+-- HNSW rework — filed separately under RAG tech debt.
 
 CREATE TABLE IF NOT EXISTS document_chunk_representations (
   id uuid PRIMARY KEY,
   chunk_id uuid NOT NULL REFERENCES document_chunks(id) ON DELETE CASCADE,
   representation_type varchar(32) NOT NULL,
   content text NOT NULL,
-  embedding vector,
+  embedding vector(1536),
   search_vector tsvector,
   weight real NOT NULL DEFAULT 1.0,
   metadata jsonb NOT NULL DEFAULT '{}',
