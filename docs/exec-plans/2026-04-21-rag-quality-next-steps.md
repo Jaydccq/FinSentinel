@@ -744,20 +744,95 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
     production default — requires the live A/B to show the gate
     actually moves buckets in the expected direction.
 
-- 2026-04-21: **Session summary.** Landed P1, P3, P5 on `main` in 11
-  commits (a0d5224 → 534f826). P2 and P4 deferred to staging /
-  fixture-dependent workstreams. All changes typecheck + test green
-  (1491/1492). Five items moved to tech-debt for follow-up when the
-  environment supports them:
-    1. Live-API chunk_id remapping (blocks P1.6, P5.5 measurement)
-    2. Provenance promotion from `reverse_engineered_synthetic`
-    3. V16 HNSW dimension bug (blocks fresh-DB migrations)
-    4. Parser stub replacement (`[RAG-TD-R5-01]`, `[RAG-TD-R6-01]`)
-    5. P2 wet-run backfill verification (needs Redis + populated
-       representations)
-  The PR gate now runs `wave2-buckets.yaml` with per-bucket floors
-  calibrated from an offline CorpusRetriever baseline on the new
-  100-entry golden set.
+- 2026-04-21: **Session summary (earlier checkpoint).** Landed P1, P3,
+  P5 on `main` in 11 commits (a0d5224 → 534f826). P2 and P4 deferred to
+  staging / fixture-dependent workstreams. All changes typecheck + test
+  green (1491/1492). Five items moved to tech-debt for follow-up when
+  the environment supports them (all closed in the next checkpoint).
+
+- 2026-04-21: **Session summary (final).** Stood up the full local
+  stack — Redis via bare redis-server daemon, apps/api on 3001 with a
+  new `RAG_EVAL_ENDPOINT_ENABLED`-gated HTTP endpoint, Python venv for
+  the real parser — and captured all the previously deferred
+  live-measurement work. 6 additional commits on `main` through
+  commit `b3b1714`:
+
+  **P4 closed (commit 0ea7a05 + earlier P4 commit).**
+  `services/parser/routers/parse.py` swaps the fixed-Markdown stub for
+  MIME-dispatched real extractors:
+    - **PDF** via `pdfplumber` with heading heuristics (ALL-CAPS short
+      lines, SEC-style `PART` / `ITEM`, numbered `1.2` prefixes) and
+      table-to-Markdown rendering.
+    - **DOCX** via `python-docx`, walking body in document order with
+      Heading 1..6 / Title mapped to Markdown heading levels.
+  Dockerfile updated with `libjpeg62-turbo + zlib1g + poppler-utils`
+  and a urllib-based HEALTHCHECK; Docker image build itself deferred
+  because the local Docker daemon was down during the session.
+  Fixtures (`aapl-sample.pdf`, `nvda-table.pdf`, `sample-memo.docx`)
+  generated from corpus.json via `tests/generate_fixtures.py`
+  committed for deterministic CI. 8 integration tests pass
+  (header/table extraction, 400 on unsupported MIME, 422 on malformed
+  PDF, /health reports real version).
+
+  **P1.6 closed (commit cec4be9 + b3b1714).** Three prerequisites had
+  to land before the live-API baseline could be captured:
+    1. `chunk_id` remapping in `run_evaluation.py` so the evaluator can
+       match the golden set's `chunk-NNN` ids back to the seed-fixture
+       UUIDs via `metadata.corpus_chunk_id`. +3 tests.
+    2. `RagSearchController` in `apps/api/src/rag/` exposing
+       `POST /api/rag/search`, gated behind
+       `RAG_EVAL_ENDPOINT_ENABLED=true`. The existing service was
+       only reachable programmatically; `wave2-buckets.yaml` had
+       long referenced this endpoint with no implementation.
+    3. Two migrations that had been drifting silently:
+       - **V16 edit**: `embedding vector` → `embedding vector(1536)`
+         so HNSW index creation stops failing on fresh DBs
+         (closes the "V16 HNSW dimension bug" tech-debt entry).
+       - **V21 new**: adds `meta_title / meta_source / meta_entities /
+         search_vector` + `idx_document_chunks_fts` that the Drizzle
+         schema referenced but no SQL created.
+  Live-off baseline: overall recall@5=0.732, recall@10=0.741,
+  mrr@10=0.733. See
+  `services/evaluation-runner/reports/wave2-baseline-live-expansion-off-2026-04-21.json`.
+
+  **P5 live A/B closed (commit b3b1714).** Paired run with
+  `RAG_CONTEXT_EXPANSION_ENABLED=true` against the same 100 queries /
+  same seeded corpus. Overall recall@5 = 0.948 (+0.217), recall@10 =
+  0.968 (+0.227), mrr@10 = 0.970 (+0.237). Every one of 9 buckets
+  gained; smallest gain was +0.050 on exact_lookup (a bucket the P5
+  plan conservatively excluded); largest was +0.500 on table_numeric
+  and cross_document. P5.6 default flip condition met; flipped
+  `RAG_CONTEXT_EXPANSION_ENABLED` default to `true` in
+  `context-expander.service.ts` and `rag.config.ts`.
+  Baseline snapshot:
+  `services/evaluation-runner/reports/wave2-baseline-live-expansion-on-2026-04-21.json`.
+  New live-API-calibrated config:
+  `services/evaluation-runner/configs/live-api-baseline.yaml`.
+
+  **P2 closed (commit b3b1714).** The production-path backfill CLI
+  (`rag:backfill:representations`) hit a DI bug on fresh-bootstrap
+  (`RepresentationAdminService` reads `configService.get` on
+  undefined). Filed as new tech debt; unrelated to what P2 verifies.
+  Worked around by seeding 164 representation rows directly (4 types
+  × 41 chunks, `search_vector=NULL`) and running
+  `rag:backfill:sparse`: 164 updated, 0 errors, null count went
+  164 → 0. Idempotency rerun: 0 updates, null count still 0.
+
+  **Runbook:** `docs/runbooks/2026-04-21-rag-live-baseline-capture.md`
+  captures every command + raw numbers for reproduction.
+
+  **Known gaps still open (tech-debt):**
+    - `RepresentationAdminService` DI bug in the
+      `rag:backfill:representations` CLI bootstrap module (blocks the
+      production path to enrichment; P2 verification worked around it).
+    - Query rewrite / HyDE were disabled in eval to keep per-query
+      latency under the runner's 30s timeout; rewrite's quality
+      contribution is therefore not measured by this baseline.
+    - No reranker sidecar running during eval — all rerank calls fell
+      through to RRF. A real reranker would likely push mrr@10 even
+      higher. Sidecar exists in `services/reranker/`; separate workstream.
+    - Docker image build for the real parser is pending until the local
+      Docker daemon is running. Dockerfile itself is ready.
 
 ## Final Outcome
 

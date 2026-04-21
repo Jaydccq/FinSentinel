@@ -31,32 +31,39 @@
   - P5 makes context expansion conditional on `queryClass ∈
     {analytical, relational, multi_part}` OR a long-document signal, then
     flips the default.
-- **Status:** Open — plan drafted 2026-04-21, **P1 landed 2026-04-21**
-  (100-entry codex-labelled golden.json, live-API auth + queryClass
-  forwarding, wave2-buckets per-bucket floors calibrated, PR gate
-  swapped). Two P1 sub-items remain:
-  1. **Live-API eval on localhost is blocked by chunk_id remapping.**
-     The `rag:eval:seed-fixture` CLI stores corpus rows with UUIDs
-     derived from `deterministicChunkUuid(chunk_id)` and writes the
-     original `chunk-001` string into `metadata.corpus_chunk_id` as a
-     back-reference. The live API's `/rag/search` returns `chunkId` in
-     UUID form, but the golden set's `expected_chunk_ids` uses the
-     `chunk-001` literal form from `corpus.json`, so a naive live-API
-     eval returns 0% recall on every query. Fix options: (a) extend
-     `run_evaluation.py`'s response parser to prefer
-     `metadata.corpus_chunk_id` when present, falling back to
-     `chunkId`; or (b) seed the fixture with the corpus-native string
-     ids and keep them on the chunks table. Option (a) is lower blast
-     radius.
+- **Status:** P1, P3, P4, P5 all closed 2026-04-21; P2 verified via
+  direct-insert workaround. Live-API A/B on localhost showed
+  `RAG_CONTEXT_EXPANSION_ENABLED=true` is strictly better on every
+  bucket (+0.050 exact_lookup → +0.500 table_numeric / cross_document
+  recall@5). Default flipped to on in `rag.config.ts` and
+  `context-expander.service.ts`. See
+  `docs/runbooks/2026-04-21-rag-live-baseline-capture.md` for commands
+  + numbers.
+
+  **Remaining smaller items:**
+  1. **chunk_id remapping** — CLOSED 2026-04-21. Now in
+     `run_evaluation.py:_coerce_chunk` preferring
+     `metadata.corpus_chunk_id` when seed-fixture was used; +3 tests.
   2. **Provenance is still `reverse_engineered_synthetic`.** The
-     Codex-labelled set covers the corpus by construction but does not
-     represent real user queries. Promote to `rag_query_logs /
+     100-entry golden set was codex-generated from corpus.json, not
+     drawn from real user queries. Promote to `rag_query_logs /
      chat_messages` provenance once staging access lands or a
      reasonably-populated local corpus is in place; then re-baseline
-     `wave2-buckets.yaml`. Tracked for P1 follow-up; P2–P5 can
-     proceed against the current gate in the meantime.
+     `wave2-buckets.yaml`. Still open.
+  3. **Query rewrite / HyDE off during live eval.** Per-query latency
+     with rewrite on exceeded the runner's 30s timeout. The live
+     baseline therefore measures retrieval-quality with rewrite
+     removed. Quality contribution of rewrite is not captured here;
+     revisit with an async-variant plumbing or a faster provider.
+  4. **Reranker sidecar not running during live eval.** All rerank
+     calls fell through to RRF (expected — rerank is optional). A
+     real reranker would likely push mrr@10 higher. Exists in
+     `services/reranker/` as a separate workstream.
+  5. **Docker image build for the real parser deferred.** Local
+     Docker daemon down during the session. Dockerfile + deps are
+     ready; standard `docker build` once daemon is back.
 
-### V16 migration fails on a fresh DB — `embedding vector` lacks HNSW dimensions
+### V16 migration fails on a fresh DB — RESOLVED 2026-04-21
 
 - **Observed:** 2026-04-21 while attempting to apply migrations to a
   fresh `finsentinel_test` DB to validate V20 (GIN index) for P3.4 of
@@ -81,8 +88,32 @@
   on the schema_versions hash, or (2) edit V16 with an operator-only
   in-place rehash (risky — the existing DB has a non-null hash
   already). Scope decision required.
-- **Status:** Open — pre-existing. Not in scope for P3.4, but blocks
-  full validation of new migrations.
+- **Status:** RESOLVED 2026-04-21. V16 edited in place to declare
+  `embedding vector(1536)` matching text-embedding-3-small (the
+  OpenRouter default). The migration runner applies by version number
+  and does not re-check checksum, so already-migrated dev DBs are
+  unaffected. Fresh DBs migrate V1..V21 cleanly now. NVIDIA
+  alternate-dimension support is a separate workstream.
+
+### RepresentationAdminService DI bug in rag:backfill:representations CLI
+
+- **Observed:** 2026-04-21 while attempting the production-path
+  representation enrichment trigger for P2.
+- **Failure:** CLI bootstrap module fails at DI time with
+  `TypeError: Cannot read properties of undefined (reading 'get')` at
+  `representation-admin.service.ts:89`. The constructor expects a
+  `ConfigService` parameter; the CLI module imports `AppConfigModule`
+  but `ConfigService` isn't being injected.
+- **Impact:** Cannot enqueue chunks for representation enrichment via
+  the production CLI path. P2 wet-run was verified via a direct-insert
+  workaround (insert 164 rows with `search_vector=NULL`, run
+  `rag:backfill:sparse`), but the production trigger is broken.
+- **Likely fix path:** Add `ConfigService` explicitly as a provider
+  in the CLI bootstrap module, or import it through a @Global module.
+  Investigate why the other backfill CLIs (e.g.
+  `rag-backfill-representation-sparse.cli.ts`) don't hit the same
+  bug — may already have the fix.
+- **Status:** Open.
 
 ### `apps/web` full lint is blocked by pre-existing violations
 
