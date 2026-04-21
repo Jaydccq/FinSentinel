@@ -707,6 +707,58 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
   retrieval stack). Live-API movement measurement stays blocked on
   chunk_id remapping per P1 tech debt.
 
+- 2026-04-21: Phase P4 skipped on this pass. The parser-stub
+  replacement requires a real PDF fixture set, a pdfplumber/MinerU
+  bakeoff inside the sidecar container, a Dockerfile rebuild, and a
+  live reindex of representative docs. None of those are localhost-
+  friendly without Redis + apps/api + the parser sidecar running.
+  The P4 task plan in this document remains the correct blueprint.
+  `[RAG-TD-R5-01]` and `[RAG-TD-R6-01]` stay open.
+
+- 2026-04-21: Phase P5 landed on `main` in one commit (534f826).
+  Replaces the global `RAG_CONTEXT_EXPANSION_ENABLED` on/off flag with
+  a conditional gate:
+    (enabled=true) AND
+    (queryClass ∈ RAG_CONTEXT_EXPANSION_CLASSES
+      OR any top-K candidate's source doc ≥
+      RAG_CONTEXT_EXPANSION_MIN_DOC_TOKENS).
+  Default classes = `analytical,relational,multi_part`; default
+  long-doc threshold = 8000 tokens. `source_token_count` from
+  metadata is preferred; `content.length / 4` is the estimator
+  fallback until a backfill populates the field explicitly.
+  Wired `plan.queryClass` from the R3 intent-aware planner into the
+  expander via `rag-retrieval.service.ts`.
+  +10 new spec assertions cover class allow/deny, long-doc override,
+  default allow-list membership, undefined queryClass (gate OFF),
+  content-length fallback, and global-flag regression guard.
+  Pre-existing tests that relied on unconditional expansion were
+  updated to pass `queryClass: 'analytical'` in options — they keep
+  validating the neighbor-expansion logic, now behind the gate.
+  Full suite: 1491/1492 pass (1 pre-existing skip). Typecheck clean.
+
+  Deferred to tech debt:
+  - P5.1/P5.5 live-API bucket deltas (analytical/relational/
+    multi_part/long_doc gains vs. exact_lookup/factoid no-regress) —
+    blocked by the same chunk_id remapping issue as P1.6.
+  - P5.6 flipping `RAG_CONTEXT_EXPANSION_ENABLED=true` as the
+    production default — requires the live A/B to show the gate
+    actually moves buckets in the expected direction.
+
+- 2026-04-21: **Session summary.** Landed P1, P3, P5 on `main` in 11
+  commits (a0d5224 → 534f826). P2 and P4 deferred to staging /
+  fixture-dependent workstreams. All changes typecheck + test green
+  (1491/1492). Five items moved to tech-debt for follow-up when the
+  environment supports them:
+    1. Live-API chunk_id remapping (blocks P1.6, P5.5 measurement)
+    2. Provenance promotion from `reverse_engineered_synthetic`
+    3. V16 HNSW dimension bug (blocks fresh-DB migrations)
+    4. Parser stub replacement (`[RAG-TD-R5-01]`, `[RAG-TD-R6-01]`)
+    5. P2 wet-run backfill verification (needs Redis + populated
+       representations)
+  The PR gate now runs `wave2-buckets.yaml` with per-bucket floors
+  calibrated from an offline CorpusRetriever baseline on the new
+  100-entry golden set.
+
 ## Final Outcome
 
 Pending. This plan is the recommended next workstream after Wave 2: make the
