@@ -109,6 +109,7 @@ docs/exec-plans/*
 docs/runbooks/*
 !docs/runbooks/2026-04-16-multi-agent-runtime-rollout.md
 !docs/runbooks/2026-04-19-rag-wave2-rollout.md
+!docs/runbooks/2026-04-21-golden-set-labeling-sop.md
 !docs/superpowers/
 docs/superpowers/*
 !docs/superpowers/plans/
