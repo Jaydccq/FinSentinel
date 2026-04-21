@@ -601,6 +601,60 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
   technical-debt tracker. Created this next-step plan. No runtime code changed.
 - 2026-04-21: Added detailed task-by-task execution plan for P1–P5. No
   runtime code changed.
+- 2026-04-21: Phase P1 landed on `main` in 6 commits (53360ca, 48090f2,
+  365a5a7, e9fb2fa, 1647fad, preceded by plan commits 3e585dd/a0d5224).
+  Deviations from the drafted plan:
+  - **P1.2 / P1.2a skipped.** The `rag:golden:export` CLI already exists
+    at `apps/api/src/rag/eval/golden-candidates.cli.ts`. Since the user
+    directed "直接让 codex" (have codex do the labeling), we bypassed the
+    export-then-label workflow entirely and let Codex reverse-engineer
+    100 entries directly from `services/evaluation-runner/datasets/corpus.json`.
+  - **P1.4 redirected.** The planned `api_retriever.py` module was
+    redundant — `run_evaluation.py:fetch_retrieval_results` already hits
+    a live API. Surgical enhancement (Bearer auth + queryClass forwarding)
+    instead of a parallel module, keeps the diff tight.
+  - **P1.7 pivoted.** Weekly GitHub Actions workflow targeting staging
+    deferred per the user's "只用 localhost" direction; replaced by
+    `scripts/rag-eval-local.sh` which drives the evaluator against a
+    local `apps/api` when one is running.
+  - **P1.6 partially achieved.** Captured an OFFLINE CorpusRetriever
+    baseline against the new 100-entry golden set; live-API localhost
+    baseline is blocked on deterministic-chunk-id remapping — the
+    `seed-fixture` CLI assigns UUIDs to DB rows so the live API returns
+    `chunkId` UUIDs that don't match `chunk-001` strings in the golden
+    set. Tech-debt filed under the top entry of
+    `docs/exec-plans/tech-debt-tracker.md`.
+  - **Bucket taxonomy extended 7 → 9.** `wave2-buckets.yaml` already
+    defined `exact_lookup / colloquial / cross_document / long_doc /
+    table_numeric`; the plan's four additional retrieval-shape buckets
+    (`factoid / relational / analytical / multi_part`) layered on top of
+    those, giving a 9-bucket union. Golden set + thresholds cover all 9.
+
+  **P1 deliverables landed:**
+  - `docs/runbooks/2026-04-21-golden-set-labeling-sop.md` — SOP with
+    9-bucket taxonomy, target distribution, localhost-via-codex variant.
+  - `services/evaluation-runner/datasets/golden.json` — 100 codex-labelled
+    entries, distribution exact to target (±0), all chunk_ids valid.
+  - `services/evaluation-runner/datasets/golden.meta.json` — provenance,
+    bucket distribution, labeler, validation notes.
+  - `services/evaluation-runner/run_evaluation.py` — Bearer-auth +
+    queryClass-forwarding on the live-API path, backward compatible.
+  - `services/evaluation-runner/evaluators/test_run_evaluation.py` —
+    5 new tests; full file 19/19 pass.
+  - `services/evaluation-runner/configs/wave2-buckets.yaml` —
+    thresholds = baseline − 0.03 per bucket, 9 buckets covered, overall
+    floors tightened from 0.30/0.45/0.60/0.25 to 0.82/0.92/0.92/0.78.
+  - `services/evaluation-runner/reports/wave2-baseline-2026-04-21.json`
+    — baseline snapshot (tracked via gitignore allowlist).
+  - `scripts/rag-eval-local.sh` — local-API driver script.
+  - `.github/workflows/rag-eval-gate.yml` — swapped to `wave2-buckets.yaml`
+    so every PR now gates on per-bucket floors, not just overall.
+
+  **Still open for P1 to be fully closed:**
+  - Live-API eval on localhost (blocked on chunk_id remapping).
+  - Promote provenance from `reverse_engineered_synthetic` to
+    `rag_query_logs` / `chat_messages` once staging or a real local
+    corpus is available.
 
 ## Final Outcome
 

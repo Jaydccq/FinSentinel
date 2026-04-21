@@ -31,7 +31,30 @@
   - P5 makes context expansion conditional on `queryClass ∈
     {analytical, relational, multi_part}` OR a long-document signal, then
     flips the default.
-- **Status:** Open — plan drafted 2026-04-21, execution pending.
+- **Status:** Open — plan drafted 2026-04-21, **P1 landed 2026-04-21**
+  (100-entry codex-labelled golden.json, live-API auth + queryClass
+  forwarding, wave2-buckets per-bucket floors calibrated, PR gate
+  swapped). Two P1 sub-items remain:
+  1. **Live-API eval on localhost is blocked by chunk_id remapping.**
+     The `rag:eval:seed-fixture` CLI stores corpus rows with UUIDs
+     derived from `deterministicChunkUuid(chunk_id)` and writes the
+     original `chunk-001` string into `metadata.corpus_chunk_id` as a
+     back-reference. The live API's `/rag/search` returns `chunkId` in
+     UUID form, but the golden set's `expected_chunk_ids` uses the
+     `chunk-001` literal form from `corpus.json`, so a naive live-API
+     eval returns 0% recall on every query. Fix options: (a) extend
+     `run_evaluation.py`'s response parser to prefer
+     `metadata.corpus_chunk_id` when present, falling back to
+     `chunkId`; or (b) seed the fixture with the corpus-native string
+     ids and keep them on the chunks table. Option (a) is lower blast
+     radius.
+  2. **Provenance is still `reverse_engineered_synthetic`.** The
+     Codex-labelled set covers the corpus by construction but does not
+     represent real user queries. Promote to `rag_query_logs /
+     chat_messages` provenance once staging access lands or a
+     reasonably-populated local corpus is in place; then re-baseline
+     `wave2-buckets.yaml`. Tracked for P1 follow-up; P2–P5 can
+     proceed against the current gate in the meantime.
 
 ### `apps/web` full lint is blocked by pre-existing violations
 
