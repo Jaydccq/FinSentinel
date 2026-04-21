@@ -40,28 +40,43 @@
   `docs/runbooks/2026-04-21-rag-live-baseline-capture.md` for commands
   + numbers.
 
-  **Remaining smaller items:**
-  1. **chunk_id remapping** — CLOSED 2026-04-21. Now in
-     `run_evaluation.py:_coerce_chunk` preferring
-     `metadata.corpus_chunk_id` when seed-fixture was used; +3 tests.
-  2. **Provenance is still `reverse_engineered_synthetic`.** The
-     100-entry golden set was codex-generated from corpus.json, not
-     drawn from real user queries. Promote to `rag_query_logs /
-     chat_messages` provenance once staging access lands or a
-     reasonably-populated local corpus is in place; then re-baseline
-     `wave2-buckets.yaml`. Still open.
-  3. **Query rewrite / HyDE off during live eval.** Per-query latency
-     with rewrite on exceeded the runner's 30s timeout. The live
-     baseline therefore measures retrieval-quality with rewrite
-     removed. Quality contribution of rewrite is not captured here;
-     revisit with an async-variant plumbing or a faster provider.
-  4. **Reranker sidecar not running during live eval.** All rerank
-     calls fell through to RRF (expected — rerank is optional). A
-     real reranker would likely push mrr@10 higher. Exists in
-     `services/reranker/` as a separate workstream.
-  5. **Docker image build for the real parser deferred.** Local
-     Docker daemon down during the session. Dockerfile + deps are
-     ready; standard `docker build` once daemon is back.
+  **Follow-up items (all either CLOSED or documented):**
+  1. **chunk_id remapping** — CLOSED 2026-04-21 via
+     `run_evaluation.py:_coerce_chunk`.
+  2. **Provenance** — PARTIALLY ADDRESSED 2026-04-21. 30 of 100
+     queries rewritten into natural conversational phrasings
+     (provenance_label=`natural_phrasing_synthetic`); remaining 70
+     stay `reverse_engineered_synthetic`. True real-user promotion
+     (from `rag_query_logs` / `chat_messages`) still requires a
+     populated source. See `golden.meta.json` v2.1.
+  3. **Query rewrite / HyDE eval timeout** — CLOSED 2026-04-21.
+     `fetch_retrieval_results` now accepts `timeout_s` via config
+     `retrieval.timeout_s` or env `RAG_EVAL_TIMEOUT_S`; default 30s,
+     bump to 120+ for rewrite-on runs. +1 test.
+  4. **Reranker sidecar** — CLOSED 2026-04-21. `services/reranker/`
+     brought up locally on :8100 with the `BAAI/bge-reranker-v2-m3`
+     model loaded via the bundled uvicorn. Orchestrator's rerank
+     stage now uses the BGE cross-encoder instead of the RRF
+     fallback when the sidecar is reachable.
+  5. **Docker image build** — CLOSED 2026-04-21.
+     `finsentinel/parser:p4` image built locally (152 MB), runs via
+     `docker run -p 8110:8110 finsentinel/parser:p4`, verified by
+     parsing a real PDF fixture end-to-end inside the container.
+  6. **RepresentationAdminService DI bug** — CLOSED 2026-04-21.
+     `RepresentationAdminService` and `RepresentationEnrichProducer`
+     now declare explicit `@Inject(ConfigService)` on their
+     constructor params. Also fixed a BullMQ 5.71 validation
+     regression (`:` in jobId), renaming to `rep-enrich-<chunkId>`.
+     Production enrichment path now works end-to-end against a
+     local Redis + apps/api.
+  7. **Multi-provider embedding dim support** — NEW. V22
+     (`packages/db/migrations/V22__representations_embedding_2048.sql`)
+     enlarges `document_chunk_representations.embedding` to
+     `vector(2048)` because the NVIDIA default model is 2048-dim.
+     pgvector HNSW caps at 2000 so the HNSW index is dropped; queries
+     fall back to seq-scan (fine at 164 rows, revisit with IVFFlat
+     or provider swap at production scale). Open — production path
+     needs a decision.
 
 ### V16 migration fails on a fresh DB — RESOLVED 2026-04-21
 

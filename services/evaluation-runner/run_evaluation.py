@@ -41,9 +41,23 @@ def check_minimum_metrics(metrics: dict[str, float], minimums: dict[str, float])
 
 
 def load_golden_set(path: str) -> list[GoldenEntry]:
+    """Load a golden-set JSON and construct GoldenEntry dataclasses.
+
+    Strips extra fields that the dataclass does not declare (e.g.
+    `provenance_original_query`, `provenance_label`, `acceptable_chunk_ids`
+    when present in v2.x of the golden set) so we stay forward-compatible
+    with provenance enrichment without requiring every reader to update
+    its dataclass. Unknown fields are silently dropped — any that were
+    meant to be semantically load-bearing would show up in downstream
+    behavior differences, not as missing attributes.
+    """
     with open(path) as f:
         data = json.load(f)
-    return [GoldenEntry(**entry) for entry in data["entries"]]
+    allowed = {f.name for f in GoldenEntry.__dataclass_fields__.values()}
+    return [
+        GoldenEntry(**{k: v for k, v in entry.items() if k in allowed})
+        for entry in data["entries"]
+    ]
 
 
 def load_config(path: str | None) -> dict:
