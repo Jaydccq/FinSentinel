@@ -15,7 +15,10 @@ export class RepresentationEnrichProducer {
 
   constructor(
     @Inject(REPRESENTATION_ENRICH_QUEUE_TOKEN) private readonly queue: Queue,
-    configService: ConfigService,
+    // Explicit @Inject() for CLI bootstrap — tsx + bundled SWC does not
+    // emit decorator metadata for type-only param tokens, so CLI DI fed
+    // `undefined` here. Same root cause as representation-admin.service.ts.
+    @Inject(ConfigService) configService: ConfigService,
   ) {
     this.enabled = configService.get<boolean>('RAG_ENRICHMENT_ENABLED', false);
     this.maxChunksPerDoc = configService.get<number>('RAG_REPRESENTATION_MAX_CHUNKS_PER_DOC', 2000);
@@ -25,7 +28,8 @@ export class RepresentationEnrichProducer {
     if (!this.enabled) return;
 
     await this.queue.add('representation-enrich', { chunkId } satisfies RepresentationEnrichJobData, {
-      jobId: `rep-enrich:${chunkId}`,
+      // BullMQ 5.x rejects ':' in custom Job.id (validateOptions), use '-'.
+      jobId: `rep-enrich-${chunkId}`,
       attempts: 3,
       backoff: { type: 'exponential', delay: 5_000 },
       removeOnComplete: 100,

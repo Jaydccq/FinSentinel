@@ -83,9 +83,13 @@ export class RepresentationAdminService {
 
   constructor(
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
-    private readonly producer: RepresentationEnrichProducer,
-    private readonly configService: ConfigService,
+    @Inject(RepresentationEnrichProducer) private readonly producer: RepresentationEnrichProducer,
+    @Inject(ConfigService) private readonly configService: ConfigService,
   ) {
+    // Explicit @Inject() on every constructor param — the Nest CLI bootstrap
+    // (tsx + bundled SWC, no .swcrc) does not emit decorator metadata for
+    // type-only param tokens, so the web-app path worked but the CLI path
+    // saw `undefined` passed in positions 1 and 2. Filed + fixed 2026-04-21.
     this.batchSize = this.configService.get<number>(
       'RAG_REPRESENTATION_BATCH_SIZE',
       RAG_REPRESENTATION_BATCH_SIZE_DEFAULT,

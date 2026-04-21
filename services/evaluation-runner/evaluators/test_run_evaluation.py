@@ -681,6 +681,25 @@ def test_fetch_falls_back_to_chunk_id_when_no_corpus_id():
     assert out[0].chunks[0].chunk_id == "real-prod-uuid-1"
 
 
+def test_fetch_respects_timeout_parameter():
+    """timeout_s is forwarded to httpx.Client so rewrite/HyDE-heavy runs
+    can bump past the 30s default without losing queries to timeouts."""
+    from unittest.mock import patch
+    from run_evaluation import fetch_retrieval_results
+
+    client_cls, _, _ = _make_mock_client({"results": []})
+    with patch("httpx.Client", client_cls):
+        fetch_retrieval_results(
+            "http://x", "/api/rag/search",
+            [_make_entry("q")],
+            top_k=5,
+            timeout_s=120.0,
+        )
+
+    # httpx.Client was constructed with timeout=120
+    assert client_cls.call_args.kwargs.get("timeout") == 120.0
+
+
 def test_fetch_prefers_rank_score_then_fusion_then_similarity():
     """Score source preference matches P1.4's documented shape."""
     from unittest.mock import patch

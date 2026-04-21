@@ -60,6 +60,7 @@ def fetch_retrieval_results(
     top_k: int,
     api_token: str | None = None,
     forward_bucket_as_query_class: bool = False,
+    timeout_s: float = 30.0,
 ) -> list[RetrievalResult]:
     """Call the RAG API to get actual retrieval results for each golden entry.
 
@@ -70,6 +71,11 @@ def fetch_retrieval_results(
     forwarded to the API as ``queryClass``. This lets the retrieval API exercise
     its intent-aware routing on the same buckets the gate evaluates against.
     Entries with no tags send no ``queryClass`` and are handled as before.
+
+    ``timeout_s`` bounds each POST /rag/search call. The default is 30s which
+    suits retrieval-only runs; bump to 120+ for runs where RAG_QUERY_REWRITE /
+    HyDE are enabled (LLM-driven planner adds ~5-20s per query). Exposed as a
+    parameter rather than a global so eval harness authors can choose per-run.
     """
     import httpx
 
@@ -78,7 +84,7 @@ def fetch_retrieval_results(
         headers["Authorization"] = f"Bearer {api_token}"
 
     results = []
-    with httpx.Client(timeout=30) as client:
+    with httpx.Client(timeout=timeout_s) as client:
         for entry in golden_set:
             payload: dict[str, object] = {"query": entry.query, "topK": top_k}
             if forward_bucket_as_query_class and entry.tags:
@@ -168,11 +174,18 @@ def run_evaluation(
         # When true, each golden entry's tags[0] (bucket) is forwarded as
         # queryClass so the API exercises intent-aware routing per bucket.
         forward_bucket = bool(retrieval_config.get("forward_bucket_as_query_class", False))
+        # Per-query timeout; bump for runs where RAG_QUERY_REWRITE / HyDE
+        # are on (LLM variants add ~5-20s per query to the planner stage).
+        timeout_s = float(
+            retrieval_config.get("timeout_s")
+            or os.environ.get("RAG_EVAL_TIMEOUT_S")
+            or 30.0
+        )
         auth_note = "authenticated" if api_token else "unauthenticated"
         route_note = "+queryClass" if forward_bucket else ""
         print(
             f"Fetching results from {api_base_url}{endpoint} "
-            f"(top_k={top_k}, {auth_note}{route_note})"
+            f"(top_k={top_k}, timeout={timeout_s:.0f}s, {auth_note}{route_note})"
         )
         retrieval_results = fetch_retrieval_results(
             api_base_url,
@@ -181,6 +194,7 @@ def run_evaluation(
             top_k,
             api_token=api_token,
             forward_bucket_as_query_class=forward_bucket,
+            timeout_s=timeout_s,
         )
     else:
         print("No API configured, using empty retrieval results")
