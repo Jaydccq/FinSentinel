@@ -131,17 +131,20 @@ jobs:
             --output-summary reports/seed-summary.json
 
       - name: Run RAG eval gate (offline corpus mode)
-        # NOTE: this uses `ci-offline.yaml`, not `wave2-buckets.yaml`.
-        # Per-bucket thresholds in wave2-buckets require R1.1 tagged golden
-        # entries to be meaningful; before then every bucket is empty and
-        # the gate fails trivially. Swap this path once R1.1 lands.
+        # Uses `wave2-buckets.yaml` now that the 100-entry codex-labelled
+        # golden set is tagged across all 9 buckets (P1.3 of
+        # docs/exec-plans/2026-04-21-rag-quality-next-steps.md). Per-bucket
+        # thresholds calibrated 2026-04-21 against the offline
+        # CorpusRetriever baseline — each floor is (observed − 0.03).
+        # The `ci-offline.yaml` config remains in the repo as a reference
+        # of the old overall-only gating regime; new work should not use it.
         run: |
           mkdir -p reports
           python services/evaluation-runner/run_evaluation.py run \
             --dataset services/evaluation-runner/datasets/golden.json \
             --output reports/ci.json \
             --corpus services/evaluation-runner/datasets/corpus.json \
-            --config services/evaluation-runner/configs/ci-offline.yaml
+            --config services/evaluation-runner/configs/wave2-buckets.yaml
 
       - name: Upload eval report
         if: always()
