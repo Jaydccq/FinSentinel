@@ -495,3 +495,124 @@ def test_malformed_bucket_minimum_metrics_nested_scalar_raises_type_error(tmp_pa
     assert "bucket_minimum_metrics" in combined
     assert "exact_lookup" in combined
     assert "TypeError" in combined
+
+
+# --- fetch_retrieval_results: auth + queryClass forwarding (P1.4) ---
+
+
+def _make_entry(query: str, tags: list[str] | None = None):
+    """Build a GoldenEntry fixture for live-API tests."""
+    from evaluators.topk_evaluator import GoldenEntry
+    return GoldenEntry(
+        id="t-auth",
+        query=query,
+        query_class="factoid",
+        expected_chunk_ids=["chunk-001"],
+        acceptable_chunk_ids=[],
+        expected_source_docs=[],
+        expected_answer="",
+        expected_entities=[],
+        difficulty="easy",
+        tags=tags or [],
+    )
+
+
+def _make_mock_client(response_json):
+    """Return (Client mock, client instance mock, response mock) for httpx.Client patching."""
+    from unittest.mock import MagicMock
+    resp = MagicMock()
+    resp.json.return_value = response_json
+    resp.raise_for_status.return_value = None
+    client = MagicMock()
+    client.post.return_value = resp
+    client_cls = MagicMock()
+    client_cls.return_value.__enter__.return_value = client
+    client_cls.return_value.__exit__.return_value = False
+    return client_cls, client, resp
+
+
+def test_fetch_retrieval_results_no_auth_header_when_token_absent():
+    """Backward-compatible: omitting api_token sends no Authorization header."""
+    from unittest.mock import patch
+    from run_evaluation import fetch_retrieval_results
+
+    client_cls, client, _ = _make_mock_client([{"chunkId": "chunk-001", "score": 0.9}])
+    with patch("httpx.Client", client_cls):
+        fetch_retrieval_results(
+            "http://localhost:3001", "/api/rag/search", [_make_entry("q")], top_k=10,
+        )
+
+    headers = client.post.call_args.kwargs["headers"]
+    assert "Authorization" not in headers
+    assert headers["Content-Type"] == "application/json"
+
+
+def test_fetch_retrieval_results_sends_bearer_when_token_provided():
+    """Bearer header is attached when api_token is non-empty."""
+    from unittest.mock import patch
+    from run_evaluation import fetch_retrieval_results
+
+    client_cls, client, _ = _make_mock_client([])
+    with patch("httpx.Client", client_cls):
+        fetch_retrieval_results(
+            "http://x", "/api/rag/search", [_make_entry("q")], top_k=10,
+            api_token="secret-token-123",
+        )
+
+    headers = client.post.call_args.kwargs["headers"]
+    assert headers["Authorization"] == "Bearer secret-token-123"
+
+
+def test_fetch_retrieval_results_does_not_forward_bucket_by_default():
+    """Regression guard: forward_bucket_as_query_class defaults to False."""
+    from unittest.mock import patch
+    from run_evaluation import fetch_retrieval_results
+
+    client_cls, client, _ = _make_mock_client([])
+    with patch("httpx.Client", client_cls):
+        fetch_retrieval_results(
+            "http://x", "/api/rag/search",
+            [_make_entry("q", tags=["exact_lookup"])],
+            top_k=10,
+        )
+
+    body = client.post.call_args.kwargs["json"]
+    assert "queryClass" not in body
+    assert body["query"] == "q"
+    assert body["topK"] == 10
+
+
+def test_fetch_retrieval_results_forwards_tags_zero_as_query_class():
+    """With forwarding on, tags[0] becomes queryClass in the request body."""
+    from unittest.mock import patch
+    from run_evaluation import fetch_retrieval_results
+
+    client_cls, client, _ = _make_mock_client([])
+    with patch("httpx.Client", client_cls):
+        fetch_retrieval_results(
+            "http://x", "/api/rag/search",
+            [_make_entry("q", tags=["exact_lookup", "Technology"])],
+            top_k=10,
+            forward_bucket_as_query_class=True,
+        )
+
+    body = client.post.call_args.kwargs["json"]
+    assert body["queryClass"] == "exact_lookup"
+
+
+def test_fetch_retrieval_results_omits_query_class_when_entry_has_no_tags():
+    """Tagless entries never send queryClass — even with forwarding on."""
+    from unittest.mock import patch
+    from run_evaluation import fetch_retrieval_results
+
+    client_cls, client, _ = _make_mock_client([])
+    with patch("httpx.Client", client_cls):
+        fetch_retrieval_results(
+            "http://x", "/api/rag/search",
+            [_make_entry("q", tags=[])],
+            top_k=10,
+            forward_bucket_as_query_class=True,
+        )
+
+    body = client.post.call_args.kwargs["json"]
+    assert "queryClass" not in body

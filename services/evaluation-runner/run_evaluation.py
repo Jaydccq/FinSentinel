@@ -9,6 +9,7 @@ Usage:
 
 import argparse
 import json
+import os
 import sys
 import yaml
 from datetime import datetime, timezone
@@ -57,17 +58,36 @@ def fetch_retrieval_results(
     endpoint: str,
     golden_set: list[GoldenEntry],
     top_k: int,
+    api_token: str | None = None,
+    forward_bucket_as_query_class: bool = False,
 ) -> list[RetrievalResult]:
-    """Call the RAG API to get actual retrieval results for each golden entry."""
+    """Call the RAG API to get actual retrieval results for each golden entry.
+
+    When ``api_token`` is provided, it is sent as ``Authorization: Bearer <token>``
+    on every request. Local unauthenticated dev setups should leave it as ``None``.
+
+    When ``forward_bucket_as_query_class`` is True, each entry's ``tags[0]`` is
+    forwarded to the API as ``queryClass``. This lets the retrieval API exercise
+    its intent-aware routing on the same buckets the gate evaluates against.
+    Entries with no tags send no ``queryClass`` and are handled as before.
+    """
     import httpx
+
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if api_token:
+        headers["Authorization"] = f"Bearer {api_token}"
 
     results = []
     with httpx.Client(timeout=30) as client:
         for entry in golden_set:
+            payload: dict[str, object] = {"query": entry.query, "topK": top_k}
+            if forward_bucket_as_query_class and entry.tags:
+                payload["queryClass"] = entry.tags[0]
             try:
                 resp = client.post(
                     f"{api_base_url}{endpoint}",
-                    json={"query": entry.query, "topK": top_k},
+                    json=payload,
+                    headers=headers,
                 )
                 resp.raise_for_status()
                 data = resp.json()
@@ -118,8 +138,26 @@ def run_evaluation(
     elif api_base_url:
         endpoint = retrieval_config.get("endpoint", "/api/rag/search")
         top_k = retrieval_config.get("top_k", 10)
-        print(f"Fetching results from {api_base_url}{endpoint} (top_k={top_k})")
-        retrieval_results = fetch_retrieval_results(api_base_url, endpoint, golden_set, top_k)
+        # Auth token: config wins, then env. No token means unauthenticated
+        # (fine for localhost dev, required for staging).
+        api_token = retrieval_config.get("api_token") or os.environ.get("RAG_API_TOKEN")
+        # When true, each golden entry's tags[0] (bucket) is forwarded as
+        # queryClass so the API exercises intent-aware routing per bucket.
+        forward_bucket = bool(retrieval_config.get("forward_bucket_as_query_class", False))
+        auth_note = "authenticated" if api_token else "unauthenticated"
+        route_note = "+queryClass" if forward_bucket else ""
+        print(
+            f"Fetching results from {api_base_url}{endpoint} "
+            f"(top_k={top_k}, {auth_note}{route_note})"
+        )
+        retrieval_results = fetch_retrieval_results(
+            api_base_url,
+            endpoint,
+            golden_set,
+            top_k,
+            api_token=api_token,
+            forward_bucket_as_query_class=forward_bucket,
+        )
     else:
         print("No API configured, using empty retrieval results")
         retrieval_results = [RetrievalResult(chunks=[]) for _ in golden_set]
