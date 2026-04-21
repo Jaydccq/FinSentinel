@@ -2,13 +2,36 @@
 
 ## Active Gaps
 
-### Cloud RAG quality work is blocked by weak ingestion and evaluation gates
+### Cloud RAG quality work is blocked by synthetic/offline evaluation and stub parsing
 
-- **Observed:** 2026-04-19 while preparing the RAG redesign plan.
-- **Evidence:** `DocumentUploadService` rejects PDFs, `DocumentParseService` returns empty text for `application/pdf`, `document_chunks` stores only one dense embedding surface, current graph enrichment extracts entities but not relation rows, and `services/evaluation-runner/datasets/golden.json` is synthetic.
-- **Impact:** Production-like RAG quality cannot be improved safely by tuning alone because real retrieval regressions are not gated and PDF-heavy source material cannot enter the cloud RAG pipeline directly.
-- **Likely fix path:** Execute `docs/exec-plans/2026-04-19-rag-redesign-plan.md` starting with stable chunk IDs and representative evaluation gates, then add structured Markdown ingestion and multi-representation indexing.
-- **Status:** Open.
+- **Observed:** 2026-04-19 while preparing the RAG redesign plan; updated
+  2026-04-21 after Wave 2 landed and a task-by-task execution plan was
+  appended to `docs/exec-plans/2026-04-21-rag-quality-next-steps.md`.
+- **Evidence:** Wave 2 now accepts PDF/Word MIME types, writes representation
+  `search_vector`, adds metadata routing, and includes doc-type-aware chunkers.
+  The remaining blockers are that `services/evaluation-runner/datasets/golden.json`
+  still has 25 synthetic entries, `.github/workflows/rag-eval-gate.yml` uses
+  offline `CorpusRetriever` instead of the live API path, and
+  `services/parser/` is a stub that returns fixed Markdown for any uploaded file.
+- **Impact:** RAG quality changes cannot be trusted as production improvements
+  until real bucketed queries and real parser output are measured.
+- **Likely fix path:** Execute
+  `docs/exec-plans/2026-04-21-rag-quality-next-steps.md` — phases P1–P5 in
+  order:
+  - P1 replaces synthetic golden set with N ≥ 100 real-labelled queries and
+    adds a live-API eval workflow.
+  - P2 verifies the sparse backfill in staging
+    (`search_vector IS NULL = 0`) and measures the `exact_lookup` bucket
+    delta.
+  - P3 closes `[RAG-TD-R4-03] / [RAG-TD-R4-05] / [RAG-TD-R4-06] /
+    [RAG-TD-R4-07]` (docType/timeRange routing, dense-lane ticker/issuer
+    filters, softFilter consumption, V18 GIN index).
+  - P4 replaces the parser stub (closes `[RAG-TD-R5-01]` and
+    `[RAG-TD-R6-01]`).
+  - P5 makes context expansion conditional on `queryClass ∈
+    {analytical, relational, multi_part}` OR a long-document signal, then
+    flips the default.
+- **Status:** Open — plan drafted 2026-04-21, execution pending.
 
 ### `apps/web` full lint is blocked by pre-existing violations
 
@@ -276,3 +299,13 @@
   extraction quality. Replace the stub with one of: MinerU, pdfplumber +
   heading heuristics, or a commercial OCR API. Blocks: meaningful PDF
   evaluation in Wave 2 eval buckets. Owner + timing: separate work-item.
+
+## 2026-04-21 — carried over from R6 Doc-Type Chunking
+
+- **[RAG-TD-R6-01] Parser-backed PDF/DOCX reindex is deferred.**
+  `rag:reindex:by-doctype` can re-chunk text-like documents with the Wave 2
+  chunkers, but PDF/DOC/DOCX reindexing needs real parser output. While
+  `services/parser/` remains a stub, reindexing those documents would only
+  preserve placeholder Markdown. Fix after `[RAG-TD-R5-01]`: route stored
+  PDF/DOCX bytes through the real parser sidecar, persist parser metadata, wait
+  for representation enrichment to drain, then run the live eval buckets.
