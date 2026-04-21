@@ -1,0 +1,71 @@
+# Live-API baseline thresholds, measured 2026-04-21 against localhost
+# apps/api with:
+#   - 100-entry codex-labelled golden.json
+#   - 41-chunk corpus.json seeded via rag:eval:seed-fixture --use-real-embeddings
+#   - RAG_CONTEXT_EXPANSION_ENABLED=true (P5 default-on)
+#   - RAG_QUERY_REWRITE_ENABLED=false (disable LLM query rewrite in eval)
+#   - RAG_HYDE_ENABLED=false
+#   - No reranker sidecar available → RRF fallback
+#
+# Each threshold = observed − 0.03 (3% tolerance), rounded to 2dp.
+# Baseline report snapshot:
+#   services/evaluation-runner/reports/wave2-baseline-live-expansion-on-2026-04-21.json
+#
+# NOT used by the per-PR offline gate (which stays on wave2-buckets.yaml
+# against CorpusRetriever). Use this config when running rag-eval-local.sh
+# or when the evaluator targets a real apps/api.
+
+api_base_url: "http://localhost:3001"
+retrieval:
+  endpoint: "/api/rag/search"
+  top_k: 10
+
+# Overall floors. Observed 2026-04-21:
+#   strict.recall@5      = 0.9483
+#   strict.recall@10     = 0.9675
+#   lenient.recall@10    = 0.9675
+#   strict.mrr@10        = 0.9700
+minimum_metrics:
+  strict.recall@5: 0.91
+  strict.recall@10: 0.93
+  lenient.recall@10: 0.93
+  strict.mrr@10: 0.94
+
+# Per-bucket floors from live-expansion-ON baseline.
+bucket_minimum_metrics:
+  exact_lookup:
+    strict.recall@5: 0.97         # baseline 1.0000
+    strict.recall@10: 0.97        # baseline 1.0000
+    strict.mrr@10: 0.92           # baseline 0.9500
+  factoid:
+    strict.recall@5: 0.97         # baseline 1.0000
+    strict.recall@10: 0.97        # baseline 1.0000
+    strict.mrr@10: 0.97           # baseline 1.0000
+  relational:
+    strict.recall@5: 0.92         # baseline 0.9583
+    strict.recall@10: 0.97        # baseline 1.0000
+    strict.mrr@10: 0.92           # baseline 0.9583
+  analytical:
+    strict.recall@5: 0.70         # baseline 0.7333
+    strict.recall@10: 0.77        # baseline 0.8000
+    strict.mrr@10: 0.72           # baseline 0.7500
+  multi_part:
+    strict.recall@5: 0.97         # baseline 1.0000
+    strict.recall@10: 0.97        # baseline 1.0000
+    strict.mrr@10: 0.97           # baseline 1.0000
+  long_doc:
+    strict.recall@5: 0.87         # baseline 0.9000
+    strict.recall@10: 0.87        # baseline 0.9000
+    strict.mrr@10: 0.87           # baseline 0.9000
+  cross_document:
+    strict.recall@5: 0.87         # baseline 0.9000
+    strict.recall@10: 0.94        # baseline 0.9750
+    strict.mrr@10: 0.87           # baseline 0.9000
+  table_numeric:
+    strict.recall@5: 0.97         # baseline 1.0000
+    strict.recall@10: 0.97        # baseline 1.0000
+    strict.mrr@10: 0.94           # baseline 0.9667
+  colloquial:
+    strict.recall@5: 0.97         # baseline 1.0000
+    strict.recall@10: 0.97        # baseline 1.0000
+    strict.mrr@10: 0.97           # baseline 1.0000

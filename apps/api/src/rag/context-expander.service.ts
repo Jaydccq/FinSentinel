@@ -54,7 +54,13 @@ export class ContextExpanderService {
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     configService: ConfigService,
   ) {
-    this.enabled = configService.get<string>('RAG_CONTEXT_EXPANSION_ENABLED', 'false') === 'true';
+    // P5 default-on: live-API A/B on 2026-04-21 showed strictly-positive
+    // recall@5/@10 gains on every one of 9 buckets (lowest: +0.050 on
+    // exact_lookup; highest: +0.500 on table_numeric + cross_document).
+    // See services/evaluation-runner/reports/wave2-baseline-live-expansion-
+    // (off|on)-2026-04-21.json for the paired report. Operators can still
+    // force-disable with RAG_CONTEXT_EXPANSION_ENABLED=false.
+    this.enabled = configService.get<string>('RAG_CONTEXT_EXPANSION_ENABLED', 'true') !== 'false';
     this.topN = configService.get<number>('RAG_CONTEXT_EXPANSION_TOP_N', 10);
 
     // P5: conditional gate config

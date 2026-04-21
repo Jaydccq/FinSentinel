@@ -204,7 +204,9 @@ export const ragConfig = registerAs('rag', () => ({
     maxTokens: Number(process.env['RAG_RERANK_MAX_TOKENS']) || 480,
   },
   contextExpansion: {
-    enabled: process.env['RAG_CONTEXT_EXPANSION_ENABLED'] === 'true',
+    // P5 default-on after live-API A/B (2026-04-21) showed strictly-positive
+    // bucket gains (see context-expander.service.ts for the citation).
+    enabled: process.env['RAG_CONTEXT_EXPANSION_ENABLED'] !== 'false',
     topN: Number(process.env['RAG_CONTEXT_EXPANSION_TOP_N']) || 10,
   },
   queryLog: {
