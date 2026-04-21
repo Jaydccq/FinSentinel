@@ -43,6 +43,24 @@ describe('RagEmbeddingService', () => {
     });
   });
 
+  it('configures NVIDIA asymmetric embedding input types', () => {
+    new RagEmbeddingService({
+      ...mockAiConfig,
+      embeddingProvider: 'nvidia',
+      embeddingApiKey: 'nvapi-test',
+      embeddingBaseUrl: 'https://integrate.api.nvidia.com/v1',
+      embeddingModel: 'nvidia/llama-nemotron-embed-1b-v2',
+    });
+
+    expect(openAICompatibleEmbeddingClientMock).toHaveBeenCalledWith({
+      apiKey: 'nvapi-test',
+      baseUrl: 'https://integrate.api.nvidia.com/v1',
+      model: 'nvidia/llama-nemotron-embed-1b-v2',
+      queryInputType: 'query',
+      chunkInputType: 'passage',
+    });
+  });
+
   it('delegates embedQuery to the runtime client and returns the embedding', async () => {
     embedQuery.mockResolvedValueOnce([1, 0, 0]);
     const service = new RagEmbeddingService(mockAiConfig);

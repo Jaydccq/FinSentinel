@@ -224,7 +224,7 @@ describe('envSchema', () => {
 
     expect(result.AI_PROVIDER).toBe('nvidia');
     expect(result.AI_EMBEDDING_PROVIDER).toBe('nvidia');
-    expect(result.AI_EMBEDDING_MODEL).toBe('nvidia/nv-embed-v1');
+    expect(result.AI_EMBEDDING_MODEL).toBe('nvidia/llama-nemotron-embed-1b-v2');
   });
 
   // ── coercion ────────────────────────────────────────────────────────

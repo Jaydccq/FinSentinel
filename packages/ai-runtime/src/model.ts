@@ -4,7 +4,7 @@ export const DEFAULT_OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 export const DEFAULT_NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
 export const DEFAULT_OPENROUTER_TEXT_MODEL = 'google/gemini-3-flash-preview';
 export const DEFAULT_OPENROUTER_EMBEDDING_MODEL = 'text-embedding-3-small';
-export const DEFAULT_NVIDIA_EMBEDDING_MODEL = 'nvidia/nv-embed-v1';
+export const DEFAULT_NVIDIA_EMBEDDING_MODEL = 'nvidia/llama-nemotron-embed-1b-v2';
 
 export const AI_PROVIDERS = ['openrouter', 'nvidia'] as const;
 

@@ -86,6 +86,35 @@ describe('OpenRouterEmbeddingClient', () => {
     ]);
   });
 
+  it('passes query and passage input types when configured', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(createJsonResponse({ data: [{ embedding: [0.1, 0.2] }] }))
+      .mockResolvedValueOnce(createJsonResponse({ data: [{ embedding: [0.3, 0.4] }] }));
+
+    const client = new OpenRouterEmbeddingClient({
+      apiKey: 'test-key',
+      model: 'nvidia/llama-nemotron-embed-1b-v2',
+      queryInputType: 'query',
+      chunkInputType: 'passage',
+      fetchImpl: fetchMock,
+    });
+
+    await client.embedQuery('what is risk?');
+    await client.embedChunks(['risk disclosure']);
+
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({
+      model: 'nvidia/llama-nemotron-embed-1b-v2',
+      input: ['what is risk?'],
+      input_type: 'query',
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      model: 'nvidia/llama-nemotron-embed-1b-v2',
+      input: ['risk disclosure'],
+      input_type: 'passage',
+    });
+  });
+
   it('embedChunks([]) returns [] and does not call fetch', async () => {
     const fetchMock = vi.fn();
     const client = new OpenRouterEmbeddingClient({

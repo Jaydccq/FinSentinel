@@ -84,12 +84,28 @@ variables, without breaking the existing OpenRouter default.
   @finsentinel/ai-runtime test`, `pnpm --filter @finsentinel/ai-runtime build`,
   and targeted API Vitest specs. All passed before committing the provider
   runtime and API changes together.
+- 2026-04-20: Selected `nvidia/nemotron-3-super-120b-a12b` for text generation
+  and `nvidia/llama-nemotron-embed-1b-v2` for RAG embeddings after confirming
+  both are available from the local NVIDIA token through `/v1/models`.
+- 2026-04-20: Live smoke tested the built ai-runtime package against NVIDIA:
+  `generateAgentText` returned `ok`, and query/passage embedding calls returned
+  2048-dimensional numeric vectors.
+- 2026-04-20: Added embedding `input_type` support so NVIDIA asymmetric
+  embedding models use `query` for retrieval queries and `passage` for indexed
+  chunks. Re-ran AI runtime tests, API provider/RAG tests, API typecheck, AI
+  runtime typecheck, and the expanded targeted API test set. Latest results:
+  AI runtime tests 4 files / 30 tests passed, targeted API tests 13 files /
+  103 tests passed, provider/RAG API tests 2 files / 26 tests passed.
 
 ## Key Decisions
 
 - Keep OpenRouter as the default provider to preserve current behavior.
 - Introduce NVIDIA as a text provider with `NVIDIA_API_KEY` and
   `NVIDIA_BASE_URL`, while retaining separate embedding variables.
+- Use `nvidia/nemotron-3-super-120b-a12b` as the local NVIDIA text model because
+  it is available through the token and suitable for agent/research workloads.
+- Use `nvidia/llama-nemotron-embed-1b-v2` for NVIDIA RAG embeddings. It requires
+  asymmetric `input_type` handling, which the runtime now sends automatically.
 - Do not store or log real API tokens.
 
 ## Risks And Blockers
@@ -99,13 +115,14 @@ variables, without breaking the existing OpenRouter default.
 - Some NVIDIA models may not support tool calling or every OpenAI extension
   used by the agent runtime. This integration disables nonessential OpenRouter
   compatibility assumptions for NVIDIA.
-- Live verification requires a real NVIDIA token, which is intentionally not
-  stored in the repository.
+- Switching embedding models requires reindexing stored RAG vectors so old and
+  new embedding dimensions are not mixed.
 
 ## Final Outcome
 
 Implemented NVIDIA Build model integration through provider-neutral AI runtime
-configuration. The existing OpenRouter default remains intact. NVIDIA usage
-requires `AI_PROVIDER=nvidia`, a valid `NVIDIA_API_KEY`, and an explicit
-`AI_MODEL` selected from the NVIDIA Build catalog. Live NVIDIA smoke testing was
-not run because no token was provided or stored.
+configuration. The existing OpenRouter default remains intact. The local `.env`
+now selects `nvidia/nemotron-3-super-120b-a12b` for text and
+`nvidia/llama-nemotron-embed-1b-v2` for embeddings. Live NVIDIA smoke testing
+passed using the local token without printing or storing the token in versioned
+files.

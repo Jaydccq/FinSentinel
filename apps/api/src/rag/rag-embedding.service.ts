@@ -10,10 +10,15 @@ export class RagEmbeddingService {
   constructor(
     @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
   ) {
+    const nvidiaInputTypes = this.aiCfg.embeddingProvider === 'nvidia'
+      ? { queryInputType: 'query' as const, chunkInputType: 'passage' as const }
+      : {};
+
     this.embeddingClient = new OpenAICompatibleEmbeddingClient({
       apiKey: this.aiCfg.embeddingApiKey ?? this.aiCfg.openrouterApiKey,
       baseUrl: this.aiCfg.embeddingBaseUrl ?? this.aiCfg.openrouterBaseUrl,
       model: this.aiCfg.embeddingModel,
+      ...nvidiaInputTypes,
     });
   }
 

@@ -1,9 +1,13 @@
 import { DEFAULT_OPENROUTER_BASE_URL } from './model';
 
+export type EmbeddingInputType = 'query' | 'passage';
+
 export interface OpenAICompatibleEmbeddingClientOptions {
   apiKey: string;
   model: string;
   baseUrl?: string;
+  queryInputType?: EmbeddingInputType;
+  chunkInputType?: EmbeddingInputType;
   fetchImpl?: typeof fetch;
 }
 
@@ -30,14 +34,24 @@ export class OpenAICompatibleEmbeddingClient {
   }
 
   async embedQuery(value: string): Promise<number[]> {
-    const embeddings = await this.embedChunks([value]);
+    const embeddings = await this.embedValues([value], this.options.queryInputType);
     return embeddings[0] ?? [];
   }
 
   async embedChunks(values: string[]): Promise<number[][]> {
+    return this.embedValues(values, this.options.chunkInputType);
+  }
+
+  private async embedValues(values: string[], inputType: EmbeddingInputType | undefined): Promise<number[][]> {
     if (values.length === 0) {
       return [];
     }
+
+    const requestBody = {
+      model: this.options.model,
+      input: values,
+      ...(inputType ? { input_type: inputType } : {}),
+    };
 
     const response = await this.fetchImpl(`${this.baseUrl}/embeddings`, {
       method: 'POST',
@@ -45,10 +59,7 @@ export class OpenAICompatibleEmbeddingClient {
         Authorization: `Bearer ${this.options.apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model: this.options.model,
-        input: values,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
