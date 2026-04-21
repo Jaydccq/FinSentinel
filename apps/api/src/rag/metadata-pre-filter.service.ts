@@ -3,6 +3,17 @@ import type { QueryClass } from './retrieval-planner.service';
 import type { SparseSearchFilters } from './sparse-search.service';
 import type { ExtractedEntities } from './query-entity-extractor.service';
 
+/**
+ * Format a Date as YYYY-MM-DD in UTC. Matches the shape that
+ * SparseSearchService compares against `metadata->>'date'` (which is stored
+ * as an ISO date string by the ingestion pipeline). Module-scoped so the
+ * small cost of declaring it is not paid on every buildFilter call.
+ */
+function formatIsoDate(d: Date): string {
+  const iso = d.toISOString();
+  return iso.slice(0, 10);
+}
+
 export type PreFilterMode = 'off' | 'soft' | 'hard';
 
 export interface PreFilterConfig {
@@ -80,8 +91,24 @@ export class MetadataPreFilterService {
       .filter((t) => t.confidence < hardMinConfidence)
       .map((t) => t.value);
 
+    // P3.1 ([RAG-TD-R4-06]): promote high-confidence docType / timeRange into
+    // hardFilter. Explicit caller-supplied filters win on conflict, so put
+    // extracted values BEFORE the explicit spread below.
+    const extractedDocType =
+      extracted.docType && extracted.docType.confidence >= hardMinConfidence
+        ? extracted.docType.value
+        : undefined;
+    const extractedAfterDate =
+      extracted.timeRange &&
+      extracted.timeRange.after !== undefined &&
+      extracted.timeRange.confidence >= hardMinConfidence
+        ? formatIsoDate(extracted.timeRange.after)
+        : undefined;
+
     const hardFilter: SparseSearchFilters & { tickers?: string[]; issuerName?: string[] } = {
-      ...explicitFilters,
+      ...(extractedDocType ? { docType: extractedDocType } : {}),
+      ...(extractedAfterDate ? { afterDate: extractedAfterDate } : {}),
+      ...explicitFilters, // explicit wins on conflict
       ...(highTickers.length ? { tickers: highTickers } : {}),
       ...(highIssuers.length ? { issuerName: highIssuers } : {}),
     };

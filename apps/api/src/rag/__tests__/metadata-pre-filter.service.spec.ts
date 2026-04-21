@@ -70,6 +70,89 @@ describe('MetadataPreFilterService.buildFilter (R4.2)', () => {
     expect(r.softFilter).toBeUndefined();
     expect(r.appliedMode).toBe('soft');
   });
+
+  // ── P3.1: docType + timeRange routing (closes [RAG-TD-R4-06]) ───────────────
+
+  it('mode=soft: high-confidence docType is routed into hardFilter.docType', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('q', 'exact_lookup', {}, buildExtracted({
+      docType: { value: '10-K', confidence: 0.9 },
+    }));
+    expect(r.hardFilter.docType).toBe('10-K');
+  });
+
+  it('mode=soft: low-confidence docType is dropped (not routed, not softly)', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('q', 'exact_lookup', {}, buildExtracted({
+      docType: { value: '10-K', confidence: 0.5 },
+    }));
+    expect(r.hardFilter.docType).toBeUndefined();
+  });
+
+  it('explicit caller-supplied docType wins over extracted', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('q', 'exact_lookup', { docType: '10-Q' }, buildExtracted({
+      docType: { value: '10-K', confidence: 0.95 },
+    }));
+    expect(r.hardFilter.docType).toBe('10-Q');
+  });
+
+  it('mode=soft: high-confidence timeRange.after becomes hardFilter.afterDate (ISO yyyy-mm-dd)', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('q', 'factoid', {}, buildExtracted({
+      timeRange: { after: new Date('2024-01-01T00:00:00.000Z'), confidence: 0.95 },
+    }));
+    expect(r.hardFilter.afterDate).toBe('2024-01-01');
+  });
+
+  it('mode=soft: low-confidence timeRange is dropped', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('q', 'factoid', {}, buildExtracted({
+      timeRange: { after: new Date('2024-01-01T00:00:00.000Z'), confidence: 0.5 },
+    }));
+    expect(r.hardFilter.afterDate).toBeUndefined();
+  });
+
+  it('explicit caller-supplied afterDate wins over extracted timeRange', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('q', 'factoid', { afterDate: '2023-07-01' }, buildExtracted({
+      timeRange: { after: new Date('2024-01-01T00:00:00.000Z'), confidence: 0.95 },
+    }));
+    expect(r.hardFilter.afterDate).toBe('2023-07-01');
+  });
+
+  it('timeRange without .after is ignored (only .after maps to afterDate today)', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('q', 'factoid', {}, buildExtracted({
+      timeRange: { before: new Date('2024-12-31T00:00:00.000Z'), confidence: 0.95 },
+    }));
+    expect(r.hardFilter.afterDate).toBeUndefined();
+  });
+
+  it('mode=hard: docType and timeRange both promote into hardFilter', () => {
+    const s = new MetadataPreFilterService({ mode: 'hard', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('AAPL 10-K FY2024', 'exact_lookup', {}, buildExtracted({
+      tickers: [{ value: 'AAPL', confidence: 0.99 }],
+      docType: { value: '10-K', confidence: 0.9 },
+      timeRange: { after: new Date('2024-01-01T00:00:00.000Z'), confidence: 0.95 },
+    }));
+    expect(r.hardFilter).toMatchObject({
+      docType: '10-K',
+      afterDate: '2024-01-01',
+      tickers: ['AAPL'],
+    });
+  });
+
+  it('mode=off: extracted docType/timeRange are NOT routed (passthrough)', () => {
+    const s = new MetadataPreFilterService({ mode: 'off', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('q', 'exact_lookup', {}, buildExtracted({
+      docType: { value: '10-K', confidence: 0.95 },
+      timeRange: { after: new Date('2024-01-01T00:00:00.000Z'), confidence: 0.95 },
+    }));
+    expect(r.hardFilter.docType).toBeUndefined();
+    expect(r.hardFilter.afterDate).toBeUndefined();
+    expect(r.appliedMode).toBe('off');
+  });
 });
 
 describe('MetadataPreFilterService.shouldDowngrade', () => {

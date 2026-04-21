@@ -56,6 +56,34 @@
      `wave2-buckets.yaml`. Tracked for P1 follow-up; P2–P5 can
      proceed against the current gate in the meantime.
 
+### V16 migration fails on a fresh DB — `embedding vector` lacks HNSW dimensions
+
+- **Observed:** 2026-04-21 while attempting to apply migrations to a
+  fresh `finsentinel_test` DB to validate V20 (GIN index) for P3.4 of
+  `docs/exec-plans/2026-04-21-rag-quality-next-steps.md`.
+- **Command:** `DATABASE_URL=... pnpm --filter @finsentinel/db db:migrate`
+- **Failure:** V16 declares
+  `document_chunk_representations.embedding vector` without a dimension
+  (`vector` not `vector(1536)`), then tries to create
+  `idx_dcr_embedding_hnsw ... USING hnsw (embedding vector_cosine_ops)`.
+  HNSW requires a typed-dimension column, so Postgres errors with
+  `column does not have dimensions` (pgvector `hnswbuild.c:679`).
+- **Impact:** (a) new developers cannot bootstrap a local dev DB from
+  migrations alone; (b) CI eval workflows that spin up ephemeral
+  Postgres containers may be passing only because they bypass some
+  migrations, or a future tightening will fail; (c) V20 and later
+  migrations cannot be end-to-end validated on a fresh DB until this
+  lands.
+- **Likely fix path:** Specify a dimension on the embedding column.
+  The existing dev DB was already migrated before this bug mattered,
+  so the fix needs either (1) a new migration that runs
+  `ALTER TABLE ... ALTER COLUMN embedding TYPE vector(N)` and matches
+  on the schema_versions hash, or (2) edit V16 with an operator-only
+  in-place rehash (risky — the existing DB has a non-null hash
+  already). Scope decision required.
+- **Status:** Open — pre-existing. Not in scope for P3.4, but blocks
+  full validation of new migrations.
+
 ### `apps/web` full lint is blocked by pre-existing violations
 
 - **Observed:** 2026-04-18 while verifying the Operator Console Timeline UI.
