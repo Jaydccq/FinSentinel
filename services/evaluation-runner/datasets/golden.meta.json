@@ -1,5 +1,5 @@
 {
-  "version": "2.0",
+  "version": "2.1",
   "created_at": "2026-04-21",
   "entry_count": 100,
   "supersedes": "2026-04-06 synthetic 25-entry golden.json",
@@ -11,7 +11,8 @@
     "rag_query_logs": 0,
     "chat_messages": 0,
     "agent_events": 0,
-    "reverse_engineered_synthetic": 100
+    "reverse_engineered_synthetic": 70,
+    "natural_phrasing_synthetic": 30
   },
   "sop_doc": "docs/runbooks/2026-04-21-golden-set-labeling-sop.md",
   "corpus_source": "services/evaluation-runner/datasets/corpus.json",
@@ -32,6 +33,7 @@
     "Every cross_document entry cites chunks from >=2 distinct source_doc values (verified).",
     "Every long_doc entry cites >=2 chunks from the same source_doc (verified).",
     "Two entries (gs-075, gs-079) were re-tagged by Claude post-codex because codex's bucket label conflicted with its own chunk selection: gs-075 cited chunks across 2 docs so long_doc -> cross_document; gs-079 cited chunks from only 1 doc so cross_document -> long_doc.",
-    "This set is labelled reverse_engineered_synthetic — not real user queries. Promote to rag_query_logs / chat_messages provenance once staging access lands; track under the tech-debt entry for RAG quality work."
+    "This set is labelled reverse_engineered_synthetic — not real user queries. Promote to rag_query_logs / chat_messages provenance once staging access lands; track under the tech-debt entry for RAG quality work.",
+    "2026-04-21 v2.1: 30 queries rewritten from analyst-bot phrasings to natural conversational wordings a real investor/analyst would type. Original wording preserved in each entry.provenance_original_query. Semantic intent unchanged — same expected_chunk_ids still satisfy. Upgrades provenance from reverse_engineered_synthetic to natural_phrasing_synthetic for the rewritten subset; still not real user-captured queries, but closer to the target distribution."
   ]
 }

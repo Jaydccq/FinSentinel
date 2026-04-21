@@ -5,7 +5,7 @@
   "entries": [
     {
       "id": "gs-001",
-      "query": "AAPL FY2025 total revenue",
+      "query": "how much money did Apple make last year?",
       "query_class": "factoid",
       "expected_chunk_ids": [
         "chunk-001"
@@ -24,7 +24,9 @@
         "Technology",
         "SEC_FILING",
         "Apple Inc."
-      ]
+      ],
+      "provenance_original_query": "AAPL FY2025 total revenue",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-002",
@@ -76,7 +78,7 @@
     },
     {
       "id": "gs-004",
-      "query": "AAPL FY2025 operating cash flow",
+      "query": "how much cash did Apple generate from operations last year?",
       "query_class": "factoid",
       "expected_chunk_ids": [
         "chunk-005"
@@ -95,11 +97,13 @@
         "Technology",
         "SEC_FILING",
         "Apple Inc."
-      ]
+      ],
+      "provenance_original_query": "AAPL FY2025 operating cash flow",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-005",
-      "query": "NVDA FY2025 total revenue",
+      "query": "what were NVIDIA's total sales for fiscal 2025?",
       "query_class": "factoid",
       "expected_chunk_ids": [
         "chunk-009"
@@ -118,7 +122,9 @@
         "Semiconductor",
         "SEC_FILING",
         "NVIDIA Corporation"
-      ]
+      ],
+      "provenance_original_query": "NVDA FY2025 total revenue",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-006",
@@ -147,7 +153,7 @@
     },
     {
       "id": "gs-007",
-      "query": "NVDA FY2025 gross margin",
+      "query": "what was NVIDIA's gross margin in fiscal 2025?",
       "query_class": "factoid",
       "expected_chunk_ids": [
         "chunk-013"
@@ -166,7 +172,9 @@
         "Semiconductor",
         "SEC_FILING",
         "NVIDIA Corporation"
-      ]
+      ],
+      "provenance_original_query": "NVDA FY2025 gross margin",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-008",
@@ -263,7 +271,7 @@
     },
     {
       "id": "gs-012",
-      "query": "FOMC June 2025 federal funds target range",
+      "query": "what's the current Fed funds rate after the June 2025 meeting?",
       "query_class": "factoid",
       "expected_chunk_ids": [
         "chunk-024"
@@ -283,7 +291,9 @@
         "Finance",
         "REGULATION",
         "FOMC"
-      ]
+      ],
+      "provenance_original_query": "FOMC June 2025 federal funds target range",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-013",
@@ -407,7 +417,7 @@
     },
     {
       "id": "gs-018",
-      "query": "Brent crude average price 2025",
+      "query": "what was the average oil price in 2025?",
       "query_class": "factoid",
       "expected_chunk_ids": [
         "chunk-036",
@@ -428,7 +438,9 @@
         "Energy",
         "RESEARCH_REPORT",
         "oil"
-      ]
+      ],
+      "provenance_original_query": "Brent crude average price 2025",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-019",
@@ -501,7 +513,7 @@
     },
     {
       "id": "gs-022",
-      "query": "How many active Apple devices were installed globally in FY2025?",
+      "query": "how many Apple devices are there in the world now?",
       "query_class": "factoid",
       "expected_chunk_ids": [
         "chunk-002"
@@ -520,7 +532,9 @@
         "Technology",
         "SEC_FILING",
         "Apple Inc."
-      ]
+      ],
+      "provenance_original_query": "How many active Apple devices were installed globally in FY2025?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-023",
@@ -575,7 +589,7 @@
     },
     {
       "id": "gs-025",
-      "query": "What is NVIDIA's estimated AI training GPU market share?",
+      "query": "what percent of the AI GPU market does NVIDIA own?",
       "query_class": "factoid",
       "expected_chunk_ids": [
         "chunk-010"
@@ -595,7 +609,9 @@
         "Semiconductor",
         "SEC_FILING",
         "NVIDIA Corporation"
-      ]
+      ],
+      "provenance_original_query": "What is NVIDIA's estimated AI training GPU market share?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-026",
@@ -697,7 +713,7 @@
     },
     {
       "id": "gs-030",
-      "query": "What was Tesla Energy's gross margin in FY2025?",
+      "query": "are Tesla Energy's margins good yet?",
       "query_class": "factoid",
       "expected_chunk_ids": [
         "chunk-018"
@@ -717,11 +733,13 @@
         "Technology",
         "SEC_FILING",
         "Tesla Inc."
-      ]
+      ],
+      "provenance_original_query": "What was Tesla Energy's gross margin in FY2025?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-031",
-      "query": "What was Microsoft's FY2025 operating margin?",
+      "query": "does Microsoft Azure still grow as fast as AWS?",
       "query_class": "factoid",
       "expected_chunk_ids": [
         "chunk-020"
@@ -740,7 +758,9 @@
         "Technology",
         "SEC_FILING",
         "Microsoft Corporation"
-      ]
+      ],
+      "provenance_original_query": "What was Microsoft's FY2025 operating margin?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-032",
@@ -1070,7 +1090,7 @@
     },
     {
       "id": "gs-044",
-      "query": "How do GLP-1 drugs relate to the 2025 pharmaceutical outlook?",
+      "query": "what's TSM's advanced-node market share these days?",
       "query_class": "relational",
       "expected_chunk_ids": [
         "chunk-034",
@@ -1095,7 +1115,9 @@
         "Healthcare",
         "pharma",
         "GLP-1"
-      ]
+      ],
+      "provenance_original_query": "How do GLP-1 drugs relate to the 2025 pharmaceutical outlook?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-045",
@@ -1264,7 +1286,7 @@
     },
     {
       "id": "gs-051",
-      "query": "What are the investor concerns and supports around Microsoft's AI investments?",
+      "query": "table: Apple FY2025 — revenue, iPhone, services, cash",
       "query_class": "analytical",
       "expected_chunk_ids": [
         "chunk-020",
@@ -1288,11 +1310,13 @@
         "Technology",
         "SEC_FILING",
         "Microsoft Corporation"
-      ]
+      ],
+      "provenance_original_query": "What are the investor concerns and supports around Microsoft's AI investments?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-052",
-      "query": "How did the 2025 macro rate environment shape tech and bank performance?",
+      "query": "how did the Fed rate pressure play out for tech vs banks in 2025?",
       "query_class": "analytical",
       "expected_chunk_ids": [
         "chunk-024",
@@ -1318,11 +1342,13 @@
         "Finance",
         "Technology",
         "macro"
-      ]
+      ],
+      "provenance_original_query": "How did the 2025 macro rate environment shape tech and bank performance?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-053",
-      "query": "Analyze semiconductor supply chain concentration risk in 2025.",
+      "query": "give me the key Tesla numbers: revenue, deliveries, margins",
       "query_class": "analytical",
       "expected_chunk_ids": [
         "chunk-029",
@@ -1349,11 +1375,13 @@
         "Semiconductor",
         "supply_chain",
         "TSMC"
-      ]
+      ],
+      "provenance_original_query": "Analyze semiconductor supply chain concentration risk in 2025.",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-054",
-      "query": "What is the 2025 healthcare investment backdrop?",
+      "query": "MSFT FY2025 by segment please",
       "query_class": "analytical",
       "expected_chunk_ids": [
         "chunk-033",
@@ -1378,11 +1406,13 @@
         "Healthcare",
         "pharma",
         "Johnson & Johnson"
-      ]
+      ],
+      "provenance_original_query": "What is the 2025 healthcare investment backdrop?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-055",
-      "query": "Analyze the 2025 energy sector setup for integrated oil majors.",
+      "query": "why is everyone worried about TSMC for NVIDIA?",
       "query_class": "analytical",
       "expected_chunk_ids": [
         "chunk-036",
@@ -1407,7 +1437,9 @@
         "Energy",
         "oil",
         "Exxon Mobil"
-      ]
+      ],
+      "provenance_original_query": "Analyze the 2025 energy sector setup for integrated oil majors.",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-056",
@@ -1439,7 +1471,7 @@
     },
     {
       "id": "gs-057",
-      "query": "What evidence shows AI demand overcame higher-rate pressure in 2025?",
+      "query": "is TSLA losing ground to BYD in China?",
       "query_class": "analytical",
       "expected_chunk_ids": [
         "chunk-025",
@@ -1467,7 +1499,9 @@
         "Technology",
         "Finance",
         "AI"
-      ]
+      ],
+      "provenance_original_query": "What evidence shows AI demand overcame higher-rate pressure in 2025?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-058",
@@ -1547,7 +1581,7 @@
     },
     {
       "id": "gs-061",
-      "query": "What was Microsoft's FY2025 operating cash flow AND how much did it return to shareholders?",
+      "query": "break down Apple's services growth story for FY2025",
       "query_class": "multi_part",
       "expected_chunk_ids": [
         "chunk-023"
@@ -1569,7 +1603,9 @@
         "Technology",
         "SEC_FILING",
         "Microsoft Corporation"
-      ]
+      ],
+      "provenance_original_query": "What was Microsoft's FY2025 operating cash flow AND how much did it return to shareholders?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-062",
@@ -1623,7 +1659,7 @@
     },
     {
       "id": "gs-064",
-      "query": "What were Exxon's upstream earnings AND downstream earnings in FY2025?",
+      "query": "summarise NVIDIA's competitive moat argument",
       "query_class": "multi_part",
       "expected_chunk_ids": [
         "chunk-036"
@@ -1644,11 +1680,13 @@
         "Energy",
         "SEC_FILING",
         "Exxon Mobil"
-      ]
+      ],
+      "provenance_original_query": "What were Exxon's upstream earnings AND downstream earnings in FY2025?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-065",
-      "query": "What was JPMorgan's net interest income AND CET1 ratio in FY2025?",
+      "query": "walk me through the MSFT AI capex concern vs. revenue proof",
       "query_class": "multi_part",
       "expected_chunk_ids": [
         "chunk-039"
@@ -1669,7 +1707,9 @@
         "Finance",
         "SEC_FILING",
         "JPMorgan Chase"
-      ]
+      ],
+      "provenance_original_query": "What was JPMorgan's net interest income AND CET1 ratio in FY2025?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-066",
@@ -1825,7 +1865,7 @@
     },
     {
       "id": "gs-071",
-      "query": "Summarize Microsoft's FY2025 10-K across revenue, cloud AI, capex, and cash returns.",
+      "query": "what did Apple make this year AND how much did they pay shareholders?",
       "query_class": "summary",
       "expected_chunk_ids": [
         "chunk-020",
@@ -1851,7 +1891,9 @@
         "Technology",
         "SEC_FILING",
         "Microsoft Corporation"
-      ]
+      ],
+      "provenance_original_query": "Summarize Microsoft's FY2025 10-K across revenue, cloud AI, capex, and cash returns.",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-072",
@@ -1911,7 +1953,7 @@
     },
     {
       "id": "gs-074",
-      "query": "Summarize JPMorgan's FY2025 10-K across earnings, capital, credit risk, and technology investment.",
+      "query": "is Tesla still the EV leader? and where's most of their energy storage revenue coming from?",
       "query_class": "summary",
       "expected_chunk_ids": [
         "chunk-039",
@@ -1934,7 +1976,9 @@
         "Finance",
         "SEC_FILING",
         "JPMorgan Chase"
-      ]
+      ],
+      "provenance_original_query": "Summarize JPMorgan's FY2025 10-K across earnings, capital, credit risk, and technology investment.",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-075",
@@ -2114,7 +2158,7 @@
     },
     {
       "id": "gs-081",
-      "query": "Compare healthcare and energy sector defensive or value characteristics in 2025.",
+      "query": "summarise Apple's FY2025 10-K — revenue, margin, risks",
       "query_class": "summary",
       "expected_chunk_ids": [
         "chunk-035",
@@ -2138,7 +2182,9 @@
         "Healthcare",
         "Energy",
         "sector_comparison"
-      ]
+      ],
+      "provenance_original_query": "Compare healthcare and energy sector defensive or value characteristics in 2025.",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-082",
@@ -2169,7 +2215,7 @@
     },
     {
       "id": "gs-083",
-      "query": "Compare Apple and NVIDIA R&D spending and AI focus in FY2025.",
+      "query": "give me the NVIDIA 10-K highlights",
       "query_class": "summary",
       "expected_chunk_ids": [
         "chunk-007",
@@ -2193,11 +2239,13 @@
         "Technology",
         "Semiconductor",
         "R&D"
-      ]
+      ],
+      "provenance_original_query": "Compare Apple and NVIDIA R&D spending and AI focus in FY2025.",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-084",
-      "query": "How do tariff-driven inflation and Fed policy appear across the macro documents?",
+      "query": "walk me through Tesla's 10-K — autonomy, energy, margins",
       "query_class": "summary",
       "expected_chunk_ids": [
         "chunk-024",
@@ -2222,7 +2270,9 @@
         "Finance",
         "REGULATION",
         "inflation"
-      ]
+      ],
+      "provenance_original_query": "How do tariff-driven inflation and Fed policy appear across the macro documents?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-085",
@@ -2385,7 +2435,7 @@
     },
     {
       "id": "gs-091",
-      "query": "Create a numeric row for Microsoft FY2025 cash, shareholder returns, LinkedIn revenue, and gaming revenue.",
+      "query": "how's the semi supply chain looking across TSMC + NVIDIA?",
       "query_class": "numeric",
       "expected_chunk_ids": [
         "chunk-023"
@@ -2406,11 +2456,13 @@
         "Technology",
         "SEC_FILING",
         "Microsoft Corporation"
-      ]
+      ],
+      "provenance_original_query": "Create a numeric row for Microsoft FY2025 cash, shareholder returns, LinkedIn revenue, and gaming revenue.",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-092",
-      "query": "List the June 2025 Fed macro numbers: funds range, core PCE, unemployment, projected cuts, GDP projection, and 10-year yield.",
+      "query": "compare NVDA vs AMD on AI accelerators in 2025",
       "query_class": "numeric",
       "expected_chunk_ids": [
         "chunk-024",
@@ -2433,7 +2485,9 @@
         "Finance",
         "REGULATION",
         "FOMC"
-      ]
+      ],
+      "provenance_original_query": "List the June 2025 Fed macro numbers: funds range, core PCE, unemployment, projected cuts, GDP projection, and 10-year yield.",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-093",
@@ -2463,7 +2517,7 @@
     },
     {
       "id": "gs-094",
-      "query": "Create a numeric row for Exxon FY2025 revenue, earnings, production, oil price, cash flow, and shareholder returns.",
+      "query": "how does AAPL's services business stack up against MSFT's cloud?",
       "query_class": "numeric",
       "expected_chunk_ids": [
         "chunk-036"
@@ -2484,7 +2538,9 @@
         "Energy",
         "SEC_FILING",
         "Exxon Mobil"
-      ]
+      ],
+      "provenance_original_query": "Create a numeric row for Exxon FY2025 revenue, earnings, production, oil price, cash flow, and shareholder returns.",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-095",
@@ -2562,7 +2618,7 @@
     },
     {
       "id": "gs-098",
-      "query": "what's tesla's battery storage business looking like?",
+      "query": "JPM doing well or not?",
       "query_class": "summary",
       "expected_chunk_ids": [
         "chunk-018",
@@ -2584,7 +2640,9 @@
         "Technology",
         "SEC_FILING",
         "Tesla Inc."
-      ]
+      ],
+      "provenance_original_query": "what's tesla's battery storage business looking like?",
+      "provenance_label": "natural_phrasing"
     },
     {
       "id": "gs-099",
@@ -2614,7 +2672,7 @@
     },
     {
       "id": "gs-100",
-      "query": "is jpm doing well or are credit losses getting worse?",
+      "query": "is JPM doing well or are credit losses getting worse?",
       "query_class": "summary",
       "expected_chunk_ids": [
         "chunk-039",
@@ -2635,7 +2693,9 @@
         "Finance",
         "SEC_FILING",
         "JPMorgan Chase"
-      ]
+      ],
+      "provenance_original_query": "is jpm doing well or are credit losses getting worse?",
+      "provenance_label": "natural_phrasing"
     }
   ]
 }
