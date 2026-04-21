@@ -656,6 +656,21 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
     `rag_query_logs` / `chat_messages` once staging or a real local
     corpus is available.
 
+- 2026-04-21: Phase P2 deferred to staging. Localhost has an empty
+  `document_chunk_representations` table (representation enrichment
+  requires BullMQ + Redis + apps/api + an LLM API key, none up on the
+  dev box), so the wet-run backfill is trivially a no-op and the
+  exact_lookup bucket delta measurement is not meaningful. Verified
+  that the CLI under test still works by running the full
+  `pnpm --filter @finsentinel/api test` suite (1463 passed, 1 skipped)
+  — including `src/rag/admin/__tests__/rag-backfill-representation-sparse.cli.spec.ts`
+  which covers dry-run (zero UPDATEs), wet-run (updates every null row
+  once), idempotency (second pass = 0 updates), batch-size boundary,
+  and the `buildRepresentationTsvector()` SQL fragment shape.
+  The original P2.1-P2.5 staging steps remain the correct checklist
+  for when populated representations are available; see the top entry
+  of `docs/exec-plans/tech-debt-tracker.md`.
+
 ## Final Outcome
 
 Pending. This plan is the recommended next workstream after Wave 2: make the
