@@ -244,4 +244,82 @@ describe('SparseSearchService', () => {
       expect(sqlStr).toContain('{0.1,0.2,0.4,1}');
     });
   });
+
+  // ── P3.3: softFilter ts_rank_cd boost ([RAG-TD-R4-07]) ───────────────────
+
+  describe('softFilter ranking boost', () => {
+    it('emits a CASE ... 1.15 multiplier when softFilter.tickers is non-empty', async () => {
+      mockDb.execute.mockResolvedValueOnce([]);
+      await service.search(
+        'quarterly earnings',
+        { softFilter: { tickers: ['AAPL'] } },
+        5,
+      );
+
+      const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
+      // The emitted SQL must contain a CASE expression that multiplies the
+      // rank_score by 1.15 when metadata->tickers overlaps the soft tickers.
+      expect(sqlStr).toContain('CASE');
+      expect(sqlStr).toContain('1.15');
+      // Both the canonical (no alias) and rep (dc.) lane should see the boost.
+      expect(sqlStr).toContain("metadata->'tickers'");
+    });
+
+    it('emits a CASE multiplier when softFilter.issuerName is non-empty', async () => {
+      mockDb.execute.mockResolvedValueOnce([]);
+      await service.search(
+        'quarterly earnings',
+        { softFilter: { issuerName: ['Apple Inc.'] } },
+        5,
+      );
+
+      const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
+      expect(sqlStr).toContain('CASE');
+      expect(sqlStr).toContain('1.15');
+      expect(sqlStr).toContain("metadata->>'issuerName'");
+    });
+
+    it('no CASE boost when softFilter is undefined (current default path)', async () => {
+      mockDb.execute.mockResolvedValueOnce([]);
+      await service.search('revenue', {}, 5);
+
+      const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
+      // No CASE expression should appear in the baseline SQL.
+      expect(sqlStr).not.toContain('CASE');
+      expect(sqlStr).not.toContain('1.15');
+    });
+
+    it('empty softFilter arrays emit no CASE boost (length guard)', async () => {
+      mockDb.execute.mockResolvedValueOnce([]);
+      await service.search(
+        'revenue',
+        { softFilter: { tickers: [], issuerName: [] } },
+        5,
+      );
+
+      const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
+      expect(sqlStr).not.toContain('CASE');
+      expect(sqlStr).not.toContain('1.15');
+    });
+
+    it('softFilter is NOT used as a WHERE clause (non-matching rows stay retrievable)', async () => {
+      // Soft hints only boost ranking; they do not exclude non-matching rows.
+      // Regression guard: if future refactor accidentally puts softFilter into
+      // chunkFilterClauses / repFilterClauses, this test will fire because the
+      // baseline call count to mock rows (rank-only, not filtered) will change.
+      mockDb.execute.mockResolvedValueOnce([
+        { id: 'c-no-ticker', source_id: 'd', content: 'generic', metadata: {},
+          rank_score: 0.5, hit_count: 1 },
+        { id: 'c-with-ticker', source_id: 'd', content: 'generic',
+          metadata: { tickers: ['AAPL'] }, rank_score: 0.4, hit_count: 1 },
+      ]);
+      const hits = await service.search(
+        'generic',
+        { softFilter: { tickers: ['AAPL'] } },
+        5,
+      );
+      // Both rows must come back — soft hints never exclude.
+      expect(hits.map((h) => h.chunkId).sort()).toEqual(['c-no-ticker', 'c-with-ticker']);
+    });
+  });
 });

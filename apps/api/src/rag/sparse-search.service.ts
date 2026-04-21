@@ -10,7 +10,24 @@ export interface SparseSearchFilters {
   afterDate?: string;
   tickers?: string[];    // NEW — populated by MetadataPreFilterService; SQL consumption in R4.3
   issuerName?: string[]; // NEW — populated by MetadataPreFilterService; SQL consumption in R4.3
+  /**
+   * Soft hints from the metadata pre-filter. Non-matching rows stay
+   * retrievable; matching rows get a `ts_rank_cd` boost (see
+   * `SOFT_FILTER_MULTIPLIER`). P3.3 / [RAG-TD-R4-07].
+   */
+  softFilter?: {
+    tickers?: string[];
+    issuerName?: string[];
+  };
 }
+
+/**
+ * Multiplier applied to `ts_rank_cd` when a row matches a `softFilter` hint.
+ * 1.15 chosen deliberately small so it re-ranks without dominating the
+ * absolute score. Raise toward 1.25 if live eval on relational/factoid
+ * buckets shows insufficient precision movement.
+ */
+export const SOFT_FILTER_MULTIPLIER = 1.15;
 
 export interface SparseCandidate {
   chunkId: string;
@@ -126,6 +143,49 @@ export class SparseSearchService {
       repFilterClauses.push(sql`dc.metadata->>'issuerName' = ANY(${filters.issuerName}::text[])`);
     }
 
+    // P3.3 ([RAG-TD-R4-07]): soft hints rank-boost but do NOT restrict.
+    // Build a multiplier expression per lane — CASE WHEN <soft-match>
+    // THEN SOFT_FILTER_MULTIPLIER ELSE 1.0 END — applied as
+    // ts_rank_cd(...) * <boost>. When no soft hints apply, the multiplier
+    // collapses to constant 1.0 so the planner sees no change.
+    const softTickers = filters.softFilter?.tickers;
+    const softIssuers = filters.softFilter?.issuerName;
+    const hasAnySoft = (softTickers && softTickers.length > 0)
+      || (softIssuers && softIssuers.length > 0);
+
+    // Helper: build the canonical-lane CASE (no table alias on metadata).
+    const canonicalCaseArms = [];
+    if (softTickers && softTickers.length > 0) {
+      canonicalCaseArms.push(
+        sql`WHEN (metadata->'tickers') ?| ${softTickers}::text[] THEN ${SOFT_FILTER_MULTIPLIER}`,
+      );
+    }
+    if (softIssuers && softIssuers.length > 0) {
+      canonicalCaseArms.push(
+        sql`WHEN metadata->>'issuerName' = ANY(${softIssuers}::text[]) THEN ${SOFT_FILTER_MULTIPLIER}`,
+      );
+    }
+    const canonicalBoost = hasAnySoft
+      ? sql`CASE ${sql.join(canonicalCaseArms, sql` `)} ELSE 1.0 END`
+      : sql`1.0`;
+
+    // Rep lane uses `dc.metadata` because the JOIN brings the canonical
+    // metadata into scope under the `dc` alias.
+    const repCaseArms = [];
+    if (softTickers && softTickers.length > 0) {
+      repCaseArms.push(
+        sql`WHEN (dc.metadata->'tickers') ?| ${softTickers}::text[] THEN ${SOFT_FILTER_MULTIPLIER}`,
+      );
+    }
+    if (softIssuers && softIssuers.length > 0) {
+      repCaseArms.push(
+        sql`WHEN dc.metadata->>'issuerName' = ANY(${softIssuers}::text[]) THEN ${SOFT_FILTER_MULTIPLIER}`,
+      );
+    }
+    const repBoost = hasAnySoft
+      ? sql`CASE ${sql.join(repCaseArms, sql` `)} ELSE 1.0 END`
+      : sql`1.0`;
+
     const rows = await this.db.execute(sql`
       WITH canonical_ranked AS (
         SELECT
@@ -133,7 +193,8 @@ export class SparseSearchService {
           source_id,
           content,
           metadata,
-          ts_rank_cd(${weights}::float4[], search_vector, websearch_to_tsquery('simple', ${query})) AS rank_score
+          ts_rank_cd(${weights}::float4[], search_vector, websearch_to_tsquery('simple', ${query}))
+            * (${canonicalBoost}) AS rank_score
         FROM document_chunks
         WHERE ${sql.join(chunkFilterClauses, sql` AND `)}
         ORDER BY rank_score DESC
@@ -145,7 +206,10 @@ export class SparseSearchService {
           dc.source_id,
           dc.content,
           dc.metadata,
-          MAX(ts_rank_cd(${weights}::float4[], r.search_vector, websearch_to_tsquery('simple', ${query}))) AS rank_score
+          MAX(
+            ts_rank_cd(${weights}::float4[], r.search_vector, websearch_to_tsquery('simple', ${query}))
+              * (${repBoost})
+          ) AS rank_score
         FROM document_chunk_representations r
         JOIN document_chunks dc ON dc.id = r.chunk_id
         WHERE ${sql.join(repFilterClauses, sql` AND `)}

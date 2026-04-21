@@ -68,12 +68,21 @@ export class RetrievalOrchestratorService {
       extracted,
     );
 
-    // Strip PreFilter-only fields so downstream lanes see a plain SparseSearchFilters.
-    // R4.3 will use `softFilter` as a per-lane ORDER BY boost (non-matching rows
-    // stay retrievable; matching rows rank higher). For now we only consume the
-    // hardFilter. softFilter is a future task — do NOT consume it here.
-    const { candidateDocIds: _unused, appliedMode: _appliedMode, softFilter: _soft, hardFilter } = preFilter;
-    const effectiveFilters = hardFilter;
+    // P3.3 ([RAG-TD-R4-07]): softFilter now travels downstream to the sparse
+    // lane as a CASE-based ts_rank_cd multiplier. Non-matching rows stay
+    // retrievable; matching rows get a small precision boost. The dense lane
+    // still ignores softFilter (its inner RRF has no ranking-boost surface
+    // equivalent to ts_rank_cd) — this is intentional.
+    const { candidateDocIds: _unused, appliedMode: _appliedMode, softFilter, hardFilter } = preFilter;
+    const effectiveFilters: SparseSearchFilters = softFilter
+      ? {
+          ...hardFilter,
+          softFilter: {
+            ...(softFilter.tickers ? { tickers: softFilter.tickers } : {}),
+            ...(softFilter.issuerName ? { issuerName: softFilter.issuerName } : {}),
+          },
+        }
+      : hardFilter;
 
     // R4.5: determine whether the hard filter carried ticker/issuer hints.
     // The orchestrator owns this check because MetadataPreFilterService cannot
