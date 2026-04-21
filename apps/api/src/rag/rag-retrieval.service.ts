@@ -338,8 +338,15 @@ export class RagRetrievalService {
       }
 
       const expandStart = Date.now();
+      // P5: thread plan.queryClass into the expander so its conditional
+      // gate (RAG_CONTEXT_EXPANSION_CLASSES + RAG_CONTEXT_EXPANSION_MIN_DOC_TOKENS)
+      // can decide whether expansion is worth the token cost for this query.
       const expanded = this.contextExpander
-        ? await this.contextExpander.expand(reranked, { neighborChunks: 1, fetchParentSection: true })
+        ? await this.contextExpander.expand(reranked, {
+            queryClass: plan.queryClass,
+            neighborChunks: 1,
+            fetchParentSection: true,
+          })
         : reranked;
       timingsMs['expand'] = Date.now() - expandStart;
 
