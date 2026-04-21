@@ -1,0 +1,37 @@
+{
+  "version": "2.0",
+  "created_at": "2026-04-21",
+  "entry_count": 100,
+  "supersedes": "2026-04-06 synthetic 25-entry golden.json",
+  "labeler_primary": "openai-codex-cli",
+  "labeler_reviewer": "claude-opus-4-7 + python validator",
+  "labeling_mode": "codex-consult",
+  "reviewer_sample_pct": 100,
+  "provenance_split": {
+    "rag_query_logs": 0,
+    "chat_messages": 0,
+    "agent_events": 0,
+    "reverse_engineered_synthetic": 100
+  },
+  "sop_doc": "docs/runbooks/2026-04-21-golden-set-labeling-sop.md",
+  "corpus_source": "services/evaluation-runner/datasets/corpus.json",
+  "corpus_chunks": 41,
+  "bucket_distribution": {
+    "exact_lookup": 20,
+    "factoid": 15,
+    "relational": 12,
+    "analytical": 10,
+    "multi_part": 8,
+    "long_doc": 10,
+    "cross_document": 10,
+    "table_numeric": 10,
+    "colloquial": 5
+  },
+  "validation_notes": [
+    "All 100 expected_chunk_ids are real chunk_ids from corpus.json (41 available).",
+    "Every cross_document entry cites chunks from >=2 distinct source_doc values (verified).",
+    "Every long_doc entry cites >=2 chunks from the same source_doc (verified).",
+    "Two entries (gs-075, gs-079) were re-tagged by Claude post-codex because codex's bucket label conflicted with its own chunk selection: gs-075 cited chunks across 2 docs so long_doc -> cross_document; gs-079 cited chunks from only 1 doc so cross_document -> long_doc.",
+    "This set is labelled reverse_engineered_synthetic — not real user queries. Promote to rag_query_logs / chat_messages provenance once staging access lands; track under the tech-debt entry for RAG quality work."
+  ]
+}

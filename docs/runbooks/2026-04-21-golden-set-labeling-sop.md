@@ -7,7 +7,16 @@ The goal is to replace the 25-entry synthetic `golden.json` with N ≥ 100
 bucket-tagged entries that have valid `expected_chunk_ids` against the
 corpus the evaluator actually retrieves from.
 
-## Bucket taxonomy — exactly one per query
+## Bucket taxonomy — exactly one primary bucket per query
+
+Buckets are stored in the entry's `tags` array (the evaluator's
+`--bucket` flag filters via `tags` in `topk_evaluator.py:63-67`).
+Taxonomy is the union of the five buckets already defined in
+`services/evaluation-runner/configs/wave2-buckets.yaml`
+(`exact_lookup`, `colloquial`, `cross_document`, `long_doc`,
+`table_numeric`) plus four additional buckets this plan needs for
+retrieval-shape coverage (`factoid`, `relational`, `analytical`,
+`multi_part`).
 
 | Bucket | Shape | Example |
 |---|---|---|
@@ -18,11 +27,22 @@ corpus the evaluator actually retrieves from.
 | `multi_part` | Compound query | "summarize 10-K risk factors AND list CEO changes" |
 | `long_doc` | Answer inside one report ≥ 20 k tokens | "Item 1A risk factors in Apple's 2024 10-K" |
 | `cross_document` | Requires two or more different documents | "compare Microsoft and Google cloud revenue guidance for 2025" |
+| `table_numeric` | Numeric answer or table-backed lookup | "NVIDIA FY2025 data center revenue and gross margin" |
+| `colloquial` | Conversational or informal phrasing | "how much cash does apple have right now" |
 
-Target distribution (total = 100):
-`exact_lookup 30 / factoid 20 / relational 15 / analytical 15 /
-multi_part 10 / long_doc 5 / cross_document 5`.
-±3 per bucket is acceptable.
+Target distribution (total = 100, ±3 per bucket is acceptable):
+
+| Bucket | Count |
+|---|---|
+| `exact_lookup` | 20 |
+| `factoid` | 15 |
+| `relational` | 12 |
+| `analytical` | 10 |
+| `multi_part` | 8 |
+| `long_doc` | 10 |
+| `cross_document` | 10 |
+| `table_numeric` | 10 |
+| `colloquial` | 5 |
 
 ## Provenance — in order of preference
 
