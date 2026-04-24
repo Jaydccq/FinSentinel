@@ -10,8 +10,8 @@ describe('requestIdMiddleware', () => {
 
     requestIdMiddleware()(req as never, res, next);
 
-    expect((req as { id: string }).id).toMatch(/^[0-9a-f]{8}-/);
-    expect(setHeader).toHaveBeenCalledWith(REQUEST_ID_HEADER, (req as { id: string }).id);
+    expect((req as unknown as { id: string }).id).toMatch(/^[0-9a-f]{8}-/);
+    expect(setHeader).toHaveBeenCalledWith(REQUEST_ID_HEADER, (req as unknown as { id: string }).id);
     expect(next).toHaveBeenCalledTimes(1);
   });
 
@@ -23,7 +23,7 @@ describe('requestIdMiddleware', () => {
 
     requestIdMiddleware()(req as never, res, next);
 
-    expect((req as { id: string }).id).toBe('upstream-trace-42');
+    expect((req as unknown as { id: string }).id).toBe('upstream-trace-42');
     expect(setHeader).toHaveBeenCalledWith(REQUEST_ID_HEADER, 'upstream-trace-42');
   });
 
@@ -34,6 +34,6 @@ describe('requestIdMiddleware', () => {
 
     requestIdMiddleware()(req as never, res, next);
 
-    expect((req as { id: string }).id).toMatch(/^[0-9a-f]{8}-/);
+    expect((req as unknown as { id: string }).id).toMatch(/^[0-9a-f]{8}-/);
   });
 });

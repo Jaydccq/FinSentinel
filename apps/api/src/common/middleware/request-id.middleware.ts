@@ -3,11 +3,14 @@ import type { Request, Response, NextFunction } from 'express';
 
 export const REQUEST_ID_HEADER = 'x-request-id';
 
-declare module 'express-serve-static-core' {
-  interface Request {
-    /** Per-request correlation ID (set by requestIdMiddleware). */
-    id?: string;
-  }
+/**
+ * Express Request augmented with a `.id` field set by `requestIdMiddleware`.
+ * Use this type at read sites (e.g. the global exception filter) when you
+ * need the correlation ID; doing this via a local type avoids needing a
+ * project-wide module-augmentation file just for one field.
+ */
+export interface RequestWithId extends Request {
+  id?: string;
 }
 
 /**
@@ -22,7 +25,7 @@ export function requestIdMiddleware() {
   return (req: Request, res: Response, next: NextFunction) => {
     const incoming = req.header(REQUEST_ID_HEADER);
     const id = incoming && incoming.length > 0 ? incoming : randomUUID();
-    req.id = id;
+    (req as RequestWithId).id = id;
     res.setHeader(REQUEST_ID_HEADER, id);
     next();
   };
