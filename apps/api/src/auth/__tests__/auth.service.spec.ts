@@ -94,28 +94,22 @@ describe('AuthService', () => {
       expect(insertedValues.password).toMatch(/^\$2[ab]\$/);
     });
 
-    it('throws ConflictException on duplicate username', async () => {
-      // Username check returns a match
-      mockDb._selectChain.limit.mockResolvedValueOnce([
-        { id: 'existing-id', username: 'alice' },
-      ]);
+    it('does NOT pre-SELECT for username/email — only INSERTs (race-free, P0-3)', async () => {
+      await authService.register({
+        username: 'alice',
+        email: 'alice@example.com',
+        password: 'Password1',
+      });
 
-      await expect(
-        authService.register({
-          username: 'alice',
-          email: 'alice@example.com',
-          password: 'Password1',
-        }),
-      ).rejects.toThrow(new ConflictException('Username already exists'));
+      expect(mockDb.select).not.toHaveBeenCalled();
+      expect(mockDb.insert).toHaveBeenCalled();
     });
 
-    it('throws ConflictException on duplicate email', async () => {
-      // First select (username check) returns empty
-      mockDb._selectChain.limit.mockResolvedValueOnce([]);
-      // Second select (email check) returns a match
-      mockDb._selectChain.limit.mockResolvedValueOnce([
-        { id: 'existing-id', email: 'alice@example.com' },
-      ]);
+    it('translates a Postgres unique-violation (23505) into a ConflictException', async () => {
+      const pgUniqueErr = Object.assign(new Error('duplicate key value'), {
+        code: '23505',
+      });
+      mockDb._insertChain.returning.mockRejectedValueOnce(pgUniqueErr);
 
       await expect(
         authService.register({
@@ -123,7 +117,24 @@ describe('AuthService', () => {
           email: 'alice@example.com',
           password: 'Password1',
         }),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(
+        new ConflictException('Username or email already exists'),
+      );
+    });
+
+    it('rethrows non-23505 DB errors unchanged', async () => {
+      const otherErr = Object.assign(new Error('connection refused'), {
+        code: '08006',
+      });
+      mockDb._insertChain.returning.mockRejectedValueOnce(otherErr);
+
+      await expect(
+        authService.register({
+          username: 'alice',
+          email: 'alice@example.com',
+          password: 'Password1',
+        }),
+      ).rejects.toThrow('connection refused');
     });
   });
 

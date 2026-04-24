@@ -24,44 +24,35 @@ export class AuthService {
   ) {}
 
   async register(request: RegisterRequest): Promise<AuthResponse> {
-    // 1. Check username uniqueness
-    const existingByUsername = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.username, request.username))
-      .limit(1);
-
-    if (existingByUsername.length > 0) {
-      throw new ConflictException('Username already exists');
-    }
-
-    // 2. Check email uniqueness
-    const existingByEmail = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.email, request.email))
-      .limit(1);
-
-    if (existingByEmail.length > 0) {
-      throw new ConflictException('Email already exists');
-    }
-
-    // 3. Hash password and create user
     const hashedPassword = await hash(request.password, BCRYPT_ROUNDS);
 
-    const rows = await this.db
-      .insert(users)
-      .values({
-        username: request.username,
-        email: request.email,
-        password: hashedPassword,
-        displayName: request.displayName ?? null,
-      })
-      .returning();
+    let created;
+    try {
+      const rows = await this.db
+        .insert(users)
+        .values({
+          username: request.username,
+          email: request.email,
+          password: hashedPassword,
+          displayName: request.displayName ?? null,
+        })
+        .returning();
+      created = rows[0]!;
+    } catch (err) {
+      // Postgres unique_violation. The DB-side UNIQUE constraints on
+      // users.username and users.email already exist (V1 schema), so this
+      // is the authoritative race-free check. We deliberately do NOT pre-SELECT —
+      // the previous read-then-insert pattern had a race window between the two
+      // checks and the insert.
+      if (
+        err instanceof Error &&
+        (err as { code?: string }).code === '23505'
+      ) {
+        throw new ConflictException('Username or email already exists');
+      }
+      throw err;
+    }
 
-    const created = rows[0]!;
-
-    // 4. Generate JWT
     const token = await this.jwtService.generateToken(
       created.username,
       created.id,
