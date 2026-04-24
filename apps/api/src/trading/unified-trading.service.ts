@@ -6,6 +6,7 @@ import type { DrizzleDB } from '@finsentinel/db';
 import { TradingMode, Contract, AgentEventType, SecurityType } from '@finsentinel/shared';
 import type { AgentEventType as AgentEventTypeValue } from '@finsentinel/shared';
 import type { UnifiedStageRequest, V2WalletResponse, V2CommitResponse, V2StagedResponse } from '@finsentinel/shared';
+import { stableStringify } from '@finsentinel/shared/utils';
 import { BrokerRegistry } from './broker-registry.service';
 import { PaperBroker } from './brokers/paper.broker';
 import type { MarketDataService } from '../market/market-data.service';
@@ -16,6 +17,8 @@ import type { PositionMap } from './engines/paper-trading.engine';
 
 const STAGING_KEY_PREFIX = 'uta:staging:';
 const PENDING_KEY_PREFIX = 'uta:pending:';
+const IDEM_COMMIT_KEY_PREFIX = 'uta:idem:';
+const IDEM_EXEC_KEY_PREFIX = 'uta:executed:';
 const STATE_TTL_SECONDS = 30 * 60; // 30 minutes
 const MAX_COMMIT_HISTORY = 100;
 const MAX_STAGING_SIZE = 50;
@@ -57,6 +60,25 @@ redis.call('EXPIRE', key, ttl)
 return #arr
 `;
 
+/**
+ * Atomic capture-and-clear of staging.
+ *
+ * KEYS[1] = staging key
+ *
+ * Returns: the staging payload as captured at script execution time, or nil
+ * if staging is empty / missing.
+ *
+ * After this returns, staging is empty. Any concurrent stage() call that
+ * lands later writes into a fresh staging area instead of being clobbered
+ * by a separate del() — which is the race the original 3-call sequence had.
+ */
+const LUA_ATOMIC_COMMIT = `
+local staging = redis.call('GET', KEYS[1])
+if not staging or staging == '[]' then return nil end
+redis.call('DEL', KEYS[1])
+return staging
+`;
+
 // ── SHA-256 helper ──────────────────────────────────────────────────────────
 
 function sha256(input: string): string {
@@ -88,6 +110,7 @@ interface CommitData {
     ledgerId?: string;
     runId?: string;
   };
+  idempotencyKey?: string;
 }
 
 // ── Service ─────────────────────────────────────────────────────────────────
@@ -193,50 +216,89 @@ export class UnifiedTradingService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Commit all staged operations. Generates a SHA-256 hash, moves ops to
-   * a pending key, and clears the staging area.
+   * Commit all staged operations. Atomically captures staging via a Lua script
+   * (no read-then-delete race), computes a deterministic SHA-256 hash from
+   * `(idempotencyKey ?? autoKey) | stableStringify(ops) | message`, stores the
+   * pending commit, and caches the idempotencyKey → hash mapping so client
+   * retries see the same hash without re-promoting staging.
    *
-   * @returns Object with hash and operation count.
+   * @param idempotencyKey  Stripe-style header value resolved at the controller
+   *                        boundary. Same key + same intent → same hash.
    */
   async commit(
     userId: string,
     message: string,
     metadata?: { ledgerId?: string; runId?: string },
+    idempotencyKey?: string,
   ): Promise<{ hash: string; count: number }> {
-    // Validate message
     if (!message || message.trim().length === 0) {
       throw new BadRequestException('Commit message must not be blank');
     }
 
-    // Read staging area
-    const ops = await this.getStagingArea(userId);
+    const stagingKey = STAGING_KEY_PREFIX + userId;
+    const pendingKey = PENDING_KEY_PREFIX + userId;
+    const idemCacheKey = idempotencyKey
+      ? IDEM_COMMIT_KEY_PREFIX + userId + ':' + idempotencyKey
+      : null;
+
+    // 1. Idempotency cache hit → return prior hash, do NOT touch staging.
+    if (idemCacheKey) {
+      const cachedHash = await this.redis.get(idemCacheKey);
+      if (cachedHash) {
+        const pendingRaw = await this.redis.get(pendingKey);
+        const count = pendingRaw
+          ? (JSON.parse(pendingRaw) as CommitData).operations.length
+          : 0;
+        this.logger.log(
+          `Idempotent commit hit user=${userId} key=${idempotencyKey} hash=${cachedHash.substring(0, 8)}...`,
+        );
+        return { hash: cachedHash, count };
+      }
+    }
+
+    // 2. Atomically capture and clear staging.
+    const stagingRaw = (await this.redis.eval(
+      LUA_ATOMIC_COMMIT,
+      1,
+      stagingKey,
+    )) as string | null;
+
+    if (!stagingRaw) {
+      throw new BadRequestException('Nothing staged — stage operations before committing');
+    }
+
+    const ops = JSON.parse(stagingRaw) as Record<string, unknown>[];
     if (ops.length === 0) {
       throw new BadRequestException('Nothing staged — stage operations before committing');
     }
 
-    // Generate SHA-256 hash: message + "|" + ops.toString() + "|" + timestamp
-    const timestamp = new Date().toISOString();
-    const hashInput = `${message}|${JSON.stringify(ops)}|${timestamp}`;
+    // 3. Deterministic hash. autoKey covers callers that don't pass a header.
+    const autoKey = `${userId}|${ops
+      .map((o) => String((o as { clientOrderId?: string }).clientOrderId ?? ''))
+      .filter(Boolean)
+      .sort()
+      .join(',')}`;
+    const hashKey = idempotencyKey ?? autoKey;
+    const hashInput = `${hashKey}|${stableStringify(ops)}|${message}`;
     const hash = sha256(hashInput);
 
-    // Build commit data
     const commitData: CommitData = {
       hash,
       message,
-      timestamp,
+      timestamp: new Date().toISOString(),
       operations: ops,
       ...(metadata ? { metadata } : {}),
+      ...(idempotencyKey ? { idempotencyKey } : {}),
     };
 
-    // Store as pending commit in Redis (single atomic setex)
-    const pendingKey = PENDING_KEY_PREFIX + userId;
     await this.redis.setex(pendingKey, STATE_TTL_SECONDS, JSON.stringify(commitData));
 
-    // Clear staging
-    await this.clearStagingArea(userId);
+    if (idemCacheKey) {
+      await this.redis.setex(idemCacheKey, STATE_TTL_SECONDS, hash);
+    }
 
     this.logger.log(
-      `Committed ${ops.length} operation(s) for user ${userId}, hash=${hash.substring(0, 8)}...`,
+      `Committed ${ops.length} op(s) user=${userId} hash=${hash.substring(0, 8)}... idem=${idempotencyKey ?? 'auto'}`,
     );
 
     return { hash, count: ops.length };
