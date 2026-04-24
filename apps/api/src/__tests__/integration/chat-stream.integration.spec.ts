@@ -28,9 +28,11 @@ describe('Chat Stream (integration)', () => {
     app = testApp.app;
     mockRedis = testApp.mockRedis;
 
-    // Register a user to get a JWT
+    // Register a user to get a JWT. SDK-style caller → X-Client: desktop so
+    // the token is returned in the response body (browser callers get cookie only).
     const registerRes = await request(app.getHttpServer())
       .post('/api/auth/register')
+      .set('X-Client', 'desktop')
       .send({
         username: 'chatuser',
         email: 'chat@example.com',

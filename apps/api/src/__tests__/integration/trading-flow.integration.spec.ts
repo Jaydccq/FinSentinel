@@ -27,9 +27,12 @@ describe('Trading Flow (integration)', () => {
     mockDb = testApp.mockDb;
     mockRedis = testApp.mockRedis;
 
-    // Register a user and get the JWT
+    // Register a user and get the JWT. The integration suite acts as an
+    // SDK-style caller, so it sends X-Client: desktop to receive the token
+    // in the response body (browser callers get the token in the cookie only).
     const registerRes = await request(app.getHttpServer())
       .post('/api/auth/register')
+      .set('X-Client', 'desktop')
       .send({
         username: 'trader',
         email: 'trader@example.com',
