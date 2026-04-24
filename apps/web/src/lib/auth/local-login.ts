@@ -4,22 +4,22 @@ import { isTauri } from '../tauri/is-tauri'
 const TOKEN_KEY = 'fs_local_token'
 
 /**
- * Desktop-mode auto-login.
+ * Desktop session helper.
  *
- * When the app runs under Tauri, the token lives in the OS keychain
- * (macOS Keychain, Windows Credential Manager, Linux Secret Service) and is
- * read/written through Rust commands defined in
- * `apps/desktop/src-tauri/src/auth.rs`. Web builds keep using localStorage
- * until F-2 removes the env-driven login path entirely.
+ * History: an earlier version of this module baked
+ * `NEXT_PUBLIC_LOCAL_USER_USERNAME/PASSWORD` into the web build and
+ * auto-logged-in on boot. That hardcoded plaintext credentials into
+ * every distributable. F-2 removed the env bake; logins now go through
+ * `submitLogin(username, password)`, called from an explicit UI flow.
  *
- * An in-memory mirror of the current token is held here so that the
- * synchronous `getCachedToken()` API keeps working for `authHeaders()`
- * callers — keychain reads are async and would otherwise force every
- * fetch path to become async.
+ * Under Tauri the token lives in the OS keychain (see
+ * `apps/desktop/src-tauri/src/auth.rs`). In-memory mirror keeps
+ * `getCachedToken()` synchronous for `authHeaders()` callers.
  */
 
-let pendingLogin: Promise<string | null> | null = null
+let pendingKeychainRead: Promise<string | null> | null = null
 let memoryToken: string | null = null
+let legacyShimDone = false
 
 type KeychainError = { error: 'not_found' | 'session_only' | 'io' }
 
@@ -36,9 +36,6 @@ async function readKeychainToken(): Promise<string | null> {
     const token = await tauriInvoke<string | null>('read_token')
     return token ?? null
   } catch (err) {
-    // `session_only` (Linux w/o Secret Service) and `io` both mean "no
-    // durable token" — fall back to memory only. `not_found` never surfaces
-    // as an error; the Rust side returns Ok(None).
     const e = err as Partial<KeychainError>
     if (e?.error === 'session_only' || e?.error === 'io') return null
     return null
@@ -49,7 +46,7 @@ async function writeKeychainToken(token: string): Promise<void> {
   try {
     await tauriInvoke<void>('write_token', { token })
   } catch {
-    // Session-only mode: caller keeps the memory copy; no persistence.
+    // Session-only mode: memory copy only, no persistence.
   }
 }
 
@@ -57,9 +54,26 @@ async function clearKeychainToken(): Promise<void> {
   try {
     await tauriInvoke<void>('clear_token')
   } catch {
-    // Ignore — Rust side returns Ok on NoEntry; any other error here means
-    // the slot is already inaccessible.
+    // Rust side returns Ok on NoEntry; any other error means the slot is
+    // already inaccessible.
   }
+}
+
+/**
+ * One-shot migration from the pre-F-1 localStorage slot into the
+ * keychain. Runs once per page load on the first `ensureLocalToken`
+ * call from a Tauri context, then clears the legacy slot. Remove this
+ * function in the release after F-3 ships (see docs/runbooks/).
+ */
+async function migrateLegacyTokenIfAny(): Promise<string | null> {
+  if (legacyShimDone) return null
+  legacyShimDone = true
+  if (typeof window === 'undefined') return null
+  const legacy = window.localStorage.getItem(TOKEN_KEY)
+  if (!legacy) return null
+  await writeKeychainToken(legacy)
+  window.localStorage.removeItem(TOKEN_KEY)
+  return legacy
 }
 
 export function getCachedToken(): string | null {
@@ -79,13 +93,6 @@ export function clearCachedToken(): void {
   window.localStorage.removeItem(TOKEN_KEY)
 }
 
-function isLocalLoginEnabled(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_LOCAL_USER_USERNAME &&
-      process.env.NEXT_PUBLIC_LOCAL_USER_PASSWORD,
-  )
-}
-
 async function persistToken(token: string): Promise<void> {
   memoryToken = token
   if (typeof window === 'undefined') return
@@ -96,19 +103,28 @@ async function persistToken(token: string): Promise<void> {
   window.localStorage.setItem(TOKEN_KEY, token)
 }
 
-async function performLogin(apiBase: string): Promise<string | null> {
-  const username = process.env.NEXT_PUBLIC_LOCAL_USER_USERNAME
-  const password = process.env.NEXT_PUBLIC_LOCAL_USER_PASSWORD
-  if (!username || !password) return null
-
-  // Empty apiBase → relative '/api/auth/login' (works under Next.js rewrites);
-  // populated apiBase → 'http://host:port/api/auth/login' (works under Tauri).
-  const url = apiBase ? `${apiBase}/api/auth/login` : '/api/auth/login'
+/**
+ * Explicitly log in with the given credentials. Returns the freshly
+ * acquired token on success, `null` on failure (invalid creds or API
+ * unreachable). Callers are responsible for surfacing errors to the UI.
+ */
+export async function submitLogin(
+  username: string,
+  password: string,
+  apiBase?: string,
+): Promise<string | null> {
+  const base = apiBase ?? getApiBaseUrl()
+  const url = base ? `${base}/api/auth/login` : '/api/auth/login'
 
   const res = await fetch(url, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      // Opt into receiving the JWT in the response body. Browser clients
+      // omit this header and rely on the HttpOnly cookie only.
+      'X-Client': 'desktop',
+    },
     body: JSON.stringify({ username, password }),
   })
   if (!res.ok) return null
@@ -121,36 +137,34 @@ async function performLogin(apiBase: string): Promise<string | null> {
 }
 
 /**
- * Returns a valid token if one is cached or if auto-login succeeds.
- * Concurrent callers share the same in-flight login request.
+ * Returns a cached token (keychain under Tauri, localStorage otherwise)
+ * without triggering a login. Callers that receive `null` should route
+ * the user through `submitLogin`.
  *
- * `apiBase` defaults to `getApiBaseUrl()` so callers that forget to pass
- * it still produce the correct URL under Tauri builds. Explicit argument
- * (e.g. from providers.tsx) wins, which makes the wiring auditable at the
- * call site.
+ * Concurrent calls dedup the underlying keychain read. `apiBase` is
+ * accepted for API compatibility with pre-F-2 call sites but is no
+ * longer used — kept to avoid churning `providers.tsx`.
  */
-export function ensureLocalToken(apiBase?: string): Promise<string | null> {
-  if (!isLocalLoginEnabled()) return Promise.resolve(null)
-
+export function ensureLocalToken(_apiBase?: string): Promise<string | null> {
+  void _apiBase
   if (memoryToken) return Promise.resolve(memoryToken)
 
   if (typeof window !== 'undefined' && isTauri()) {
-    // Under Tauri, consult the keychain first; fall back to performLogin if
-    // the slot is empty or inaccessible.
-    if (!pendingLogin) {
-      const base = apiBase ?? getApiBaseUrl()
-      pendingLogin = (async () => {
-        const existing = await readKeychainToken()
-        if (existing) {
-          memoryToken = existing
-          return existing
+    if (!pendingKeychainRead) {
+      pendingKeychainRead = (async () => {
+        const migrated = await migrateLegacyTokenIfAny()
+        if (migrated) {
+          memoryToken = migrated
+          return migrated
         }
-        return performLogin(base)
+        const existing = await readKeychainToken()
+        if (existing) memoryToken = existing
+        return existing
       })().finally(() => {
-        pendingLogin = null
+        pendingKeychainRead = null
       })
     }
-    return pendingLogin
+    return pendingKeychainRead
   }
 
   const cached =
@@ -159,12 +173,12 @@ export function ensureLocalToken(apiBase?: string): Promise<string | null> {
     memoryToken = cached
     return Promise.resolve(cached)
   }
+  return Promise.resolve(null)
+}
 
-  const base = apiBase ?? getApiBaseUrl()
-  if (!pendingLogin) {
-    pendingLogin = performLogin(base).finally(() => {
-      pendingLogin = null
-    })
-  }
-  return pendingLogin
+/** Test-only: reset the in-memory cache and shim flag between cases. */
+export function __resetForTests(): void {
+  memoryToken = null
+  pendingKeychainRead = null
+  legacyShimDone = false
 }
