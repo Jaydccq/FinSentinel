@@ -10,7 +10,9 @@ import { DocumentListSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 
 const DOC_TYPES = ['REGULATION', 'RESEARCH', 'NEWS', 'EARNINGS', 'OTHER']
-const STATUSES = ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED']
+// F-4: PENDING_UPLOAD added — rows in this state are waiting for the
+// browser's direct-upload PUT to finish + /finalize to be called.
+const STATUSES = ['PENDING_UPLOAD', 'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED']
 
 const STATUS_STYLE: Record<string, { border: string; badge: string; label: string }> = {
   COMPLETED: {
@@ -28,6 +30,11 @@ const STATUS_STYLE: Record<string, { border: string; badge: string; label: strin
     badge:  'bg-yellow-500/15 text-yellow-400',
     label:  'Pending',
   },
+  PENDING_UPLOAD: {
+    border: 'border-l-sky-500',
+    badge:  'bg-sky-500/15 text-sky-400',
+    label:  'Uploading',
+  },
   FAILED: {
     border: 'border-l-red-500',
     badge:  'bg-red-500/15 text-red-400',
@@ -44,11 +51,19 @@ const DOC_TYPE_ICON: Record<string, { icon: React.ReactNode; color: string }> = 
 }
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === 'COMPLETED')  return <CheckCircle size={13} className="text-emerald-400" />
-  if (status === 'PROCESSING') return <Clock       size={13} className="text-blue-400" />
-  if (status === 'PENDING')    return <Clock       size={13} className="text-yellow-400" />
-  return                              <AlertCircle  size={13} className="text-red-400" />
+  if (status === 'COMPLETED')       return <CheckCircle size={13} className="text-emerald-400" />
+  if (status === 'PROCESSING')      return <Clock       size={13} className="text-blue-400" />
+  if (status === 'PENDING')         return <Clock       size={13} className="text-yellow-400" />
+  if (status === 'PENDING_UPLOAD')  return <Upload      size={13} className="text-sky-400" />
+  return                                   <AlertCircle  size={13} className="text-red-400" />
 }
+
+// F-4: keep the existing multipart upload() for small files. Files
+// larger than this threshold get routed through uploadDirect() which
+// streams to storage with a presigned URL (bypasses Node memory).
+// 25 MiB chosen so typical filings (~10 MB 10-K) stay on the legacy
+// path while big research datasets get the direct-upload win.
+const DIRECT_UPLOAD_THRESHOLD_BYTES = 25 * 1024 * 1024
 
 function formatSize(bytes: number): string {
   if (bytes < 1024)           return `${bytes} B`
@@ -152,9 +167,16 @@ export default function DocumentsPage() {
     refresh()
   }, [refresh])
 
-  // Polling: check every 3s if any docs are PENDING/PROCESSING
+  // Polling: check every 3s if any docs are PENDING_UPLOAD / PENDING /
+  // PROCESSING. PENDING_UPLOAD rows need the reconciler (or a retried
+  // finalize) to settle, so keep polling — but bound it to 10 mins
+  // below so we don't poll forever for a dead row.
   useEffect(() => {
-    const hasPending = docs.some(d => d.status === 'PENDING' || d.status === 'PROCESSING')
+    const hasPending = docs.some(d =>
+      d.status === 'PENDING_UPLOAD' ||
+      d.status === 'PENDING' ||
+      d.status === 'PROCESSING',
+    )
 
     if (hasPending && !pollRef.current) {
       pollRef.current = setInterval(() => { refresh() }, 3000)
@@ -174,11 +196,18 @@ export default function DocumentsPage() {
   const upload = async (file: File) => {
     setUploading(true)
     try {
-      await documentsApi.upload(file, docType, sector || undefined)
-      toast.success(`"${file.name}" uploaded successfully.`)
+      if (file.size > DIRECT_UPLOAD_THRESHOLD_BYTES) {
+        // F-4: skip the Node-memory round-trip for big files.
+        await documentsApi.uploadDirect(file, docType, sector || undefined)
+        toast.success(`"${file.name}" uploaded (direct to storage).`)
+      } else {
+        await documentsApi.upload(file, docType, sector || undefined)
+        toast.success(`"${file.name}" uploaded successfully.`)
+      }
       refresh()
-    } catch {
-      toast.error('Upload failed. Please try again.')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload failed.'
+      toast.error(msg)
     } finally {
       setUploading(false)
     }
