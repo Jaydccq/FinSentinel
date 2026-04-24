@@ -311,17 +311,35 @@ export class UnifiedTradingService {
   /**
    * Execute the pending commit.
    *
-   * 1. Atomic get-and-delete from Redis (prevents double-spend)
-   * 2. Idempotency check: reject if hash already in wallet.commitHistory
+   * 0. Idempotency: prior successful execute with same Idempotency-Key
+   *    returns the cached ExecuteResult, no broker re-trigger.
+   * 1. Atomic get-and-delete pending commit (Redis 6.2+ GETDEL)
+   * 2. Idempotency check via wallet.commitHistory (older retries)
    * 3. For PAPER mode: create shared PaperBroker, sync state, execute, sync back
    * 4. Build execution report
    * 5. Add commit to wallet.commitHistory (capped at MAX_COMMIT_HISTORY)
    * 6. Persist wallet to DB
-   * 7. Emit event (stub)
+   * 7. Cache ExecuteResult by idempotencyKey for future retries
+   * 8. Emit event (stub)
    */
-  async execute(userId: string): Promise<ExecuteResult> {
-    // 1. Atomic get-and-delete pending commit (Redis 6.2+ GETDEL)
+  async execute(userId: string, idempotencyKey?: string): Promise<ExecuteResult> {
     const pendingKey = PENDING_KEY_PREFIX + userId;
+    const execCacheKey = idempotencyKey
+      ? IDEM_EXEC_KEY_PREFIX + userId + ':' + idempotencyKey
+      : null;
+
+    // 0. Cache hit: prior successful execute returns the same ExecuteResult.
+    if (execCacheKey) {
+      const cachedRaw = await this.redis.get(execCacheKey);
+      if (cachedRaw) {
+        this.logger.log(
+          `Idempotent execute hit user=${userId} key=${idempotencyKey}`,
+        );
+        return JSON.parse(cachedRaw) as ExecuteResult;
+      }
+    }
+
+    // 1. Atomic get-and-delete pending commit (Redis 6.2+ GETDEL)
     const raw = await (this.redis as Redis & { getdel(key: string): Promise<string | null> }).getdel(pendingKey);
 
     if (!raw) {
@@ -491,19 +509,27 @@ export class UnifiedTradingService {
       ...reportLines,
     ].join('\n');
 
+    const result: ExecuteResult = {
+      report,
+      commitData: commitData as unknown as Record<string, unknown>,
+      results: operationResults,
+    };
+
+    // 7. Cache the ExecuteResult by idempotencyKey for retry-safe re-execute.
+    if (execCacheKey) {
+      await this.redis.setex(execCacheKey, STATE_TTL_SECONDS, JSON.stringify(result));
+    }
+
     // 8. Emit event (stub — actual AgentEventService built in Phase 10)
     this.emitTradeEvent(userId, wallet.id, AgentEventType.TRADE_COMMIT_EXECUTED, {
       hash: commitData.hash,
       message: commitData.message,
       operationCount: commitData.operations.length,
       results: operationResults,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
     });
 
-    return {
-      report,
-      commitData: commitData as unknown as Record<string, unknown>,
-      results: operationResults,
-    };
+    return result;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

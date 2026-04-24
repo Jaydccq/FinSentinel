@@ -409,6 +409,29 @@ describe('UnifiedTradingService', () => {
       );
     });
 
+    it('returns cached ExecuteResult when same Idempotency-Key is reused (no broker re-trigger)', async () => {
+      const cachedResult = {
+        report: 'cached report',
+        commitData: pendingCommit,
+        results: [{ symbol: 'AAPL', action: 'BUY', success: true }],
+      };
+
+      // Simulate prior execute populated the exec cache.
+      (mockRedis.get as Mock).mockImplementation(async (k: string) => {
+        if (k === `uta:executed:${TEST_USER_ID}:IDK-EXEC`) {
+          return JSON.stringify(cachedResult);
+        }
+        return null;
+      });
+
+      const result = await service.execute(TEST_USER_ID, 'IDK-EXEC');
+
+      expect(result).toEqual(cachedResult);
+      // Must NOT have touched pending or DB
+      expect(mockRedis.getdel).not.toHaveBeenCalled();
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
     it('prevents double-execution (idempotency check)', async () => {
       // Pending commit exists (atomic getdel)
       mockRedis.getdel.mockResolvedValue(JSON.stringify(pendingCommit));
