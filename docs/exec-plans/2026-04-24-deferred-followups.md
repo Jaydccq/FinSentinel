@@ -10,7 +10,7 @@
 
 | 优先级 | 条目 | 估算 | 阻塞 |
 |--------|------|------|------|
-| P0 | [F-1: 桌面端 keychain（Tauri Rust 端）](#f-1-桌面端-keychain-tauri-rust-端) | 1.5–2 day | 无 |
+| ✅ landed 2026-04-24 | [F-1: 桌面端 keychain（Tauri Rust 端）](#f-1-桌面端-keychain-tauri-rust-端) — see [exec plan](./2026-04-24-f1-tauri-keychain.md) | 1.5–2 day | 无 |
 | P0 | [F-2: 移除 `NEXT_PUBLIC_LOCAL_USER_*` 构建烘焙](#f-2-移除-next_public_local_user_-构建烘焙) | 0.5 day | F-1 |
 | P0 | [F-3: 1-release 兼容 shim（`localStorage.fs_local_token` → keychain 迁移）](#f-3-1-release-兼容-shim) | 0.5 day | F-1, F-2 |
 | P1 | [F-4: 文档上传 outbox + presigned URL 直传](#f-4-文档上传-outbox--presigned-url-直传) | 2–3 day | 无 |
