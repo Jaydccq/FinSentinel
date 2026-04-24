@@ -1,0 +1,125 @@
+name: desktop-release
+
+# F-10 (2026-04-24): SKELETON — does not run unsigned, does not publish.
+#
+# This workflow is intentionally parked: producing distributable desktop
+# artifacts (macOS DMG + notarization, Windows MSI + code-signing, Linux
+# AppImage) requires secrets + developer accounts we don't have yet.
+# Enabling it prematurely would publish unsigned binaries, which is
+# worse than shipping nothing.
+#
+# Unblocker checklist (add secrets, then remove the top-level `if: false`):
+#   - [ ] Apple Developer account ($99/year) + Developer ID Application
+#         certificate. Store as APPLE_CERTIFICATE (base64 .p12) +
+#         APPLE_CERTIFICATE_PASSWORD in GH Actions secrets.
+#   - [ ] APPLE_SIGNING_IDENTITY ("Developer ID Application: …").
+#   - [ ] Apple ID + app-specific password for notarytool
+#         (APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID).
+#   - [ ] (Optional, Windows) EV code-signing certificate — HSM-bound.
+#         Or skip and ship unsigned MSI with a visible SmartScreen warning.
+#   - [ ] Tag the release: `git tag v0.1.0 && git push origin v0.1.0`.
+#
+# Rollout plan when ready:
+#   1. Remove the `if: false` guard.
+#   2. First publish → confirm DMG notarization round-trip.
+#   3. Second publish → confirm auto-update channel (separate follow-up).
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-mac:
+    if: false # remove when unblockers above are in place
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.30.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm install --frozen-lockfile
+      - name: Build web (Tauri export)
+        run: pnpm --filter @finsentinel/web build
+        env:
+          NEXT_PUBLIC_TAURI: '1'
+          NEXT_PUBLIC_API_BASE_URL: 'https://api.finsentinel.example'
+      - name: Import Apple signing certificate
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      - name: Build + notarize (tauri build)
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: pnpm --filter @finsentinel/desktop tauri build
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
+            apps/desktop/src-tauri/target/release/bundle/macos/*.app.tar.gz
+
+  build-windows:
+    if: false
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.30.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm install --frozen-lockfile
+      - name: Build web (Tauri export)
+        run: pnpm --filter @finsentinel/web build
+        env:
+          NEXT_PUBLIC_TAURI: '1'
+          NEXT_PUBLIC_API_BASE_URL: 'https://api.finsentinel.example'
+      - name: Build desktop (unsigned MSI until EV cert available)
+        run: pnpm --filter @finsentinel/desktop tauri build
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: apps/desktop/src-tauri/target/release/bundle/msi/*.msi
+
+  build-linux:
+    if: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.30.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Tauri Linux deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+      - run: pnpm install --frozen-lockfile
+      - name: Build web (Tauri export)
+        run: pnpm --filter @finsentinel/web build
+        env:
+          NEXT_PUBLIC_TAURI: '1'
+          NEXT_PUBLIC_API_BASE_URL: 'https://api.finsentinel.example'
+      - name: Build desktop (AppImage; unsigned by convention)
+        run: pnpm --filter @finsentinel/desktop tauri build
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: apps/desktop/src-tauri/target/release/bundle/appimage/*.AppImage
