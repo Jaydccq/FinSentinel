@@ -124,7 +124,9 @@ describe('DocumentUploadService', () => {
     const file = {
       buffer: Buffer.from('Test document content'),
       mimetype: 'text/plain',
-      originalname: 'report.txt',
+      // 10-K prefix lets the F-13 inferrer land on regionId='US' without
+      // the caller passing it explicitly, matching the SEC_FILING intent.
+      originalname: '10-K_report.txt',
     };
 
     const result = await service.upload(file, 'user-1', 'SEC_FILING', 'Technology');
@@ -137,7 +139,7 @@ describe('DocumentUploadService', () => {
     expect(mockStorage.upload).toHaveBeenCalledTimes(1);
     const [storageKey, content, contentType] = mockStorage.upload.mock.calls[0] ?? [];
     expect(storageKey).toContain('documents/user-1/');
-    expect(storageKey).toContain('report.txt');
+    expect(storageKey).toContain('10-K_report.txt');
     expect(content).toEqual(file.buffer);
     expect(contentType).toBe('text/plain');
 
@@ -156,7 +158,7 @@ describe('DocumentUploadService', () => {
         doc_type: 'SEC_FILING',
         sector: 'Technology',
         region_id: 'US',
-        source: 'report.txt',
+        source: '10-K_report.txt',
       }),
     );
   });
@@ -309,13 +311,24 @@ describe('DocumentUploadService', () => {
       expect(vectorMeta.region_id).toBe('EU');
     });
 
-    it("falls back to 'US' when regionId is not provided (preserves prior behavior)", async () => {
+    it("falls back to 'UNKNOWN' when regionId is not provided and filename gives no signal (F-13)", async () => {
       const file = {
         buffer: Buffer.from('Test content'),
         mimetype: 'text/plain',
         originalname: 'us.txt',
       };
       await service.upload(file, 'user-1', 'RESEARCH');
+      const valuesArg = mockDb._mocks.insertValues.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(valuesArg.regionId).toBe('UNKNOWN');
+    });
+
+    it("F-13: infers regionId='US' from an SEC filing filename when caller omits it", async () => {
+      const file = {
+        buffer: Buffer.from('Test content'),
+        mimetype: 'text/plain',
+        originalname: '10-K_AAPL_2024.pdf',
+      };
+      await service.upload(file, 'user-1', 'SEC_FILING');
       const valuesArg = mockDb._mocks.insertValues.mock.calls[0]?.[0] as Record<string, unknown>;
       expect(valuesArg.regionId).toBe('US');
     });
