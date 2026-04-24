@@ -92,4 +92,17 @@ NewsModule.register({ cryptoNewsEnabled: env.APP_CRYPTO_NEWS_ENABLED }),
 ## 7. 风险
 
 - 改 dynamic module 需要触碰每个集成模块的 import 链，回归面较大；建议一次只改 1-2 个模块。
+
+## 8. Implementation Progress Log
+
+- 2026-04-24: branch `feat/2026-04-23-platform-bootstrap` opened.
+- 2026-04-24: implemented Tasks 1–3 per `docs/exec-plans/2026-04-23-platform-bootstrap.md`.
+  - Task 1: added `helmet` + `compression` deps + a Node `randomUUID`-based `requestIdMiddleware` that reads/generates `X-Request-Id`. 3 unit tests green.
+  - Task 2: wired `requestIdMiddleware` (first), `helmet({ contentSecurityPolicy: false, hsts: false })`, `compression()`, then existing `cookieParser` + CORS into `main.ts`. CSP + HSTS deferred until web + desktop QA passes.
+  - Task 3: `GlobalExceptionFilter` echoes `X-Request-Id` and includes `requestId` in unhandled-exception logs. Side fix: `WatchlistModule` (added in P1-2) was missing `AuthModule` import — `JwtGuard` couldn't resolve `JwtService` at bootstrap. Integration tests caught it on this branch; fixed in same commit.
+- Verification: `pnpm --filter @finsentinel/api typecheck` clean; full suite `1539 / 1540` green (1 skipped, 0 failed).
+- Deferred (per the Out-of-Scope section at the top of the exec plan):
+  - Dynamic `Module.register()` refactor for OpenBB / OKX / Queue / News / Twitter optional integrations.
+  - Helmet CSP / HSTS — wait for web + desktop QA before turning on.
+  - Replacing the built-in NestJS Logger with `nestjs-pino`.
 - helmet 默认会动 CSP / HSTS，可能影响 SSE / 文件下载；需要在 web/desktop QA 一遍。
