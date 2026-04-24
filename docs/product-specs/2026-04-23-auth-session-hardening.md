@@ -104,3 +104,19 @@ ALTER TABLE users ADD CONSTRAINT users_email_key UNIQUE (email);
 - 桌面 keychain 集成在不同 OS 行为不同；需要为 Linux 提供 fallback（Secret Service 不可用时降级到加密文件 + OS file ACL）。
 - `secure=true` 需要 https，本地 dev 容易踩坑；通过 README + dev 脚本默认 false 解决。
 - 删除响应体 token 是 breaking change：必须先发 SDK / Web 客户端的更新版本。
+
+## 8. Implementation Progress Log (P0 slice)
+
+- 2026-04-23: branch `feat/2026-04-23-auth-session-hardening` opened.
+- 2026-04-24: implemented Tasks 1–5 per `docs/exec-plans/2026-04-23-auth-session-hardening.md`.
+  - Task 1: typed `auth.cookie` + `auth.cors` config (`apps/api/src/config/auth.config.ts`) with Zod validation and 5 unit tests covering env→config mapping.
+  - Task 2: `apps/api/src/main.ts` CORS origin pulled from typed config (env-driven via `CORS_ORIGINS`).
+  - Task 3: `AuthController` reads cookie attrs from typed config; response body returns the JWT only when the request carries `X-Client: desktop` (Stripe-style header opt-in). Browser callers get the cookie alone.
+  - Task 4: `register()` does a single INSERT and translates Postgres 23505 unique-violations into `409 ConflictException`. No pre-SELECTs; race window closed.
+  - Task 5: integration suites (`auth-flow`, `trading-flow`, `chat-stream`) updated to either send `X-Client: desktop` or read the JWT from the `Set-Cookie` header. The mock Drizzle insert now mirrors the V1 `users(username, email)` UNIQUE constraint by emitting a 23505-coded error, so the new race-free `register()` is exercised end-to-end.
+- Verification: `pnpm --filter @finsentinel/api typecheck` clean; `pnpm vitest run` shows 1499 passed / 1 skipped / 1 failed. The 1 failure is `src/rag/__tests__/cli-import-env.spec.ts` (5-second timeout on dynamic CLI imports), which **also fails on `main` HEAD without any of these changes** — pre-existing flake unrelated to this PRD; tracked for follow-up.
+- Deferred (per the Out-of-Scope section at the top of the exec plan):
+  - Desktop keychain Tauri integration (Rust `tauri::api::keychain` bridge + JS facade).
+  - Removal of `NEXT_PUBLIC_LOCAL_USER_USERNAME / _PASSWORD` build-bake — depends on the keychain slice landing first.
+  - 1-release backwards-compat shim that drains the legacy `localStorage.fs_local_token` after keychain rollout.
+  - Helmet / request-id / compression middleware — owned by the platform-bootstrap PRD (#8).

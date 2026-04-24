@@ -114,6 +114,7 @@ docs/exec-plans/*
 !docs/exec-plans/2026-04-21-fix-interview-guide-pdf.md
 !docs/exec-plans/2026-04-23-trading-atomicity.md
 !docs/exec-plans/2026-04-23-web-tauri-api-base.md
+!docs/exec-plans/2026-04-23-auth-session-hardening.md
 !docs/technical-guides/
 !docs/technical-guides/autonomous-investment-platform-interview-guide.md
 !docs/technical-guides/autonomous-investment-platform-interview-guide-print.css

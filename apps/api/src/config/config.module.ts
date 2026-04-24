@@ -24,6 +24,7 @@ import { marketProviderConfig } from './market-provider.config';
 import { researchConfig } from './research.config';
 import { encryptionConfig } from './encryption.config';
 import { newsConfig } from './news.config';
+import { authConfig } from './auth.config';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { newsConfig } from './news.config';
         researchConfig,
         encryptionConfig,
         newsConfig,
+        authConfig,
       ],
     }),
   ],

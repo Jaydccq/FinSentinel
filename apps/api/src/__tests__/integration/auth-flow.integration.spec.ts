@@ -32,15 +32,15 @@ describe('Auth Flow (integration)', () => {
       password: 'SecurePass1',
     };
 
-    // ── Step 1: Register ────────────────────────────────────────────────
+    // ── Step 1: Register (browser path: token NOT in body) ───────────────
     const registerRes = await request(app.getHttpServer())
       .post('/api/auth/register')
       .send(credentials)
       .expect(201);
 
-    expect(registerRes.body).toHaveProperty('token');
     expect(registerRes.body).toHaveProperty('username', 'testuser');
     expect(registerRes.body).toHaveProperty('email', 'test@example.com');
+    expect(registerRes.body.token).toBeUndefined();
 
     // Verify Set-Cookie: FS_AUTH
     const registerCookies = registerRes.headers['set-cookie'];
@@ -51,13 +51,14 @@ describe('Auth Flow (integration)', () => {
     expect(registerFsCookie).toBeDefined();
     expect(registerFsCookie).toContain('HttpOnly');
 
-    // Extract the token from the cookie
-    const registerToken = registerRes.body.token as string;
+    // Extract the token from the Set-Cookie header (the browser-mode source of truth).
+    const registerToken = (registerFsCookie!.match(/FS_AUTH=([^;]+)/) ?? [])[1] as string;
     expect(registerToken.length).toBeGreaterThan(10);
 
-    // ── Step 2: Login with same credentials ──────────────────────────────
+    // ── Step 2: Login as desktop client to get the token in the body too. ─
     const loginRes = await request(app.getHttpServer())
       .post('/api/auth/login')
+      .set('X-Client', 'desktop')
       .send({
         username: credentials.username,
         password: credentials.password,
@@ -155,6 +156,7 @@ describe('Auth Flow (integration)', () => {
 
     const registerRes = await request(app.getHttpServer())
       .post('/api/auth/register')
+      .set('X-Client', 'desktop')
       .send(credentials)
       .expect(201);
 

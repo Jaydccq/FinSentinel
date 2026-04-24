@@ -153,6 +153,45 @@ export function createMockDb() {
     insert(table: unknown) {
       let _values: Record<string, unknown> | undefined;
 
+      // Build the materialised result eagerly inside `then` and route through
+      // a real Promise so that rejection (e.g. simulated Postgres 23505 unique
+      // violation) propagates through `await` cleanly instead of throwing
+      // synchronously up the express stack.
+      const settle = (): Promise<Record<string, unknown>[]> => {
+        // Mirror the V1 schema's UNIQUE constraints on users(username, email).
+        // We can't reliably name the table from a Drizzle symbol-keyed object,
+        // so we treat any insert that carries BOTH username + email + password
+        // as a users-table insert. That's specific enough to avoid colliding
+        // with other tables (none of which carry that combo).
+        const looksLikeUsersInsert =
+          _values &&
+          typeof _values.username === 'string' &&
+          typeof _values.email === 'string' &&
+          typeof _values.password === 'string';
+        if (looksLikeUsersInsert) {
+          const rows = getTable(table);
+          const dupe = rows.find(
+            (r) =>
+              r.username === _values!.username || r.email === _values!.email,
+          );
+          if (dupe) {
+            const err = Object.assign(
+              new Error('duplicate key value violates unique constraint (mocked)'),
+              { code: '23505' },
+            );
+            return Promise.reject(err);
+          }
+        }
+        const row = {
+          id: randomUUID(),
+          ..._values,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        getTable(table).push(row);
+        return Promise.resolve([row]);
+      };
+
       const chain = {
         values(vals: Record<string, unknown>) {
           _values = vals;
@@ -161,19 +200,15 @@ export function createMockDb() {
         returning() {
           return chain;
         },
-        then(resolve: (rows: Record<string, unknown>[]) => void) {
-          const row = {
-            id: randomUUID(),
-            ..._values,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
-          getTable(table).push(row);
-          resolve([row]);
+        then(
+          resolve: (rows: Record<string, unknown>[]) => void,
+          reject?: (err: unknown) => void,
+        ) {
+          settle().then(resolve, reject);
         },
         [Symbol.toStringTag]: 'Promise' as const,
-        catch(_reject: (err: unknown) => void) {
-          return this;
+        catch(reject: (err: unknown) => void) {
+          return settle().catch(reject);
         },
       };
       return chain;
