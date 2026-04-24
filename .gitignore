@@ -161,6 +161,14 @@ services/evaluation-runner/reports/*.json
 # Exception: committed baselines used as reference points by Wave 2 phases.
 !services/evaluation-runner/reports/wave2-baseline-*.json
 
+### Local runtime scratch (ephemeral — never commit) ###
+# Redis dump, generated while the API is running locally.
+apps/api/dump.rdb
+# Codex CLI session state.
+.context/
+# Top-level eval-runner output captures (runbook holds the narrative).
+/reports/
+
 ### Python local venvs (evaluator dev) ###
 .venv-eval/
 # Python venvs under service directories (e.g. services/parser/.venv).

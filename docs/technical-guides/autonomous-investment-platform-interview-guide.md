@@ -73,7 +73,7 @@ FinSentinel 是一个 AI-assisted investment research and risk platform。它把
 | AI Runtime | `@finsentinel/ai-runtime`, `@mariozechner/pi-ai`, `@mariozechner/pi-agent-core` | 封装模型构造、typed tool adapter、streaming text runtime、embedding client，避免业务层直接耦合外部 SDK |
 | Contracts | Zod, `packages/shared` | API 请求/响应 schema、tool input schema、structured output boundary、前后端共享类型 |
 | Database | PostgreSQL 17, pgvector, Drizzle ORM, `postgres` client | 存 durable state、analysis runs、documents、RAG chunks、vector embeddings、event log |
-| Retrieval | pgvector, PostgreSQL full-text search, RRF, reranker sidecar, context packing | 支持 dense+sparse hybrid retrieval、rank fusion、rerank 和 prompt context 控制 |
+| Retrieval | pgvector, PostgreSQL full-text search, RRF, reranker sidecar, context packing, query traces | 支持 query-class-aware dense+sparse hybrid retrieval、metadata routing、rank fusion、rerank fallback 和 prompt context 控制 |
 | Queue / Cache / Runtime State | Redis 7, ioredis, BullMQ 5 | BullMQ job queue、rate limit counter、trading staging/pending state、Lua atomic transition |
 | Trading | Broker abstraction, Paper broker, live broker adapters, Redis `GETDEL`, order draft validator | broker-agnostic trading lifecycle；先生成草案，再审批，再幂等执行 |
 | Storage | RustFS / S3-compatible storage, AWS SDK S3 client | 保存上传文档和对象存储内容，供 ingestion/RAG pipeline 使用 |
@@ -99,7 +99,7 @@ Zod 是整个系统的 contract layer：HTTP body validation、shared frontend t
 金融研究数据不是纯向量数据。它既有文档 chunk embedding，也有用户、portfolio、analysis run、event log、metadata filter 等关系型数据。Postgres + pgvector 可以把 vector search 和 relational filtering 放在同一个数据库里。
 
 **Dense + Sparse + RRF 的 RAG 设计**
-金融文档同时有语义问题和精确术语。Dense retrieval 适合“管理层怎么看 margin pressure”这类语义查询；sparse full-text search 适合 `10-Q`、`EPS`、ticker、会计术语；RRF 用 rank-based fusion 避免 dense score 和 sparse score 量纲不同的问题。
+金融文档同时有语义问题和精确术语。Dense retrieval 适合“管理层怎么看 margin pressure”这类语义查询；sparse full-text search 适合 `10-Q`、`EPS`、ticker、会计术语；RRF 用 rank-based fusion 避免 dense score 和 sparse score 量纲不同的问题。当前实现还加入了 query class gating、representation search、metadata soft/hard routing、reranker fallback、context packing 和 trace/rollout。
 
 **Redis + BullMQ**
 Redis 已经适合做短生命周期状态和原子计数，BullMQ 又能基于 Redis 做 job queue。文档向量化、analysis run、news enrichment 这些任务可以异步执行；trading stage/pending state 和 rate limit 也能复用 Redis。
@@ -134,7 +134,7 @@ TypeScript • NestJS • Next.js • internal @finsentinel/ai-runtime • Postg
 
 ### 2 分钟项目介绍模板
 
-> 这个项目解决的是投资研究链路分散和 AI 输出不可控的问题。用户在 Web chat 或 workspace 里提问后，请求进入 NestJS API，先经过 JWT、rate limit 和 Zod validation。普通问题走 ChatService 实时 SSE streaming；复杂问题可以升级成 tracked analysis run。RAG pipeline 会从 SEC filings、research documents 和 market news 的 chunks 中检索证据，结合 dense vector search、Postgres full-text sparse search、RRF fusion、reranker 和 context packing，把证据压到可控 token budget 内。
+> 这个项目解决的是投资研究链路分散和 AI 输出不可控的问题。用户在 Web chat 或 workspace 里提问后，请求进入 NestJS API，先经过 JWT、rate limit 和 Zod validation。普通问题走 ChatService 实时 SSE streaming；复杂问题可以升级成 tracked analysis run。RAG pipeline 会从 SEC filings、research documents 和 market news 的 chunks 中检索证据，结合 query class gating、dense representation search、Postgres full-text sparse search、metadata routing、RRF fusion、reranker fallback 和 context packing，把证据压到可控 token budget 内。
 >
 > Agent 侧不是让模型随便访问系统，而是通过 ToolRegistry 暴露 typed tools。每个 tool 都有 Zod input schema 和后端 execute 函数，工具覆盖 market data、technical indicators、news、research、portfolio、watchlist、trading drafts 等。Analysis runtime 再把复杂研究拆成 intelligence、thesis、risk、execution prep、human approval 多个阶段，每个阶段有 checkpoint 和 artifacts。
 >
@@ -173,13 +173,19 @@ apps/api NestJS API
   |
   +-- RAG
   |     +-- QueryRewriteService
+  |     +-- QueryVariantService
+  |     +-- QueryEntityExtractorService
+  |     +-- MetadataPreFilterService
   |     +-- RetrievalPlannerService
   |     +-- RetrievalOrchestratorService
   |     +-- RagChunkStoreService
   |     +-- SparseSearchService
+  |     +-- GraphRetrievalService
   |     +-- RetrievalFusionService
   |     +-- RerankService
+  |     +-- ContextExpanderService
   |     +-- ContextPackerService
+  |     +-- RagTraceService / RolloutGateService / ShadowRunnerService
   |
   +-- Analysis Runtime
   |     +-- AnalysisRunService
@@ -212,9 +218,9 @@ Prometheus: scrape /api/metrics.
 | AI runtime | `packages/ai-runtime/src/tools.ts`, `packages/ai-runtime/src/text-runtime.ts`, `packages/ai-runtime/src/embeddings.ts` |
 | Tool registry | `apps/api/src/agent/tool-registry.ts`, `apps/api/src/agent/tools/*.tool.ts` |
 | Role tool scope | `apps/api/src/analysis/contracts/role-tool-scope.ts`, `apps/api/src/analysis/teams/role-executor.service.ts` |
-| RAG retrieval | `apps/api/src/rag/rag-retrieval.service.ts`, `retrieval-orchestrator.service.ts`, `retrieval-fusion.service.ts` |
-| RAG storage | `apps/api/src/rag/rag-chunk-store.service.ts`, `packages/db/src/schema/document-chunks.ts` |
-| BullMQ ingestion | `apps/api/src/queue/vectorize.producer.ts`, `vectorize.consumer.ts`, `queue.module.ts` |
+| RAG retrieval | `apps/api/src/rag/rag-retrieval.service.ts`, `retrieval-planner.service.ts`, `retrieval-orchestrator.service.ts`, `sparse-search.service.ts`, `retrieval-fusion.service.ts`, `rerank.service.ts` |
+| RAG storage / traces | `apps/api/src/rag/rag-chunk-store.service.ts`, `rag-trace.service.ts`, `packages/db/src/schema/document-chunks.ts`, `packages/db/src/schema/rag-query-logs.ts` |
+| RAG ingestion / enrichment | `apps/api/src/queue/vectorize.producer.ts`, `vectorize.consumer.ts`, `representation-enrich.consumer.ts`, `graph-enrich.consumer.ts`, `apps/api/src/document/*`, `services/parser/*` |
 | Analysis runtime | `apps/api/src/analysis/run-orchestrator.service.ts`, `team-registry.ts`, `teams/*` |
 | Broker execution | `apps/api/src/trading/unified-trading.service.ts`, `broker-registry.service.ts` |
 | Order draft | `packages/shared/src/schemas/order-draft.ts`, `order-draft-validator.service.ts`, `order-draft-mapper.service.ts` |
@@ -321,6 +327,10 @@ Repository-first 不是说"我在聊天里告诉 AI 怎么写"，而是把关键
 - BullMQ 异步 ingestion 和 enrichment
 - 复杂约束查询下低延迟 retrieval
 
+当前仓库里这条主张已经不只是“dense + sparse + RRF”。更准确的说法是：
+
+> RAG 是一个 rollout-aware 的 multi-stage retrieval pipeline：ingestion 端把文档解析成 Markdown、按文档类型 chunk、生成 embedding、canonical search vector、可选 representation 和 graph enrichment；query 端先做 query class / variants / metadata hints，再并行跑 dense representation lane、sparse canonical+representation lane，以及受限的 graph lane，随后用 RRF fusion、sidecar rerank、context expansion/packing 和 trace logging 产出可审计的 prompt context。
+
 ### Ingestion 数据流
 
 ```text
@@ -337,20 +347,24 @@ VectorizeConsumer
   |
   +-- load document row
   +-- download content from storage
-  +-- parse to clean text
-  +-- chunk text
+  +-- parse to Markdown / clean text
+  +-- detect document shape and chunk text
   +-- embed chunks
-  +-- replace document_chunks rows
-  +-- rebuild search_vector
+  +-- replace document_chunks rows with metadata and search_vector
+  +-- optionally enqueue representation enrichment
   +-- optionally enqueue graph enrichment
 ```
 
 关键代码：
 
 - `VectorizeProducer.send(docId)` 用稳定 job id：`vectorize:{docId}`。
-- `VectorizeConsumer.process()` 负责 parse -> chunk -> embed -> store。
-- `DocumentVectorService.vectorize()` 负责 chunk、embedding、metrics。
-- `RagChunkStoreService.replaceChunks()` 删除旧 chunks，插入新 chunks，并重建 `search_vector`。
+- `VectorizeConsumer.process()` 负责 load/download/parse/vectorize/status update，并在成功后 enqueue enrichment。
+- `DocumentParseService` 对 text/json 走本地解析；PDF/DOC/DOCX 走 `ParserSidecarClient`。
+- `services/parser/` 是真实 parser sidecar：PDF 用 `pdfplumber`，Word 用 `python-docx`，输出 Markdown 和 metadata。
+- `DocumentVectorService.vectorize()` 负责 Markdown structure、doc-type-aware chunking、embedding、metadata extraction 和 metrics。
+- `DocumentChunkingService` 按 `report`、`qa`、`table_heavy`、`default` 选择 chunk 策略，默认窗口来自 `rag.chunking.*`。
+- `RagChunkStoreService.replaceChunks()` 删除旧 chunks，插入新 chunks，并重建 canonical `search_vector`。
+- `ChunkRepresentationService` 可选生成 `contextual_text`、`sample_question`、`summary`、`keyword_entity` 四类 representation。
 
 BullMQ 配置要点：
 
@@ -364,6 +378,13 @@ BullMQ 配置要点：
 
 > 向量化是典型的异步任务：慢、可重试、可能调用外部 embedding API，不应该阻塞用户请求。BullMQ 复用了已有 Redis，支持 job id、retry、backoff 和 worker concurrency，足够支撑 v1 ingestion pipeline。
 
+当前 parser 的边界也要说清楚：
+
+- PDF parser 是 `pdfplumber` text/table extraction，不是 OCR；扫描件和图片型 PDF 不能保证可检索。
+- parser sidecar 有 timeout、响应 schema 校验、最小 Markdown 长度校验和 circuit breaker。
+- representation enrichment 默认受 `RAG_ENRICHMENT_ENABLED` 控制；不是所有 chunk 天然都有 representation rows。
+- graph enrichment 会写 `knowledge_entities` / `chunk_entity_links` / `knowledge_relations`，但 Python sidecar 当前还没有完整 relation extraction 输出，所以不要把 GraphRAG 说成默认成熟能力。
+
 ### Query-time 数据流
 
 ```text
@@ -372,47 +393,106 @@ User query
   v
 RagRetrievalService
   |
-  +-- optional QueryRewriteService
-  +-- RetrievalPlannerService chooses lanes
+  +-- choose pipeline: single_stage / multi_stage / shadow / canary
+  +-- RetrievalPlannerService classifies query and builds variants
   +-- RetrievalOrchestratorService runs lanes
-       +-- dense lane: pgvector cosine distance
-       +-- sparse lane: PostgreSQL full-text search
-       +-- optional graph lane
+       +-- QueryEntityExtractorService extracts metadata hints
+       +-- MetadataPreFilterService builds hard/soft filters
+       +-- dense lane: pgvector over canonical/contextual/sample_question
+       +-- sparse lane: PostgreSQL FTS over canonical + representation vectors
+       +-- optional graph lane: only when configured and entity context exists
   +-- RetrievalFusionService applies RRF
   +-- RerankService improves precision or falls back
+  +-- ContextExpanderService conditionally adds neighbors/sections
   +-- ContextPackerService dedupes and bounds prompt context
+  +-- RagTraceService records sampled plans, lane counts, timings, fallbacks
 ```
+
+`RagRetrievalService.choosePipeline()` 的关键点：
+
+- `rag.multiStageEnabled` 当前默认是 `true`；依赖齐全时走 multi-stage。
+- `RAG_ROLLOUT_MODE=off` 不是“禁止 multi-stage”，而是回到主开关控制。
+- `shadow` 模式 authoritative result 仍可走 single-stage，同时后台采样跑 multi-stage 并写 `rag_shadow_comparisons`。
+- `canary` 模式用 `RolloutGateService` 按 query class 和 stickiness 做稳定分流。
+- multi-stage 出错时会记录 trace，然后 fallback 到 single-stage dense path。
+
+### Query planner
+
+`RetrievalPlannerService` 先把查询分成五类：
+
+- `exact_lookup`
+- `factoid`
+- `relational`
+- `analytical`
+- `multi_part`
+
+分类顺序很重要：`exact_lookup` 优先级最高，然后是 `multi_part`、`analytical`、`relational`、`factoid`。这样 `AAPL 2024 10-K Item 1A` 这类强精确查询不会被改写成泛化语义问题。
+
+variants 当前包括：
+
+- `original`
+- `rewrite`
+- `hyde`
+- `subquery`
+
+但不是所有查询都会生成全部 variants：
+
+- `exact_lookup` 只保留 original，不做 rewrite、HyDE 或 decomposition。
+- `rewrite` 默认启用，但只有在改写结果和原 query 不同时才加入 variant。
+- HyDE 默认关闭，只在 analytical query 且开关启用时使用。
+- decomposition 默认关闭，只在 multi-part query 且开关启用时使用。
+- 每次 orchestrator 最多消费 4 个 variants，避免 recall 扩张失控。
+
+面试说法：
+
+> planner 的核心不是“让 LLM 多想一步”，而是保护不同 retrieval intent。精确查找要保留原始 ticker、form、section、财务术语；分析型问题才适合 rewrite 或 HyDE。这个 gating 防止 query rewrite 把最重要的 exact-match signal 洗掉。
 
 ### Dense retrieval
 
-`RagChunkStoreService.search()` 用 pgvector：
+single-stage fallback 仍然用 `RagChunkStoreService.search()` 做 pgvector cosine search：
 
 ```sql
 1 - (embedding <=> query_vector::vector) AS similarity
 ORDER BY embedding <=> query_vector::vector
 ```
 
-支持 metadata filter：
+single-stage 支持这些 filter：
 
 - `docType`
 - `sector`
 - `regionId`
 - `afterDate`
 
-为什么重要：
+multi-stage 的 dense lane 现在更强：`RagChunkStoreService.searchRepresentations()` 会在同一个 query embedding 下检索三种 dense surface：
 
-> 金融查询经常带强约束，例如 SEC filing、Technology sector、US region、某个日期之后。先用 metadata 缩小候选集，再做 vector ranking，比无约束全库向量扫描更可控。
+- `canonical`: 原始 chunk embedding
+- `contextual_text`: LLM 生成的上下文化 chunk 表述
+- `sample_question`: 代表这个 chunk 能回答的问题
+
+然后 dense lane 内部先按 representation type 分组做一次 RRF，合成“每个 chunk 一个 dense 候选”。这解决了一个实际问题：同一个 chunk 可能不是用原文最容易召回，而是通过问题型表述或上下文化表述更容易命中。
+
+metadata filter 的边界：
+
+- single-stage dense path 只处理 `docType`、`sector`、`regionId`、`afterDate`。
+- multi-stage representation dense path 已经支持 `tickers` 和 `issuerName` 过滤。
+- 当前 tech debt 里仍有 metadata schema/GIN index 等优化项，不要把 filter 性能说成已经完全生产化。
 
 ### Sparse retrieval
 
-`SparseSearchService.search()` 用 PostgreSQL full-text search：
+`SparseSearchService.search()` 用 PostgreSQL full-text search，同时查 canonical chunk 和 representation rows：
 
 ```sql
 search_vector @@ websearch_to_tsquery('simple', query)
-ts_rank_cd(search_vector, websearch_to_tsquery('simple', query))
+ts_rank_cd(weights, search_vector, websearch_to_tsquery('simple', query))
 ```
 
-它还用 source hit count 做 boost：
+当前 sparse lane 的特点：
+
+- canonical `document_chunks.search_vector` 会命中 title、source、entities、content。
+- representation `document_chunk_representations.search_vector` 会命中 `contextual_text`、`sample_question`、`keyword_entity`。
+- sparse weights 默认是 D/C/B/A = `0.1/0.2/0.4/1.0`，可通过配置调整。
+- canonical 和 representation 命中会按 chunkId merge，保留最高 rank。
+- 同一 source 多个 chunk 命中会有轻微 source hit boost：
 
 ```sql
 rank_score * (1 + 0.1 * ln(hit_count))
@@ -428,6 +508,13 @@ rank_score * (1 + 0.1 * ln(hit_count))
 - content 用 weight `B`
 - metadata 用 `simple` config，避免 ticker/entity 被错误 stem
 - content 用 `english` config，支持英文词形归一
+
+representation tsvector 的权重也不同：
+
+- `contextual_text`: title/section 权重大，上下文化文本次之。
+- `sample_question`: sample questions 权重大。
+- `summary`: summary 可用于 sparse，但不参与 dense embedding search。
+- `keyword_entity`: keyword/entity blob 可用于 sparse，但不参与 dense embedding search。
 
 ### Dense 和 sparse 的差别
 
@@ -450,6 +537,40 @@ Sparse retrieval 擅长精确问题：
 
 > 金融文档既有语义问题，也有大量精确术语。只用 embedding 容易漏掉 exact-match intent；只用 full-text 又不擅长概念型查询。所以用 dense + sparse，再用 RRF 合并。
 
+### Metadata-aware filtering
+
+`RetrievalOrchestratorService` 不直接把用户 query 当 SQL filter。它先调用：
+
+```text
+QueryEntityExtractorService.extract()
+  -> MetadataPreFilterService.buildFilter()
+```
+
+`QueryEntityExtractorService` 当前有两层：
+
+- regex path：识别 ticker、10-K/10-Q/8-K、annual/quarterly、FY/Q/year 等时间锚点。
+- optional LLM fallback：只有 regex 没有任何命中且 `RAG_ENTITY_LLM_FALLBACK_ENABLED=true` 时才会尝试，并带 timeout、并发上限和 circuit breaker。
+
+`MetadataPreFilterService` 支持三种模式：
+
+- `off`: 不生成 metadata prefilter。
+- `soft`: 低置信度 hint 只做 boost，不做 hard restriction。
+- `hard`: 高置信度 ticker/issuer/docType/timeRange 可进入 hard filter。
+
+当前默认是 `soft`。高置信度 ticker、issuerName、docType 和 afterDate 可以缩小候选集；低置信度 ticker/issuerName 会作为 soft hint 传给 sparse lane。soft hint 的实现不是 WHERE restriction，而是 rank multiplier：
+
+```text
+matching hinted ticker / issuer -> rank_score * 1.15
+```
+
+还有一个重要 guardrail：如果 hard metadata filter 后候选数低于 query class 的最小阈值，orchestrator 会把 ticker/issuerName 降级成 soft hint，重新跑一次 recall，并记录 `rag_metadata_prefilter_downgrade_total`。这避免了 metadata extractor 抽错后把召回集清空。
+
+局限也要主动讲：
+
+- sector/region 抽取目前存在，但 prefilter 没有把它们路由进 hot path。
+- explicit caller filters 优先于 extractor 结果。
+- live API eval 尚未完全替代 offline corpus retriever，所以 metadata routing 的线上收益不能硬说。
+
 ### RRF
 
 `RetrievalFusionService.fuse()` 公式：
@@ -462,6 +583,14 @@ default k = 60
 重点不是背公式，而是讲出为什么用 RRF：
 
 > Dense 的 cosine similarity 和 sparse 的 full-text rank score 不在同一个量纲，直接 weighted sum 需要归一化和调参。RRF 只看各 lane 内部排名，天然避免不同 score scale 的比较问题。一个文档如果在 dense 和 sparse 都靠前，会自然排到前面。
+
+当前实现会保留 provenance：
+
+- 哪些 lane 命中过该 chunk。
+- 哪些 representation types 命中过该 chunk。
+- 哪些 query variants 命中过该 chunk。
+
+这些信息会进入 trace，方便解释“为什么这个 chunk 被召回”。
 
 ### Reranker fallback
 
@@ -476,12 +605,40 @@ POST {RERANKER_URL}/rerank
 - 记录 warning
 - 按 RRF score 排序
 - 返回 topK
+- 记录 fallback reason
 
 面试说法：
 
 > Reranker 是质量增强层，不是系统可用性的单点依赖。它挂了以后 retrieval 降级为 RRF 排序，而不是整体失败。
 
-### Context packing
+细节：
+
+- candidate text 会带 `Title` / `Section` preamble，帮助 reranker 看到结构信息。
+- `RAG_RERANK_MAX_TOKENS` 控制单个候选文本预算，默认 480。
+- reranker 返回异常 JSON、schema 不合法、timeout 或 HTTP error 都走 fallback。
+
+### Graph lane
+
+仓库里有 GraphRAG 相关实现，但面试时要谨慎：
+
+- `GraphRetrievalService` 能通过 `knowledge_entities`、`knowledge_relations`、`chunk_entity_links` 做最多 2-hop 的 recursive CTE retrieval。
+- scorer 会结合 relation confidence、hop decay 和 chunk embedding relevance。
+- planner 只有在 `rag.graph.enabled=true` 且 query class 适合时才会把 graph lane 放进 plan。
+- orchestrator 还要求调用输入里有 entity names，当前普通 `RagRetrievalService.searchMultiStage()` 并没有把 extractor 的 issuerName 直接等价传成 graph entityNames。
+- `graph-enrich.consumer.ts` 的 TypeScript 路径支持 relations，但 Python sidecar 当前未完整返回 relations。
+
+稳妥说法：
+
+> Graph lane 的 schema、service 和 enrichment worker 已经在仓库里，但它不是当前默认主召回路径。当前可防守的主路径是 dense representation + sparse representation + metadata routing + RRF/rerank/context packing。
+
+### Context expansion and packing
+
+`ContextExpanderService` 是可选层，默认由 `RAG_CONTEXT_EXPANSION_ENABLED` 控制。它不会无条件扩大上下文：
+
+- 默认只允许 analytical、relational、multi_part query class 做 expansion。
+- 如果 query class 不在 allow-list，只有 top source 看起来像 long document 时才扩。
+- 可取 neighbor chunks，也可取 parent section。
+- expansion chunk 会继承较低分数，避免邻居压过原始命中。
 
 `ContextPackerService` 做三件事：
 
@@ -493,16 +650,34 @@ POST {RERANKER_URL}/rerank
 
 > RAG 的终点不是拿到候选文档，而是把证据压成一个 token-bounded、source-diverse 的 prompt context。
 
+### Trace, rollout, and evaluation
+
+当前 RAG 不只是返回结果，还会留下可验证信号：
+
+- `RagTraceService` 采样写 `rag_query_logs`：query hash、query class、variant hashes、filters、lanes、result chunk ids、lane counts、representation types、timings、fallback flags、rerank reason。
+- query preview 默认不写入，除非显式开启 PII 配置。
+- `ShadowRunnerService` 支持后台跑 shadow pipeline，记录 authoritative 和 shadow 的 chunk ids、latency、timeout/backpressure/error。
+- `RolloutGateService` 支持按 query class 和 stickiness 做 canary。
+- `/api/rag/search` 是 eval runner 专用入口，必须 `RAG_EVAL_ENDPOINT_ENABLED=true` 才开放；打开后无 auth，所以只应在受控评估环境使用。
+- `services/evaluation-runner/configs/wave2-buckets.yaml` 已经有 100-entry golden set 的离线 bucket thresholds。
+
+可防守的质量证据：
+
+> 仓库里有 offline evaluation gate，按 exact_lookup、factoid、relational、analytical、multi_part、long_doc、cross_document、table_numeric、colloquial 等 bucket 设最低 recall/MRR。当前限制是 offline CorpusRetriever 不等同于 live API pipeline；live API gate 还需要 deterministic chunk id remapping 后再切换。
+
 ### Latency 怎么回答
 
 代码里有低延迟设计：
 
-- SQL metadata pre-filter
-- bounded topK
-- dense/sparse lanes 并行执行
+- query class gating，避免 exact lookup 误用昂贵 variants
+- metadata hard/soft pre-filter 和 hard-to-soft downgrade
+- bounded topK / max variants
+- dense/sparse lanes 并行执行，lane failure 用 `Promise.allSettled`
 - reranker timeout + fallback
+- context expansion 默认关闭且按 query class/long-doc gate
 - context packing 限制 prompt size
 - Prometheus histogram: `rag_search_duration_seconds`
+- rollout/shadow 机制可先观测再放量
 
 但本次检查没有找到 RAG latency benchmark。更稳的回答：
 
@@ -981,6 +1156,14 @@ target: api:3001
 - `rag_vectorized_chunks_total`
 - `rag_vectorization_last_chunk_count`
 
+RAG rollout / trace 相关信号：
+
+- `rag_retrieval_pipeline{mode,query_class}`
+- `rag_shadow_outcome_total{outcome}`
+- `rag_metadata_prefilter_downgrade_total{query_class}`
+- `rag_query_logs` 保存采样 query plan、lane counts、timings、fallback flags
+- `rag_shadow_comparisons` 保存 shadow/canary 评估所需的结果差异和 latency 差异
+
 ### RateLimit Guard
 
 `RateLimiterService` 用 Redis Lua fixed window：
@@ -1099,7 +1282,7 @@ rl:{dimension}:{identifier}:{endpoint}
 
 答：
 
-> 金融文档既有语义查询，也有精确术语。Dense retrieval 对语义问题好，sparse retrieval 对 ticker、form、会计术语、risk factor、公司名好。RRF 让两种 ranked list 合并时不需要比较不同量纲的 raw scores。
+> 金融文档既有语义查询，也有精确术语。Dense retrieval 对语义问题好，sparse retrieval 对 ticker、form、section、会计术语、risk factor、公司名好。当前实现还不只是原始 chunk：dense 会查 canonical、contextual_text、sample_question 三种表示，sparse 会查 canonical 和 representation search vectors。最后用 RRF 合并，避免比较 cosine 和 ts_rank_cd 这两种不同量纲的 raw scores。
 
 ### Q4: RRF 公式是什么，为什么有用？
 
@@ -1115,18 +1298,19 @@ score(doc) = sum over lanes of 1 / (k + rank + 1)
 - 不比较 cosine 和 ts_rank_cd 的 raw score
 - 多个 lane 都靠前的文档自然更靠前
 - 默认 k=60 平滑排名差异
+- 当前实现还会记录命中的 lane、representation type 和 query variant，方便 trace/debug
 
 ### Q5: sub-300ms 怎么证明？
 
 答：
 
-> 我会先讲设计：metadata filter、bounded topK、parallel lanes、reranker fallback、context packing、Prometheus histogram。然后补证据：如果要说 P95 sub-300ms，需要贴 `rag_search_duration_seconds` 的 Grafana/Prometheus 数据或 benchmark output。没有证据时不要把数字说死。
+> 我会先讲设计：query class gating、metadata hard/soft filter、bounded variants/topK、parallel lanes、reranker fallback、context expansion gate、context packing、Prometheus histogram。然后补证据：如果要说 P95 sub-300ms，需要贴 `rag_search_duration_seconds` 的 Grafana/Prometheus 数据或 benchmark output。仓库里有 offline quality gate，但那不是 live latency 证据，所以没有证据时不要把数字说死。
 
 ### Q6: reranker 挂了怎么办？
 
 答：
 
-> `RerankService` 有 timeout 和 fallback。如果 sidecar 不可用，就按 RRF score 返回 topK。质量可能下降，但 retrieval 不会整体失败。
+> `RerankService` 有 timeout、schema validation 和 fallback。如果 sidecar 不可用、超时或返回 malformed response，就按 RRF score 返回 topK，并在 trace/metrics 里留下 fallback reason。质量可能下降，但 retrieval 不会整体失败。
 
 ### Q7: 为什么 BullMQ，不用 Kafka？
 
@@ -1169,6 +1353,9 @@ score(doc) = sum over lanes of 1 / (k + rank + 1)
 答：
 
 - RAG representative latency benchmark
+- live API RAG eval gate，替代当前 offline CorpusRetriever gate
+- GraphRAG relation extraction 的真实 sidecar 输出
+- scanned PDF / OCR ingestion strategy
 - real Redis rate-limit load test
 - broker saga reconciliation
 - multi-instance SSE pub/sub or durable replay
@@ -1217,7 +1404,7 @@ Chat request
 
 背这个版本：
 
-> 我把金融文档切 chunk 后同时存 embedding 和 search_vector。查询时 dense lane 做语义召回，sparse lane 做精确术语召回，RRF 合并 ranked lists，reranker 可选提升精度，失败时回退到 RRF。最后 context packer 做去重、source diversity 和 token budget 控制。
+> 文档进入 BullMQ 后会解析成 Markdown，按文档类型 chunk，写 canonical embedding 和 search_vector；可选 enrichment 会生成 contextual_text、sample_question、summary、keyword_entity 等 representation。查询时 planner 先判断 exact_lookup、factoid、relational、analytical 或 multi_part，决定 rewrite/HyDE/subquery 是否能用。orchestrator 再用 metadata hints 跑 dense representation lane 和 sparse canonical+representation lane，RRF 融合，reranker 可选提升精度，失败时回退到 RRF。最后按 query class 做可选 context expansion，并由 context packer 做去重、source diversity 和 token budget 控制。
 
 ### Drill 3: 60 秒解释交易防重
 
@@ -1230,6 +1417,9 @@ Chat request
 任选一个：
 
 - RAG sub-300ms 需要 benchmark/Grafana 证据。
+- 当前 RAG quality gate 仍是 offline CorpusRetriever，不等于 live API pipeline。
+- Graph lane 有 schema/service/worker，但 relation extraction 和默认 online activation 还不成熟。
+- PDF parser 是 pdfplumber text extraction，不是 OCR。
 - SSE 150 concurrency 是 in-process，不是生产压测。
 - Rate limit 1k/min 是 mock Redis benchmark。
 - Chat compaction 是有损的。
