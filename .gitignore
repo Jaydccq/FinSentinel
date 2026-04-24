@@ -123,6 +123,7 @@ docs/exec-plans/*
 !docs/exec-plans/2026-04-23-desktop-ci-smoke.md
 !docs/exec-plans/2026-04-24-deferred-followups.md
 !docs/exec-plans/2026-04-24-f1-tauri-keychain.md
+!docs/exec-plans/2026-04-24-f2-f3-keychain-migration.md
 !docs/technical-guides/
 !docs/technical-guides/autonomous-investment-platform-interview-guide.md
 !docs/technical-guides/autonomous-investment-platform-interview-guide-print.css
@@ -134,6 +135,7 @@ docs/runbooks/*
 !docs/runbooks/2026-04-19-rag-wave2-rollout.md
 !docs/runbooks/2026-04-21-golden-set-labeling-sop.md
 !docs/runbooks/2026-04-21-rag-live-baseline-capture.md
+!docs/runbooks/2026-04-24-f3-localstorage-shim-removal.md
 !docs/superpowers/
 docs/superpowers/*
 !docs/superpowers/plans/

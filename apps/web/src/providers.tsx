@@ -9,10 +9,9 @@ import Toast from '@/components/Toast'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // Prime the auth cache so `authHeaders()` (sync) returns a Bearer
-    // token for subsequent API calls (news/documents/analysis/okx use it
-    // directly without going through apiFetch's async path).
-    // Pass the resolved base explicitly so the wiring is auditable here.
+    // Prime the in-memory token cache so `authHeaders()` (sync) can return
+    // a Bearer header for callers that bypass apiFetch's async path. Under
+    // Tauri this also runs the F-3 legacy-localStorage → keychain shim.
     void ensureLocalToken(getApiBaseUrl())
   }, [])
 
