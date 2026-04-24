@@ -79,8 +79,11 @@ import { WatchlistModule } from './watchlist/watchlist.module';
     OpenbbModule.register({
       enabled: process.env['OPENBB_ENABLED'] === 'true',
     }),
-    // OKX is always imported; guards at service level via config.enabled.
-    OkxModule,
+    // F-7b: OKX — controllers only when enabled; services stay in DI for
+    // AgentModule / TradingModule consumers.
+    OkxModule.register({
+      enabled: process.env['APP_OKX_ENABLED'] === 'true',
+    }),
     // BullMQ queues for async document vectorization and news enrichment.
     QueueModule,
     // AI-powered stock analysis with SSE streaming.
