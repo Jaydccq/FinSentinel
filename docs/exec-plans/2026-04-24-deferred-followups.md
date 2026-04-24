@@ -14,7 +14,7 @@
 | ✅ landed 2026-04-24 | [F-2: 移除 `NEXT_PUBLIC_LOCAL_USER_*` 构建烘焙](#f-2-移除-next_public_local_user_-构建烘焙) — see [exec plan](./2026-04-24-f2-f3-keychain-migration.md) | 0.5 day | F-1 |
 | ✅ landed 2026-04-24 | [F-3: 1-release 兼容 shim（`localStorage.fs_local_token` → keychain 迁移）](#f-3-1-release-兼容-shim) — [runbook](../runbooks/2026-04-24-f3-localstorage-shim-removal.md) | 0.5 day | F-1, F-2 |
 | P1 | [F-4: 文档上传 outbox + presigned URL 直传](#f-4-文档上传-outbox--presigned-url-直传) | 2–3 day | 无 |
-| P1 | [F-5: RAG `strict_metadata=true` HARD SQL 下沉](#f-5-rag-strict_metadatatrue-hard-sql-下沉) | 1.5 day | 30 题 golden 评测可信 |
+| ✅ landed 2026-04-24 (flag + wiring; quality eval pending golden set) | [F-5: RAG `strict_metadata=true` HARD SQL 下沉](#f-5-rag-strict_metadatatrue-hard-sql-下沉) | 1.5 day | 30 题 golden 评测可信 |
 | P1 | [F-6: Watchlist item-level CRUD + Settings UI](#f-6-watchlist-item-level-crud--settings-ui) | 1.5–2 day | 无 |
 | P2 | [F-7: 平台层 Dynamic Module 重构（OpenBB / OKX / Queue / News / Twitter）](#f-7-dynamic-module-重构) | 2 day per module × 5 | 单独跑，逐模块 |
 | P2 | [F-8: helmet CSP + HSTS 启用](#f-8-helmet-csp--hsts-启用) | 0.5 day | Web + 桌面端 SSE QA 通过 |

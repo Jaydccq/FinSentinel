@@ -38,6 +38,12 @@ export interface RagSearchRequest {
   sector?: string;
   regionId?: string;
   afterDate?: string;
+  /**
+   * F-5: opt into HARD SQL pushdown of entity-extracted sector + region.
+   * Default false (SOFT boost). Enable from the eval runner when measuring
+   * strict vs. default nDCG / recall / precision.
+   */
+  strictMetadata?: boolean;
 }
 
 export interface RagSearchApiResponse {
@@ -82,6 +88,7 @@ export class RagSearchController {
       sector: body.sector,
       regionId: body.regionId,
       afterDate: body.afterDate,
+      strictMetadata: body.strictMetadata,
     });
     return { results };
   }

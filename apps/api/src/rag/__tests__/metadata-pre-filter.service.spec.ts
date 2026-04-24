@@ -70,6 +70,58 @@ describe('MetadataPreFilterService.buildFilter (R4.2)', () => {
     expect(r.appliedMode).toBe('soft');
   });
 
+  // ── F-5: strict_metadata HARD pushdown ─────────────────────────────────
+
+  it('F-5 strict=true: top sector + region are routed to hardFilter (not softFilter)', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter(
+      'apple news',
+      'factoid',
+      {},
+      buildExtracted({
+        sectors: [{ value: 'Technology', confidence: 0.9 }],
+        regions: [{ value: 'US', confidence: 0.9 }],
+      }),
+      true, // strictMetadata
+    );
+    expect(r.hardFilter.sector).toBe('Technology');
+    expect(r.hardFilter.regionId).toBe('US');
+    // SOFT path is suppressed for sector/region under strict mode.
+    expect(r.softFilter?.sector).toBeUndefined();
+    expect(r.softFilter?.regionId).toBeUndefined();
+  });
+
+  it('F-5 strict=false (default): top sector + region stay on softFilter (existing SOFT behavior)', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter(
+      'apple news',
+      'factoid',
+      {},
+      buildExtracted({
+        sectors: [{ value: 'Technology', confidence: 0.9 }],
+        regions: [{ value: 'US', confidence: 0.9 }],
+      }),
+    );
+    expect(r.hardFilter.sector).toBeUndefined();
+    expect(r.hardFilter.regionId).toBeUndefined();
+    expect(r.softFilter?.sector).toBe('Technology');
+    expect(r.softFilter?.regionId).toBe('US');
+  });
+
+  it('F-5 strict=true: explicit filter wins on conflict, extracted does not stomp it', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter(
+      'apple news',
+      'factoid',
+      { sector: 'Healthcare' }, // caller already set sector
+      buildExtracted({
+        sectors: [{ value: 'Technology', confidence: 0.9 }],
+      }),
+      true,
+    );
+    expect(r.hardFilter.sector).toBe('Healthcare');
+  });
+
   // ── P3.1: docType + timeRange routing (closes [RAG-TD-R4-06]) ───────────────
 
   it('mode=soft: high-confidence docType is routed into hardFilter.docType', () => {

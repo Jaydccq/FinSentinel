@@ -79,6 +79,13 @@ export class MetadataPreFilterService {
     _queryClass: QueryClass | undefined,
     explicitFilters: SparseSearchFilters,
     extracted: ExtractedEntities | null,
+    /**
+     * F-5 opt-in. When true, high-confidence top sector + region get
+     * promoted to `hardFilter.sector` / `hardFilter.regionId`, trading
+     * recall for precision. Default stays `false` so existing callers
+     * keep the post-P1-3 SOFT behavior.
+     */
+    strictMetadata: boolean = false,
   ): PreFilter {
     // mode=off OR null extracted → pass through explicit filters only
     if (this.config.mode === 'off' || extracted === null) {
@@ -125,9 +132,20 @@ export class MetadataPreFilterService {
         ? formatIsoDate(extracted.timeRange.after)
         : undefined;
 
+    // F-5: when strictMetadata=true, promote the top-confidence sector +
+    // region to the HARD filter so they flow into the SparseSearch SQL
+    // equality check. `explicitFilters` still wins on conflict (caller
+    // knows best), and the SOFT path is skipped below.
+    const strictSector =
+      strictMetadata && topSector && !explicitFilters.sector ? topSector : undefined;
+    const strictRegion =
+      strictMetadata && topRegion && !explicitFilters.regionId ? topRegion : undefined;
+
     const hardFilter: SparseSearchFilters & { tickers?: string[]; issuerName?: string[] } = {
       ...(extractedDocType ? { docType: extractedDocType } : {}),
       ...(extractedAfterDate ? { afterDate: extractedAfterDate } : {}),
+      ...(strictSector ? { sector: strictSector } : {}),
+      ...(strictRegion ? { regionId: strictRegion } : {}),
       ...explicitFilters, // explicit wins on conflict
       ...(highTickers.length ? { tickers: highTickers } : {}),
       ...(highIssuers.length ? { issuerName: highIssuers } : {}),
@@ -144,17 +162,24 @@ export class MetadataPreFilterService {
     }
 
     // mode === 'soft'
+    //
+    // F-5: when strictMetadata=true, the top sector + region have already
+    // been absorbed into hardFilter, so they must not also appear in
+    // softFilter. Keep low-confidence tickers/issuers on the SOFT path
+    // even under strict mode — those are never safe to HARD-filter.
     let softFilter: (SparseSearchFilters & { tickers?: string[]; issuerName?: string[] }) | undefined;
+    const softSector = strictMetadata ? undefined : topSector;
+    const softRegion = strictMetadata ? undefined : topRegion;
     const hasSoftHint =
       lowTickers.length + lowIssuers.length > 0 ||
-      topSector !== undefined ||
-      topRegion !== undefined;
+      softSector !== undefined ||
+      softRegion !== undefined;
     if (hasSoftHint) {
       softFilter = {
         ...(lowTickers.length ? { tickers: lowTickers } : {}),
         ...(lowIssuers.length ? { issuerName: lowIssuers } : {}),
-        ...(topSector ? { sector: topSector } : {}),
-        ...(topRegion ? { regionId: topRegion } : {}),
+        ...(softSector ? { sector: softSector } : {}),
+        ...(softRegion ? { regionId: softRegion } : {}),
       };
     }
 
