@@ -81,6 +81,16 @@ docs/product-specs/*
 !docs/product-specs/2026-04-17-strategy-rescue-operator-library.md
 !docs/product-specs/2026-04-17-strategy-pareto-ranking-and-archive.md
 !docs/product-specs/2026-04-17-strategy-oos-and-walk-forward-evaluator.md
+!docs/product-specs/2026-04-23-trading-stage-commit-execute-atomicity.md
+!docs/product-specs/2026-04-23-web-tauri-api-base-url-unification.md
+!docs/product-specs/2026-04-23-auth-session-hardening.md
+!docs/product-specs/2026-04-23-document-upload-pipeline-hardening.md
+!docs/product-specs/2026-04-23-rag-fusion-prefilter-shadow-runner.md
+!docs/product-specs/2026-04-23-watchlist-server-persistence.md
+!docs/product-specs/2026-04-23-market-search-provider-abstraction.md
+!docs/product-specs/2026-04-23-platform-bootstrap-and-module-scoping.md
+!docs/product-specs/2026-04-23-desktop-ci-smoke-build.md
+!docs/product-specs/2026-04-23-review-corrections-index.md
 !docs/exec-plans/
 docs/exec-plans/*
 !docs/exec-plans/2026-04-16-multi-agent-runtime-rollout.md
@@ -102,6 +112,7 @@ docs/exec-plans/*
 !docs/exec-plans/2026-04-17-pi-mono-refactor-plan.md
 !docs/exec-plans/2026-04-18-resume-technical-guide.md
 !docs/exec-plans/2026-04-21-fix-interview-guide-pdf.md
+!docs/exec-plans/2026-04-23-trading-atomicity.md
 !docs/technical-guides/
 !docs/technical-guides/autonomous-investment-platform-interview-guide.md
 !docs/technical-guides/autonomous-investment-platform-interview-guide-print.css
