@@ -29,3 +29,22 @@ export const watchlistOverviewResponseSchema = z.object({
   categories: z.array(watchlistCategoryResponseSchema),
 });
 export type WatchlistOverviewResponse = z.infer<typeof watchlistOverviewResponseSchema>;
+
+// ── Request inputs (REST DTOs) ────────────────────────────────────────────
+
+export const saveWatchlistItemSchema = z.object({
+  symbol: z.string().min(1).max(50),
+  companyName: z.string().max(255).optional(),
+  thesis: z.string().max(4000).optional(),
+  notes: z.string().max(4000).optional(),
+  priority: z.number().int().min(0).max(1000).optional(),
+});
+export type SaveWatchlistItemInput = z.infer<typeof saveWatchlistItemSchema>;
+
+export const saveWatchlistRequestSchema = z.object({
+  categoryName: z.string().min(1).max(100),
+  categoryDescription: z.string().max(1000).optional(),
+  categorySummary: z.string().max(2000).optional(),
+  items: z.array(saveWatchlistItemSchema).max(500),
+});
+export type SaveWatchlistRequest = z.infer<typeof saveWatchlistRequestSchema>;
