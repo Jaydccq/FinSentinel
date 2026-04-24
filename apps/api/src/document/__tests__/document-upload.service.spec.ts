@@ -267,10 +267,10 @@ describe('DocumentUploadService', () => {
     await expect(service.upload(file as any, 'user-1', 'SEC_FILING')).rejects.toThrow(/exceeds maximum size/);
   });
 
-  // ── P1-1: compensation delete + regionId + async-vectorize gate ────────
+  // ── P1-1 / F-4: outbox order + regionId + async-vectorize gate ────────
 
   describe('P1-1 hardening', () => {
-    it('deletes the storage object when DB insert fails (no orphans)', async () => {
+    it('F-4 outbox: DB insert fails before storage is touched (no orphans possible)', async () => {
       mockDb._mocks.insertReturning.mockRejectedValueOnce(new Error('db down'));
       const file = {
         buffer: Buffer.from('Test content'),
@@ -280,10 +280,28 @@ describe('DocumentUploadService', () => {
       await expect(
         service.upload(file, 'user-1', 'RESEARCH'),
       ).rejects.toThrow('db down');
-      expect(mockStorage.upload).toHaveBeenCalledTimes(1);
-      expect(mockStorage.delete).toHaveBeenCalledTimes(1);
-      const deletedKey = mockStorage.delete.mock.calls[0]?.[0] as string;
-      expect(deletedKey).toMatch(/^documents\//);
+      // Under the outbox order, storage is never touched when DB fails.
+      expect(mockStorage.upload).not.toHaveBeenCalled();
+      expect(mockStorage.delete).not.toHaveBeenCalled();
+    });
+
+    it('F-4 outbox: storage failure marks the row FAILED and surfaces the error', async () => {
+      mockStorage.upload.mockRejectedValueOnce(new Error('rustfs down'));
+      const file = {
+        buffer: Buffer.from('Test content'),
+        mimetype: 'text/plain',
+        originalname: 'test.txt',
+      };
+      await expect(
+        service.upload(file, 'user-1', 'RESEARCH'),
+      ).rejects.toThrow('rustfs down');
+      // DB row was inserted first; update-to-FAILED fires.
+      const updateSets = mockDb._mocks.updateSet.mock.calls.map(
+        (c: unknown[]) => c[0] as Record<string, unknown>,
+      );
+      expect(updateSets.some((s) => s.status === 'FAILED')).toBe(true);
+      // No compensating storage.delete — the object never landed.
+      expect(mockStorage.delete).not.toHaveBeenCalled();
     });
 
     it('does not call storage.delete when DB insert succeeds', async () => {

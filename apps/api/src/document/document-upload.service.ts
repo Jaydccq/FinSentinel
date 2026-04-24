@@ -109,48 +109,56 @@ export class DocumentUploadService {
     const safeFileName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storageKey = `documents/${userId}/${timestamp}_${safeFileName}`;
 
-    // 4. Upload to storage. If the subsequent DB insert fails, compensate by
-    //    deleting this object so we don't leave orphans behind.
-    await this.storage.upload(storageKey, file.buffer, file.mimetype);
-    this.logger.log(`Uploaded file to storage: ${storageKey}`);
+    // 4. F-4 outbox step 1: insert the DB row as PENDING_UPLOAD *before*
+    //    touching storage. If storage then fails, the row is marked
+    //    FAILED rather than leaving orphan bytes (the old order had a
+    //    compensating storage.delete which relied on exceptions reaching
+    //    the catch — a process kill between storage.upload and db.insert
+    //    would have leaked an object).
+    const insertResult = await this.db
+      .insert(documents)
+      .values({
+        fileName: safeFileName,
+        originalFileName: file.originalname,
+        docType,
+        status: 'PENDING_UPLOAD',
+        sector: sector ?? null,
+        regionId: resolvedRegionId,
+        userId,
+        fileSize: file.buffer.length,
+        storageKey,
+        storageTier: 'HOT',
+      })
+      .returning({ id: documents.id });
+    const inserted = insertResult[0];
+    if (!inserted) throw new Error('Failed to insert document record');
+    const doc: { id: string } = inserted;
 
-    // 5. Create DB record with status=PENDING
-    let doc: { id: string };
+    // 5. Upload to storage. On failure, mark the row FAILED so the
+    //    reconciler (future work) can clean it up; re-throw so the
+    //    caller sees the error.
     try {
-      const insertResult = await this.db
-        .insert(documents)
-        .values({
-          fileName: safeFileName,
-          originalFileName: file.originalname,
-          docType,
-          status: 'PENDING',
-          sector: sector ?? null,
-          regionId: resolvedRegionId,
-          userId,
-          fileSize: file.buffer.length,
-          storageKey,
-          storageTier: 'HOT',
-        })
-        .returning({ id: documents.id });
-
-      const inserted = insertResult[0];
-      if (!inserted) throw new Error('Failed to insert document record');
-      doc = inserted;
+      await this.storage.upload(storageKey, file.buffer, file.mimetype);
+      this.logger.log(`Uploaded file to storage: ${storageKey}`);
     } catch (err) {
-      // Compensating delete — best-effort. Surface the original error.
       try {
-        await this.storage.delete(storageKey);
-        this.logger.warn(
-          `Rolled back orphan storage object after DB failure: ${storageKey}`,
-        );
-      } catch (cleanupErr) {
+        await this.db
+          .update(documents)
+          .set({ status: 'FAILED' })
+          .where(eq(documents.id, doc.id));
+      } catch (markErr) {
         this.logger.error(
-          `Compensating storage.delete failed for ${storageKey}: ${cleanupErr}`,
+          `Failed to mark document ${doc.id} FAILED after storage error: ${markErr}`,
         );
       }
       throw err;
     }
 
+    // 6. Promote to PENDING (upload done, ready for vectorization).
+    await this.db
+      .update(documents)
+      .set({ status: 'PENDING' })
+      .where(eq(documents.id, doc.id));
     this.logger.log(`Created document record: ${doc.id} (status=PENDING)`);
 
     // 6. Dispatch to BullMQ queue if available, otherwise fall back to sync.
