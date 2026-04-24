@@ -64,8 +64,7 @@ describe('MetadataPreFilterService.buildFilter (R4.2)', () => {
 
   it('mode=soft: empty extracted yields hardFilter == explicit, softFilter undefined, appliedMode = soft', () => {
     const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
-    // FIXME(R4): plan uses 'colloquial' but QueryClass omits it; reconcile in a follow-up.
-    const r = s.buildFilter('q', 'colloquial' as any, explicit, buildExtracted());
+    const r = s.buildFilter('q', 'colloquial', explicit, buildExtracted());
     expect(r.hardFilter).toEqual(explicit);
     expect(r.softFilter).toBeUndefined();
     expect(r.appliedMode).toBe('soft');

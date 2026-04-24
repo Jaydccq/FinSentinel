@@ -11,7 +11,8 @@ export type QueryClass =
   | 'factoid'
   | 'relational'
   | 'analytical'
-  | 'multi_part';
+  | 'multi_part'
+  | 'colloquial';
 export type VariantKind = 'original' | 'rewrite' | 'hyde' | 'subquery';
 
 export interface QueryVariant {
@@ -89,6 +90,14 @@ const QUOTED_PHRASE = /"[^"]{3,}"/;
  * while still covering long-tail ticker queries like "XYZ Q4 2025 revenue".
  */
 const DOC_TYPE_KEYWORDS = /\b(revenue|earnings|10-?K|10-?Q|8-?K|filing|report|guidance)\b/i;
+
+/**
+ * Chat/greeting openers with no retrieval intent. Distinct from `factoid`
+ * so callers can short-circuit candidate thresholds (colloquial traffic
+ * shouldn't trip the metadata-prefilter "insufficient candidates" guard).
+ */
+const COLLOQUIAL_OPENERS =
+  /^\s*(hi|hello|hey|yo|sup|thanks?|thank\s+you|ty|tysm|bye|goodbye|ok(ay)?|cool|lol|nice|got\s+it|sounds\s+good|help(?:\s+me)?)[\s!?.,]*$/i;
 
 // ── Service ───────────────────────────────────────────────────────────────────
 
@@ -226,13 +235,16 @@ export class RetrievalPlannerService {
   /**
    * Classify the query using regex rules only (no LLM).
    *
-   * Precedence: exact_lookup > multi_part > analytical > relational > factoid.
+   * Precedence: exact_lookup > multi_part > analytical > relational > colloquial > factoid.
+   * `colloquial` sits below structural checks so a one-word ticker like "AAPL"
+   * still lands in `exact_lookup`.
    */
   private classifyQuery(query: string): QueryClass {
     if (this.isExactLookup(query)) return 'exact_lookup';
     if (this.isMultiPart(query)) return 'multi_part';
     if (this.isAnalytical(query)) return 'analytical';
     if (RELATION_CUES.test(query) || GRAPH_QUERY_PATTERNS.test(query)) return 'relational';
+    if (COLLOQUIAL_OPENERS.test(query)) return 'colloquial';
     return 'factoid';
   }
 
