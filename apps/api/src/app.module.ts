@@ -74,8 +74,11 @@ import { WatchlistModule } from './watchlist/watchlist.module';
     AutonomyModule,
     StorageModule,
     DocumentModule,
-    // OpenBB is always imported; its service guards at method level via config.enabled.
-    OpenbbModule,
+    // F-7a: OpenBB as a dynamic module — controllers only mount when the
+    // flag is on. Services stay in DI for non-controller consumers.
+    OpenbbModule.register({
+      enabled: process.env['OPENBB_ENABLED'] === 'true',
+    }),
     // OKX is always imported; guards at service level via config.enabled.
     OkxModule,
     // BullMQ queues for async document vectorization and news enrichment.
