@@ -19,7 +19,7 @@
 | ✅ F-7a/b landed, F-7c stub, F-7d/e N/A 2026-04-24 | [F-7: 平台层 Dynamic Module 重构（OpenBB / OKX / Queue / News / Twitter）](#f-7-dynamic-module-重构) — [exec plan](./2026-04-24-f7-dynamic-module-refactor.md) | 2 day per module × 5 | 单独跑，逐模块 |
 | ✅ landed 2026-04-24 (strict CSP + HSTS gated on cookie.secure) | [F-8: helmet CSP + HSTS 启用](#f-8-helmet-csp--hsts-启用) | 0.5 day | Web + 桌面端 SSE QA 通过 |
 | ✅ partial 2026-04-24 (command + test; runtime orchestration deferred) | [F-9: 桌面 CI 真正的运行时 smoke（GUI/IPC）](#f-9-桌面-ci-runtime-smoke) — [exec plan](./2026-04-24-f9-desktop-ping-smoke.md) | 1 day | F-1 落地后更有意义 |
-| 🔒 blocked 2026-04-24 (Apple Developer acct); workflow skeleton parked | [F-10: 桌面端发行包（DMG / MSI / AppImage）+ 签名](#f-10-桌面端发行包--签名) — [exec plan](./2026-04-24-f10-release-signing.md) | 2 day | F-9 |
+| 🔒 blocked 2026-04-24 (external procurement only — engineering done) | [F-10: 桌面端发行包（DMG / MSI / AppImage）+ 签名](#f-10-桌面端发行包--签名) — [exec plan](./2026-04-24-f10-release-signing.md) | 2 day | F-9 |
 | ✅ landed 2026-04-24 (Polygon + FMP) | [F-11: 新增 search-capable provider（Polygon / Alpaca）](#f-11-新增-search-capable-provider) | 0.5 day per provider | 无 |
 | ✅ landed 2026-04-24 (via Logger-compat; individual InjectPinoLogger swaps incremental) | [F-12: nestjs-pino 替换内置 Logger](#f-12-nestjs-pino-替换内置-logger) | 1 day | 无 |
 | ✅ landed 2026-04-24 (filename heuristics; PDF-metadata + agent event deferred) | [F-13: 文档上传 `regionId` 元数据自动推断](#f-13-文档上传-regionid-元数据自动推断) | 0.5 day | 无 |
