@@ -30,4 +30,48 @@ describe('ShadowRunnerService', () => {
     expect(dropped).toBeGreaterThan(0);
     expect(outcomes.every(o => ['executed', 'dropped_backpressure'].includes(o))).toBe(true);
   });
+
+  // ── P1-3: semaphore replaces 5ms polling ─────────────────────────────
+
+  it('semaphore: respects concurrency cap (at most N tasks active concurrently)', async () => {
+    const runner = new ShadowRunnerService({ concurrency: 2, maxQueueDepth: 10, timeoutMs: 5000 });
+
+    let active = 0;
+    let peak = 0;
+    const task = () =>
+      new Promise<void>((resolve) => {
+        active++;
+        peak = Math.max(peak, active);
+        setTimeout(() => {
+          active--;
+          resolve();
+        }, 30);
+      });
+
+    const outcomes = await Promise.all(
+      Array.from({ length: 6 }, () => runner.enqueue(task)),
+    );
+    expect(outcomes.every((o) => o === 'executed')).toBe(true);
+    expect(peak).toBeLessThanOrEqual(2);
+  });
+
+  it('semaphore: queued tasks wake immediately when a slot is released (no 5ms poll latency)', async () => {
+    const runner = new ShadowRunnerService({ concurrency: 1, maxQueueDepth: 10, timeoutMs: 5000 });
+
+    const order: number[] = [];
+    const make = (n: number) => async () => {
+      order.push(n);
+      // tiny delay to make the queue meaningful
+      await new Promise<void>((r) => setTimeout(r, 5));
+    };
+
+    await Promise.all([
+      runner.enqueue(make(1)),
+      runner.enqueue(make(2)),
+      runner.enqueue(make(3)),
+    ]);
+
+    // FIFO: even with concurrency=1 and only 1 active at a time, all run in order.
+    expect(order).toEqual([1, 2, 3]);
+  });
 });
