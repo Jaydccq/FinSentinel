@@ -3,9 +3,11 @@ pub mod commands;
 pub mod db;
 pub mod embeddings;
 pub mod indexer;
+pub mod smoke;
 
 use auth::{clear_token, read_token, write_token};
 use commands::{index_pdf, list_documents, search_private_docs, AppState};
+use smoke::ping;
 use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -44,6 +46,7 @@ pub fn run() {
             read_token,
             write_token,
             clear_token,
+            ping,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

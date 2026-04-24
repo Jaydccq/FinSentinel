@@ -124,6 +124,7 @@ docs/exec-plans/*
 !docs/exec-plans/2026-04-24-deferred-followups.md
 !docs/exec-plans/2026-04-24-f1-tauri-keychain.md
 !docs/exec-plans/2026-04-24-f2-f3-keychain-migration.md
+!docs/exec-plans/2026-04-24-f9-desktop-ping-smoke.md
 !docs/technical-guides/
 !docs/technical-guides/autonomous-investment-platform-interview-guide.md
 !docs/technical-guides/autonomous-investment-platform-interview-guide-print.css
