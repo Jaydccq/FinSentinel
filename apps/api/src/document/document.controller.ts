@@ -60,6 +60,7 @@ export class DocumentController {
     @UploadedFile() file: MulterFile | undefined,
     @Query('docType') docType?: string,
     @Query('sector') sector?: string,
+    @Query('regionId') regionId?: string,
   ) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
@@ -74,6 +75,7 @@ export class DocumentController {
       user.userId,
       docType ?? 'GENERAL',
       sector,
+      regionId, // undefined → service falls back to 'US'
     );
   }
 
