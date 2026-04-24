@@ -29,6 +29,7 @@ import { JwtGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { IdempotencyKey } from '../common/decorators/idempotency-key.decorator';
 import { parseIntParam } from '../common/utils/parse-int-param';
 import { UnifiedTradingService } from './unified-trading.service';
 
@@ -73,14 +74,26 @@ export class TradingController {
   async commit(
     @CurrentUser() user: CurrentUserPayload,
     @Body(new ZodValidationPipe(commitRequestSchema)) body: CommitRequest,
+    @IdempotencyKey() idempotencyKey?: string,
   ) {
-    const result = await this.tradingService.commit(user.userId, body.message);
-    return { message: `Committed ${result.count} operations (hash: ${result.hash.substring(0, 8)}...)` };
+    const result = await this.tradingService.commit(
+      user.userId,
+      body.message,
+      undefined,
+      idempotencyKey,
+    );
+    return {
+      message: `Committed ${result.count} operations (hash: ${result.hash.substring(0, 8)}...)`,
+      hash: result.hash,
+    };
   }
 
   @Post('execute')
-  async execute(@CurrentUser() user: CurrentUserPayload) {
-    const result = await this.tradingService.execute(user.userId);
+  async execute(
+    @CurrentUser() user: CurrentUserPayload,
+    @IdempotencyKey() idempotencyKey?: string,
+  ) {
+    const result = await this.tradingService.execute(user.userId, idempotencyKey);
     return { message: result.report };
   }
 
@@ -144,14 +157,23 @@ export class TradingController {
   async v2Commit(
     @CurrentUser() user: CurrentUserPayload,
     @Body(new ZodValidationPipe(commitRequestSchema)) body: CommitRequest,
+    @IdempotencyKey() idempotencyKey?: string,
   ) {
-    const result = await this.tradingService.commit(user.userId, body.message);
+    const result = await this.tradingService.commit(
+      user.userId,
+      body.message,
+      undefined,
+      idempotencyKey,
+    );
     return { hash: result.hash, count: result.count };
   }
 
   @Post('v2/execute')
-  async v2Execute(@CurrentUser() user: CurrentUserPayload): Promise<V2CommitResponse> {
-    const result = await this.tradingService.execute(user.userId);
+  async v2Execute(
+    @CurrentUser() user: CurrentUserPayload,
+    @IdempotencyKey() idempotencyKey?: string,
+  ): Promise<V2CommitResponse> {
+    const result = await this.tradingService.execute(user.userId, idempotencyKey);
     const commitData = result.commitData as {
       hash: string;
       message: string;
