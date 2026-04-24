@@ -10,4 +10,12 @@ export interface StorageService {
 
   /** Delete a file from storage. */
   delete(key: string): Promise<void>;
+
+  /**
+   * Check whether a key exists without downloading bytes. Used by the
+   * F-4 DocumentReconcilerService to decide between "PENDING_UPLOAD row
+   * has a real storage object — promote to PENDING" and "no storage
+   * object — delete the stuck row".
+   */
+  head(key: string): Promise<boolean>;
 }

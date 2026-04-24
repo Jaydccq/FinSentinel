@@ -5,6 +5,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import type { StorageService } from './interfaces/storage-service';
 
@@ -75,5 +76,28 @@ export class RustfsStorageService implements StorageService {
       }),
     );
     this.logger.debug(`Deleted ${key} from RustFS`);
+  }
+
+  async head(key: string): Promise<boolean> {
+    try {
+      await this.client.send(
+        new HeadObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+        }),
+      );
+      return true;
+    } catch (err) {
+      // S3 + compatible servers return 404 (NotFound / NoSuchKey) for
+      // missing objects; any other error is propagated because it's
+      // ambiguous (auth, network, server) and the reconciler must not
+      // treat "unknown" as "missing".
+      const name = (err as { name?: string; $metadata?: { httpStatusCode?: number } }).name;
+      const status = (err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+      if (name === 'NotFound' || name === 'NoSuchKey' || status === 404) {
+        return false;
+      }
+      throw err;
+    }
   }
 }

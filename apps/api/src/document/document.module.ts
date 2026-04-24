@@ -5,6 +5,7 @@ import { DocumentChunkingService } from './document-chunking.service';
 import { MarkdownStructureService } from './markdown-structure.service';
 import { DocumentVectorService } from './document-vector.service';
 import { DocumentUploadService } from './document-upload.service';
+import { DocumentReconcilerService } from './document-reconciler.service';
 import { DocumentController } from './document.controller';
 import { StorageModule } from '../storage/storage.module';
 import { AuthModule } from '../auth/auth.module';
@@ -35,6 +36,9 @@ import { RagModule } from '../rag/rag.module';
     MarkdownStructureService,
     DocumentVectorService,
     DocumentUploadService,
+    // F-4: self-healing cron for stuck PENDING_UPLOAD rows (@Cron runs
+    // every 10 minutes; see DocumentReconcilerService for details).
+    DocumentReconcilerService,
   ],
   exports: [
     TextCleaningService,
@@ -43,6 +47,7 @@ import { RagModule } from '../rag/rag.module';
     MarkdownStructureService,
     DocumentVectorService,
     DocumentUploadService,
+    DocumentReconcilerService,
   ],
 })
 export class DocumentModule {}

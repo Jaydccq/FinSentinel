@@ -113,4 +113,15 @@ export class GoogleDriveStorageService implements StorageService {
   isConfigured(): boolean {
     return this.configured;
   }
+
+  /**
+   * Stub head() — always reports missing. The cold tier hasn't wired up
+   * real Google Drive calls yet (see class docstring), so the F-4
+   * reconciler effectively treats the cold tier as empty. Once the
+   * real Drive integration lands, replace this with a `drive.files.list`
+   * existence query.
+   */
+  async head(_key: string): Promise<boolean> {
+    return false;
+  }
 }

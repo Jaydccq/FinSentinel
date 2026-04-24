@@ -43,4 +43,19 @@ export class HybridStorageService implements StorageService {
       }
     }
   }
+
+  async head(key: string): Promise<boolean> {
+    // Hot-first: same ordering as download(). If the hot side returns
+    // true we short-circuit; if false or throws, consult cold as a
+    // fallback (today this is always false via the stub). Errors from
+    // either side propagate so the reconciler doesn't misclassify
+    // transient network failures as "missing object".
+    try {
+      if (await this.hotStorage.head(key)) return true;
+    } catch (err) {
+      this.logger.warn(`Hot storage head() failed for ${key}: ${err}`);
+      throw err;
+    }
+    return this.coldStorage.head(key);
+  }
 }
