@@ -1,4 +1,4 @@
-import { apiFetch, BASE, authHeaders } from './client'
+import { apiFetch, resolveBase, authHeaders } from './client'
 
 // ---- Types ----
 
@@ -144,7 +144,7 @@ export const okxApi = {
     onError: (err: string) => void,
   ): Promise<void> => {
     try {
-      const res = await fetch(`${BASE}/okx/analysis/stream/${encodeURIComponent(instId)}`, {
+      const res = await fetch(`${resolveBase()}/okx/analysis/stream/${encodeURIComponent(instId)}`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -218,7 +218,7 @@ export const okxApi = {
     onError: (err: string) => void,
   ): Promise<void> => {
     try {
-      const res = await fetch(`${BASE}/okx/analysis/health`, {
+      const res = await fetch(`${resolveBase()}/okx/analysis/health`, {
         method: 'POST',
         credentials: 'include',
         headers: {

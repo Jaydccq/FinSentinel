@@ -1,7 +1,7 @@
-import { BASE, authHeaders } from './client'
+import { resolveBase, authHeaders } from './client'
 
 export async function downloadPdf(reportId: string): Promise<void> {
-  const res = await fetch(`${BASE}/reports/${reportId}/pdf`, {
+  const res = await fetch(`${resolveBase()}/reports/${reportId}/pdf`, {
     credentials: 'include',
     headers: { ...authHeaders() },
   })

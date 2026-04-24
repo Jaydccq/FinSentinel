@@ -1,5 +1,66 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { apiFetch, ApiError } from '../client'
+import { apiFetch, ApiError, resolveBase } from '../client'
+
+describe('resolveBase', () => {
+  const original = { ...process.env }
+
+  afterEach(() => {
+    process.env = { ...original }
+  })
+
+  it("returns '/api' (relative) when NEXT_PUBLIC_API_BASE_URL is unset (browser default)", () => {
+    delete process.env.NEXT_PUBLIC_API_BASE_URL
+    expect(resolveBase()).toBe('/api')
+  })
+
+  it('prepends a full origin when NEXT_PUBLIC_API_BASE_URL is set (Tauri build)', () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080'
+    expect(resolveBase()).toBe('http://127.0.0.1:8080/api')
+  })
+
+  it('strips a trailing slash before joining', () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080/'
+    expect(resolveBase()).toBe('http://127.0.0.1:8080/api')
+  })
+})
+
+describe('apiFetch URL composition', () => {
+  const original = { ...process.env }
+  let fetchSpy: ReturnType<typeof vi.fn>
+
+  beforeEach(async () => {
+    fetchSpy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ pong: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+    const localLogin = await import('../../lib/auth/local-login')
+    vi.spyOn(localLogin, 'ensureLocalToken').mockResolvedValue(null)
+  })
+
+  afterEach(() => {
+    process.env = { ...original }
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it("hits '/api<path>' under browser (no env override)", async () => {
+    delete process.env.NEXT_PUBLIC_API_BASE_URL
+    await apiFetch('/health')
+    expect(fetchSpy).toHaveBeenCalled()
+    const url = fetchSpy.mock.calls[0]![0] as string
+    expect(url).toBe('/api/health')
+  })
+
+  it('hits the full origin under Tauri build (env set)', async () => {
+    process.env.NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080'
+    await apiFetch('/health')
+    const url = fetchSpy.mock.calls[0]![0] as string
+    expect(url).toBe('http://127.0.0.1:8080/api/health')
+  })
+})
 
 describe('apiFetch', () => {
   const originalFetch = globalThis.fetch

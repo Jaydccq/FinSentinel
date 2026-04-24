@@ -10,7 +10,7 @@ vi.stubGlobal('fetch', fetchMock);
 
 // Also stub the client helpers used by analysis-runs.ts so we don't need local-login.
 vi.mock('../client', () => ({
-  BASE: '/api',
+  resolveBase: () => '/api',
   authHeaders: () => ({}),
 }));
 

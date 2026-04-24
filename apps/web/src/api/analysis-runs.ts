@@ -5,7 +5,7 @@ import {
   type AnalysisPreset,
 } from '@finsentinel/shared';
 
-import { BASE, authHeaders } from './client';
+import { resolveBase, authHeaders } from './client';
 
 export type AnalysisStageKey =
   | 'INTELLIGENCE'
@@ -182,7 +182,7 @@ export interface AnalysisRunStreamHandle {
 }
 
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${resolveBase()}${path}`, {
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     ...init,
@@ -227,7 +227,7 @@ function streamRun(
 
   const closed = (async () => {
     try {
-      const res = await fetch(`${BASE}${path}`, {
+      const res = await fetch(`${resolveBase()}${path}`, {
         credentials: 'include',
         headers: authHeaders(),
         signal: controller.signal,
