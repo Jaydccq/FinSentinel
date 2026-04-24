@@ -153,6 +153,43 @@ describe('MetadataPreFilterService.buildFilter (R4.2)', () => {
     expect(r.hardFilter.afterDate).toBeUndefined();
     expect(r.appliedMode).toBe('off');
   });
+
+  // ── P1-3: sector + region soft pushdown ──────────────────────────────
+
+  it('soft mode: surfaces top-confidence sector into softFilter.sector', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('q', 'analytical', {}, buildExtracted({
+      sectors: [
+        { value: 'Healthcare', confidence: 0.4 },
+        { value: 'Technology', confidence: 0.9 },
+      ],
+    }));
+    expect(r.softFilter?.sector).toBe('Technology');
+  });
+
+  it('soft mode: surfaces top-confidence region into softFilter.regionId', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('q', 'analytical', {}, buildExtracted({
+      regions: [{ value: 'US', confidence: 0.7 }],
+    }));
+    expect(r.softFilter?.regionId).toBe('US');
+  });
+
+  it('soft mode: empty sectors/regions → no sector/regionId keys in softFilter', () => {
+    const s = new MetadataPreFilterService({ mode: 'soft', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('q', 'analytical', {}, buildExtracted({}));
+    expect(r.softFilter?.sector).toBeUndefined();
+    expect(r.softFilter?.regionId).toBeUndefined();
+  });
+
+  it('hard mode: sector/region NOT surfaced via soft (suppressed by hard mode)', () => {
+    const s = new MetadataPreFilterService({ mode: 'hard', hardMinConfidence: 0.85, minCandidatesByClass: {} });
+    const r = s.buildFilter('q', 'analytical', {}, buildExtracted({
+      sectors: [{ value: 'Technology', confidence: 0.9 }],
+      regions: [{ value: 'US', confidence: 0.9 }],
+    }));
+    expect(r.softFilter).toBeUndefined();
+  });
 });
 
 describe('MetadataPreFilterService.shouldDowngrade', () => {
