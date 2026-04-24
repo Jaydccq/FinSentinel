@@ -7,7 +7,8 @@ import {
   Logger,
   BadRequestException,
 } from '@nestjs/common';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
+import { REQUEST_ID_HEADER, type RequestWithId } from '../middleware/request-id.middleware';
 
 /**
  * Response envelope returned by the global exception filter.
@@ -37,6 +38,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
+    const requestId = (request as RequestWithId).id;
+
+    // Echo the correlation id on the error response too. The middleware also
+    // sets it; setHeader is idempotent.
+    if (requestId) {
+      response.setHeader(REQUEST_ID_HEADER, requestId);
+    }
 
     const body: ErrorResponse = {
       timestamp: new Date().toISOString(),
@@ -98,7 +107,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     } else {
       // Unhandled exception — log the full error, return generic message
       this.logger.error(
-        'Unhandled exception',
+        `Unhandled exception (requestId=${requestId ?? 'unknown'})`,
         exception instanceof Error ? exception.stack : String(exception),
       );
     }
