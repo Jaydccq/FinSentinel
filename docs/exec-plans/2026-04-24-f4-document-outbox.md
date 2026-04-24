@@ -38,28 +38,41 @@ Updated `apps/api/src/document/__tests__/document-upload.service.spec.ts`:
   - `F-4 outbox: DB insert fails before storage is touched`
   - `F-4 outbox: storage failure marks the row FAILED`
 
-## What was intentionally NOT done
+## Updates post-slice
 
-### DocumentReconcilerService (~0.5-day add)
-A cron that scans for `status = PENDING_UPLOAD` rows older than 1h and
-either:
-- Calls `storage.head(key)` → if found, promote to `PENDING`.
-- Otherwise delete the row.
+### DocumentReconcilerService — landed 2026-04-24
+See commit `a6dd100` / `b37fa04` merge. Cron @EVERY_10_MINUTES scans
+for PENDING_UPLOAD rows older than 60min, uses the new
+`storage.head(key)` to decide between promote-to-PENDING and delete.
+New interface method `head()` implemented on RustFS (S3
+HeadObjectCommand) + stubbed on Google Drive cold tier.
 
-Not essential for correctness today (no process-kill path can leak
-now). Adds another `@nestjs/schedule` surface with its own failure
-modes. Implement when the operational need shows up.
+### Presigned URL direct upload — backend + web helper landed 2026-04-24
 
-### Presigned URL direct upload (~1.5-day add)
-The plan's "large files bypass Node memory" piece. Requires:
-- `RustFSStorageService.createPresignedUploadUrl(key, ttl)` wrapper.
-- New `POST /documents/upload-url` returning `{ id, storageKey, uploadUrl }`.
-- Frontend rewire: three-step flow (`upload-url` → `PUT` to RustFS →
-  `POST /documents/:id/finalize`).
-- UI state needs `PENDING_UPLOAD → READY/FAILED` surfaced to the user.
+**Backend (this PR):**
+- `StorageService.createPresignedUploadUrl(key, contentType, ttlSeconds)`
+  — optional interface method. RustFS impl via
+  `@aws-sdk/s3-request-presigner`, 15-min TTL default.
+- `DocumentUploadService.prepareDirectUpload(...)` — validates size/mime,
+  creates the PENDING_UPLOAD row, returns the signed URL + expiry.
+- `DocumentUploadService.finalizeDirectUpload(userId, docId)` — verifies
+  the storage object exists (server trusts `head()`, not client), flips
+  status to PENDING, enqueues async vectorization.
+- `DocumentController` endpoints:
+  `POST /documents/upload-url` → `prepareDirectUpload`
+  `POST /documents/:id/finalize` → `finalizeDirectUpload`
 
-This is a proper PRD by itself — shouldn't land as a partial slice
-inside F-4.
+**Web (this PR):**
+- `documentsApi.uploadDirect(file, docType, sector, regionId)` in
+  `apps/web/src/api/documents.ts` — three-step flow wrapper. Callers
+  can drop it in for large files; the old multipart `upload()` stays
+  the default until the UI is rewired.
+
+### Still deferred
+
+- **UI rewire** to surface `PENDING_UPLOAD → PENDING → FAILED` states
+  in the document list view. Building block (`uploadDirect`) is
+  ready; the UX is a product-design call, not an engineering one.
 
 ## Verification
 

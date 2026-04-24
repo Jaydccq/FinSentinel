@@ -58,4 +58,18 @@ export class HybridStorageService implements StorageService {
     }
     return this.coldStorage.head(key);
   }
+
+  /**
+   * F-4 presigned upload — hot tier only. Cold tier is archival; fresh
+   * uploads always land in hot and age-migrate later.
+   */
+  async createPresignedUploadUrl(
+    key: string,
+    contentType: string,
+    ttlSeconds: number,
+  ): Promise<string | null> {
+    const fn = this.hotStorage.createPresignedUploadUrl?.bind(this.hotStorage);
+    if (!fn) return null;
+    return fn(key, contentType, ttlSeconds);
+  }
 }

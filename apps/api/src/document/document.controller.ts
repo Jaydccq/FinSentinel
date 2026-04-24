@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Post,
   Get,
@@ -77,6 +78,56 @@ export class DocumentController {
       sector,
       regionId, // undefined → service falls back to 'US'
     );
+  }
+
+  /**
+   * F-4 presigned direct upload — step 1. Client posts filename/size
+   * and gets back `{ id, storageKey, uploadUrl, expiresAt }`. Client
+   * then PUTs the file bytes directly to `uploadUrl` (bypasses Node),
+   * and POSTs to /documents/:id/finalize once done.
+   */
+  @Post('upload-url')
+  @RateLimit({ limit: 20, windowSecs: 60 })
+  @UseGuards(RateLimitGuard)
+  async requestUploadUrl(
+    @CurrentUser() user: CurrentUserPayload,
+    @Body()
+    body: {
+      originalName: string;
+      mimetype: string;
+      sizeBytes: number;
+      docType?: string;
+      sector?: string;
+      regionId?: string;
+    },
+  ) {
+    if (!body?.originalName || !body?.mimetype || !body?.sizeBytes) {
+      throw new BadRequestException(
+        'upload-url requires { originalName, mimetype, sizeBytes }',
+      );
+    }
+    return this.uploadService.prepareDirectUpload(
+      user.userId,
+      body.originalName,
+      body.mimetype,
+      body.sizeBytes,
+      body.docType ?? 'GENERAL',
+      body.sector,
+      body.regionId,
+    );
+  }
+
+  /**
+   * F-4 presigned direct upload — step 2. Verifies the storage object
+   * landed, promotes PENDING_UPLOAD → PENDING, and enqueues async
+   * vectorization.
+   */
+  @Post(':id/finalize')
+  async finalizeUpload(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+  ) {
+    return this.uploadService.finalizeDirectUpload(user.userId, id);
   }
 
   /** Requeue documents owned by the current user that are missing stored chunks. */
