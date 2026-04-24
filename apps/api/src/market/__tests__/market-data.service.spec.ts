@@ -28,7 +28,10 @@ describe('MarketDataService', () => {
   let service: MarketDataService;
   let mockRedis: ReturnType<typeof createMockRedis>;
   let mockProvider: MarketDataProvider;
-  let mockRegistry: { getDefaultProvider: ReturnType<typeof vi.fn> };
+  let mockRegistry: {
+    getDefaultProvider: ReturnType<typeof vi.fn>;
+    getSearchProvider: ReturnType<typeof vi.fn>;
+  };
 
   const sampleQuote: MarketQuote = {
     ticker: 'AAPL',
@@ -64,12 +67,22 @@ describe('MarketDataService', () => {
     { symbol: 'AAPX', name: 'T. Rowe Price Blue Chip Growth', exchange: 'NYSE', assetType: 'ETF' },
   ];
 
+  let mockSearchProvider: MarketDataProvider & {
+    searchTickers: ReturnType<typeof vi.fn>;
+  };
+
   beforeEach(async () => {
     mockRedis = createMockRedis();
     mockProvider = createMockProvider();
+    mockSearchProvider = {
+      ...createMockProvider(),
+      getName: vi.fn().mockReturnValue('mock-search'),
+      searchTickers: vi.fn().mockResolvedValue([]),
+    } as MarketDataProvider & { searchTickers: ReturnType<typeof vi.fn> };
     mockRegistry = {
       getDefaultProvider: vi.fn().mockReturnValue(mockProvider),
-    };
+      getSearchProvider: vi.fn().mockReturnValue(mockSearchProvider),
+    } as unknown as typeof mockRegistry;
 
     const module = await Test.createTestingModule({
       providers: [
@@ -175,49 +188,51 @@ describe('MarketDataService', () => {
   // ── searchTickers ─────────────────────────────────────────────────────────
 
   describe('searchTickers', () => {
-    it('returns results with 10-min TTL (600s)', async () => {
-      // Mock the global fetch for Yahoo search
-      const mockFetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({
-          quotes: [
-            { symbol: 'AAPL', shortname: 'Apple Inc.', exchange: 'NMS', quoteType: 'EQUITY' },
-            { symbol: 'AAPX', shortname: 'T. Rowe Price Blue Chip Growth', exchange: 'NYQ', quoteType: 'ETF' },
-          ],
-        }),
-      });
-      vi.stubGlobal('fetch', mockFetch);
-
+    it('delegates to registry.getSearchProvider() and caches with the v2 normalised key', async () => {
       mockRedis.get.mockResolvedValue(null);
+      mockSearchProvider.searchTickers.mockResolvedValue(sampleSearchResults);
 
       const result = await service.searchTickers('AAP');
 
-      expect(result).toEqual([
-        { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NMS', assetType: 'EQUITY' },
-        { symbol: 'AAPX', name: 'T. Rowe Price Blue Chip Growth', exchange: 'NYQ', assetType: 'ETF' },
-      ]);
-      expect(mockRedis.get).toHaveBeenCalledWith('market:search:AAP:10');
+      expect(mockRegistry.getSearchProvider).toHaveBeenCalledTimes(1);
+      expect(mockSearchProvider.searchTickers).toHaveBeenCalledWith('aap', 10);
+      expect(result).toEqual(sampleSearchResults);
+      expect(mockRedis.get).toHaveBeenCalledWith('market:search:v2:aap:10');
       expect(mockRedis.setex).toHaveBeenCalledWith(
-        'market:search:AAP:10',
+        'market:search:v2:aap:10',
         600,
         expect.any(String),
       );
-
-      vi.unstubAllGlobals();
     });
 
-    it('returns cached results on cache hit', async () => {
+    it('normalises whitespace + casing so AAPL / aapl / "  AAPL  " hit the same cache key', async () => {
+      mockRedis.get.mockResolvedValue(JSON.stringify(sampleSearchResults));
+
+      await service.searchTickers('AAPL');
+      await service.searchTickers('aapl');
+      await service.searchTickers('  AAPL  ');
+
+      const calls = (mockRedis.get as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls).toHaveLength(3);
+      expect(calls[0]?.[0]).toBe('market:search:v2:aapl:10');
+      expect(calls[1]?.[0]).toBe('market:search:v2:aapl:10');
+      expect(calls[2]?.[0]).toBe('market:search:v2:aapl:10');
+    });
+
+    it('short-circuits empty queries without touching Redis or the provider', async () => {
+      const out = await service.searchTickers('   ');
+      expect(out).toEqual([]);
+      expect(mockRedis.get).not.toHaveBeenCalled();
+      expect(mockRegistry.getSearchProvider).not.toHaveBeenCalled();
+    });
+
+    it('returns cached results on cache hit (no provider call)', async () => {
       mockRedis.get.mockResolvedValue(JSON.stringify(sampleSearchResults));
 
       const result = await service.searchTickers('AAP');
 
       expect(result).toEqual(sampleSearchResults);
-
-      // fetch should not be called
-      const mockFetch = vi.fn();
-      vi.stubGlobal('fetch', mockFetch);
-      expect(mockFetch).not.toHaveBeenCalled();
-      vi.unstubAllGlobals();
+      expect(mockSearchProvider.searchTickers).not.toHaveBeenCalled();
     });
   });
 });

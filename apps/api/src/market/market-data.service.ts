@@ -13,21 +13,6 @@ const CACHE_TTL = {
 /** Ticker validation: 1-20 alphanumeric chars, dots, hyphens, forward-slashes, colons. */
 const TICKER_REGEX = /^[A-Z0-9.\-/:]{1,20}$/i;
 
-/** Yahoo Finance search API endpoint. */
-const YAHOO_SEARCH_URL = 'https://query2.finance.yahoo.com/v1/finance/search';
-
-interface YahooQuoteResult {
-  symbol: string;
-  shortname?: string;
-  longname?: string;
-  exchange: string;
-  quoteType: string;
-}
-
-interface YahooSearchResponse {
-  quotes: YahooQuoteResult[];
-}
-
 /**
  * Public API for market data. Wraps provider calls with Redis caching.
  *
@@ -84,8 +69,19 @@ export class MarketDataService {
 
   // ── Ticker Search ───────────────────────────────────────────────────────
 
+  /**
+   * Search tickers via the registry's search-capable provider. Cache key is
+   * normalised (trim + lowercase) so 'AAPL', 'aapl', and '  AAPL  ' all hit
+   * the same entry. Empty input short-circuits to [] without touching Redis.
+   *
+   * The `v2:` prefix invalidates the legacy un-normalised cache without
+   * colliding with it.
+   */
   async searchTickers(query: string, limit = 10): Promise<TickerSearchResult[]> {
-    const cacheKey = `market:search:${query}:${limit}`;
+    const normalised = query.trim().toLowerCase();
+    if (!normalised) return [];
+
+    const cacheKey = `market:search:v2:${normalised}:${limit}`;
 
     const cached = await this.redis.get(cacheKey);
     if (cached) {
@@ -93,7 +89,10 @@ export class MarketDataService {
       return JSON.parse(cached) as TickerSearchResult[];
     }
 
-    const results = await this.callYahooSearch(query, limit);
+    const provider = this.registry.getSearchProvider();
+    // getSearchProvider() guarantees searchTickers is defined; the non-null
+    // assertion silences TS narrowing across the dynamic dispatch.
+    const results = await provider.searchTickers!(normalised, limit);
     await this.redis.setex(cacheKey, CACHE_TTL.SEARCH, JSON.stringify(results));
 
     return results;
@@ -109,29 +108,5 @@ export class MarketDataService {
       );
     }
     return normalised;
-  }
-
-  private async callYahooSearch(query: string, limit = 10): Promise<TickerSearchResult[]> {
-    const url = `${YAHOO_SEARCH_URL}?q=${encodeURIComponent(query)}&quotesCount=${limit}&newsCount=0`;
-
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 FinSentinel/1.0',
-      },
-    });
-
-    if (!response.ok) {
-      this.logger.warn(`Yahoo search failed: ${response.status}`);
-      return [];
-    }
-
-    const data = (await response.json()) as YahooSearchResponse;
-
-    return (data.quotes ?? []).map((q) => ({
-      symbol: q.symbol,
-      name: q.shortname ?? q.longname ?? q.symbol,
-      exchange: q.exchange,
-      assetType: q.quoteType,
-    }));
   }
 }

@@ -80,3 +80,13 @@ const cacheKey = `market:search:v2:${normalized}:${limit}`;
 
 - v2 命名空间切换会让缓存命中率短期下跌；建议在低峰期上线。
 - 如果未来某 provider 的 `searchTickers` 不返回 Yahoo 的字段，需要在 registry 层做映射，否则会破坏前端期待。
+
+## 8. Implementation Progress Log
+
+- 2026-04-24: branch `feat/2026-04-23-market-search-abstraction` opened.
+- 2026-04-24: implemented Tasks 1–3 per `docs/exec-plans/2026-04-23-market-search-abstraction.md`.
+  - Task 1: `MarketDataProvider` interface gets optional `searchTickers`; `YahooFinanceMarketDataProvider` implements it. URL built via `new URL().searchParams` instead of string concat.
+  - Task 2: `MarketDataProviderRegistry.getSearchProvider()` returns the default provider when it implements search, falls back to Yahoo, throws otherwise. 3 unit tests cover the three branches.
+  - Task 3: `MarketDataService.searchTickers` short-circuits empty queries, normalises whitespace + casing, uses the new `market:search:v2:<q>:<limit>` cache key, and delegates through the registry. `YAHOO_SEARCH_URL`/`callYahooSearch` removed from the service.
+- Verification: `pnpm --filter @finsentinel/api typecheck` clean; `vitest run -- market-data` 11/11 green plus the new 3-case registry spec.
+- Deferred: adding new search-capable providers (Polygon/Alpaca) — interface is open for opt-in.

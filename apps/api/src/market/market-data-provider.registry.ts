@@ -53,4 +53,26 @@ export class MarketDataProviderRegistry {
   getRegisteredProviderNames(): string[] {
     return [...this.providers.keys()];
   }
+
+  /**
+   * Returns a provider that implements `searchTickers`. Prefers the default
+   * provider (so future Polygon/Alpaca search opt-in flows through the same
+   * registry path); falls back to the Yahoo provider, which always implements
+   * search. Throws if neither is available.
+   */
+  getSearchProvider(): MarketDataProvider {
+    const def = this.providers.get(this.defaultProviderName);
+    if (def && typeof def.searchTickers === 'function') {
+      return def;
+    }
+    const yahoo = this.providers.get('yahoo');
+    if (yahoo && typeof yahoo.searchTickers === 'function') {
+      return yahoo;
+    }
+    throw new Error(
+      'No search-capable market-data provider registered. ' +
+        `Default '${this.defaultProviderName}' lacks searchTickers and Yahoo is not available. ` +
+        `Registered: ${this.getRegisteredProviderNames().join(', ')}`,
+    );
+  }
 }
