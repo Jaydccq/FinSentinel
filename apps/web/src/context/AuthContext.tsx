@@ -1,5 +1,6 @@
 import { useSyncExternalStore, type ReactNode } from 'react'
 import { AuthContext, type AuthUser } from './auth'
+import { resolveBase } from '@/api/client'
 
 const AUTH_USER_STORAGE_KEY = 'auth_user'
 const LEGACY_JWT_STORAGE_KEY = 'jwt_token'
@@ -49,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     localStorage.removeItem(AUTH_USER_STORAGE_KEY)
     emitStoredUserChange()
-    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {})
+    fetch(`${resolveBase()}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {})
   }
 
   return (

@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from '../api-base-url'
+
 const TOKEN_KEY = 'fs_local_token'
 
 /**
@@ -36,7 +38,11 @@ async function performLogin(apiBase: string): Promise<string | null> {
   const password = process.env.NEXT_PUBLIC_LOCAL_USER_PASSWORD
   if (!username || !password) return null
 
-  const res = await fetch(`${apiBase}/api/auth/login`, {
+  // Empty apiBase → relative '/api/auth/login' (works under Next.js rewrites);
+  // populated apiBase → 'http://host:port/api/auth/login' (works under Tauri).
+  const url = apiBase ? `${apiBase}/api/auth/login` : '/api/auth/login'
+
+  const res = await fetch(url, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
@@ -56,15 +62,21 @@ async function performLogin(apiBase: string): Promise<string | null> {
 /**
  * Returns a valid token if one is cached or if auto-login succeeds.
  * Concurrent callers share the same in-flight login request.
+ *
+ * `apiBase` defaults to `getApiBaseUrl()` so callers that forget to pass
+ * it still produce the correct URL under Tauri builds. Explicit argument
+ * (e.g. from providers.tsx) wins, which makes the wiring auditable at the
+ * call site.
  */
-export function ensureLocalToken(apiBase = ''): Promise<string | null> {
+export function ensureLocalToken(apiBase?: string): Promise<string | null> {
   if (!isLocalLoginEnabled()) return Promise.resolve(null)
 
   const cached = getCachedToken()
   if (cached) return Promise.resolve(cached)
 
+  const base = apiBase ?? getApiBaseUrl()
   if (!pendingLogin) {
-    pendingLogin = performLogin(apiBase).finally(() => {
+    pendingLogin = performLogin(base).finally(() => {
       pendingLogin = null
     })
   }
