@@ -26,6 +26,18 @@ export const commitRequestSchema = z.object({
 });
 export type CommitRequest = z.infer<typeof commitRequestSchema>;
 
+/**
+ * Internal commit input — transport-agnostic. The HTTP controller derives
+ * `idempotencyKey` from the `Idempotency-Key` request header (Stripe-style)
+ * and merges it with the validated body before calling the service. The
+ * public DTO body intentionally stays free of transport-layer concerns.
+ */
+export interface CommitInput {
+  message: string;
+  idempotencyKey?: string;
+  metadata?: { ledgerId?: string; runId?: string };
+}
+
 // --- SimulateRequest ---
 export const simulateRequestSchema = z.object({
   ticker: z.string().min(1),

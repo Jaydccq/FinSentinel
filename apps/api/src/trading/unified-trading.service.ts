@@ -6,6 +6,7 @@ import type { DrizzleDB } from '@finsentinel/db';
 import { TradingMode, Contract, AgentEventType, SecurityType } from '@finsentinel/shared';
 import type { AgentEventType as AgentEventTypeValue } from '@finsentinel/shared';
 import type { UnifiedStageRequest, V2WalletResponse, V2CommitResponse, V2StagedResponse } from '@finsentinel/shared';
+import { stableStringify } from '@finsentinel/shared/utils';
 import { BrokerRegistry } from './broker-registry.service';
 import { PaperBroker } from './brokers/paper.broker';
 import type { MarketDataService } from '../market/market-data.service';
@@ -16,6 +17,8 @@ import type { PositionMap } from './engines/paper-trading.engine';
 
 const STAGING_KEY_PREFIX = 'uta:staging:';
 const PENDING_KEY_PREFIX = 'uta:pending:';
+const IDEM_COMMIT_KEY_PREFIX = 'uta:idem:';
+const IDEM_EXEC_KEY_PREFIX = 'uta:executed:';
 const STATE_TTL_SECONDS = 30 * 60; // 30 minutes
 const MAX_COMMIT_HISTORY = 100;
 const MAX_STAGING_SIZE = 50;
@@ -57,6 +60,25 @@ redis.call('EXPIRE', key, ttl)
 return #arr
 `;
 
+/**
+ * Atomic capture-and-clear of staging.
+ *
+ * KEYS[1] = staging key
+ *
+ * Returns: the staging payload as captured at script execution time, or nil
+ * if staging is empty / missing.
+ *
+ * After this returns, staging is empty. Any concurrent stage() call that
+ * lands later writes into a fresh staging area instead of being clobbered
+ * by a separate del() — which is the race the original 3-call sequence had.
+ */
+const LUA_ATOMIC_COMMIT = `
+local staging = redis.call('GET', KEYS[1])
+if not staging or staging == '[]' then return nil end
+redis.call('DEL', KEYS[1])
+return staging
+`;
+
 // ── SHA-256 helper ──────────────────────────────────────────────────────────
 
 function sha256(input: string): string {
@@ -88,6 +110,7 @@ interface CommitData {
     ledgerId?: string;
     runId?: string;
   };
+  idempotencyKey?: string;
 }
 
 // ── Service ─────────────────────────────────────────────────────────────────
@@ -193,50 +216,89 @@ export class UnifiedTradingService {
   // ═══════════════════════════════════════════════════════════════════════════
 
   /**
-   * Commit all staged operations. Generates a SHA-256 hash, moves ops to
-   * a pending key, and clears the staging area.
+   * Commit all staged operations. Atomically captures staging via a Lua script
+   * (no read-then-delete race), computes a deterministic SHA-256 hash from
+   * `(idempotencyKey ?? autoKey) | stableStringify(ops) | message`, stores the
+   * pending commit, and caches the idempotencyKey → hash mapping so client
+   * retries see the same hash without re-promoting staging.
    *
-   * @returns Object with hash and operation count.
+   * @param idempotencyKey  Stripe-style header value resolved at the controller
+   *                        boundary. Same key + same intent → same hash.
    */
   async commit(
     userId: string,
     message: string,
     metadata?: { ledgerId?: string; runId?: string },
+    idempotencyKey?: string,
   ): Promise<{ hash: string; count: number }> {
-    // Validate message
     if (!message || message.trim().length === 0) {
       throw new BadRequestException('Commit message must not be blank');
     }
 
-    // Read staging area
-    const ops = await this.getStagingArea(userId);
+    const stagingKey = STAGING_KEY_PREFIX + userId;
+    const pendingKey = PENDING_KEY_PREFIX + userId;
+    const idemCacheKey = idempotencyKey
+      ? IDEM_COMMIT_KEY_PREFIX + userId + ':' + idempotencyKey
+      : null;
+
+    // 1. Idempotency cache hit → return prior hash, do NOT touch staging.
+    if (idemCacheKey) {
+      const cachedHash = await this.redis.get(idemCacheKey);
+      if (cachedHash) {
+        const pendingRaw = await this.redis.get(pendingKey);
+        const count = pendingRaw
+          ? (JSON.parse(pendingRaw) as CommitData).operations.length
+          : 0;
+        this.logger.log(
+          `Idempotent commit hit user=${userId} key=${idempotencyKey} hash=${cachedHash.substring(0, 8)}...`,
+        );
+        return { hash: cachedHash, count };
+      }
+    }
+
+    // 2. Atomically capture and clear staging.
+    const stagingRaw = (await this.redis.eval(
+      LUA_ATOMIC_COMMIT,
+      1,
+      stagingKey,
+    )) as string | null;
+
+    if (!stagingRaw) {
+      throw new BadRequestException('Nothing staged — stage operations before committing');
+    }
+
+    const ops = JSON.parse(stagingRaw) as Record<string, unknown>[];
     if (ops.length === 0) {
       throw new BadRequestException('Nothing staged — stage operations before committing');
     }
 
-    // Generate SHA-256 hash: message + "|" + ops.toString() + "|" + timestamp
-    const timestamp = new Date().toISOString();
-    const hashInput = `${message}|${JSON.stringify(ops)}|${timestamp}`;
+    // 3. Deterministic hash. autoKey covers callers that don't pass a header.
+    const autoKey = `${userId}|${ops
+      .map((o) => String((o as { clientOrderId?: string }).clientOrderId ?? ''))
+      .filter(Boolean)
+      .sort()
+      .join(',')}`;
+    const hashKey = idempotencyKey ?? autoKey;
+    const hashInput = `${hashKey}|${stableStringify(ops)}|${message}`;
     const hash = sha256(hashInput);
 
-    // Build commit data
     const commitData: CommitData = {
       hash,
       message,
-      timestamp,
+      timestamp: new Date().toISOString(),
       operations: ops,
       ...(metadata ? { metadata } : {}),
+      ...(idempotencyKey ? { idempotencyKey } : {}),
     };
 
-    // Store as pending commit in Redis (single atomic setex)
-    const pendingKey = PENDING_KEY_PREFIX + userId;
     await this.redis.setex(pendingKey, STATE_TTL_SECONDS, JSON.stringify(commitData));
 
-    // Clear staging
-    await this.clearStagingArea(userId);
+    if (idemCacheKey) {
+      await this.redis.setex(idemCacheKey, STATE_TTL_SECONDS, hash);
+    }
 
     this.logger.log(
-      `Committed ${ops.length} operation(s) for user ${userId}, hash=${hash.substring(0, 8)}...`,
+      `Committed ${ops.length} op(s) user=${userId} hash=${hash.substring(0, 8)}... idem=${idempotencyKey ?? 'auto'}`,
     );
 
     return { hash, count: ops.length };
@@ -249,17 +311,35 @@ export class UnifiedTradingService {
   /**
    * Execute the pending commit.
    *
-   * 1. Atomic get-and-delete from Redis (prevents double-spend)
-   * 2. Idempotency check: reject if hash already in wallet.commitHistory
+   * 0. Idempotency: prior successful execute with same Idempotency-Key
+   *    returns the cached ExecuteResult, no broker re-trigger.
+   * 1. Atomic get-and-delete pending commit (Redis 6.2+ GETDEL)
+   * 2. Idempotency check via wallet.commitHistory (older retries)
    * 3. For PAPER mode: create shared PaperBroker, sync state, execute, sync back
    * 4. Build execution report
    * 5. Add commit to wallet.commitHistory (capped at MAX_COMMIT_HISTORY)
    * 6. Persist wallet to DB
-   * 7. Emit event (stub)
+   * 7. Cache ExecuteResult by idempotencyKey for future retries
+   * 8. Emit event (stub)
    */
-  async execute(userId: string): Promise<ExecuteResult> {
-    // 1. Atomic get-and-delete pending commit (Redis 6.2+ GETDEL)
+  async execute(userId: string, idempotencyKey?: string): Promise<ExecuteResult> {
     const pendingKey = PENDING_KEY_PREFIX + userId;
+    const execCacheKey = idempotencyKey
+      ? IDEM_EXEC_KEY_PREFIX + userId + ':' + idempotencyKey
+      : null;
+
+    // 0. Cache hit: prior successful execute returns the same ExecuteResult.
+    if (execCacheKey) {
+      const cachedRaw = await this.redis.get(execCacheKey);
+      if (cachedRaw) {
+        this.logger.log(
+          `Idempotent execute hit user=${userId} key=${idempotencyKey}`,
+        );
+        return JSON.parse(cachedRaw) as ExecuteResult;
+      }
+    }
+
+    // 1. Atomic get-and-delete pending commit (Redis 6.2+ GETDEL)
     const raw = await (this.redis as Redis & { getdel(key: string): Promise<string | null> }).getdel(pendingKey);
 
     if (!raw) {
@@ -429,19 +509,27 @@ export class UnifiedTradingService {
       ...reportLines,
     ].join('\n');
 
+    const result: ExecuteResult = {
+      report,
+      commitData: commitData as unknown as Record<string, unknown>,
+      results: operationResults,
+    };
+
+    // 7. Cache the ExecuteResult by idempotencyKey for retry-safe re-execute.
+    if (execCacheKey) {
+      await this.redis.setex(execCacheKey, STATE_TTL_SECONDS, JSON.stringify(result));
+    }
+
     // 8. Emit event (stub — actual AgentEventService built in Phase 10)
     this.emitTradeEvent(userId, wallet.id, AgentEventType.TRADE_COMMIT_EXECUTED, {
       hash: commitData.hash,
       message: commitData.message,
       operationCount: commitData.operations.length,
       results: operationResults,
+      ...(idempotencyKey ? { idempotencyKey } : {}),
     });
 
-    return {
-      report,
-      commitData: commitData as unknown as Record<string, unknown>,
-      results: operationResults,
-    };
+    return result;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

@@ -214,34 +214,51 @@ describe('UnifiedTradingService', () => {
   // ── Phase 2: Commit ─────────────────────────────────────────────────────
 
   describe('commit', () => {
-    it('generates SHA-256 hash, stores pending commit, clears staging', async () => {
+    /**
+     * Helper: configure mockRedis.eval so that the LUA_ATOMIC_COMMIT call
+     * (1 KEY, 0 ARGV) returns the desired staging payload, while the
+     * LUA_ATOMIC_APPEND call (used by stage()) keeps its default behavior.
+     */
+    function whenAtomicCommitReturns(stagingJson: string | null) {
+      (mockRedis.eval as Mock).mockImplementation(
+        async (script: string, _numKeys: number, ..._args: string[]) => {
+          if (typeof script === 'string' && script.includes("redis.call('GET'") && !script.includes('cjson.decode')) {
+            return stagingJson;
+          }
+          return 1; // default for stage's append script
+        },
+      );
+    }
+
+    it('generates SHA-256 hash, stores pending commit, atomically clears staging via Lua', async () => {
       const ops = [{ action: 'BUY', symbol: 'AAPL', qty: '10' }];
-      mockRedis.get.mockResolvedValue(JSON.stringify(ops));
+      whenAtomicCommitReturns(JSON.stringify(ops));
 
       const result = await service.commit(TEST_USER_ID, 'Buy some AAPL');
 
-      // Result should contain hash and count
       expect(result.hash).toBeDefined();
       expect(result.hash).toHaveLength(64); // SHA-256 hex = 64 chars
       expect(result.count).toBe(1);
 
-      // Should have stored the commit in pending key via setex (atomic set+expire)
+      // Pending commit written via setex
       expect(mockRedis.setex).toHaveBeenCalled();
       const setexCall = (mockRedis.setex as Mock).mock.calls[0]!;
       expect(setexCall[0]).toBe(`uta:pending:${TEST_USER_ID}`);
       expect(setexCall[1]).toBe(30 * 60); // STATE_TTL_SECONDS
-      // Parse the stored commit data
       const storedCommit = JSON.parse(setexCall[2] as string);
       expect(storedCommit.hash).toBe(result.hash);
       expect(storedCommit.message).toBe('Buy some AAPL');
       expect(storedCommit.operations).toEqual(ops);
 
-      // Should have cleared staging (del called)
-      expect(mockRedis.del).toHaveBeenCalledWith(`uta:staging:${TEST_USER_ID}`);
+      // Lua script handled the staging deletion atomically; no separate `del` for staging.
+      const delForStaging = (mockRedis.del as Mock).mock.calls.filter(
+        (c) => c[0] === `uta:staging:${TEST_USER_ID}`,
+      );
+      expect(delForStaging.length).toBe(0);
     });
 
     it('rejects empty staging', async () => {
-      mockRedis.get.mockResolvedValue(null);
+      whenAtomicCommitReturns(null);
 
       await expect(
         service.commit(TEST_USER_ID, 'Empty commit'),
@@ -249,7 +266,7 @@ describe('UnifiedTradingService', () => {
     });
 
     it('rejects empty staging array', async () => {
-      mockRedis.get.mockResolvedValue(JSON.stringify([]));
+      whenAtomicCommitReturns(JSON.stringify([]));
 
       await expect(
         service.commit(TEST_USER_ID, 'Empty commit'),
@@ -258,7 +275,7 @@ describe('UnifiedTradingService', () => {
 
     it('rejects blank message', async () => {
       const ops = [{ action: 'BUY', symbol: 'AAPL', qty: '10' }];
-      mockRedis.get.mockResolvedValue(JSON.stringify(ops));
+      whenAtomicCommitReturns(JSON.stringify(ops));
 
       await expect(
         service.commit(TEST_USER_ID, ''),
@@ -271,7 +288,7 @@ describe('UnifiedTradingService', () => {
 
     it('persists ledger metadata on the pending commit payload when provided', async () => {
       const ops = [{ action: 'BUY', symbol: 'AAPL', qty: '10' }];
-      mockRedis.get.mockResolvedValue(JSON.stringify(ops));
+      whenAtomicCommitReturns(JSON.stringify(ops));
       const runId = 'run-99999';
 
       await service.commit(TEST_USER_ID, `analysis run ${runId}`, { ledgerId: 'ledger-1', runId });
@@ -284,7 +301,7 @@ describe('UnifiedTradingService', () => {
 
     it('omits metadata from the pending commit payload when not provided', async () => {
       const ops = [{ action: 'BUY', symbol: 'AAPL', qty: '10' }];
-      mockRedis.get.mockResolvedValue(JSON.stringify(ops));
+      whenAtomicCommitReturns(JSON.stringify(ops));
 
       await service.commit(TEST_USER_ID, 'no-metadata commit');
 
@@ -292,6 +309,52 @@ describe('UnifiedTradingService', () => {
       const last = calls[calls.length - 1]!;
       const payload = JSON.parse(last[2]);
       expect(payload.metadata).toBeUndefined();
+    });
+
+    it('returns deterministic hash for same ops + same message (no timestamp in hash input)', async () => {
+      const ops = [{ action: 'BUY', symbol: 'AAPL', qty: '10' }];
+      whenAtomicCommitReturns(JSON.stringify(ops));
+
+      const a = await service.commit(TEST_USER_ID, 'msg');
+      // Re-arm staging for second commit
+      whenAtomicCommitReturns(JSON.stringify(ops));
+      const b = await service.commit(TEST_USER_ID, 'msg');
+
+      expect(b.hash).toBe(a.hash);
+    });
+
+    it('returns prior hash when same idempotencyKey is reused (no second pending write)', async () => {
+      const ops = [{ action: 'BUY', symbol: 'AAPL', qty: '1' }];
+      whenAtomicCommitReturns(JSON.stringify(ops));
+
+      // First commit succeeds and caches the idem→hash mapping.
+      const cached: Record<string, string> = {};
+      (mockRedis.get as Mock).mockImplementation(async (k: string) => cached[k] ?? null);
+      (mockRedis.setex as Mock).mockImplementation(async (k: string, _ttl: number, v: string) => {
+        cached[k] = v;
+        return 'OK';
+      });
+
+      const first = await service.commit(TEST_USER_ID, 'msg', undefined, 'IDK-A');
+
+      // Second commit with same idem key: hits cache, must NOT call eval again.
+      const evalCallsBefore = (mockRedis.eval as Mock).mock.calls.length;
+      const setexCallsBefore = (mockRedis.setex as Mock).mock.calls.length;
+      const second = await service.commit(TEST_USER_ID, 'msg', undefined, 'IDK-A');
+      expect(second.hash).toBe(first.hash);
+      expect((mockRedis.eval as Mock).mock.calls.length).toBe(evalCallsBefore); // no new eval
+      expect((mockRedis.setex as Mock).mock.calls.length).toBe(setexCallsBefore); // no new pending write
+    });
+
+    it('different idempotencyKey produces different hash', async () => {
+      const ops = [{ action: 'BUY', symbol: 'AAPL', qty: '1' }];
+      whenAtomicCommitReturns(JSON.stringify(ops));
+      const a = await service.commit(TEST_USER_ID, 'msg', undefined, 'IDK-A');
+
+      whenAtomicCommitReturns(JSON.stringify(ops));
+      const b = await service.commit(TEST_USER_ID, 'msg', undefined, 'IDK-B');
+
+      expect(a.hash).not.toBe(b.hash);
     });
   });
 
@@ -344,6 +407,29 @@ describe('UnifiedTradingService', () => {
       await expect(service.execute(TEST_USER_ID)).rejects.toThrow(
         BadRequestException,
       );
+    });
+
+    it('returns cached ExecuteResult when same Idempotency-Key is reused (no broker re-trigger)', async () => {
+      const cachedResult = {
+        report: 'cached report',
+        commitData: pendingCommit,
+        results: [{ symbol: 'AAPL', action: 'BUY', success: true }],
+      };
+
+      // Simulate prior execute populated the exec cache.
+      (mockRedis.get as Mock).mockImplementation(async (k: string) => {
+        if (k === `uta:executed:${TEST_USER_ID}:IDK-EXEC`) {
+          return JSON.stringify(cachedResult);
+        }
+        return null;
+      });
+
+      const result = await service.execute(TEST_USER_ID, 'IDK-EXEC');
+
+      expect(result).toEqual(cachedResult);
+      // Must NOT have touched pending or DB
+      expect(mockRedis.getdel).not.toHaveBeenCalled();
+      expect(mockDb.update).not.toHaveBeenCalled();
     });
 
     it('prevents double-execution (idempotency check)', async () => {
