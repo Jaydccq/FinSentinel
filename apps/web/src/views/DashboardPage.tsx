@@ -12,6 +12,7 @@ import {
   Pencil,
   X,
   Check,
+  StickyNote,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { portfolioApi, type PortfolioResponse } from '../api/portfolio'
@@ -20,6 +21,7 @@ import { watchlistApi } from '../api/watchlist'
 import { StatCardsSkeleton, PortfolioListSkeleton, WatchlistSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import TickerSearchInput from '../components/TickerSearchInput'
+import WatchlistItemEditor from '../components/WatchlistItemEditor'
 
 const DEFAULT_TICKERS = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'TSLA', 'BTC-USD', 'ETH-USD', 'AMD', 'AMZN', 'AVGO', 'SOL-USD']
 const LS_KEY = 'finsentinel_watchlist'
@@ -112,6 +114,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [quotesLoading, setQuotesLoading] = useState(true)
   const [editing, setEditing] = useState(false)
+  const [editingSymbol, setEditingSymbol] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const fetchQuotes = useCallback((tickers: string[]) => {
@@ -380,13 +383,26 @@ export default function DashboardPage() {
               return (
                 <div key={ticker} className="relative">
                   {editing && (
-                    <button
-                      onClick={() => removeTicker(ticker)}
-                      className="absolute -top-1.5 -right-1.5 z-10 h-5 w-5 rounded-full bg-red-500/90 text-white flex items-center justify-center shadow hover:bg-red-500 transition-colors"
-                      aria-label={`Remove ${ticker}`}
-                    >
-                      <X size={10} />
-                    </button>
+                    <>
+                      {/* Research notes — opens the F-6 edit drawer.
+                          Positioned left of the remove button so the
+                          destructive action stays in the rightmost slot. */}
+                      <button
+                        onClick={() => setEditingSymbol(ticker)}
+                        className="absolute -top-1.5 -right-7 z-10 h-5 w-5 rounded-full bg-blue-500/90 text-white flex items-center justify-center shadow hover:bg-blue-500 transition-colors"
+                        aria-label={`Edit research notes for ${ticker}`}
+                        title="Edit thesis / notes / priority"
+                      >
+                        <StickyNote size={10} />
+                      </button>
+                      <button
+                        onClick={() => removeTicker(ticker)}
+                        className="absolute -top-1.5 -right-1.5 z-10 h-5 w-5 rounded-full bg-red-500/90 text-white flex items-center justify-center shadow hover:bg-red-500 transition-colors"
+                        aria-label={`Remove ${ticker}`}
+                      >
+                        <X size={10} />
+                      </button>
+                    </>
                   )}
                   <Link
                     href={editing ? '#' : `/stock?ticker=${encodeURIComponent(ticker)}`}
@@ -426,6 +442,14 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+
+      {editingSymbol !== null && (
+        <WatchlistItemEditor
+          symbol={editingSymbol}
+          categoryName={SERVER_CATEGORY_NAME}
+          onClose={() => setEditingSymbol(null)}
+        />
+      )}
     </div>
   )
 }
