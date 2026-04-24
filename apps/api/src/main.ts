@@ -15,20 +15,45 @@ async function bootstrap() {
 
   // Order matters: requestId first so every downstream log/header has it.
   app.use(requestIdMiddleware());
+
+  const auth = app
+    .get(ConfigService)
+    .get<AuthRuntimeConfig>('auth')!;
+
+  // F-8 (2026-04-24): enable CSP + HSTS.
+  //
+  // The API serves JSON / SSE / blob responses — not HTML documents — so
+  // CSP here is defense-in-depth rather than a primary XSS barrier. Keep
+  // directives strict (no inline styles/scripts) and explicitly whitelist
+  // the allowed CORS origins for `connect-src` so browser-side fetch and
+  // EventSource stay unblocked when a partner/frontend loads this API.
+  //
+  // HSTS is only meaningful over real HTTPS. Gated on AUTH_COOKIE_SECURE,
+  // which the prod config turns on; dev over http stays quiet.
+  const cspConnectSrc = ["'self'", ...auth.corsOrigins];
   app.use(
     helmet({
-      // CSP + HSTS deferred until web + desktop QA passes — see
-      // docs/exec-plans/2026-04-23-platform-bootstrap.md.
-      contentSecurityPolicy: false,
-      hsts: false,
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          connectSrc: cspConnectSrc,
+          imgSrc: ["'self'", 'data:'],
+          styleSrc: ["'self'"],
+          frameAncestors: ["'none'"],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+        },
+      },
+      hsts: auth.cookie.secure
+        ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
+        : false,
     }),
   );
   app.use(compression());
   app.use(cookieParser());
 
-  const auth = app
-    .get(ConfigService)
-    .get<AuthRuntimeConfig>('auth')!;
   app.enableCors({
     origin: auth.corsOrigins,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
