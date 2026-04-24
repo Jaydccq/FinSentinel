@@ -37,7 +37,8 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libgtk-3-dev \
             libayatana-appindicator3-dev \
-            librsvg2-dev
+            librsvg2-dev \
+            xvfb
       - run: pnpm install --frozen-lockfile
       - name: Build web (Tauri export)
         run: pnpm --filter @finsentinel/web build
@@ -47,6 +48,10 @@ jobs:
       - name: Build desktop (debug, no bundle)
         run: pnpm --filter @finsentinel/desktop tauri build --debug --no-bundle
       - run: pnpm --filter @finsentinel/desktop test
+      # F-9 runtime smoke — launches the built binary briefly under xvfb
+      # to prove it initialises without panicking on a fresh host.
+      - name: F-9 runtime smoke (xvfb)
+        run: apps/desktop/scripts/runtime-smoke.sh
 
   # Nightly macOS — catches Apple-specific Tauri / signing / packaging drift.
   nightly-mac:
@@ -69,6 +74,10 @@ jobs:
       - name: Build desktop (debug, no bundle)
         run: pnpm --filter @finsentinel/desktop tauri build --debug --no-bundle
       - run: pnpm --filter @finsentinel/desktop test
+      # F-9 runtime smoke — native macOS WindowServer is available, so
+      # no xvfb needed. The script detects darwin and skips xvfb-run.
+      - name: F-9 runtime smoke (macOS)
+        run: apps/desktop/scripts/runtime-smoke.sh
 
   # Force a macOS run when a PR touches Tauri-critical files (src-tauri / config).
   # GitHub Actions can't switch `runs-on` per-step, so this fails the PR with
