@@ -1,29 +1,14 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, X, Settings as SettingsIcon, Key, Check, AlertCircle, Trash2, Eye, EyeOff, RefreshCw } from 'lucide-react'
+import { Settings as SettingsIcon, Key, Check, AlertCircle, Trash2, Eye, EyeOff, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../hooks/useAuth'
 import { useI18n } from '../hooks/useI18n'
 import LanguageToggle from '../components/LanguageToggle'
 import { settingsApi, type ApiKeyStatus } from '../api/settings'
 
-const WATCHLIST_KEY = 'finsentinel_watchlist'
-
 const CATEGORY_ORDER = ['Market Data', 'AI', 'Trading', 'News']
-
-function loadWatchlist(): string[] {
-  try {
-    const raw = localStorage.getItem(WATCHLIST_KEY)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function saveWatchlist(tickers: string[]) {
-  localStorage.setItem(WATCHLIST_KEY, JSON.stringify(tickers))
-}
 
 function ApiKeyRow({
   keyStatus,
@@ -199,12 +184,8 @@ function ApiKeyRow({
 export default function SettingsPage() {
   const { user } = useAuth()
   const { t } = useI18n()
-  const [watchlist, setWatchlist] = useState<string[]>(loadWatchlist)
-  const [ticker, setTicker] = useState('')
   const [apiKeys, setApiKeys] = useState<ApiKeyStatus[]>([])
   const [apiKeysLoading, setApiKeysLoading] = useState(true)
-
-  useEffect(() => { saveWatchlist(watchlist) }, [watchlist])
 
   const fetchApiKeys = useCallback(async () => {
     try {
@@ -223,23 +204,6 @@ export default function SettingsPage() {
     acc[cat] = apiKeys.filter(k => k.category === cat)
     return acc
   }, {})
-
-  const addTicker = () => {
-    const nextTicker = ticker.trim().toUpperCase()
-    if (!nextTicker) return
-    if (watchlist.includes(nextTicker)) {
-      toast.error(t('settings.toast.exists', { ticker: nextTicker }))
-      return
-    }
-    setWatchlist(prev => [...prev, nextTicker])
-    setTicker('')
-    toast.success(t('settings.toast.added', { ticker: nextTicker }))
-  }
-
-  const removeTicker = (nextTicker: string) => {
-    setWatchlist(prev => prev.filter(x => x !== nextTicker))
-    toast.success(t('settings.toast.removed', { ticker: nextTicker }))
-  }
 
   return (
     <div className="px-4 py-4 md:px-6 md:py-4 space-y-4">
@@ -321,46 +285,28 @@ export default function SettingsPage() {
         )}
       </section>
 
-      <section className="glass-panel rounded p-3 md:p-4 space-y-3">
-        <h2 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">{t('settings.watchlist')}</h2>
-        <p className="text-xs text-[var(--text-muted)]">
-          {t('settings.watchlistDesc')}
+      {/*
+        F-6: the Settings-side watchlist editor was a localStorage-only
+        duplicate of the server-synced Dashboard watchlist. Collapsed into
+        a pointer so there's a single write path and users don't get
+        confused by two lists that can drift apart. The full drawer UX
+        with thesis/notes/priority editing lives on the Dashboard side;
+        see WatchlistController (PATCH/DELETE endpoints) and
+        watchlistApi.updateItem / updateCategory for the wire format.
+      */}
+      <section className="glass-panel rounded p-3 md:p-4 space-y-2">
+        <h2 className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+          {t('settings.watchlist')}
+        </h2>
+        <p className="text-sm text-[var(--text-secondary)]">
+          {t('settings.watchlistMovedToDashboard')}
         </p>
-
-        <div className="flex gap-2">
-          <input
-            className="field-input flex-1"
-            placeholder={t('settings.tickerPlaceholder')}
-            value={ticker}
-            onChange={e => setTicker(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') addTicker() }}
-          />
-          <button onClick={addTicker} className="btn-primary px-4 py-2 text-sm">
-            <Plus size={14} /> {t('settings.add')}
-          </button>
-        </div>
-
-        {watchlist.length === 0 ? (
-          <p className="text-sm text-[var(--text-muted)] py-3 text-center">{t('settings.emptyWatchlist')}</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {watchlist.map(currentTicker => (
-              <span
-                key={currentTicker}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-blue-500/10 border border-blue-400/20 text-blue-200 text-xs font-medium"
-              >
-                {currentTicker}
-                <button
-                  onClick={() => removeTicker(currentTicker)}
-                  aria-label={t('settings.removeAria', { ticker: currentTicker })}
-                  className="h-3.5 w-3.5 flex items-center justify-center hover:text-blue-100 transition-colors"
-                >
-                  <X size={11} />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
+        <a
+          href="/dashboard"
+          className="inline-flex items-center gap-1 text-sm text-blue-300 hover:text-blue-200 underline-offset-2 hover:underline"
+        >
+          {t('settings.goToDashboard')} →
+        </a>
       </section>
     </div>
   )
