@@ -23,6 +23,13 @@ export interface OrchestrationRequest {
   variants?: QueryVariant[];
   /** Query class from T4's planner, forwarded to MetadataPreFilterService. */
   queryClass?: QueryClass;
+  /**
+   * F-5: opt into HARD SQL pushdown of top-confidence sector + region
+   * extracted from the query. Default false → SOFT boost only (existing
+   * post-P1-3 behavior). Enable via `/api/rag/search { strictMetadata: true }`
+   * or upstream callers that want precision over recall.
+   */
+  strictMetadata?: boolean;
 }
 
 /**
@@ -66,6 +73,7 @@ export class RetrievalOrchestratorService {
       request.queryClass,
       filters,
       extracted,
+      request.strictMetadata ?? false,
     );
 
     // P3.3 ([RAG-TD-R4-07]): softFilter now travels downstream to the sparse

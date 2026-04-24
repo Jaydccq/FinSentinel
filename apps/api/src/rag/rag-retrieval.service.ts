@@ -60,6 +60,12 @@ export interface RagSearchOptions {
   queryClass?: string;
   /** Stickiness signals for deterministic canary assignment. */
   stickiness?: StickinessInput;
+  /**
+   * F-5 opt-in. Forwarded to the orchestrator → MetadataPreFilterService;
+   * promotes top-confidence sector/region from the query into the HARD
+   * SQL filter. Trades recall for precision.
+   */
+  strictMetadata?: boolean;
 }
 
 @Injectable()
@@ -321,6 +327,7 @@ export class RagRetrievalService {
         filters,
         variants: plan.variants,
         queryClass: plan.queryClass,
+        strictMetadata: opts.strictMetadata,
       });
       timingsMs['orchestrate'] = Date.now() - orchestrateStart;
 
