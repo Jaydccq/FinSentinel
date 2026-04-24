@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
+import { LoggerModule } from 'nestjs-pino';
 import { AppConfigModule, DatabaseModule } from './config';
 import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
@@ -30,6 +31,36 @@ import { WatchlistModule } from './watchlist/watchlist.module';
     AppConfigModule,
     DatabaseModule,
     ScheduleModule.forRoot(),
+    // F-12 (2026-04-24): structured JSON logging via pino. In dev, pipe
+    // through pino-pretty for human-readable output; in prod emit JSON
+    // so Loki/DataDog can index fields directly. nestjs-pino wraps the
+    // @nestjs/common Logger interface, so existing `new Logger(X.name)`
+    // call sites keep working — just with JSON-shaped output.
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env['LOG_LEVEL'] ?? 'info',
+        // Pulled from the X-Request-ID middleware so every log line
+        // carries the same ID as the response header.
+        customProps: (req) => ({
+          requestId: (req as { id?: string }).id,
+        }),
+        transport:
+          process.env['NODE_ENV'] === 'production'
+            ? undefined
+            : {
+                target: 'pino-pretty',
+                options: {
+                  singleLine: true,
+                  translateTime: 'SYS:HH:MM:ss.l',
+                  ignore: 'pid,hostname,req,res,responseTime',
+                },
+              },
+        // Drop noisy health-check access logs. Keep everything else.
+        autoLogging: {
+          ignore: (req) => (req.url ?? '').startsWith('/api/health'),
+        },
+      },
+    }),
     AuthModule,
     CommonModule,
     MarketModule,
