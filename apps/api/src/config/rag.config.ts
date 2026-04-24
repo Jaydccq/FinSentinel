@@ -230,6 +230,17 @@ export const ragConfig = registerAs('rag', () => ({
     minMarkdownChars: Number(process.env['RAG_PARSER_MIN_MARKDOWN_CHARS']) || 50,
     uploadMaxBytes: Number(process.env['RAG_UPLOAD_MAX_BYTES']) || 100 * 1024 * 1024,
   },
+  documents: {
+    /**
+     * When true, the upload path refuses to fall back to inline (synchronous)
+     * vectorization if no VectorizeProducer is bound. Production deployments
+     * should set DOCUMENTS_REQUIRE_ASYNC_VECTORIZE=true so a missing
+     * QueueModule fails loudly at upload time instead of silently doing
+     * 30-second LLM calls in the request path.
+     */
+    requireAsyncVectorize:
+      (process.env['DOCUMENTS_REQUIRE_ASYNC_VECTORIZE'] ?? 'false').toLowerCase() === 'true',
+  },
   rollout: {
     mode: parseRolloutMode(process.env['RAG_ROLLOUT_MODE']),
     shadowSampleRate: Number(process.env['RAG_SHADOW_SAMPLE_RATE'] ?? '1.0'),
