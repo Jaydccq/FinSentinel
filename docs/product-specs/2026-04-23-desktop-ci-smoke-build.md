@@ -145,3 +145,17 @@ jobs:
 - macOS runner 时长比 ubuntu 高，需要预算；可考虑 ubuntu-latest 作为主 runner，macOS 仅 nightly。
 - Rust 依赖首次拉取较慢，需配置 `cargo` cache。
 - Tauri build 在无 webview 的 runner 上需要安装 `webkit2gtk`，写入 README。
+
+## 8. Implementation Progress Log
+
+- 2026-04-24: branch `feat/2026-04-23-desktop-ci-smoke` opened.
+- 2026-04-24: implemented Task 1 per `docs/exec-plans/2026-04-23-desktop-ci-smoke.md`.
+  - New workflow `.github/workflows/desktop-smoke.yml` with three jobs (codex consult on 2026-04-23 picked this matrix as best signal-to-cost):
+    - `pr-smoke-ubuntu` — every PR touching `apps/desktop`, `apps/web`, `packages/shared`. Installs Tauri Linux deps, builds web with `NEXT_PUBLIC_TAURI=1`, runs `tauri build --debug --no-bundle`, runs `pnpm --filter @finsentinel/desktop test`.
+    - `nightly-mac` — 04:00 UTC cron + `workflow_dispatch`. Same build flow on `macos-latest` to catch Apple-specific drift.
+    - `pr-smoke-mac-on-touch` — fail-closed gate when a PR touches `apps/desktop/src-tauri`, `apps/desktop/tauri.conf.json`, or `apps/desktop/package.json`. Tells the dev to run the workflow_dispatch manually before merging.
+  - YAML schema validated locally via Node `js-yaml`. Runtime correctness lands on the next PR push — Actions reports any schema issue immediately.
+- Deferred (per the Out-of-Scope section at the top of the exec plan):
+  - Signed release artifacts (DMG / MSI / AppImage).
+  - Runtime GUI / IPC smoke — `apps/desktop/test` is currently a stub; building is sufficient signal in V1.
+  - Replacing the `pnpm build/test` exclusion of the desktop package — keeps fast PR feedback as default.
