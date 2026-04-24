@@ -14,6 +14,23 @@ function formatIsoDate(d: Date): string {
   return iso.slice(0, 10);
 }
 
+/**
+ * Return the value of the highest-confidence entity hit, or undefined when
+ * the array is empty. Used by the soft-filter sector/region surfacing —
+ * we currently take a single top-1 hint rather than the whole list because
+ * the SparseSearchFilters.softFilter.sector field is singular.
+ */
+function pickTop(
+  hits: Array<{ value: string; confidence: number }> | undefined,
+): string | undefined {
+  if (!hits || hits.length === 0) return undefined;
+  let best = hits[0]!;
+  for (let i = 1; i < hits.length; i++) {
+    if (hits[i]!.confidence > best.confidence) best = hits[i]!;
+  }
+  return best.value;
+}
+
 export type PreFilterMode = 'off' | 'soft' | 'hard';
 
 export interface PreFilterConfig {
@@ -74,10 +91,13 @@ export class MetadataPreFilterService {
 
     const { hardMinConfidence } = this.config;
 
-    // NOTE: ExtractedEntities also carries sectors[] and regions[] that this
-    // service currently discards. They will be mapped onto SparseSearchFilters.sector
-    // / .regionId in R4.3 once the SQL consumption path lands for those columns.
-    // See [RAG-TD-R4-01] in docs/exec-plans/tech-debt-tracker.md.
+    // P1-3 (2026-04-24): sector + region are now surfaced as SOFT hints —
+    // they boost matching rows but never exclude. HARD SQL pushdown stays
+    // deferred per the codex consult: default soft, opt-in `strict_metadata=true`
+    // is planned but doesn't ship in this slice.
+    const topSector = pickTop(extracted.sectors);
+    const topRegion = pickTop(extracted.regions);
+
     const highTickers = extracted.tickers
       .filter((t) => t.confidence >= hardMinConfidence)
       .map((t) => t.value);
@@ -125,10 +145,16 @@ export class MetadataPreFilterService {
 
     // mode === 'soft'
     let softFilter: (SparseSearchFilters & { tickers?: string[]; issuerName?: string[] }) | undefined;
-    if (lowTickers.length + lowIssuers.length > 0) {
+    const hasSoftHint =
+      lowTickers.length + lowIssuers.length > 0 ||
+      topSector !== undefined ||
+      topRegion !== undefined;
+    if (hasSoftHint) {
       softFilter = {
         ...(lowTickers.length ? { tickers: lowTickers } : {}),
         ...(lowIssuers.length ? { issuerName: lowIssuers } : {}),
+        ...(topSector ? { sector: topSector } : {}),
+        ...(topRegion ? { regionId: topRegion } : {}),
       };
     }
 

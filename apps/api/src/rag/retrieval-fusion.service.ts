@@ -23,15 +23,53 @@ export interface FusedCandidate extends Omit<RankedCandidate, 'lane' | 'score' |
   variantKindsSeen: VariantKind[];
 }
 
+/**
+ * A lane wrapped with its variant weight. The fuser multiplies every RRF
+ * contribution from this lane by `weight`; default 1.0 preserves vanilla RRF.
+ */
+export interface WeightedLane {
+  candidates: RankedCandidate[];
+  /** RRF contribution multiplier. Default 1. */
+  weight?: number;
+}
+
+function isWeightedLane(input: unknown): input is WeightedLane {
+  return (
+    typeof input === 'object' &&
+    input !== null &&
+    'candidates' in input &&
+    Array.isArray((input as { candidates: unknown }).candidates)
+  );
+}
+
 @Injectable()
 export class RetrievalFusionService {
-  fuse(lanes: RankedCandidate[][], k = 60): FusedCandidate[] {
+  /**
+   * Weighted Reciprocal Rank Fusion. Accepts either:
+   *   - `RankedCandidate[][]` — legacy unweighted (every lane weight = 1)
+   *   - `WeightedLane[]`      — per-lane `weight` consumed
+   *
+   * Both signatures work so existing call sites don't need updating.
+   */
+  fuse(
+    lanes: RankedCandidate[][] | WeightedLane[],
+    k = 60,
+  ): FusedCandidate[] {
+    const weightedLanes: WeightedLane[] = lanes.map((lane) =>
+      isWeightedLane(lane) ? lane : { candidates: lane, weight: 1 },
+    );
+
     const fusedMap = new Map<string, FusedCandidate>();
 
-    for (const lane of lanes) {
-      for (let rank = 0; rank < lane.length; rank++) {
-        const candidate = lane[rank]!;
-        const rrfContribution = 1 / (k + rank + 1);
+    for (const lane of weightedLanes) {
+      const weight = lane.weight ?? 1;
+      // weight=0 fully mutes the lane — its candidates contribute nothing
+      // and don't even surface in the fused output (caller asked us to
+      // explicitly suppress this variant).
+      if (weight === 0) continue;
+      for (let rank = 0; rank < lane.candidates.length; rank++) {
+        const candidate = lane.candidates[rank]!;
+        const rrfContribution = weight * (1 / (k + rank + 1));
 
         const existing = fusedMap.get(candidate.chunkId);
         if (existing) {

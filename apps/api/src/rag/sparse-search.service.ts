@@ -14,10 +14,18 @@ export interface SparseSearchFilters {
    * Soft hints from the metadata pre-filter. Non-matching rows stay
    * retrievable; matching rows get a `ts_rank_cd` boost (see
    * `SOFT_FILTER_MULTIPLIER`). P3.3 / [RAG-TD-R4-07].
+   *
+   * sector / regionId added by P1-3 — top-confidence sector + region
+   * extracted from the query, surfaced as soft hints (boost-only). HARD
+   * SQL pushdown for sector/region remains deferred per the codex
+   * consult on 2026-04-23 (default soft, opt-in `strict_metadata=true`
+   * planned later).
    */
   softFilter?: {
     tickers?: string[];
     issuerName?: string[];
+    sector?: string;
+    regionId?: string;
   };
 }
 

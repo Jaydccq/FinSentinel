@@ -86,3 +86,16 @@ class Semaphore {
 - weighted RRF 可能放大某些低质 paraphrase 的影响，需要在 query planner 端约束 weight 范围（建议 [0, 2]）。
 - sector/region SQL 下沉会让原本能命中的弱标注文档被过滤，可通过 hard vs soft 两层分级缓解。
 - Semaphore 替换是行为正确性敏感操作，必须先在 shadow 环境验证一周再全量。
+
+## 8. Implementation Progress Log
+
+- 2026-04-24: branch `feat/2026-04-23-rag-quality` opened.
+- 2026-04-24: implemented Tasks 1–3 per `docs/exec-plans/2026-04-23-rag-quality.md`.
+  - Task 1: weighted RRF — `RetrievalFusionService.fuse()` accepts `WeightedLane[]` (or legacy `RankedCandidate[][]`); `weight=0` mutes a lane; default `1` preserves vanilla. 3 new fusion tests + 8 existing tests green.
+  - Task 2: metadata pre-filter softpushes top-confidence sector / region into `softFilter.sector` / `softFilter.regionId` (boost-only per codex consult; HARD pushdown deferred). `SparseSearchFilters.softFilter` shape extended additively. 4 new prefilter tests + 20 existing tests green.
+  - Task 3: shadow runner semaphore — internal FIFO `Semaphore` replaces the `setTimeout(5ms)` polling loop. Backpressure / timeout / error / executed semantics preserved. 2 new tests + 4 existing tests green.
+- Verification: `pnpm --filter @finsentinel/api typecheck` clean; `vitest run -- rag` 298/298 green.
+- Deferred (per the Out-of-Scope section at the top of the exec plan):
+  - HARD `strict_metadata=true` SQL pushdown — needs eval-set evidence first.
+  - New SQL columns / migrations for sector/region filtering.
+  - Reranker tuning / new dense model.

@@ -109,4 +109,48 @@ describe('RetrievalFusionService', () => {
     expect(result[0]!.representationTypesSeen).toEqual([]);
     expect(result[0]!.variantKindsSeen).toEqual([]);
   });
+
+  // ── Weighted RRF (P1-3) ───────────────────────────────────────────────
+
+  it('weighted RRF: weight=0 contributes nothing (lane is effectively muted)', () => {
+    const dense = candidates('shared', 'dense-only');
+    dense.forEach(c => c.lane = 'dense');
+    const sparse = candidates('shared', 'sparse-only');
+    sparse.forEach(c => c.lane = 'sparse');
+
+    const result = service.fuse(
+      [
+        { candidates: dense, weight: 1 },
+        { candidates: sparse, weight: 0 },
+      ],
+      60,
+    );
+
+    // sparse-only should not appear at all (its lane weight is 0)
+    expect(result.find((r) => r.chunkId === 'sparse-only')).toBeUndefined();
+    // shared still scores from the dense lane only
+    const shared = result.find((r) => r.chunkId === 'shared')!;
+    expect(shared.rrfScore).toBeCloseTo(1 / (60 + 0 + 1), 8);
+  });
+
+  it('weighted RRF: weight=2 doubles contribution per rank vs vanilla', () => {
+    const dense = candidates('a');
+    dense.forEach(c => c.lane = 'dense');
+
+    const vanilla = service.fuse([dense], 60);
+    const weighted = service.fuse([{ candidates: dense, weight: 2 }], 60);
+
+    expect(weighted[0]!.rrfScore).toBeCloseTo(2 * vanilla[0]!.rrfScore, 8);
+  });
+
+  it('legacy RankedCandidate[][] input still works (weight defaults to 1)', () => {
+    const dense = candidates('a', 'b');
+    dense.forEach(c => c.lane = 'dense');
+
+    const legacy = service.fuse([dense], 60);
+    const weighted = service.fuse([{ candidates: dense, weight: 1 }], 60);
+
+    expect(legacy[0]!.rrfScore).toBeCloseTo(weighted[0]!.rrfScore, 8);
+    expect(legacy.map(r => r.chunkId)).toEqual(weighted.map(r => r.chunkId));
+  });
 });
