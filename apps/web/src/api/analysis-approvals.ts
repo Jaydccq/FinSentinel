@@ -1,9 +1,9 @@
-import { BASE, authHeaders } from './client';
+import { resolveBase, authHeaders } from './client';
 
 export type ApprovalDecision = 'APPROVE' | 'REJECT';
 
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${resolveBase()}${path}`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },

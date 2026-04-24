@@ -1,4 +1,4 @@
-import { BASE, authHeaders } from './client'
+import { resolveBase, authHeaders } from './client'
 
 export interface PriceZone {
   low: number
@@ -69,7 +69,7 @@ export const analysisApi = {
     onError: (err: string) => void
   ): Promise<void> => {
     try {
-      const res = await fetch(`${BASE}/analysis/stream/${encodeURIComponent(ticker)}`, {
+      const res = await fetch(`${resolveBase()}/analysis/stream/${encodeURIComponent(ticker)}`, {
         method: 'POST',
         credentials: 'include',
         headers: {

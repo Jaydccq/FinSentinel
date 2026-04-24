@@ -1,4 +1,4 @@
-import { apiFetch, BASE, authHeaders } from './client'
+import { apiFetch, resolveBase, authHeaders } from './client'
 
 export interface DocumentResponse {
   id: string
@@ -42,7 +42,7 @@ export const documentsApi = {
     if (sector) form.append('sector', sector)
     form.append('regionId', 'US')
 
-    const res = await fetch(`${BASE}/documents`, {
+    const res = await fetch(`${resolveBase()}/documents`, {
       method: 'POST',
       credentials: 'include',
       headers: { ...authHeaders() },
@@ -54,7 +54,7 @@ export const documentsApi = {
   },
 
   download: async (id: string): Promise<void> => {
-    const res = await fetch(`${BASE}/documents/${id}/download`, {
+    const res = await fetch(`${resolveBase()}/documents/${id}/download`, {
       credentials: 'include',
       headers: { ...authHeaders() },
     })

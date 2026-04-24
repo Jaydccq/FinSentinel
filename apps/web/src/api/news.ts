@@ -1,4 +1,4 @@
-import { apiFetch, BASE, authHeaders } from './client'
+import { apiFetch, resolveBase, authHeaders } from './client'
 
 export interface NewsItemResponse {
   id: string
@@ -59,7 +59,7 @@ export const newsApi = {
 
     async function connect() {
       try {
-        const res = await fetch(`${BASE}/news/stream`, {
+        const res = await fetch(`${resolveBase()}/news/stream`, {
           credentials: 'include',
           headers: {
             Accept: 'text/event-stream',

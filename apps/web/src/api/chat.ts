@@ -1,4 +1,4 @@
-import { BASE, apiFetch } from './client'
+import { resolveBase, apiFetch } from './client'
 
 export interface RiskFactor {
   category: string
@@ -53,7 +53,7 @@ export const chatApi = {
     onUpgrade?: (runId: string, reason?: string) => void
   ): Promise<void> => {
     try {
-      const res = await fetch(`${BASE}/chat/stream`, {
+      const res = await fetch(`${resolveBase()}/chat/stream`, {
         method: 'POST',
         credentials: 'include',
         headers: {

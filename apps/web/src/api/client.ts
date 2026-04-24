@@ -3,6 +3,7 @@ import {
   ensureLocalToken,
   getCachedToken,
 } from '../lib/auth/local-login'
+import { getApiBaseUrl } from '../lib/api-base-url'
 
 export class ApiError extends Error {
   status: number
@@ -12,7 +13,21 @@ export class ApiError extends Error {
   }
 }
 
-const BASE = '/api'
+/**
+ * Resolve the API URL prefix at call time.
+ *
+ * Browser dev/prod: NEXT_PUBLIC_API_BASE_URL is unset → returns '/api', which
+ * the Next.js rewrites in apps/web/next.config.ts forward to NestJS.
+ *
+ * Tauri build (NEXT_PUBLIC_TAURI=1): rewrites are disabled because of
+ * `output: 'export'`. The build injects a full origin via
+ * NEXT_PUBLIC_API_BASE_URL → returns e.g. 'http://127.0.0.1:8080/api',
+ * matching the NestJS global prefix in apps/api/src/main.ts.
+ */
+export function resolveBase(): string {
+  const origin = getApiBaseUrl()
+  return origin ? `${origin}/api` : '/api'
+}
 
 /**
  * Synchronous auth headers — reads only from the local-login cache so
@@ -31,7 +46,7 @@ async function buildRequest(
   // For apiFetch we can afford to await the login in case the cache is
   // empty (e.g. a direct API call before <Providers> mounts).
   await ensureLocalToken()
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${resolveBase()}${path}`, {
     ...options,
     credentials: 'include',
     headers: {
@@ -83,4 +98,4 @@ export async function apiFetch<T>(
   return res.json()
 }
 
-export { BASE, authHeaders }
+export { authHeaders }
