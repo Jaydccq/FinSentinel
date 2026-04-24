@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { MarketQuote, MarketBar } from '@finsentinel/shared';
+import type {
+  MarketQuote,
+  MarketBar,
+  TickerSearchResult,
+} from '@finsentinel/shared';
 import { Contract, SecurityType } from '@finsentinel/shared';
 import type { MarketDataProvider } from '../interfaces/market-data-provider';
 
@@ -122,6 +126,53 @@ export class PolygonMarketDataProvider implements MarketDataProvider {
   /** Format a Date as YYYY-MM-DD for Polygon's API. */
   private formatDate(date: Date): string {
     return date.toISOString().split('T')[0]!;
+  }
+
+  /**
+   * Ticker search backed by the Polygon `/v3/reference/tickers` reference
+   * endpoint. Implementing this opts the provider into the registry's
+   * `getSearchProvider()` selection so a Polygon-default deployment no
+   * longer has to fall back to Yahoo for symbol lookup.
+   *
+   * See https://polygon.io/docs/stocks/get_v3_reference_tickers
+   */
+  async searchTickers(
+    query: string,
+    limit: number,
+  ): Promise<TickerSearchResult[]> {
+    const url = new URL(
+      `${PolygonMarketDataProvider.BASE_URL}/v3/reference/tickers`,
+    );
+    url.searchParams.set('search', query);
+    url.searchParams.set('active', 'true');
+    url.searchParams.set('limit', String(limit));
+    url.searchParams.set('apiKey', this.apiKey);
+
+    const safeUrl = url.toString().replace(this.apiKey, '***');
+    this.logger.debug(`Polygon search request: ${safeUrl}`);
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      this.logger.warn(`Polygon search failed: ${response.status}`);
+      return [];
+    }
+
+    const data = (await response.json()) as {
+      results?: Array<{
+        ticker: string;
+        name: string;
+        primary_exchange?: string;
+        market?: string;
+        type?: string;
+      }>;
+    };
+
+    return (data.results ?? []).map((row) => ({
+      symbol: row.ticker,
+      name: row.name,
+      exchange: row.primary_exchange ?? row.market ?? 'UNKNOWN',
+      assetType: row.type ?? row.market ?? 'EQUITY',
+    }));
   }
 
   private normalizeTicker(ticker: string): string {

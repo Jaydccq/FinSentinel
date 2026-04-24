@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { MarketQuote, MarketBar } from '@finsentinel/shared';
+import type {
+  MarketQuote,
+  MarketBar,
+  TickerSearchResult,
+} from '@finsentinel/shared';
 import type { MarketDataProvider } from '../interfaces/market-data-provider';
 
 /** Shape of a single quote from the FMP /quote/{ticker} response. */
@@ -135,6 +139,46 @@ export class FmpMarketDataProvider implements MarketDataProvider {
       close: bar.close.toFixed(2),
       volume: bar.volume,
       timestamp: new Date(bar.date).getTime(),
+    }));
+  }
+
+  /**
+   * Ticker search backed by the FMP `/search` endpoint. Implementing this
+   * opts the provider into the registry's `getSearchProvider()` selection.
+   *
+   * See https://site.financialmodelingprep.com/developer/docs#Symbol-Search
+   */
+  async searchTickers(
+    query: string,
+    limit: number,
+  ): Promise<TickerSearchResult[]> {
+    const url = new URL(`${this.baseUrl}/search`);
+    url.searchParams.set('query', query);
+    url.searchParams.set('limit', String(limit));
+    url.searchParams.set('apikey', this.apiKey);
+
+    const safeUrl = url.toString().replace(this.apiKey, '***');
+    this.logger.debug(`FMP search request: ${safeUrl}`);
+
+    const response = await fetch(url.toString());
+    if (!response.ok) {
+      this.logger.warn(`FMP search failed: ${response.status}`);
+      return [];
+    }
+
+    const data = (await response.json()) as Array<{
+      symbol: string;
+      name?: string;
+      currency?: string;
+      stockExchange?: string;
+      exchangeShortName?: string;
+    }>;
+
+    return (data ?? []).map((row) => ({
+      symbol: row.symbol,
+      name: row.name ?? row.symbol,
+      exchange: row.exchangeShortName ?? row.stockExchange ?? 'UNKNOWN',
+      assetType: 'EQUITY',
     }));
   }
 
