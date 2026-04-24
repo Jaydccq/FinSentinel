@@ -216,6 +216,142 @@ export class DocumentUploadService {
     }
   }
 
+  /**
+   * F-4 presigned upload — step 1. Create the DB row as PENDING_UPLOAD,
+   * return a short-lived PUT URL the browser can stream bytes to. The
+   * client then hits `finalizeDirectUpload` once the PUT completes.
+   *
+   * MIME + filename are still validated server-side because the browser
+   * is untrusted (even though file.buffer isn't touched here).
+   */
+  async prepareDirectUpload(
+    userId: string,
+    originalname: string,
+    mimetype: string,
+    sizeBytes: number,
+    docType: string,
+    sector?: string,
+    regionId?: string,
+  ): Promise<{
+    id: string;
+    storageKey: string;
+    uploadUrl: string;
+    expiresAt: number;
+  }> {
+    this.validate({
+      buffer: Buffer.alloc(Math.min(sizeBytes, 1)),
+      mimetype,
+      originalname,
+    });
+    // Size check against the separately-declared limit (validate() only
+    // checks the buffer we pass in — here the real bytes haven't arrived).
+    const maxBytes = this.config.get<number>(
+      'rag.parser.uploadMaxBytes',
+      100 * 1024 * 1024,
+    );
+    if (sizeBytes > maxBytes) {
+      throw new BadRequestException(
+        `File exceeds maximum size of ${Math.floor(maxBytes / (1024 * 1024))} MB`,
+      );
+    }
+
+    const regionOutcome = resolveRegion(originalname, regionId);
+    const resolvedRegionId = regionOutcome.regionId;
+
+    const timestamp = Date.now();
+    const safeFileName = originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storageKey = `documents/${userId}/${timestamp}_${safeFileName}`;
+
+    const ttlSeconds = this.config.get<number>(
+      'rag.documents.presignedUploadTtlSeconds',
+      15 * 60,
+    );
+    const uploadUrl = await this.storage.createPresignedUploadUrl(
+      storageKey,
+      mimetype,
+      ttlSeconds,
+    );
+    if (!uploadUrl) {
+      throw new BadRequestException(
+        'Direct upload not supported by this storage backend',
+      );
+    }
+
+    const insertResult = await this.db
+      .insert(documents)
+      .values({
+        fileName: safeFileName,
+        originalFileName: originalname,
+        docType,
+        status: 'PENDING_UPLOAD',
+        sector: sector ?? null,
+        regionId: resolvedRegionId,
+        userId,
+        fileSize: sizeBytes,
+        storageKey,
+        storageTier: 'HOT',
+      })
+      .returning({ id: documents.id });
+    const inserted = insertResult[0];
+    if (!inserted) throw new Error('Failed to insert document record');
+
+    return {
+      id: inserted.id,
+      storageKey,
+      uploadUrl,
+      expiresAt: Date.now() + ttlSeconds * 1000,
+    };
+  }
+
+  /**
+   * F-4 presigned upload — step 2. Client reports PUT success; we
+   * verify the object actually exists in storage (can't trust client
+   * blindly), mark the row PENDING, and enqueue vectorization.
+   */
+  async finalizeDirectUpload(
+    userId: string,
+    documentId: string,
+  ): Promise<UploadResult> {
+    const [row] = await this.db
+      .select({
+        id: documents.id,
+        status: documents.status,
+        storageKey: documents.storageKey,
+        userId: documents.userId,
+      })
+      .from(documents)
+      .where(eq(documents.id, documentId))
+      .limit(1);
+
+    if (!row || row.userId !== userId) {
+      throw new BadRequestException(`Document ${documentId} not found`);
+    }
+    if (row.status !== 'PENDING_UPLOAD') {
+      // Idempotent: if already finalized, return current state.
+      return { id: row.id, status: row.status };
+    }
+    if (!row.storageKey) {
+      throw new Error(`Document ${documentId} has no storageKey`);
+    }
+
+    const exists = await this.storage.head(row.storageKey);
+    if (!exists) {
+      throw new BadRequestException(
+        'Upload was not completed — storage object not found. Retry the PUT or request a new URL.',
+      );
+    }
+
+    await this.db
+      .update(documents)
+      .set({ status: 'PENDING' })
+      .where(eq(documents.id, documentId));
+
+    if (this.vectorizeProducer) {
+      await this.vectorizeProducer.send(documentId);
+    }
+    return { id: documentId, status: 'PENDING' };
+  }
+
   /** Validate file size and MIME type. */
   private validate(file: UploadedFile): void {
     if (!file.buffer || file.buffer.length === 0) {

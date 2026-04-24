@@ -7,6 +7,7 @@ import {
   DeleteObjectCommand,
   HeadObjectCommand,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { StorageService } from './interfaces/storage-service';
 
 /**
@@ -76,6 +77,26 @@ export class RustfsStorageService implements StorageService {
       }),
     );
     this.logger.debug(`Deleted ${key} from RustFS`);
+  }
+
+  async createPresignedUploadUrl(
+    key: string,
+    contentType: string,
+    ttlSeconds: number,
+  ): Promise<string> {
+    const cmd = new PutObjectCommand({
+      Bucket: this.bucket,
+      Key: key,
+      ContentType: contentType,
+    });
+    // The two presigner/client packages can pin slightly different
+    // `@smithy/types` minors and TypeScript then sees incompatible
+    // middleware shapes. Runtime is fine — cast through `any` for both
+    // arguments rather than forcing a `resolutions` bump.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = this.client as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return getSignedUrl(client, cmd as any, { expiresIn: ttlSeconds });
   }
 
   async head(key: string): Promise<boolean> {

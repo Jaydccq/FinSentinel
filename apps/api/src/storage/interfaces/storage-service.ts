@@ -18,4 +18,21 @@ export interface StorageService {
    * object — delete the stuck row".
    */
   head(key: string): Promise<boolean>;
+
+  /**
+   * F-4 direct-upload: mint a short-lived presigned PUT URL so the
+   * browser can stream bytes directly to storage instead of through
+   * Node memory. Not every backend supports this — implementations
+   * that don't should return `null`, and the controller falls back to
+   * the multipart upload path.
+   *
+   * `ttlSeconds` bounds how long the URL is valid. Keep small
+   * (default ~15 min) since large numbers invite replay and leak risk
+   * if the URL is accidentally logged.
+   */
+  createPresignedUploadUrl?(
+    key: string,
+    contentType: string,
+    ttlSeconds: number,
+  ): Promise<string | null>;
 }
