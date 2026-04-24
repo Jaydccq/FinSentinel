@@ -139,6 +139,27 @@ describe('RetrievalPlannerService', () => {
     expect(plan.variants[0].kind).toBe('original');
   });
 
+  // ── Colloquial ────────────────────────────────────────────────────────────
+
+  it.each([
+    'hi',
+    'hello',
+    'thanks!',
+    'got it',
+    'bye',
+    'help me',
+  ])('colloquial opener %s classifies as colloquial', async (q) => {
+    const plan = await makeService().plan(q);
+    expect(plan.queryClass).toBe('colloquial');
+  });
+
+  it('colloquial precedence: "AAPL" alone is still exact_lookup, not colloquial', async () => {
+    // Single ALLCAPS ticker without a time anchor falls through to factoid,
+    // not exact_lookup — but it must NOT be misclassified as colloquial.
+    const plan = await makeService().plan('AAPL');
+    expect(plan.queryClass).not.toBe('colloquial');
+  });
+
   // ── Relational ────────────────────────────────────────────────────────────
 
   it('relational query with graph enabled includes graph lane', async () => {
