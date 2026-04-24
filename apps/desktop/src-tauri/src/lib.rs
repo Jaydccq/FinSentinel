@@ -1,8 +1,10 @@
+pub mod auth;
 pub mod commands;
 pub mod db;
 pub mod embeddings;
 pub mod indexer;
 
+use auth::{clear_token, read_token, write_token};
 use commands::{index_pdf, list_documents, search_private_docs, AppState};
 use tauri::Manager;
 
@@ -39,6 +41,9 @@ pub fn run() {
             index_pdf,
             search_private_docs,
             list_documents,
+            read_token,
+            write_token,
+            clear_token,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
