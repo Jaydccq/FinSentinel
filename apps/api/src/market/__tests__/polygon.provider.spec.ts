@@ -185,4 +185,63 @@ describe('PolygonMarketDataProvider', () => {
       );
     });
   });
+
+  // ── searchTickers ──────────────────────────────────────────────────────
+
+  describe('searchTickers', () => {
+    it('maps Polygon /v3/reference/tickers response to TickerSearchResult', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              ticker: 'AAPL',
+              name: 'Apple Inc.',
+              primary_exchange: 'XNAS',
+              market: 'stocks',
+              type: 'CS',
+            },
+            {
+              ticker: 'AAP',
+              name: 'Advance Auto Parts Inc.',
+              primary_exchange: 'XNYS',
+              market: 'stocks',
+              type: 'CS',
+            },
+          ],
+        }),
+      });
+
+      const results = await provider.searchTickers('app', 10);
+
+      const call = fetchMock.mock.calls[0]![0] as string;
+      expect(call).toContain('/v3/reference/tickers');
+      expect(call).toContain('search=app');
+      expect(call).toContain('active=true');
+      expect(call).toContain('limit=10');
+
+      expect(results).toEqual([
+        { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'XNAS', assetType: 'CS' },
+        { symbol: 'AAP', name: 'Advance Auto Parts Inc.', exchange: 'XNYS', assetType: 'CS' },
+      ]);
+    });
+
+    it('returns [] on non-2xx (no throw — caller will fall back)', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 429, statusText: 'Too Many Requests' });
+      await expect(provider.searchTickers('x', 5)).resolves.toEqual([]);
+    });
+
+    it('tolerates missing primary_exchange / type fields', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          results: [{ ticker: 'WEIRD', name: 'Weird Ltd', market: 'crypto' }],
+        }),
+      });
+      const results = await provider.searchTickers('weird', 5);
+      expect(results).toEqual([
+        { symbol: 'WEIRD', name: 'Weird Ltd', exchange: 'crypto', assetType: 'crypto' },
+      ]);
+    });
+  });
 });

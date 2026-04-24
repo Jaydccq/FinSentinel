@@ -169,6 +169,45 @@ describe('FmpMarketDataProvider', () => {
       );
     });
   });
+
+  // ── searchTickers ─────────────────────────────────────────────────────
+
+  describe('searchTickers', () => {
+    it('maps FMP /search response to TickerSearchResult', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue([
+          {
+            symbol: 'AAPL',
+            name: 'Apple Inc.',
+            currency: 'USD',
+            stockExchange: 'NASDAQ Global Select',
+            exchangeShortName: 'NASDAQ',
+          },
+          {
+            symbol: 'AAPL.NE',
+            name: 'Apple Neo Exchange',
+            exchangeShortName: 'NEO',
+          },
+        ]),
+      });
+
+      const results = await provider.searchTickers('app', 10);
+      const call = fetchMock.mock.calls[0]![0] as string;
+      expect(call).toContain('/search');
+      expect(call).toContain('query=app');
+      expect(call).toContain('limit=10');
+      expect(results).toEqual([
+        { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', assetType: 'EQUITY' },
+        { symbol: 'AAPL.NE', name: 'Apple Neo Exchange', exchange: 'NEO', assetType: 'EQUITY' },
+      ]);
+    });
+
+    it('returns [] on non-2xx (no throw — caller will fall back)', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 403, statusText: 'Forbidden' });
+      await expect(provider.searchTickers('x', 5)).resolves.toEqual([]);
+    });
+  });
 });
 
 // ── YahooFinanceMarketDataProvider ──────────────────────────────────────────
