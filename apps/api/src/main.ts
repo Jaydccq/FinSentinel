@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
+import { Logger } from 'nestjs-pino';
 import cookieParser from 'cookie-parser';
 import compression from 'compression';
 import helmet from 'helmet';
@@ -9,7 +10,11 @@ import { requestIdMiddleware } from './common/middleware/request-id.middleware';
 import type { AuthRuntimeConfig } from './config/auth.config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // `bufferLogs: true` lets nestjs-pino capture bootstrap-time logs that
+  // would otherwise go to the default console Logger. Flushed once we
+  // swap the app Logger below.
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(Logger));
 
   app.setGlobalPrefix('api');
 

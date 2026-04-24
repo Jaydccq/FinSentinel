@@ -9,8 +9,11 @@ export const REQUEST_ID_HEADER = 'x-request-id';
  * need the correlation ID; doing this via a local type avoids needing a
  * project-wide module-augmentation file just for one field.
  */
+// After `requestIdMiddleware` runs, `req.id` is guaranteed. pino-http
+// augments Express.Request with `id: ReqId` (string), so we make this
+// required to stay compatible with pino-http's module augmentation.
 export interface RequestWithId extends Request {
-  id?: string;
+  id: string;
 }
 
 /**
