@@ -362,6 +362,29 @@ export function createMockRedis() {
         return Promise.resolve(arr.length);
       }
 
+      // Trading commit script: atomic capture-and-clear of staging.
+      // Recognised by GET + DEL on KEYS[1] and the literal '[]' empty-array
+      // check, plus absence of cjson.* (which marks the append script).
+      if (
+        script.includes("redis.call('GET'") &&
+        script.includes("redis.call('DEL'") &&
+        script.includes("'[]'") &&
+        !script.includes('cjson')
+      ) {
+        const key = String(args[0]);
+        const exp = expiries.get(key);
+        if (exp && Date.now() > exp) {
+          store.delete(key);
+          expiries.delete(key);
+          return Promise.resolve(null);
+        }
+        const staging = store.get(key) ?? null;
+        if (!staging || staging === '[]') return Promise.resolve(null);
+        store.delete(key);
+        expiries.delete(key);
+        return Promise.resolve(staging);
+      }
+
       // Default: return 0
       return Promise.resolve(0);
     },
