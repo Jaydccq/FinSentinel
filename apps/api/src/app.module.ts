@@ -23,6 +23,7 @@ import { ResearchModule } from './research/research.module';
 import { ScraperModule } from './scraper/scraper.module';
 import { ReportModule } from './report/report.module';
 import { McpModule } from './mcp/mcp.module';
+import { WatchlistModule } from './watchlist/watchlist.module';
 
 @Module({
   imports: [
@@ -58,6 +59,8 @@ import { McpModule } from './mcp/mcp.module';
     ReportModule,
     // MCP server for Claude Desktop integration; guards at controller level via McpApiKeyGuard.
     McpModule,
+    // Watchlist — exposes GET/POST /watchlist backed by WatchlistService.
+    WatchlistModule,
   ],
   controllers: [HealthController],
 })
