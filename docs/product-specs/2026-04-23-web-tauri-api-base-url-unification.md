@@ -81,3 +81,15 @@ ensureLocalToken(getApiBaseUrl());
 
 - 如果远端 base 设置错误（例如缺协议头），所有请求会一并失败；需要在 `getApiBaseUrl()` 解析时做基本 URL 校验，并在桌面端 UI 给出可见错误。
 - 桌面端用户在不同环境间切换时，`localStorage` 缓存的 token 可能与新 base 域不匹配，需在切换 base 时主动清理。
+
+## 8. Implementation Progress Log
+
+- 2026-04-23: branch `feat/2026-04-23-web-tauri-api-base` opened.
+- 2026-04-23..24: implemented Tasks 1–6 per `docs/exec-plans/2026-04-23-web-tauri-api-base.md`.
+  - Tasks 1+2: introduced `resolveBase()` in `apps/web/src/api/client.ts`, removed the `BASE = '/api'` literal, refactored 8 consumer modules (news, analysis-runs, reports, chat, documents, analysis, okx, analysis-approvals) and the analysis-runs test mock.
+  - Task 3: `performLogin` in `apps/web/src/lib/auth/local-login.ts` now resolves the base via `getApiBaseUrl()` when no explicit arg is given.
+  - Task 4: `apps/web/src/providers.tsx` passes `getApiBaseUrl()` into `ensureLocalToken` so the boot-time wiring is auditable.
+  - Task 5: `apps/web/src/context/AuthContext.tsx` logout call routed through `resolveBase()` (the last hardcoded `/api/` literal outside tests).
+  - Task 6: full verification — `pnpm --filter @finsentinel/web typecheck` clean, full vitest suite 73/73 green.
+- Decision deferred: Tauri-runtime UI base override (PRD §5.3); not needed for first-cut shipability.
+- Decision deferred: full Tauri Playwright smoke; lives in `2026-04-23-desktop-ci-smoke-build.md` (PRD #9).
