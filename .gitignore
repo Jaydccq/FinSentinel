@@ -115,6 +115,12 @@ docs/exec-plans/*
 !docs/exec-plans/2026-04-23-trading-atomicity.md
 !docs/exec-plans/2026-04-23-web-tauri-api-base.md
 !docs/exec-plans/2026-04-23-auth-session-hardening.md
+!docs/exec-plans/2026-04-23-document-upload-hardening.md
+!docs/exec-plans/2026-04-23-watchlist-server-persistence.md
+!docs/exec-plans/2026-04-23-market-search-abstraction.md
+!docs/exec-plans/2026-04-23-rag-quality.md
+!docs/exec-plans/2026-04-23-web-tauri-api-base.md
+!docs/exec-plans/2026-04-23-auth-session-hardening.md
 !docs/technical-guides/
 !docs/technical-guides/autonomous-investment-platform-interview-guide.md
 !docs/technical-guides/autonomous-investment-platform-interview-guide-print.css
