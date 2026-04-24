@@ -16,26 +16,39 @@ import {
 import { toast } from 'sonner'
 import { portfolioApi, type PortfolioResponse } from '../api/portfolio'
 import { marketApi, type QuoteData } from '../api/market'
+import { watchlistApi } from '../api/watchlist'
 import { StatCardsSkeleton, PortfolioListSkeleton, WatchlistSkeleton } from '../components/Skeleton'
 import EmptyState from '../components/EmptyState'
 import TickerSearchInput from '../components/TickerSearchInput'
 
 const DEFAULT_TICKERS = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'TSLA', 'BTC-USD', 'ETH-USD', 'AMD', 'AMZN', 'AVGO', 'SOL-USD']
 const LS_KEY = 'finsentinel_watchlist'
+const SERVER_CATEGORY_NAME = 'Dashboard'
 
-function loadWatchlist(): string[] {
+/**
+ * Local cache fallback. The watchlist now lives on the server (cross-device,
+ * survives browser reset). The cache is only used so the UI has something to
+ * show during the initial server fetch and when offline.
+ */
+function loadCachedTickers(): string[] {
+  if (typeof window === 'undefined') return DEFAULT_TICKERS
   try {
-    const stored = localStorage.getItem(LS_KEY)
+    const stored = window.localStorage.getItem(LS_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter((t): t is string => typeof t === 'string')
+      }
     }
   } catch { /* ignore */ }
   return DEFAULT_TICKERS
 }
 
-function saveWatchlist(tickers: string[]) {
-  localStorage.setItem(LS_KEY, JSON.stringify(tickers))
+function cacheTickers(tickers: string[]) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(LS_KEY, JSON.stringify(tickers))
+  } catch { /* ignore */ }
 }
 
 const COLOR_META: Record<string, { icon: string; border: string; text: string }> = {
@@ -94,7 +107,7 @@ function StatCard({
 
 export default function DashboardPage() {
   const [portfolios, setPortfolios] = useState<PortfolioResponse[]>([])
-  const [watchlist, setWatchlist] = useState<string[]>(loadWatchlist)
+  const [watchlist, setWatchlist] = useState<string[]>(loadCachedTickers)
   const [quotes, setQuotes] = useState<Record<string, QuoteData | null>>({})
   const [loading, setLoading] = useState(true)
   const [quotesLoading, setQuotesLoading] = useState(true)
@@ -162,10 +175,56 @@ export default function DashboardPage() {
     }
   }, [watchlist, fetchQuotes])
 
+  // Server is the source of truth. On mount, fetch the user's "Dashboard"
+  // category. If absent and the local cache has tickers, auto-import them as
+  // a one-time bootstrap. Network/auth failures fall back silently to the
+  // cached value (already populated by useState above).
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const overview = await watchlistApi.list()
+        if (cancelled) return
+        const dash = overview.categories.find((c) => c.name === SERVER_CATEGORY_NAME)
+        if (dash && dash.items.length > 0) {
+          const symbols = dash.items.map((i) => i.symbol)
+          setWatchlist(symbols)
+          cacheTickers(symbols)
+          return
+        }
+        const cached = loadCachedTickers()
+        if (cached.length > 0) {
+          await watchlistApi.save({
+            categoryName: SERVER_CATEGORY_NAME,
+            items: cached.map((symbol) => ({ symbol })),
+          })
+        }
+      } catch {
+        /* offline / unauth — keep the cached watchlist */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  /** Write-through: update the cache instantly, then sync to the server. */
+  const persist = useCallback(async (updated: string[]) => {
+    cacheTickers(updated)
+    try {
+      await watchlistApi.save({
+        categoryName: SERVER_CATEGORY_NAME,
+        items: updated.map((symbol) => ({ symbol })),
+      })
+    } catch {
+      /* stay optimistic; cache keeps the UI consistent until network returns */
+    }
+  }, [])
+
   const removeTicker = (ticker: string) => {
     const updated = watchlist.filter(t => t !== ticker)
     setWatchlist(updated)
-    saveWatchlist(updated)
+    void persist(updated)
   }
 
   const doneEditing = () => {
@@ -282,7 +341,7 @@ export default function DashboardPage() {
                 if (!watchlist.includes(symbol)) {
                   const updated = [...watchlist, symbol]
                   setWatchlist(updated)
-                  saveWatchlist(updated)
+                  void persist(updated)
                   marketApi.batchQuotes([symbol])
                     .then(data => {
                       const quote = data[symbol]

@@ -76,3 +76,17 @@ POST   /watchlist/categories/:id/organize      -> 调用现有 organize 逻辑
 
 - agent tools 当前直接吃 service，不经 REST；需要在 service 层保持单一事实源，REST 与 agent tools 共用。
 - 离线兜底如果与服务端冲突（在另一端编辑过），合并策略选简单的 last-write-wins，并在 UI 提示「服务器内容已更新」。
+
+## 8. Implementation Progress Log
+
+- 2026-04-24: branch `feat/2026-04-23-watchlist-server-persistence` opened.
+- 2026-04-24: implemented Tasks 1–4 per `docs/exec-plans/2026-04-23-watchlist-server-persistence.md`.
+  - Task 1: `saveWatchlistRequestSchema` (Zod) added to `packages/shared/src/schemas/watchlist.ts`.
+  - Task 2: `WatchlistController` exposes `GET /watchlist` and `POST /watchlist`. `WatchlistModule` registered in `AppModule.imports`. 2 controller unit tests green.
+  - Task 3: `apps/web/src/api/watchlist.ts` typed client (list + save) with 2 unit tests.
+  - Task 4: `DashboardPage.tsx` boots from local cache for instant paint, fetches `GET /watchlist` to hydrate from the `Dashboard` category, auto-imports legacy `localStorage.finsentinel_watchlist` on first run, write-through to cache + server on add/remove.
+- Verification: `pnpm --filter @finsentinel/api typecheck` clean, `pnpm --filter @finsentinel/api vitest run -- watchlist` 2/2 green; web typecheck clean, full web vitest 75/75 green.
+- Deferred (per the Out-of-Scope section at the top of the exec plan):
+  - Item-level CRUD (`PATCH /watchlist/items/:id`, `DELETE`) — service surface needed first.
+  - Settings page redesign exposing thesis/notes/priority editing.
+  - Real-time multi-device sync.
