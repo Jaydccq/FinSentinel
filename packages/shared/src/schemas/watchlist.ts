@@ -48,3 +48,21 @@ export const saveWatchlistRequestSchema = z.object({
   items: z.array(saveWatchlistItemSchema).max(500),
 });
 export type SaveWatchlistRequest = z.infer<typeof saveWatchlistRequestSchema>;
+
+// F-6: item + category level mutations. Patch bodies are all-optional —
+// the controller rejects the request if every field is missing so we
+// don't waste a DB round-trip on no-ops.
+export const updateWatchlistItemRequestSchema = z.object({
+  companyName: z.string().max(255).optional(),
+  thesis: z.string().max(4000).optional(),
+  notes: z.string().max(4000).optional(),
+  priority: z.number().int().min(0).max(1000).optional(),
+});
+export type UpdateWatchlistItemRequest = z.infer<typeof updateWatchlistItemRequestSchema>;
+
+export const updateWatchlistCategoryRequestSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(1000).optional(),
+  summary: z.string().max(2000).optional(),
+});
+export type UpdateWatchlistCategoryRequest = z.infer<typeof updateWatchlistCategoryRequestSchema>;

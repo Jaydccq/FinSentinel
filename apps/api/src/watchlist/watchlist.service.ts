@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   and,
   asc,
@@ -35,6 +35,19 @@ export interface OrganizeWatchlistCategoryInput {
   categoryDescription?: string;
   categorySummary?: string;
   items?: WatchlistItemInput[];
+}
+
+export interface UpdateWatchlistItemInput {
+  companyName?: string;
+  thesis?: string;
+  notes?: string;
+  priority?: number;
+}
+
+export interface UpdateWatchlistCategoryInput {
+  name?: string;
+  description?: string;
+  summary?: string;
 }
 
 @Injectable()
@@ -320,5 +333,140 @@ export class WatchlistService {
   private normalizeOptionalText(value?: string): string | null {
     const normalized = value?.trim();
     return normalized ? normalized : null;
+  }
+
+  // ── F-6: item + category level CRUD ──────────────────────────────────
+
+  /**
+   * Patch a single watchlist item. Returns the updated item. Throws
+   * NotFoundException when the item doesn't exist OR belongs to a
+   * different user (avoids leaking existence of cross-tenant rows).
+   */
+  async updateItem(
+    userId: string,
+    itemId: string,
+    patch: UpdateWatchlistItemInput,
+  ): Promise<WatchlistItemResponse> {
+    const [existing] = await this.db
+      .select()
+      .from(watchlistItems)
+      .where(and(eq(watchlistItems.id, itemId), eq(watchlistItems.userId, userId)))
+      .limit(1);
+    if (!existing) throw new NotFoundException(`Watchlist item ${itemId} not found`);
+
+    const [updated] = await this.db
+      .update(watchlistItems)
+      .set({
+        companyName:
+          patch.companyName === undefined
+            ? existing.companyName
+            : this.normalizeOptionalText(patch.companyName),
+        thesis:
+          patch.thesis === undefined
+            ? existing.thesis
+            : this.normalizeOptionalText(patch.thesis),
+        notes:
+          patch.notes === undefined
+            ? existing.notes
+            : this.normalizeOptionalText(patch.notes),
+        priority: patch.priority ?? existing.priority,
+        updatedAt: new Date(),
+      })
+      .where(eq(watchlistItems.id, itemId))
+      .returning();
+    if (!updated) throw new Error(`Failed to update watchlist item ${itemId}`);
+    return this.toWatchlistItemResponse(updated);
+  }
+
+  async deleteItem(userId: string, itemId: string): Promise<void> {
+    const deleted = await this.db
+      .delete(watchlistItems)
+      .where(and(eq(watchlistItems.id, itemId), eq(watchlistItems.userId, userId)))
+      .returning({ id: watchlistItems.id });
+    if (deleted.length === 0) {
+      throw new NotFoundException(`Watchlist item ${itemId} not found`);
+    }
+  }
+
+  /**
+   * Patch a category's metadata. Renames are supported but require that
+   * the new name doesn't collide with another category owned by the same
+   * user — conflicts surface as a 409 via the controller.
+   */
+  async updateCategory(
+    userId: string,
+    categoryId: string,
+    patch: UpdateWatchlistCategoryInput,
+  ): Promise<WatchlistCategoryResponse> {
+    const [existing] = await this.db
+      .select()
+      .from(watchlistCategories)
+      .where(
+        and(
+          eq(watchlistCategories.id, categoryId),
+          eq(watchlistCategories.userId, userId),
+        ),
+      )
+      .limit(1);
+    if (!existing) throw new NotFoundException(`Watchlist category ${categoryId} not found`);
+
+    const normalizedName = patch.name
+      ? this.normalizeCategoryName(patch.name)
+      : existing.name;
+    const newKey = this.toCategoryKey(normalizedName);
+
+    if (newKey !== existing.key) {
+      const [collision] = await this.db
+        .select({ id: watchlistCategories.id })
+        .from(watchlistCategories)
+        .where(
+          and(
+            eq(watchlistCategories.userId, userId),
+            eq(watchlistCategories.key, newKey),
+          ),
+        )
+        .limit(1);
+      if (collision && collision.id !== existing.id) {
+        throw new Error(`Watchlist category name already exists: ${normalizedName}`);
+      }
+    }
+
+    const description =
+      patch.description === undefined
+        ? existing.description
+        : this.normalizeOptionalText(patch.description);
+    const summary =
+      patch.summary === undefined
+        ? existing.summary
+        : this.normalizeOptionalText(patch.summary);
+
+    await this.db
+      .update(watchlistCategories)
+      .set({
+        name: normalizedName,
+        key: newKey,
+        description,
+        summary,
+        updatedAt: new Date(),
+      })
+      .where(eq(watchlistCategories.id, categoryId));
+
+    return this.getCategoryById(categoryId, userId);
+  }
+
+  async deleteCategory(userId: string, categoryId: string): Promise<void> {
+    // FK to watchlist_items is ON DELETE CASCADE — children go with the parent.
+    const deleted = await this.db
+      .delete(watchlistCategories)
+      .where(
+        and(
+          eq(watchlistCategories.id, categoryId),
+          eq(watchlistCategories.userId, userId),
+        ),
+      )
+      .returning({ id: watchlistCategories.id });
+    if (deleted.length === 0) {
+      throw new NotFoundException(`Watchlist category ${categoryId} not found`);
+    }
   }
 }
