@@ -1,4 +1,4 @@
-import type { MarketQuote, MarketBar } from '@finsentinel/shared';
+import type { MarketQuote, MarketBar, TickerSearchResult } from '@finsentinel/shared';
 
 /**
  * Contract for market-data providers (Polygon, Alpaca, etc.).
@@ -17,4 +17,12 @@ export interface MarketDataProvider {
 
   /** Whether this provider supports the given ticker. Default: true. */
   supports(ticker: string): boolean;
+
+  /**
+   * Optional ticker search. Implementing this opts the provider into the
+   * registry's `getSearchProvider()` selection. Implementations should treat
+   * the `query` string as already normalised (trimmed + lowercased) by the
+   * caller.
+   */
+  searchTickers?(query: string, limit: number): Promise<TickerSearchResult[]>;
 }

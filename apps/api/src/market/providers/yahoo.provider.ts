@@ -1,6 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { MarketQuote, MarketBar } from '@finsentinel/shared';
+import type { MarketQuote, MarketBar, TickerSearchResult } from '@finsentinel/shared';
 import type { MarketDataProvider } from '../interfaces/market-data-provider';
+
+const YAHOO_SEARCH_URL = 'https://query2.finance.yahoo.com/v1/finance/search';
+
+interface YahooQuoteResult {
+  symbol: string;
+  shortname?: string;
+  longname?: string;
+  exchange: string;
+  quoteType: string;
+}
+
+interface YahooSearchResponse {
+  quotes: YahooQuoteResult[];
+}
 
 /** Yahoo Finance chart API response structure. */
 interface YahooChartResponse {
@@ -188,5 +202,37 @@ export class YahooFinanceMarketDataProvider implements MarketDataProvider {
     if (days <= 90) return '3mo';
     if (days <= 180) return '6mo';
     return '1y';
+  }
+
+  /**
+   * Ticker search backed by the Yahoo Finance v1 search endpoint. The caller
+   * (MarketDataService → registry.getSearchProvider) normalises the query
+   * before dispatching, so this just builds the URL and maps results.
+   */
+  async searchTickers(query: string, limit: number): Promise<TickerSearchResult[]> {
+    const url = new URL(YAHOO_SEARCH_URL);
+    url.searchParams.set('q', query);
+    url.searchParams.set('quotesCount', String(limit));
+    url.searchParams.set('newsCount', '0');
+
+    const response = await fetch(url.toString(), {
+      headers: {
+        'User-Agent': YahooFinanceMarketDataProvider.USER_AGENT,
+      },
+    });
+
+    if (!response.ok) {
+      this.logger.warn(`Yahoo search failed: ${response.status}`);
+      return [];
+    }
+
+    const data = (await response.json()) as YahooSearchResponse;
+
+    return (data.quotes ?? []).map((q) => ({
+      symbol: q.symbol,
+      name: q.shortname ?? q.longname ?? q.symbol,
+      exchange: q.exchange,
+      assetType: q.quoteType,
+    }));
   }
 }
