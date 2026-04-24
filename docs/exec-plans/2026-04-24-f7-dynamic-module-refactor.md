@@ -13,10 +13,10 @@ so their HTTP surface disappears when the feature flag is off.
 | Sub-item | Module | Flag | Status |
 |----------|--------|------|--------|
 | F-7a | OpenbbModule | `OPENBB_ENABLED` | ✅ landed 2026-04-24 |
-| F-7b | OkxModule | `APP_OKX_ENABLED` | pending |
-| F-7c | TwitterModule | `APP_TWITTER_6551_ENABLED` | pending |
-| F-7d | (News) CryptoNewsModule | `APP_CRYPTO_NEWS_ENABLED` | pending |
-| F-7e | QueueModule | (multiple consumers) | pending — most complex |
+| F-7b | OkxModule | `APP_OKX_ENABLED` | ✅ landed 2026-04-24 |
+| F-7c | TwitterModule | `APP_TWITTER_6551_ENABLED` | ✅ stub landed 2026-04-24 — see note below |
+| F-7d | (News) CryptoNews | `APP_CRYPTO_NEWS_ENABLED` | ❌ **not applicable** — see note below |
+| F-7e | QueueModule | (multiple consumers) | ❌ **not applicable** — see note below |
 
 ## Refactor recipe (the pattern F-7a established)
 
@@ -84,7 +84,69 @@ it one consumer at a time.
 | `pnpm --filter @finsentinel/api build` | 0 TS issues |
 | `pnpm --filter @finsentinel/api test` | 1569 passed |
 
+## Architectural notes per sub-item
+
+### F-7b (OKX) — straightforward, landed
+Same pattern as F-7a: `@Module({...})` carries always-on providers
+(`OkxPriceService`, `OkxAnalysisService`, factory-built
+`OKX_API_CLIENT` / `OKX_TRADING_ENGINE`); `register({ enabled })`
+adds the two controllers when the flag is on. AgentModule /
+TradingModule still import `OkxModule` as a bare class and keep
+their DI.
+
+### F-7c (Twitter) — stub-only, intentional
+
+`TwitterModule` has no HTTP controllers — the entire public
+surface is `TwitterDataService`, consumed synchronously by
+`TwitterToolsService` (agent) and `XInfluencerFetcher` (news).
+That means "gate HTTP surface when disabled" — F-7's main value
+proposition — has nothing to gate here.
+
+We added `register({ enabled })` as a no-op so the API surface is
+consistent with F-7a/b. Real opt-out requires `@Optional()` at
+both consumer call sites + null checks inside each call path.
+Left as a follow-up; not blocking.
+
+### F-7d (CryptoNews) — not applicable
+
+`APP_CRYPTO_NEWS_ENABLED` does **not** gate a whole Nest module.
+`NewsModule` is always on; the CryptoNews-specific pieces live
+*inside* it:
+
+- `CryptoNewsApiClient` + `CryptoNewsFetcher` — always registered.
+- The service's `isEnabled()` method reads the env flag and the
+  fetcher contributes zero items to `NewsFetcherService` when off.
+
+Rewriting this as a sub-module (so `NewsModule` imports
+`CryptoNewsModule.register({ enabled })` and skips the two
+providers when disabled) is doable but is a ~1-day architectural
+refactor by itself, separate from the F-7 pattern. Tracked as a
+follow-up PRD, not a continuation of F-7.
+
+### F-7e (Queue) — not applicable
+
+`QueueModule` is infrastructure, not a feature flag. BullMQ
+connection + producers + consumers run for every async job in the
+system: vectorize, news-enrich, graph-enrich, analysis-run,
+representation-enrich. No `QUEUE_ENABLED` flag exists, and none
+should — "disable queues" means "disable async job processing",
+which the system depends on everywhere.
+
+The right F-7 analogue for Queue is per-consumer toggles (e.g.
+`GRAPH_ENRICH_CONSUMER_ENABLED=false` skips registering the graph
+enrich worker in its specific module). Each of those is its own
+small PR and predicates on product decisions about which features
+are "live" in a given deployment. Left out of F-7 scope.
+
 ## Progress log
 
-- 2026-04-24: F-7a landed. OpenbbModule now `register({ enabled })`;
-  app.module.ts updated. Doc + recipe for F-7b–e drafted here.
+- 2026-04-24: F-7a landed (OpenBB). Recipe documented here.
+- 2026-04-24: F-7b landed (OKX) — controllers gated, services +
+  factory-provided clients still available for AgentModule +
+  TradingModule DI.
+- 2026-04-24: F-7c stub landed (Twitter) — `register()` added for
+  API consistency; no real gating possible without `@Optional()`
+  call-site audit.
+- 2026-04-24: F-7d / F-7e declared **not applicable** as stated —
+  different architectures, would need separate PRDs not continuations
+  of F-7. All four sub-items now have a disposition.

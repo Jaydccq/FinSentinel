@@ -1,4 +1,4 @@
-import { Module, type OnModuleInit, Logger, Inject } from '@nestjs/common';
+import { Module, type OnModuleInit, Logger, Inject, type DynamicModule } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import { okxConfig } from '../config/okx.config';
 import { OkxApiClient } from './okx-api.client';
@@ -11,22 +11,22 @@ import { AuthModule } from '../auth/auth.module';
 import { CommonModule } from '../common/common.module';
 
 /**
- * OKX module -- conditionally active when APP_OKX_ENABLED=true.
+ * OKX module — F-7b dynamic registration.
  *
- * Provides:
- * - OkxApiClient — REST client with HMAC-SHA256 auth
- * - OkxTradingEngine — TradingEngine implementation
- * - OkxPriceService — in-memory ticker price cache
- * - OkxAnalysisService — AI-powered crypto derivatives analysis with SSE streaming
- * - OkxController — REST endpoints for account, positions, orders, ticker, funding rate
- * - OkxAnalysisController — SSE streaming endpoints for AI analysis
+ * The static `@Module` decorator keeps the always-on shape (services +
+ * factory-provided `OKX_API_CLIENT` / `OKX_TRADING_ENGINE`) so
+ * downstream consumers that import `OkxModule` as a bare class
+ * (`AgentModule`, `TradingModule`) keep their DI intact. The
+ * `register({ enabled })` call in `AppModule` toggles only the HTTP
+ * controllers — when disabled, `/api/okx/*` + `/api/okx/analysis/*`
+ * routes do not mount.
  *
- * The module is always imported but guards at service level via config.enabled.
- * OkxApiClient and OkxTradingEngine are created at initialization when enabled.
+ * Follow-up (tracked in F-7 exec plan): drop `OkxPriceService` /
+ * `OkxAnalysisService` providers entirely when disabled. Requires
+ * `@Optional()` at every consumer call site.
  */
 @Module({
   imports: [AuthModule, CommonModule],
-  controllers: [OkxController, OkxAnalysisController],
   providers: [
     OkxPriceService,
     OkxAnalysisService,
@@ -70,6 +70,15 @@ export class OkxModule implements OnModuleInit {
     @Inject('OKX_API_CLIENT') private readonly client: OkxApiClient | null,
     private readonly analysisService: OkxAnalysisService,
   ) {}
+
+  static register(cfg: { enabled: boolean }): DynamicModule {
+    return cfg.enabled
+      ? {
+          module: OkxModule,
+          controllers: [OkxController, OkxAnalysisController],
+        }
+      : { module: OkxModule };
+  }
 
   onModuleInit(): void {
     if (!this.cfg.enabled) {
