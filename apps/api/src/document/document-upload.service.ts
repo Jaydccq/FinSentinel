@@ -6,6 +6,7 @@ import { HybridStorageService } from '../storage/hybrid.storage';
 import { DocumentParseService } from './document-parse.service';
 import { DocumentVectorService } from './document-vector.service';
 import { VectorizeProducer } from '../queue/vectorize.producer';
+import { resolveRegion } from './region-inference';
 
 /** Allowed MIME types for document upload. */
 const ALLOWED_MIME_TYPES = new Set([
@@ -69,10 +70,27 @@ export class DocumentUploadService {
     userId: string,
     docType: string,
     sector?: string,
-    regionId: string = 'US',
+    regionId?: string,
   ): Promise<UploadResult> {
     // 1. Validate
     this.validate(file);
+
+    // 1b. Resolve regionId. When the caller supplies one (typically a scraper
+    //     that already knows the region), honor it. Otherwise run filename
+    //     heuristics and fall back to 'UNKNOWN' so the retrieval layer gets a
+    //     clear signal rather than a wrong default.
+    const regionOutcome = resolveRegion(file.originalname, regionId);
+    if (regionOutcome.inferredFrom) {
+      this.logger.debug(
+        `regionId inferred: value=${regionOutcome.regionId} ` +
+          `rule=${regionOutcome.inferredFrom} file=${file.originalname}`,
+      );
+    } else if (regionOutcome.regionId === 'UNKNOWN') {
+      this.logger.warn(
+        `regionId=UNKNOWN (no rule matched): file=${file.originalname}`,
+      );
+    }
+    const resolvedRegionId = regionOutcome.regionId;
 
     // 2. Production guard: refuse synchronous fallback when configured to.
     const requireAsync = this.config.get<boolean>(
@@ -107,7 +125,7 @@ export class DocumentUploadService {
           docType,
           status: 'PENDING',
           sector: sector ?? null,
-          regionId,
+          regionId: resolvedRegionId,
           userId,
           fileSize: file.buffer.length,
           storageKey,
@@ -159,7 +177,7 @@ export class DocumentUploadService {
         const chunkCount = await this.vectorService.vectorize(doc.id, text, {
           doc_type: docType,
           sector: sector ?? '',
-          region_id: regionId,
+          region_id: resolvedRegionId,
           source: file.originalname,
           date: uploadDate,
           __originalFileName: file.originalname,
