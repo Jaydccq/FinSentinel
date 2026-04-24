@@ -264,4 +264,91 @@ describe('DocumentUploadService', () => {
     const file = { buffer: Buffer.alloc(101 * 1024 * 1024), mimetype: 'application/pdf', originalname: 'big.pdf' };
     await expect(service.upload(file as any, 'user-1', 'SEC_FILING')).rejects.toThrow(/exceeds maximum size/);
   });
+
+  // ── P1-1: compensation delete + regionId + async-vectorize gate ────────
+
+  describe('P1-1 hardening', () => {
+    it('deletes the storage object when DB insert fails (no orphans)', async () => {
+      mockDb._mocks.insertReturning.mockRejectedValueOnce(new Error('db down'));
+      const file = {
+        buffer: Buffer.from('Test content'),
+        mimetype: 'text/plain',
+        originalname: 'test.txt',
+      };
+      await expect(
+        service.upload(file, 'user-1', 'RESEARCH'),
+      ).rejects.toThrow('db down');
+      expect(mockStorage.upload).toHaveBeenCalledTimes(1);
+      expect(mockStorage.delete).toHaveBeenCalledTimes(1);
+      const deletedKey = mockStorage.delete.mock.calls[0]?.[0] as string;
+      expect(deletedKey).toMatch(/^documents\//);
+    });
+
+    it('does not call storage.delete when DB insert succeeds', async () => {
+      const file = {
+        buffer: Buffer.from('Test content'),
+        mimetype: 'text/plain',
+        originalname: 'test.txt',
+      };
+      await service.upload(file, 'user-1', 'RESEARCH');
+      expect(mockStorage.delete).not.toHaveBeenCalled();
+    });
+
+    it('threads regionId through to DB insert and vectorization metadata', async () => {
+      const file = {
+        buffer: Buffer.from('Test content'),
+        mimetype: 'text/plain',
+        originalname: 'eu.txt',
+      };
+      await service.upload(file, 'user-1', 'RESEARCH', undefined, 'EU');
+
+      const valuesArg = mockDb._mocks.insertValues.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(valuesArg.regionId).toBe('EU');
+
+      const vectorMeta = mockVectorService.vectorize.mock.calls[0]?.[2] as Record<string, unknown>;
+      expect(vectorMeta.region_id).toBe('EU');
+    });
+
+    it("falls back to 'US' when regionId is not provided (preserves prior behavior)", async () => {
+      const file = {
+        buffer: Buffer.from('Test content'),
+        mimetype: 'text/plain',
+        originalname: 'us.txt',
+      };
+      await service.upload(file, 'user-1', 'RESEARCH');
+      const valuesArg = mockDb._mocks.insertValues.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(valuesArg.regionId).toBe('US');
+    });
+
+    it('refuses sync fallback when requireAsyncVectorize=true and no producer is bound', async () => {
+      // Re-create the service with the new config flag set to true.
+      const cfg = {
+        get: vi.fn().mockImplementation((key: string, defaultValue?: unknown) => {
+          if (key === 'rag.parser.uploadMaxBytes') return 100 * 1024 * 1024;
+          if (key === 'rag.documents.requireAsyncVectorize') return true;
+          return defaultValue;
+        }),
+      };
+      const strictModule = await Test.createTestingModule({
+        providers: [
+          DocumentUploadService,
+          { provide: 'DRIZZLE_DB', useValue: mockDb },
+          { provide: HybridStorageService, useValue: mockStorage },
+          { provide: DocumentParseService, useValue: mockParseService },
+          { provide: DocumentVectorService, useValue: mockVectorService },
+          { provide: ConfigService, useValue: cfg },
+        ],
+      }).compile();
+      const strictSvc = strictModule.get(DocumentUploadService);
+
+      const file = {
+        buffer: Buffer.from('Test content'),
+        mimetype: 'text/plain',
+        originalname: 'test.txt',
+      };
+      await expect(strictSvc.upload(file, 'user-1', 'RESEARCH')).rejects.toThrow(
+        /async vectorization required/i,
+      );
+    });
+  });
 });

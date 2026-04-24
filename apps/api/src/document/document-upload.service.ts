@@ -69,50 +69,80 @@ export class DocumentUploadService {
     userId: string,
     docType: string,
     sector?: string,
+    regionId: string = 'US',
   ): Promise<UploadResult> {
     // 1. Validate
     this.validate(file);
 
-    // 2. Generate storage key
+    // 2. Production guard: refuse synchronous fallback when configured to.
+    const requireAsync = this.config.get<boolean>(
+      'rag.documents.requireAsyncVectorize',
+      false,
+    );
+    if (requireAsync && !this.vectorizeProducer) {
+      throw new Error(
+        'async vectorization required: rag.documents.requireAsyncVectorize=true ' +
+          'but no VectorizeProducer is bound (QueueModule must be loaded)',
+      );
+    }
+
+    // 3. Generate storage key
     const timestamp = Date.now();
     const safeFileName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storageKey = `documents/${userId}/${timestamp}_${safeFileName}`;
 
-    // 3. Upload to storage
+    // 4. Upload to storage. If the subsequent DB insert fails, compensate by
+    //    deleting this object so we don't leave orphans behind.
     await this.storage.upload(storageKey, file.buffer, file.mimetype);
     this.logger.log(`Uploaded file to storage: ${storageKey}`);
 
-    // 4. Create DB record with status=PENDING
-    const insertResult = await this.db
-      .insert(documents)
-      .values({
-        fileName: safeFileName,
-        originalFileName: file.originalname,
-        docType,
-        status: 'PENDING',
-        sector: sector ?? null,
-        regionId: 'US',
-        userId,
-        fileSize: file.buffer.length,
-        storageKey,
-        storageTier: 'HOT',
-      })
-      .returning({ id: documents.id });
+    // 5. Create DB record with status=PENDING
+    let doc: { id: string };
+    try {
+      const insertResult = await this.db
+        .insert(documents)
+        .values({
+          fileName: safeFileName,
+          originalFileName: file.originalname,
+          docType,
+          status: 'PENDING',
+          sector: sector ?? null,
+          regionId,
+          userId,
+          fileSize: file.buffer.length,
+          storageKey,
+          storageTier: 'HOT',
+        })
+        .returning({ id: documents.id });
 
-    const doc = insertResult[0];
-    if (!doc) {
-      throw new Error('Failed to insert document record');
+      const inserted = insertResult[0];
+      if (!inserted) throw new Error('Failed to insert document record');
+      doc = inserted;
+    } catch (err) {
+      // Compensating delete — best-effort. Surface the original error.
+      try {
+        await this.storage.delete(storageKey);
+        this.logger.warn(
+          `Rolled back orphan storage object after DB failure: ${storageKey}`,
+        );
+      } catch (cleanupErr) {
+        this.logger.error(
+          `Compensating storage.delete failed for ${storageKey}: ${cleanupErr}`,
+        );
+      }
+      throw err;
     }
 
     this.logger.log(`Created document record: ${doc.id} (status=PENDING)`);
 
-    // 5. Dispatch to BullMQ queue if available, otherwise fall back to sync
+    // 6. Dispatch to BullMQ queue if available, otherwise fall back to sync.
     if (this.vectorizeProducer) {
       await this.vectorizeProducer.send(doc.id);
       return { id: doc.id, status: 'PENDING' };
     }
 
-    // Synchronous fallback (used when QueueModule is not loaded)
+    // Synchronous fallback (dev only). Production should set
+    // DOCUMENTS_REQUIRE_ASYNC_VECTORIZE=true to assert above instead.
     const SIDECAR_MIMES = new Set([
       'application/pdf',
       'application/msword',
@@ -129,7 +159,7 @@ export class DocumentUploadService {
         const chunkCount = await this.vectorService.vectorize(doc.id, text, {
           doc_type: docType,
           sector: sector ?? '',
-          region_id: 'US',
+          region_id: regionId,
           source: file.originalname,
           date: uploadDate,
           __originalFileName: file.originalname,
@@ -142,14 +172,13 @@ export class DocumentUploadService {
 
         this.logger.log(`Document ${doc.id} vectorized: ${chunkCount} chunks`);
         return { id: doc.id, status: 'VECTORIZED' };
-      } else {
-        await this.db
-          .update(documents)
-          .set({ status: 'EMPTY' })
-          .where(eq(documents.id, doc.id));
-
-        return { id: doc.id, status: 'EMPTY' };
       }
+
+      await this.db
+        .update(documents)
+        .set({ status: 'EMPTY' })
+        .where(eq(documents.id, doc.id));
+      return { id: doc.id, status: 'EMPTY' };
     } catch (error) {
       this.logger.error(`Vectorization failed for ${doc.id}: ${error}`);
       await this.db

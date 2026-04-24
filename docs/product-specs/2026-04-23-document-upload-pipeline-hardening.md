@@ -80,3 +80,16 @@
 
 - 改成 outbox 之后，前端原本「上传成功 = 立即可见」会变成「上传成功 = 已入队」。需要在 UI 层显示 `READY/PENDING/FAILED` 状态，否则用户体验下降。
 - 如果 storage 层不支持幂等的 `delete`，补偿可能在重复触发时报错；需要在 wrapper 层吞 `NotFound`。
+
+## 8. Implementation Progress Log
+
+- 2026-04-24: branch `feat/2026-04-23-document-upload-hardening` opened.
+- 2026-04-24: implemented Tasks 1–3 per `docs/exec-plans/2026-04-23-document-upload-hardening.md`.
+  - Task 1: typed `rag.documents.requireAsyncVectorize` config (default false).
+  - Task 2: compensation `storage.delete` on DB-insert failure; `regionId` parameter added to service signature; sync fallback refused when `requireAsyncVectorize=true` and no producer is bound. 5 new unit tests; full file 22/22 green.
+  - Task 3: controller accepts `?regionId=` query param and forwards to service (undefined → service default 'US').
+- Verification: typecheck clean. Full API suite shows 1518/1521 passing with 2 pre-existing flakes (`chat-stream.integration.spec.ts` and `cli-import-env.spec.ts`) confirmed on `main` HEAD without these changes.
+- Deferred (per the Out-of-Scope section at the top of the exec plan):
+  - Streaming/presigned-URL upload (significant refactor; not blocking).
+  - Outbox pattern (DB-first PENDING_UPLOAD + reconciler).
+  - regionId metadata extraction from PDF headers / SEC scraper inference.
