@@ -1,7 +1,7 @@
 import { ForbiddenException, HttpException, HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type Redis from 'ioredis';
-import { and, eq, gte } from 'drizzle-orm';
+import { and, eq, gte, ne } from 'drizzle-orm';
 import { Decimal } from '@finsentinel/shared';
 import { orderLedger, type DrizzleDB } from '@finsentinel/db';
 import type { TradingRuntimeConfig } from '../../config/trading.config';
@@ -207,6 +207,12 @@ export class TradingGuardsService {
     const todayUtcMidnight = new Date();
     todayUtcMidnight.setUTCHours(0, 0, 0, 0);
 
+    // CRITICAL: filter out paper-broker rows. This is the LIVE-trading
+    // daily cap; consuming budget against paper executions would let a
+    // user exhaust their live capacity by paper-trading first.
+    // OrderLedger.broker is one of: 'paper' | 'alpaca' | 'okx' | 'ccxt' |
+    // 'live' (legacy generic value used pre-M3). 'paper' is the only one
+    // that should NOT count.
     const rows = await this.db
       .select({ qty: orderLedger.qty, amount: orderLedger.amount, price: orderLedger.price })
       .from(orderLedger)
@@ -214,6 +220,7 @@ export class TradingGuardsService {
         and(
           eq(orderLedger.userId, userId),
           eq(orderLedger.status, 'EXECUTED'),
+          ne(orderLedger.broker, 'paper'),
           gte(orderLedger.createdAt, todayUtcMidnight),
         ),
       );
