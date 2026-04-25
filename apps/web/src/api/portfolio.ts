@@ -1,5 +1,14 @@
 import { apiFetch } from './client';
+import { routes } from './registry';
+import { typedFetch } from './typed-client';
+import type {
+  HoldingResponse,
+  PortfolioRequest,
+  PortfolioResponse,
+} from '@finsentinel/shared';
 import type { RiskFactor } from './chat';
+
+export type { HoldingResponse, PortfolioRequest, PortfolioResponse };
 
 export interface RiskReportSummary {
   id: string;
@@ -11,30 +20,11 @@ export interface RiskReportSummary {
   createdAt: string;
 }
 
-export interface HoldingResponse {
-  id: string;
-  symbol: string;
-  companyName: string;
-  quantity: number;
-  averageCost: number;
-  currentPrice: number | null;
-  sector: string;
-}
-
-export interface PortfolioResponse {
-  id: string;
-  name: string;
-  description: string;
-  totalValue: number;
-  holdings: HoldingResponse[];
-  createdAt: string;
-}
-
-export interface PortfolioRequest {
-  name: string;
-  description?: string;
-}
-
+// Holding mutation DTO. The backend's holdingRequestSchema validates the
+// numeric fields as decimal strings; existing call sites pass `Number(...)`
+// values that JSON-serialise to numbers and the controller still accepts
+// them today. The migration of holding routes is tracked as Phase 2 work
+// in `docs/exec-plans/tech-debt-tracker.md`.
 export interface HoldingRequest {
   symbol: string;
   companyName?: string;
@@ -89,14 +79,40 @@ export interface PortfolioInsight {
   narrationFailed: boolean;
 }
 
+/**
+ * Portfolio client. The CRUD surface (`list`, `get`, `create`, `update`,
+ * `delete`) routes through `typedFetch` against the shared schema, so wire
+ * drift on the most decimal-heavy surface raises `ResponseValidationError`
+ * instead of silently coercing a string to NaN downstream.
+ *
+ * Holdings/analytics/insights/reports remain on raw `apiFetch` for now and
+ * are tracked as follow-up migration in
+ * `docs/exec-plans/tech-debt-tracker.md`.
+ */
 export const portfolioApi = {
-  list: () => apiFetch<PortfolioResponse[]>('/portfolios'),
-  get: (id: string) => apiFetch<PortfolioResponse>(`/portfolios/${id}`),
-  create: (data: PortfolioRequest) =>
-    apiFetch<PortfolioResponse>('/portfolios', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id: string, data: PortfolioRequest) =>
-    apiFetch<PortfolioResponse>(`/portfolios/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (id: string) => apiFetch<void>(`/portfolios/${id}`, { method: 'DELETE' }),
+  list: (): Promise<PortfolioResponse[]> => typedFetch({ ...routes.portfolio.list }),
+
+  get: (id: string): Promise<PortfolioResponse> =>
+    typedFetch({
+      ...routes.portfolio.get,
+      path: routes.portfolio.get.path.replace(':id', encodeURIComponent(id)),
+    }),
+
+  create: (data: PortfolioRequest): Promise<PortfolioResponse> =>
+    typedFetch({ ...routes.portfolio.create, body: data }),
+
+  update: (id: string, data: PortfolioRequest): Promise<PortfolioResponse> =>
+    typedFetch({
+      ...routes.portfolio.update,
+      path: routes.portfolio.update.path.replace(':id', encodeURIComponent(id)),
+      body: data,
+    }),
+
+  delete: (id: string): Promise<void> =>
+    typedFetch({
+      ...routes.portfolio.delete,
+      path: routes.portfolio.delete.path.replace(':id', encodeURIComponent(id)),
+    }) as Promise<void>,
 
   addHolding: (portfolioId: string, data: HoldingRequest) =>
     apiFetch<HoldingResponse>(`/portfolios/${portfolioId}/holdings`, {
