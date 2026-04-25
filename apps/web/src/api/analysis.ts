@@ -1,4 +1,4 @@
-import { resolveBase, authHeaders } from './client';
+import { resolveBase, authHeaders, withCsrfHeader } from './client';
 
 export interface PriceZone {
   low: number;
@@ -75,11 +75,11 @@ export const analysisApi = {
       const res = await fetch(`${resolveBase()}/analysis/stream/${encodeURIComponent(ticker)}`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
+        headers: withCsrfHeader('POST', {
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
           ...authHeaders(),
-        },
+        }),
       });
 
       if (!res.ok) {

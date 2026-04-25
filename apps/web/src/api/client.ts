@@ -35,18 +35,63 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+const CSRF_COOKIE_NAME = 'FS_CSRF';
+const CSRF_HEADER_NAME = 'X-CSRF-Token';
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/**
+ * Read the FS_CSRF cookie value from `document.cookie`. Returns an empty
+ * string in non-browser environments (SSR, tests) or when the cookie is
+ * absent — callers should still send the request; the API allow-listed
+ * paths (login, register, refresh, health) do not require the token.
+ */
+function readCsrfCookie(): string {
+  if (typeof document === 'undefined') return '';
+  const cookies = document.cookie ? document.cookie.split('; ') : [];
+  for (const c of cookies) {
+    const eq = c.indexOf('=');
+    const name = eq >= 0 ? c.slice(0, eq) : c;
+    if (name === CSRF_COOKIE_NAME) {
+      return eq >= 0 ? decodeURIComponent(c.slice(eq + 1)) : '';
+    }
+  }
+  return '';
+}
+
+/**
+ * Inject the CSRF double-submit header on write methods. Pure helper so
+ * the scattered fetch call sites (chat.ts, documents.ts, etc.) can call
+ * this without depending on apiFetch.
+ *
+ * Returns a NEW headers object — never mutates the input.
+ */
+export function withCsrfHeader(
+  method: string | undefined,
+  headers: Record<string, string> = {},
+): Record<string, string> {
+  const m = (method ?? 'GET').toUpperCase();
+  if (!WRITE_METHODS.has(m)) return headers;
+  const token = readCsrfCookie();
+  if (!token) return headers;
+  return { ...headers, [CSRF_HEADER_NAME]: token };
+}
+
 async function buildRequest(path: string, options: RequestInit): Promise<Response> {
   // For apiFetch we can afford to await the login in case the cache is
   // empty (e.g. a direct API call before <Providers> mounts).
   await ensureLocalToken();
+  const merged: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...authHeaders(),
+    ...(options.headers as Record<string, string> | undefined),
+  };
+  // F-9 M1 (2026-04-24): inject the CSRF double-submit header for write
+  // methods so the API's CsrfMiddleware accepts cookie-authenticated calls.
+  const withCsrf = withCsrfHeader(options.method, merged);
   const res = await fetch(`${resolveBase()}${path}`, {
     ...options,
     credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-      ...(options.headers as Record<string, string> | undefined),
-    },
+    headers: withCsrf,
   });
   return res;
 }

@@ -1,4 +1,4 @@
-import { apiFetch, resolveBase, authHeaders } from './client';
+import { apiFetch, resolveBase, authHeaders, withCsrfHeader } from './client';
 
 export interface DocumentResponse {
   id: string;
@@ -41,7 +41,7 @@ export const documentsApi = {
     const res = await fetch(`${resolveBase()}/documents`, {
       method: 'POST',
       credentials: 'include',
-      headers: { ...authHeaders() },
+      headers: withCsrfHeader('POST', { ...authHeaders() }),
       body: form,
     });
     if (res.status === 401) throw new Error('Unauthorized');

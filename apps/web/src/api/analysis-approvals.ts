@@ -1,4 +1,4 @@
-import { resolveBase, authHeaders } from './client';
+import { resolveBase, authHeaders, withCsrfHeader } from './client';
 
 export type ApprovalDecision = 'APPROVE' | 'REJECT';
 
@@ -6,7 +6,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${resolveBase()}${path}`, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    headers: withCsrfHeader('POST', { 'Content-Type': 'application/json', ...authHeaders() }),
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`POST ${path} failed: ${res.status}`);

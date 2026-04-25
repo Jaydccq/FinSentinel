@@ -94,6 +94,17 @@ describe('AuthController', () => {
       expect(fsCookie).toContain('FS_AUTH=jwt-token-abc');
       expect(fsCookie).toContain('HttpOnly');
       expect(fsCookie).toContain('Path=/');
+
+      // F-9 M1 (2026-04-24): CSRF cookie must also be set, must NOT be HttpOnly
+      // (frontend JS reads it for the X-CSRF-Token double-submit), and must
+      // carry a non-empty value (UUID v4).
+      const csrfCookie = Array.isArray(cookies)
+        ? cookies.find((c: string) => c.startsWith('FS_CSRF='))
+        : undefined;
+      expect(csrfCookie).toBeDefined();
+      expect(csrfCookie).not.toContain('HttpOnly');
+      expect(csrfCookie).toMatch(/FS_CSRF=[^;]+/);
+      expect(csrfCookie).toContain('Path=/');
     });
 
     it('returns the token in the body when X-Client: desktop is set', async () => {
@@ -150,6 +161,14 @@ describe('AuthController', () => {
         : cookies;
       expect(fsCookie).toContain('FS_AUTH=jwt-token-def');
       expect(fsCookie).toContain('HttpOnly');
+
+      // F-9 M1: login also issues a fresh FS_CSRF cookie.
+      const csrfCookie = Array.isArray(cookies)
+        ? cookies.find((c: string) => c.startsWith('FS_CSRF='))
+        : undefined;
+      expect(csrfCookie).toBeDefined();
+      expect(csrfCookie).not.toContain('HttpOnly');
+      expect(csrfCookie).toMatch(/FS_CSRF=[^;]+/);
     });
 
     it('returns the token in the body for X-Client: desktop', async () => {
@@ -213,6 +232,13 @@ describe('AuthController', () => {
         : cookies;
       expect(fsCookie).toBeDefined();
       expect(fsCookie).toMatch(/FS_AUTH=;/);
+
+      // F-9 M1: logout also clears FS_CSRF.
+      const csrfCookie = Array.isArray(cookies)
+        ? cookies.find((c: string) => c.startsWith('FS_CSRF='))
+        : undefined;
+      expect(csrfCookie).toBeDefined();
+      expect(csrfCookie).toMatch(/FS_CSRF=;/);
     });
   });
 });

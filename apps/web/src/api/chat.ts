@@ -1,4 +1,4 @@
-import { resolveBase, apiFetch } from './client';
+import { resolveBase, apiFetch, withCsrfHeader } from './client';
 
 export interface RiskFactor {
   category: string;
@@ -54,10 +54,10 @@ export const chatApi = {
       const res = await fetch(`${resolveBase()}/chat/stream`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
+        headers: withCsrfHeader('POST', {
           'Content-Type': 'application/json',
           Accept: 'text/event-stream',
-        },
+        }),
         body: JSON.stringify({ message, sessionId, portfolioId }),
       });
 
