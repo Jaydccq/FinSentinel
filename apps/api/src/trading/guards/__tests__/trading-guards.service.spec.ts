@@ -9,15 +9,33 @@ const TEST_USER = '11111111-1111-1111-1111-111111111111';
 function createMockRedis(initial: Record<string, string> = {}) {
   const store: Record<string, string> = { ...initial };
   return {
-    exists: vi.fn(async (k: string) => (store[k] ? 1 : 0)),
+    exists: vi.fn(async (k: string) => (store[k] != null ? 1 : 0)),
     get: vi.fn(async (k: string) => store[k] ?? null),
-    set: vi.fn(async (k: string, v: string) => {
+    /**
+     * Mirrors ioredis's variadic set signature including the NX flag used
+     * by the per-day counter seed: redis.set(k, v, 'EX', ttl, 'NX').
+     * NX causes set to be a no-op when the key already exists.
+     */
+    set: vi.fn(async (k: string, v: string, ...args: unknown[]) => {
+      const isNx = args.includes('NX');
+      if (isNx && store[k] != null) return null;
       store[k] = v;
       return 'OK';
     }),
     setex: vi.fn(async (k: string, _ttl: number, v: string) => {
       store[k] = v;
       return 'OK';
+    }),
+    /**
+     * Atomic INCRBY — creates the key at 0 if absent, returns the post-
+     * increment value. Negative deltas roll back. ioredis returns Number;
+     * we mirror that.
+     */
+    incrby: vi.fn(async (k: string, delta: number) => {
+      const cur = store[k] != null ? Number(store[k]) : 0;
+      const next = cur + delta;
+      store[k] = String(next);
+      return next;
     }),
     del: vi.fn(async (k: string) => {
       const had = store[k] != null;
@@ -272,6 +290,136 @@ describe('TradingGuardsService', () => {
           operations: [{ symbol: 'AAPL', action: 'BUY', amount: '1' }],
         }),
       ).resolves.toBeUndefined();
+    });
+
+    it('on overshoot, rolls back the reservation (counter ends at pre-attempt value)', async () => {
+      const redis = createMockRedis();
+      const { service } = await buildService(
+        { liveGuardsEnabled: true, livePerOrderNotionalUsd: 50_000, livePerDayNotionalUsd: 10_000 },
+        redis,
+        createMockDb([{ qty: null, amount: '5000', price: null }]),
+      );
+
+      await expect(
+        service.preflight({
+          userId: TEST_USER,
+          operations: [{ symbol: 'AAPL', action: 'BUY', amount: '6000' }],
+        }),
+      ).rejects.toThrow(/Per-day notional cap would be exceeded/);
+
+      // Counter should reflect ONLY the seed (5000.00 = 500_000 cents), not
+      // the 6000 attempted reservation. The attempted reserve was rolled
+      // back via the second INCRBY(-).
+      const dayKey = Object.keys(redis._store).find((k) => k.startsWith('trading:daily_cents:'))!;
+      expect(Number(redis._store[dayKey])).toBe(500_000);
+    });
+
+    it('subsequent successful preflight after a rejected one accumulates correctly', async () => {
+      const redis = createMockRedis();
+      const db = createMockDb([{ qty: null, amount: '5000', price: null }]);
+      const { service } = await buildService(
+        { liveGuardsEnabled: true, livePerOrderNotionalUsd: 50_000, livePerDayNotionalUsd: 10_000 },
+        redis,
+        db,
+      );
+
+      // First attempt: $6k → would push total to $11k → reject + rollback.
+      await expect(
+        service.preflight({
+          userId: TEST_USER,
+          operations: [{ symbol: 'AAPL', action: 'BUY', amount: '6000' }],
+        }),
+      ).rejects.toThrow(/Per-day notional cap/);
+
+      // Second attempt: $4k → total $9k ≤ $10k → allowed.
+      // (The per-day query is NOT re-run because the counter key already
+      // exists; this confirms the rollback restored the right amount.)
+      await expect(
+        service.preflight({
+          userId: TEST_USER,
+          operations: [{ symbol: 'AAPL', action: 'BUY', amount: '4000' }],
+        }),
+      ).resolves.toBeUndefined();
+
+      // Counter is now $5k seed + $4k accepted = $9k = 900_000 cents.
+      const dayKey = Object.keys(redis._store).find((k) => k.startsWith('trading:daily_cents:'))!;
+      expect(Number(redis._store[dayKey])).toBe(900_000);
+    });
+
+    it('per-day SELECT only runs ONCE per day (steady-state cost = 1 INCRBY)', async () => {
+      const redis = createMockRedis();
+      const db = createMockDb([{ qty: null, amount: '1000', price: null }]);
+      const { service } = await buildService(
+        { liveGuardsEnabled: true, livePerOrderNotionalUsd: 50_000, livePerDayNotionalUsd: 50_000 },
+        redis,
+        db,
+      );
+
+      await service.preflight({
+        userId: TEST_USER,
+        operations: [{ symbol: 'AAPL', action: 'BUY', amount: '100' }],
+      });
+      await service.preflight({
+        userId: TEST_USER,
+        operations: [{ symbol: 'AAPL', action: 'BUY', amount: '100' }],
+      });
+      await service.preflight({
+        userId: TEST_USER,
+        operations: [{ symbol: 'AAPL', action: 'BUY', amount: '100' }],
+      });
+
+      // The DB SELECT was called exactly once (first request seeds; the
+      // next two requests skipped the seed because the counter key existed).
+      expect(db.select).toHaveBeenCalledTimes(1);
+      // Each preflight ran exactly one INCRBY for the increment (no
+      // rollback INCRBYs because all three were accepted).
+      expect(redis.incrby).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('rollbackDailyReservation + proposedCentsFor (broker-failure path)', () => {
+    it('rollbackDailyReservation decrements the counter by the given cents', async () => {
+      const redis = createMockRedis();
+      const { service } = await buildService(undefined, redis);
+
+      // Seed the counter
+      const utcDay = new Date().toISOString().slice(0, 10);
+      const counterKey = `trading:daily_cents:${TEST_USER}:${utcDay}`;
+      redis._store[counterKey] = '500_000';
+      // setting via mock incrby to avoid leading zeros confusion
+      redis._store[counterKey] = '500000';
+
+      await service.rollbackDailyReservation(TEST_USER, 100_000);
+      expect(Number(redis._store[counterKey])).toBe(400_000);
+    });
+
+    it('rollbackDailyReservation is a no-op for proposedCents <= 0', async () => {
+      const redis = createMockRedis();
+      const { service } = await buildService(undefined, redis);
+      await service.rollbackDailyReservation(TEST_USER, 0);
+      await service.rollbackDailyReservation(TEST_USER, -100);
+      expect(redis.incrby).not.toHaveBeenCalled();
+    });
+
+    it('proposedCentsFor sums and converts to integer cents', async () => {
+      const { service } = await buildService();
+      expect(
+        service.proposedCentsFor([
+          { symbol: 'A', action: 'BUY', amount: '100.50' },
+          { symbol: 'B', action: 'BUY', amount: '50.25' },
+        ]),
+      ).toBe(15_075); // $150.75 = 15075 cents
+    });
+
+    it('proposedCentsFor handles unpriceable ops by skipping them (caller is expected to fail-closed earlier)', async () => {
+      const { service } = await buildService();
+      // qty without indicativePrice → unpriceable, skipped
+      expect(
+        service.proposedCentsFor([
+          { symbol: 'A', action: 'BUY', qty: '10' },
+          { symbol: 'B', action: 'BUY', amount: '50' },
+        ]),
+      ).toBe(5_000); // Only the $50 priceable op contributes
     });
   });
 });

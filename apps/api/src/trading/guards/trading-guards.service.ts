@@ -113,39 +113,117 @@ export class TradingGuardsService {
       }
     }
 
-    // 3. Per-day cumulative cap.
+    // 3. Per-day cumulative cap. Race-safe via Redis atomic INCRBY.
+    //
+    // Original implementation did SELECT SUM(...) → check → broker call,
+    // which lost concurrency: two parallel requests would each see the
+    // same pre-state and both pass the check, breaching the cap. Self-
+    // review flagged this as [P1].
+    //
+    // New ordering: atomically reserve the proposed notional in a Redis
+    // per-(user, UTC-day) counter, check-after-increment, rollback the
+    // reservation if either the check fails OR a downstream broker error
+    // bubbles up. The DB SELECT remains as a one-shot seed on first
+    // request per day so the counter starts from a true post-restart
+    // baseline (operator restarts mid-day shouldn't reset the cap).
     if (cfg.livePerDayNotionalUsd > 0) {
-      const todayUtcMidnight = new Date();
-      todayUtcMidnight.setUTCHours(0, 0, 0, 0);
-
-      const rows = await this.db
-        .select({ qty: orderLedger.qty, amount: orderLedger.amount, price: orderLedger.price })
-        .from(orderLedger)
-        .where(
-          and(
-            eq(orderLedger.userId, input.userId),
-            eq(orderLedger.status, 'EXECUTED'),
-            gte(orderLedger.createdAt, todayUtcMidnight),
-          ),
-        );
-
-      const todaySum = rows.reduce((acc, r) => {
-        const n = this.rowNotional(r);
-        return n ? acc.plus(n) : acc;
-      }, new Decimal(0));
-
       const proposedSum = input.operations.reduce((acc, op) => {
         const n = this.opNotional(op);
         return n ? acc.plus(n) : acc;
       }, new Decimal(0));
 
-      const total = todaySum.plus(proposedSum);
-      if (total.gt(cfg.livePerDayNotionalUsd)) {
+      // Cents-precision integer to live cleanly inside Redis INCRBY.
+      const proposedCents = Math.round(proposedSum.times(100).toNumber());
+      const limitCents = Math.round(cfg.livePerDayNotionalUsd * 100);
+
+      const utcDay = this.utcDateKey(new Date());
+      const counterKey = `trading:daily_cents:${input.userId}:${utcDay}`;
+
+      // First request per (user, day) seeds the counter from order_ledger.
+      // setnx is no-op if the key already exists; subsequent requests
+      // skip the SELECT entirely, so the steady state cost is one INCRBY.
+      const exists = await this.redis.exists(counterKey);
+      if (!exists) {
+        const todayCents = await this.seedDailyCounterFromLedger(input.userId);
+        // SET NX with the seed value + 25h TTL (overlaps day boundary so
+        // the key can't be evicted mid-day by Redis).
+        await this.redis.set(counterKey, String(todayCents), 'EX', 25 * 60 * 60, 'NX');
+      }
+
+      // Atomic INCRBY — either we end up at total or we don't, no race window.
+      const newTotal = await this.redis.incrby(counterKey, proposedCents);
+
+      if (newTotal > limitCents) {
+        // Rollback the reservation immediately so a subsequent legitimate
+        // order from the same user can still proceed.
+        await this.redis.incrby(counterKey, -proposedCents);
         throw new ForbiddenException(
-          `Per-day notional cap would be exceeded: today=$${todaySum.toFixed(2)} + proposed=$${proposedSum.toFixed(2)} = $${total.toFixed(2)} > limit $${cfg.livePerDayNotionalUsd}`,
+          `Per-day notional cap would be exceeded: total $${(newTotal / 100).toFixed(2)} > limit $${cfg.livePerDayNotionalUsd}`,
         );
       }
+
+      // Counter is now reserved; if downstream broker call fails, caller
+      // MUST call rollbackDailyReservation(userId, proposedCents) so a
+      // failed-broker request doesn't permanently consume cap.
     }
+  }
+
+  /**
+   * Roll back a previously-reserved daily-cap reservation. Called by
+   * UnifiedTradingService.execute() when broker.placeOrder throws AFTER a
+   * successful preflight, so the cap doesn't permanently consume budget
+   * for orders that never landed.
+   *
+   * Safe to call even if no reservation was made (key absent → INCRBY
+   * creates it at -N which is bounded by the next legitimate seed). The
+   * 25h TTL is preserved on existing keys.
+   */
+  async rollbackDailyReservation(userId: string, proposedCents: number): Promise<void> {
+    if (proposedCents <= 0) return;
+    const utcDay = this.utcDateKey(new Date());
+    const counterKey = `trading:daily_cents:${userId}:${utcDay}`;
+    await this.redis.incrby(counterKey, -proposedCents);
+  }
+
+  /**
+   * Compute the proposed-cents value for a set of staged ops, so the
+   * caller can pass it to rollbackDailyReservation if the broker call
+   * fails. Pure helper — no Redis or DB calls.
+   */
+  proposedCentsFor(operations: PreflightInput['operations']): number {
+    const sum = operations.reduce((acc, op) => {
+      const n = this.opNotional(op);
+      return n ? acc.plus(n) : acc;
+    }, new Decimal(0));
+    return Math.round(sum.times(100).toNumber());
+  }
+
+  private utcDateKey(d: Date): string {
+    // YYYY-MM-DD in UTC; matches the DB rollup boundary in the seed query.
+    return d.toISOString().slice(0, 10);
+  }
+
+  private async seedDailyCounterFromLedger(userId: string): Promise<number> {
+    const todayUtcMidnight = new Date();
+    todayUtcMidnight.setUTCHours(0, 0, 0, 0);
+
+    const rows = await this.db
+      .select({ qty: orderLedger.qty, amount: orderLedger.amount, price: orderLedger.price })
+      .from(orderLedger)
+      .where(
+        and(
+          eq(orderLedger.userId, userId),
+          eq(orderLedger.status, 'EXECUTED'),
+          gte(orderLedger.createdAt, todayUtcMidnight),
+        ),
+      );
+
+    const sum = rows.reduce((acc, r) => {
+      const n = this.rowNotional(r);
+      return n ? acc.plus(n) : acc;
+    }, new Decimal(0));
+
+    return Math.round(sum.times(100).toNumber());
   }
 
   /**
