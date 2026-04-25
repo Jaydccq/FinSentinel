@@ -6,6 +6,8 @@ import request from 'supertest';
 import cookieParser from 'cookie-parser';
 import { AuthController } from '../auth.controller';
 import { AuthService } from '../auth.service';
+import { JwtService } from '../jwt.service';
+import { RefreshService } from '../refresh.service';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 import { RateLimiterService } from '../../common/services/rate-limiter.service';
 import { MetricsService } from '../../common/services/metrics.service';
@@ -16,7 +18,36 @@ const mockAuthService = {
   login: vi.fn(),
 };
 
-function makeAuthConfig(overrides: Partial<AuthRuntimeConfig['cookie']> = {}): AuthRuntimeConfig {
+const mockJwtService = {
+  // generateAccessToken called only when refreshTokensEnabled=true
+  generateAccessToken: vi.fn(async () => ({
+    token: 'access-jwt-from-jwtsvc',
+    jti: '11111111-1111-4111-8111-111111111111',
+    expSeconds: Math.floor(Date.now() / 1000) + 900,
+  })),
+};
+
+const mockRefreshService = {
+  issueNewFamily: vi.fn(async () => ({
+    token: 'refresh-jwt-from-refreshsvc',
+    jti: '22222222-2222-4222-8222-222222222222',
+    familyId: '33333333-3333-4333-8333-333333333333',
+    expSeconds: Math.floor(Date.now() / 1000) + 7 * 24 * 3600,
+  })),
+  rotate: vi.fn(),
+  peek: vi.fn(),
+  invalidateFamily: vi.fn(async () => undefined),
+};
+
+function makeAuthConfig(
+  overrides: Partial<AuthRuntimeConfig['cookie']> = {},
+  flagOverrides: Partial<
+    Pick<
+      AuthRuntimeConfig,
+      'refreshTokensEnabled' | 'accessTokenTtlMsWhenRefreshOn' | 'refreshTokenTtlMs'
+    >
+  > = {},
+): AuthRuntimeConfig {
   return {
     cookie: {
       name: 'FS_AUTH',
@@ -26,6 +57,10 @@ function makeAuthConfig(overrides: Partial<AuthRuntimeConfig['cookie']> = {}): A
       ...overrides,
     },
     corsOrigins: ['http://localhost:3000', 'http://localhost:5173'],
+    refreshTokensEnabled: false,
+    accessTokenTtlMsWhenRefreshOn: 15 * 60 * 1000,
+    refreshTokenTtlMs: 7 * 24 * 60 * 60 * 1000,
+    ...flagOverrides,
   };
 }
 
@@ -48,6 +83,8 @@ async function buildApp(
     controllers: [AuthController],
     providers: [
       { provide: AuthService, useValue: mockAuthService },
+      { provide: JwtService, useValue: mockJwtService },
+      { provide: RefreshService, useValue: mockRefreshService },
       RateLimitGuard,
       { provide: RateLimiterService, useValue: permissiveRateLimiter },
       { provide: MetricsService, useValue: noopMetrics },
@@ -258,5 +295,147 @@ describe('AuthController', () => {
       expect(csrfCookie).toBeDefined();
       expect(csrfCookie).toMatch(/FS_CSRF=;/);
     });
+
+    it('flag OFF default: does NOT clear FS_REFRESH (preserves byte-identical behavior)', async () => {
+      const res = await request(app.getHttpServer()).post('/api/auth/logout').expect(204);
+      const cookies = res.headers['set-cookie'];
+      const refreshCookie = Array.isArray(cookies)
+        ? cookies.find((c: string) => c.startsWith('FS_REFRESH='))
+        : undefined;
+      // Flag is off by default → no FS_REFRESH cookie clearing instruction.
+      expect(refreshCookie).toBeUndefined();
+    });
+  });
+
+  // ── Item 2 M3: refresh tokens flag ON ─────────────────────────────────
+  describe('AUTH_REFRESH_TOKENS_ENABLED=true', () => {
+    let flagApp: INestApplication;
+
+    beforeEach(async () => {
+      vi.clearAllMocks();
+      flagApp = await buildApp(makeAuthConfig({}, { refreshTokensEnabled: true }));
+    });
+
+    afterEach(async () => {
+      await flagApp.close();
+    });
+
+    it('register sets BOTH FS_AUTH and FS_REFRESH cookies', async () => {
+      mockAuthService.register.mockResolvedValueOnce({
+        // Real-looking token so decodeUidFromToken can recover the uid.
+        token: await makeFakeAccessToken(),
+        username: 'alice',
+        email: 'alice@example.com',
+      });
+      const res = await request(flagApp.getHttpServer())
+        .post('/api/auth/register')
+        .send({ username: 'alice', email: 'alice@example.com', password: 'Password1' })
+        .expect(201);
+
+      const cookies = res.headers['set-cookie'] as string[] | string;
+      const arr = Array.isArray(cookies) ? cookies : [cookies];
+      const fsAuth = arr.find((c) => c.startsWith('FS_AUTH='));
+      const fsRefresh = arr.find((c) => c.startsWith('FS_REFRESH='));
+      expect(fsAuth).toBeDefined();
+      expect(fsRefresh).toBeDefined();
+      // Refresh cookie must be path-scoped to /api/auth/refresh.
+      expect(fsRefresh).toContain('Path=/api/auth/refresh');
+      expect(fsRefresh).toContain('HttpOnly');
+    });
+
+    it('login sets BOTH FS_AUTH and FS_REFRESH cookies', async () => {
+      mockAuthService.login.mockResolvedValueOnce({
+        token: await makeFakeAccessToken(),
+        username: 'bob',
+        email: 'bob@example.com',
+      });
+      const res = await request(flagApp.getHttpServer())
+        .post('/api/auth/login')
+        .send({ username: 'bob', password: 'Password1' })
+        .expect(200);
+
+      const cookies = res.headers['set-cookie'] as string[] | string;
+      const arr = Array.isArray(cookies) ? cookies : [cookies];
+      expect(arr.some((c) => c.startsWith('FS_AUTH='))).toBe(true);
+      expect(arr.some((c) => c.startsWith('FS_REFRESH='))).toBe(true);
+    });
+
+    it('logout clears FS_AUTH, FS_CSRF, and FS_REFRESH cookies', async () => {
+      const res = await request(flagApp.getHttpServer())
+        .post('/api/auth/logout')
+        .expect(204);
+      const cookies = res.headers['set-cookie'] as string[] | string;
+      const arr = Array.isArray(cookies) ? cookies : [cookies];
+      expect(arr.some((c) => /^FS_AUTH=;/.test(c))).toBe(true);
+      expect(arr.some((c) => /^FS_CSRF=;/.test(c))).toBe(true);
+      expect(arr.some((c) => /^FS_REFRESH=;/.test(c))).toBe(true);
+    });
+
+    it('POST /api/auth/refresh with no FS_REFRESH cookie returns 401', async () => {
+      await request(flagApp.getHttpServer()).post('/api/auth/refresh').expect(401);
+    });
+
+    it('POST /api/auth/refresh with bad FS_REFRESH cookie returns 401', async () => {
+      mockRefreshService.rotate.mockResolvedValueOnce(null);
+      await request(flagApp.getHttpServer())
+        .post('/api/auth/refresh')
+        .set('Cookie', 'FS_REFRESH=garbage')
+        .expect(401);
+      expect(mockRefreshService.rotate).toHaveBeenCalledWith('garbage');
+    });
+
+    it('POST /api/auth/refresh with valid cookie issues new FS_AUTH + FS_REFRESH and returns 204', async () => {
+      mockRefreshService.rotate.mockResolvedValueOnce({
+        token: 'new-refresh-token',
+        jti: 'rrrrrrrr-rrrr-4rrr-8rrr-rrrrrrrrrrrr',
+        familyId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+        expSeconds: Math.floor(Date.now() / 1000) + 7 * 24 * 3600,
+      });
+      mockRefreshService.peek.mockResolvedValueOnce({
+        username: 'alice',
+        userId: '00000000-0000-4000-8000-000000000001',
+        familyId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      });
+      const res = await request(flagApp.getHttpServer())
+        .post('/api/auth/refresh')
+        .set('Cookie', 'FS_REFRESH=current-valid')
+        .expect(204);
+
+      const cookies = res.headers['set-cookie'] as string[] | string;
+      const arr = Array.isArray(cookies) ? cookies : [cookies];
+      expect(arr.some((c) => c.startsWith('FS_AUTH='))).toBe(true);
+      expect(arr.some((c) => c.startsWith('FS_REFRESH=new-refresh-token'))).toBe(true);
+      expect(arr.some((c) => c.startsWith('FS_CSRF='))).toBe(true);
+    });
+  });
+
+  // ── Flag OFF surface area: refresh endpoint must 404 ──────────────────
+  describe('AUTH_REFRESH_TOKENS_ENABLED=false (default)', () => {
+    it('POST /api/auth/refresh returns 404 (endpoint not exposed)', async () => {
+      await request(app.getHttpServer())
+        .post('/api/auth/refresh')
+        .set('Cookie', 'FS_REFRESH=anything')
+        .expect(404);
+    });
   });
 });
+
+/**
+ * Build a minimally-shaped real JWT so the controller's `decodeUidFromToken`
+ * helper can recover a `uid` claim. We don't verify signatures here — the
+ * mocked AuthService merely returns this string back, and the controller
+ * decodes (no verify) to pull `uid` for `setAuthCookies`.
+ */
+async function makeFakeAccessToken(): Promise<string> {
+  const { SignJWT } = await import('jose');
+  const secret = new TextEncoder().encode('a'.repeat(32));
+  return new SignJWT({ uid: '00000000-0000-4000-8000-000000000001' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject('alice')
+    .setIssuer('finsentinel-api')
+    .setAudience('finsentinel-web')
+    .setJti('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa')
+    .setIssuedAt()
+    .setExpirationTime(Math.floor(Date.now() / 1000) + 900)
+    .sign(secret);
+}

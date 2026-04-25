@@ -29,6 +29,9 @@ function makeAuthConfig(name = 'FS_AUTH'): AuthRuntimeConfig {
   return {
     cookie: { name, secure: false, sameSite: 'lax', maxAgeMs: 86_400_000 },
     corsOrigins: ['http://localhost:3000'],
+    refreshTokensEnabled: false,
+    accessTokenTtlMsWhenRefreshOn: 15 * 60 * 1000,
+    refreshTokenTtlMs: 7 * 24 * 60 * 60 * 1000,
   };
 }
 

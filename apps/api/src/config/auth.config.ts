@@ -14,6 +14,20 @@ export interface AuthCookieConfig {
 export interface AuthRuntimeConfig {
   cookie: AuthCookieConfig;
   corsOrigins: string[];
+  /**
+   * Item 2 M3 (refresh + access split). Default OFF — when false, the
+   * single FS_AUTH cookie + JWT_EXPIRATION-lived token continue to be
+   * issued exactly as before. When true:
+   *   - access token shrinks to `accessTokenTtlMsWhenRefreshOn`
+   *   - a second HttpOnly cookie `FS_REFRESH` (path-scoped to
+   *     /api/auth/refresh) carries a `aud='finsentinel-refresh'` token
+   *   - POST /api/auth/refresh is exposed for silent rotation
+   */
+  refreshTokensEnabled: boolean;
+  /** Access-token lifetime when refreshTokensEnabled=true. Default 15 min. */
+  accessTokenTtlMsWhenRefreshOn: number;
+  /** Refresh-token lifetime. Default 7 days. */
+  refreshTokenTtlMs: number;
 }
 
 const DEFAULT_ORIGINS = ['http://localhost:3000', 'http://localhost:5173'];
@@ -43,6 +57,18 @@ export function authConfigFactory(env: Record<string, string | undefined>): Auth
         .filter(Boolean)
     : DEFAULT_ORIGINS;
 
+  const refreshTokensEnabled =
+    (env.AUTH_REFRESH_TOKENS_ENABLED ?? 'false').toLowerCase() === 'true';
+
+  // Defaults: 15-min access token, 7-day refresh token. Both override-able
+  // via env for ops/test, but the flag above is the kill-switch.
+  const accessTokenTtlMsWhenRefreshOn = Number(
+    env.AUTH_ACCESS_TOKEN_TTL_MS ?? String(15 * 60 * 1000),
+  );
+  const refreshTokenTtlMs = Number(
+    env.AUTH_REFRESH_TOKEN_TTL_MS ?? String(7 * 24 * 60 * 60 * 1000),
+  );
+
   return {
     cookie: {
       name: env.AUTH_COOKIE_NAME ?? 'FS_AUTH',
@@ -52,6 +78,9 @@ export function authConfigFactory(env: Record<string, string | undefined>): Auth
       ...(env.AUTH_COOKIE_DOMAIN ? { domain: env.AUTH_COOKIE_DOMAIN } : {}),
     },
     corsOrigins,
+    refreshTokensEnabled,
+    accessTokenTtlMsWhenRefreshOn,
+    refreshTokenTtlMs,
   };
 }
 

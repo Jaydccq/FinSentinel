@@ -96,14 +96,49 @@ async function buildRequest(path: string, options: RequestInit): Promise<Respons
   return res;
 }
 
+/**
+ * Silent refresh path (item 2 M3).
+ *
+ * When the API returns 401 on a normal request and we are running with the
+ * cookie-auth flow (no Authorization bearer header from desktop), attempt
+ * exactly ONE silent rotation against `/api/auth/refresh`. If that succeeds,
+ * the API has set fresh FS_AUTH + FS_REFRESH + FS_CSRF cookies and we can
+ * retry the original request. If it fails (404 when the flag is OFF, 401
+ * when the refresh token is invalid/expired/reused), we surface the
+ * original 401 to the caller and let it route the user through login.
+ *
+ * Guard against retry loops: this helper is called at most once per
+ * apiFetch invocation, NEVER for the /auth/refresh path itself.
+ */
+async function attemptSilentRefresh(): Promise<boolean> {
+  try {
+    const res = await fetch(`${resolveBase()}/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+      // No CSRF header here — refresh is on the CSRF allow-list (cookie
+      // double-submit can't apply when the access cookie may be expired).
+    });
+    return res.ok || res.status === 204;
+  } catch {
+    return false;
+  }
+}
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   let res = await buildRequest(path, options);
 
-  // On a stale/expired token, drop the cache and retry once with a fresh
-  // login. Prevents users from being stuck after server restarts.
-  if (res.status === 401) {
-    clearCachedToken();
-    res = await buildRequest(path, options);
+  // On a stale/expired token, attempt silent refresh ONCE.
+  // - For paths other than /auth/refresh: try POST /auth/refresh, retry on success.
+  // - If silent refresh fails or returns non-OK, fall back to the existing
+  //   "drop cache + retry under fresh token" path used by desktop bearer flow.
+  if (res.status === 401 && !path.startsWith('/auth/refresh')) {
+    const refreshed = await attemptSilentRefresh();
+    if (refreshed) {
+      res = await buildRequest(path, options);
+    } else {
+      clearCachedToken();
+      res = await buildRequest(path, options);
+    }
   }
 
   if (!res.ok) {

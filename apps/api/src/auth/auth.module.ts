@@ -8,6 +8,7 @@ import { AuthController } from './auth.controller';
 import { LocalUserSeeder } from './local-user.seeder';
 import { CsrfMiddleware } from './csrf.middleware';
 import { LoginProtectionService } from './login-protection.service';
+import { RefreshService } from './refresh.service';
 
 @Module({
   // forwardRef avoids the AuthModule ⇄ CommonModule circular import.
@@ -23,7 +24,14 @@ import { LoginProtectionService } from './login-protection.service';
     LocalUserSeeder,
     CsrfMiddleware,
     LoginProtectionService,
+    RefreshService,
   ],
-  exports: [JwtService, JwtGuard, CsrfMiddleware, LoginProtectionService],
+  exports: [
+    JwtService,
+    JwtGuard,
+    CsrfMiddleware,
+    LoginProtectionService,
+    RefreshService,
+  ],
 })
 export class AuthModule {}
