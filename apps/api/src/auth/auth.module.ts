@@ -9,6 +9,7 @@ import { LocalUserSeeder } from './local-user.seeder';
 import { CsrfMiddleware } from './csrf.middleware';
 import { LoginProtectionService } from './login-protection.service';
 import { RefreshService } from './refresh.service';
+import { RevocationService } from './revocation.service';
 
 @Module({
   // forwardRef avoids the AuthModule ⇄ CommonModule circular import.
@@ -25,6 +26,7 @@ import { RefreshService } from './refresh.service';
     CsrfMiddleware,
     LoginProtectionService,
     RefreshService,
+    RevocationService,
   ],
   exports: [
     JwtService,
@@ -32,6 +34,7 @@ import { RefreshService } from './refresh.service';
     CsrfMiddleware,
     LoginProtectionService,
     RefreshService,
+    RevocationService,
   ],
 })
 export class AuthModule {}

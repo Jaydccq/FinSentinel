@@ -1,6 +1,7 @@
 /**
- * Integration test for item 2 M3: refresh-tokens flow (rolling rotation,
- * reuse detection, dual-cookie issuance, logout-clears-family).
+ * Integration test for item 2 M3 + M4: refresh-tokens flow (rolling rotation,
+ * reuse detection, dual-cookie issuance, logout-clears-family) AND jti
+ * revocation on logout (M4).
  *
  * The flag-state is set BEFORE `./setup` is imported (which itself imports
  * AppModule transitively, so by the time AuthRuntimeConfig is built the env
@@ -9,13 +10,14 @@
  * a process-wide ConfigService instance.
  */
 process.env['AUTH_REFRESH_TOKENS_ENABLED'] = 'true';
+process.env['AUTH_JTI_REVOCATION_ENABLED'] = 'true';
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { createTestApp } from './test-app.factory';
 
-describe('Auth Refresh Flow (integration, AUTH_REFRESH_TOKENS_ENABLED=true)', () => {
+describe('Auth Refresh + Revocation Flow (integration, flags ON)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
@@ -26,6 +28,7 @@ describe('Auth Refresh Flow (integration, AUTH_REFRESH_TOKENS_ENABLED=true)', ()
   afterAll(async () => {
     await app?.close();
     delete process.env['AUTH_REFRESH_TOKENS_ENABLED'];
+    delete process.env['AUTH_JTI_REVOCATION_ENABLED'];
   });
 
   /**
@@ -126,4 +129,57 @@ describe('Auth Refresh Flow (integration, AUTH_REFRESH_TOKENS_ENABLED=true)', ()
       .expect(401);
   });
 
+  it('after logout, the captured access cookie is rejected on a protected route (M4 jti revocation)', async () => {
+    const credentials = {
+      username: 'logoutuser',
+      email: 'logout@example.com',
+      password: 'SecurePass1',
+    };
+    const registerRes = await request(app.getHttpServer())
+      .post('/api/auth/register')
+      .send(credentials)
+      .expect(201);
+
+    const fsAuth = extractCookiePair(
+      registerRes.headers['set-cookie'] as string[] | string | undefined,
+      'FS_AUTH',
+    );
+    const fsRefresh = extractCookiePair(
+      registerRes.headers['set-cookie'] as string[] | string | undefined,
+      'FS_REFRESH',
+    );
+    expect(fsAuth).toBeDefined();
+    expect(fsRefresh).toBeDefined();
+
+    // Confirm pre-logout: protected route accepts the access cookie.
+    await request(app.getHttpServer())
+      .get('/api/portfolios')
+      .set('Cookie', fsAuth!)
+      .expect(200);
+
+    // Logout. Both flags are on, so:
+    //   - jti of the access cookie goes into revoked_jti:* in Redis
+    //   - refresh family is DEL'd
+    //
+    // The CSRF middleware blocks state-changing cookie-auth requests,
+    // so we send the matching X-CSRF-Token + Origin header.
+    const fsCsrf = extractCookiePair(
+      registerRes.headers['set-cookie'] as string[] | string | undefined,
+      'FS_CSRF',
+    );
+    const csrfValue = fsCsrf ? fsCsrf.slice('FS_CSRF='.length) : '';
+    await request(app.getHttpServer())
+      .post('/api/auth/logout')
+      .set('Cookie', `${fsAuth}; ${fsRefresh}; ${fsCsrf}`)
+      .set('Origin', 'http://localhost:3000')
+      .set('X-CSRF-Token', csrfValue)
+      .expect(204);
+
+    // POST-logout: the captured FS_AUTH cookie is now in the jti blacklist
+    // and JwtGuard returns 401.
+    await request(app.getHttpServer())
+      .get('/api/portfolios')
+      .set('Cookie', fsAuth!)
+      .expect(401);
+  });
 });

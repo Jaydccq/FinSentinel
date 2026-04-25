@@ -24,6 +24,13 @@ export interface AuthRuntimeConfig {
    *   - POST /api/auth/refresh is exposed for silent rotation
    */
   refreshTokensEnabled: boolean;
+  /**
+   * Item 2 M4 (jti revocation on logout). Default OFF — when false, logout
+   * only clears cookies. When true, logout writes `revoked_jti:<jti>` to
+   * Redis with TTL = (token.exp - now), and JwtGuard consults this set
+   * before admitting any request.
+   */
+  jtiRevocationEnabled: boolean;
   /** Access-token lifetime when refreshTokensEnabled=true. Default 15 min. */
   accessTokenTtlMsWhenRefreshOn: number;
   /** Refresh-token lifetime. Default 7 days. */
@@ -59,9 +66,11 @@ export function authConfigFactory(env: Record<string, string | undefined>): Auth
 
   const refreshTokensEnabled =
     (env.AUTH_REFRESH_TOKENS_ENABLED ?? 'false').toLowerCase() === 'true';
+  const jtiRevocationEnabled =
+    (env.AUTH_JTI_REVOCATION_ENABLED ?? 'false').toLowerCase() === 'true';
 
   // Defaults: 15-min access token, 7-day refresh token. Both override-able
-  // via env for ops/test, but the flag above is the kill-switch.
+  // via env for ops/test, but the flags above are the kill-switch.
   const accessTokenTtlMsWhenRefreshOn = Number(
     env.AUTH_ACCESS_TOKEN_TTL_MS ?? String(15 * 60 * 1000),
   );
@@ -79,6 +88,7 @@ export function authConfigFactory(env: Record<string, string | undefined>): Auth
     },
     corsOrigins,
     refreshTokensEnabled,
+    jtiRevocationEnabled,
     accessTokenTtlMsWhenRefreshOn,
     refreshTokenTtlMs,
   };

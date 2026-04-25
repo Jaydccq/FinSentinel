@@ -22,6 +22,7 @@ import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import { AuthService } from './auth.service';
 import { JwtService } from './jwt.service';
 import { RefreshService } from './refresh.service';
+import { RevocationService } from './revocation.service';
 import type { RegisterRequest, LoginRequest } from '@finsentinel/shared';
 import type { AuthRuntimeConfig } from '../config/auth.config';
 
@@ -64,6 +65,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly jwtService: JwtService,
     private readonly refreshService: RefreshService,
+    private readonly revocationService: RevocationService,
     private readonly config: ConfigService,
   ) {}
 
@@ -333,6 +335,32 @@ export class AuthController {
       path: opts.path,
       ...('domain' in opts ? { domain: opts.domain as string } : {}),
     };
+
+    // ── M4: jti revocation ─────────────────────────────────────────────
+    // When the flag is ON, decode the existing access cookie (no signature
+    // check needed — we already trust we set it) and add its jti to the
+    // Redis revocation set with TTL = (exp - now).
+    if (cfg.jtiRevocationEnabled) {
+      try {
+        const cookies = (req as Request & { cookies?: Record<string, string> }).cookies ?? {};
+        const raw = cookies[this.cookieName()];
+        if (raw) {
+          const claims = decodeJwt(raw);
+          const jti = typeof claims.jti === 'string' ? claims.jti : null;
+          const exp = typeof claims.exp === 'number' ? claims.exp : null;
+          if (jti && exp) {
+            const nowSec = Math.floor(Date.now() / 1000);
+            const ttl = exp - nowSec;
+            if (ttl > 0) {
+              await this.revocationService.revoke(jti, ttl);
+            }
+          }
+        }
+      } catch {
+        // Malformed cookie at logout is benign — clearing the cookie still
+        // happens below; we just can't blacklist what we can't parse.
+      }
+    }
 
     // ── M3: invalidate refresh family ──────────────────────────────────
     if (cfg.refreshTokensEnabled) {

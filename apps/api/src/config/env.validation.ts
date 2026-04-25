@@ -65,9 +65,13 @@ const baseEnvSchema = z.object({
   // Default OFF — when false, the system behavior is byte-identical to
   // today (one FS_AUTH cookie, single JWT_EXPIRATION-lived token, no
   // refresh endpoint). When true: 15-min access + 7-day refresh family
-  // with rolling rotation. Item 2 M4 (jti revocation) is gated separately
-  // by AUTH_JTI_REVOCATION_ENABLED, added in a follow-up commit.
+  // with rolling rotation.
   AUTH_REFRESH_TOKENS_ENABLED: envBoolean.default(false),
+  // Item 2 M4: jti revocation on logout. Default OFF — when false, JwtGuard
+  // does NOT consult the revocation store and logout does NOT write to it.
+  // When true, logout writes `revoked_jti:<jti>` to Redis (TTL = exp - now)
+  // and JwtGuard rejects any token whose jti is present.
+  AUTH_JTI_REVOCATION_ENABLED: envBoolean.default(false),
   // Access-token lifetime ONLY applies when AUTH_REFRESH_TOKENS_ENABLED=true.
   // Default 15 min in ms.
   AUTH_ACCESS_TOKEN_TTL_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),

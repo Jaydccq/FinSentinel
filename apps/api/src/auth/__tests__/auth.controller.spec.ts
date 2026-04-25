@@ -8,6 +8,7 @@ import { AuthController } from '../auth.controller';
 import { AuthService } from '../auth.service';
 import { JwtService } from '../jwt.service';
 import { RefreshService } from '../refresh.service';
+import { RevocationService } from '../revocation.service';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 import { RateLimiterService } from '../../common/services/rate-limiter.service';
 import { MetricsService } from '../../common/services/metrics.service';
@@ -39,12 +40,20 @@ const mockRefreshService = {
   invalidateFamily: vi.fn(async () => undefined),
 };
 
+const mockRevocationService = {
+  revoke: vi.fn(async () => undefined),
+  isRevoked: vi.fn(async () => false),
+};
+
 function makeAuthConfig(
   overrides: Partial<AuthRuntimeConfig['cookie']> = {},
   flagOverrides: Partial<
     Pick<
       AuthRuntimeConfig,
-      'refreshTokensEnabled' | 'accessTokenTtlMsWhenRefreshOn' | 'refreshTokenTtlMs'
+      | 'refreshTokensEnabled'
+      | 'jtiRevocationEnabled'
+      | 'accessTokenTtlMsWhenRefreshOn'
+      | 'refreshTokenTtlMs'
     >
   > = {},
 ): AuthRuntimeConfig {
@@ -58,6 +67,7 @@ function makeAuthConfig(
     },
     corsOrigins: ['http://localhost:3000', 'http://localhost:5173'],
     refreshTokensEnabled: false,
+    jtiRevocationEnabled: false,
     accessTokenTtlMsWhenRefreshOn: 15 * 60 * 1000,
     refreshTokenTtlMs: 7 * 24 * 60 * 60 * 1000,
     ...flagOverrides,
@@ -85,6 +95,7 @@ async function buildApp(
       { provide: AuthService, useValue: mockAuthService },
       { provide: JwtService, useValue: mockJwtService },
       { provide: RefreshService, useValue: mockRefreshService },
+      { provide: RevocationService, useValue: mockRevocationService },
       RateLimitGuard,
       { provide: RateLimiterService, useValue: permissiveRateLimiter },
       { provide: MetricsService, useValue: noopMetrics },
