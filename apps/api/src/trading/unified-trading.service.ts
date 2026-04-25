@@ -19,6 +19,7 @@ import type { MarketDataService } from '../market/market-data.service';
 import type { ExecuteResult } from './interfaces/execute-result';
 import type { PositionMap, PositionMapString } from './engines/paper-trading.engine';
 import { OrderLedgerService } from './order-ledger/order-ledger.service';
+import { TradingGuardsService } from './guards/trading-guards.service';
 import type { TradingRuntimeConfig } from '../config/trading.config';
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -144,6 +145,7 @@ export class UnifiedTradingService {
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     @Inject('MarketDataService') private readonly marketDataService: MarketDataService,
     private readonly orderLedger: OrderLedgerService,
+    private readonly tradingGuards: TradingGuardsService,
     private readonly config: ConfigService,
   ) {}
 
@@ -559,6 +561,27 @@ export class UnifiedTradingService {
         wallet.positions = engine.getPositionMaps() as unknown[];
       }
     } else {
+      // LIVE mode: pre-flight guards (item 5) — kill switch + per-order
+      // notional cap + per-day per-user cumulative cap. Throws on breach;
+      // throw propagates BEFORE any broker call so a guard breach never
+      // triggers a partial fill. EXECUTING rows already inserted by M2 are
+      // transitioned to FAILED with the breach reason in the catch below.
+      try {
+        await this.tradingGuards.preflight({
+          userId,
+          operations: commitData.operations as Parameters<
+            typeof this.tradingGuards.preflight
+          >[0]['operations'],
+        });
+      } catch (guardErr) {
+        const reason = guardErr instanceof Error ? guardErr.message : String(guardErr);
+        // Bubble FAILED to EXECUTING rows so the ledger reflects the block.
+        if (flags.stateMachineEnabled && executingRowIds.length > 0) {
+          await this.orderLedger.transitionAll(executingRowIds, 'FAILED', reason);
+        }
+        throw guardErr;
+      }
+
       // LIVE mode: resolve broker per-contract via BrokerRegistry
       for (const op of commitData.operations) {
         try {

@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { UnifiedTradingService } from '../unified-trading.service';
 import { BrokerRegistry } from '../broker-registry.service';
 import { OrderLedgerService } from '../order-ledger/order-ledger.service';
+import { TradingGuardsService } from '../guards/trading-guards.service';
 import type { MarketDataService } from '../../market/market-data.service';
 import { TradingMode, Contract } from '@finsentinel/shared';
 
@@ -155,6 +156,13 @@ describe('UnifiedTradingService', () => {
           },
         },
         {
+          provide: TradingGuardsService,
+          useValue: {
+            // Default for these tests: guard is a no-op (flag-off equivalent).
+            preflight: vi.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
           provide: ConfigService,
           useValue: {
             get: <T>(key: string): T | undefined => {
@@ -162,6 +170,7 @@ describe('UnifiedTradingService', () => {
                 return {
                   decimalExecuteEnabled: false,
                   stateMachineEnabled: false,
+                  liveGuardsEnabled: false,
                 } as unknown as T;
               }
               return undefined;
@@ -651,6 +660,10 @@ describe('UnifiedTradingService', () => {
           { provide: 'DRIZZLE_DB', useValue: mockDb },
           { provide: 'MarketDataService', useValue: mockMarketData },
           { provide: OrderLedgerService, useValue: stateMachineLedger },
+          {
+            provide: TradingGuardsService,
+            useValue: { preflight: vi.fn().mockResolvedValue(undefined) },
+          },
           {
             provide: ConfigService,
             useValue: {
