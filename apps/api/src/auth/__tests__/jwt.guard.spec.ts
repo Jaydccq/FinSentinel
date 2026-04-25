@@ -178,6 +178,40 @@ describe('JwtGuard.canActivate (unit)', () => {
     await expect(guardOn.canActivate(ctx)).resolves.toBe(true);
     expect(isRevoked).toHaveBeenCalledWith(VALID_PAYLOAD.jti);
   });
+
+  // ── Bearer-vs-cookie precedence (silent-refresh stale-bearer fix) ──────
+  describe('bearer-vs-cookie precedence', () => {
+    it('browser (no X-Client): cookie wins over a stale bearer', async () => {
+      const ctx = makeContext({
+        headers: { authorization: 'Bearer stale.token.value' },
+        cookies: { FS_AUTH: VALID_TOKEN },
+      });
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    });
+
+    it('browser (no X-Client): admits when only a bearer is present (legacy fallback)', async () => {
+      const ctx = makeContext({
+        headers: { authorization: `Bearer ${VALID_TOKEN}` },
+      });
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    });
+
+    it('desktop (X-Client: desktop): bearer wins over cookie', async () => {
+      const ctx = makeContext({
+        headers: { authorization: `Bearer ${VALID_TOKEN}`, 'x-client': 'desktop' },
+        cookies: { FS_AUTH: 'stale.cookie.value' },
+      });
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    });
+
+    it('desktop (X-Client: desktop): falls back to cookie when no bearer', async () => {
+      const ctx = makeContext({
+        headers: { 'x-client': 'desktop' },
+        cookies: { FS_AUTH: VALID_TOKEN },
+      });
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+    });
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────

@@ -51,21 +51,38 @@ export class JwtGuard implements CanActivate {
   }
 
   private extractToken(request: Request): string | null {
-    // 1. Try Authorization: Bearer <token> header
-    const authHeader = request.headers.authorization;
-    if (authHeader?.startsWith('Bearer ')) {
-      return authHeader.slice(7);
-    }
-
-    // 2. Try the configured auth cookie. The name is env-driven via
-    // AUTH_COOKIE_NAME (default 'FS_AUTH') so it must mirror what
-    // AuthController writes — see apps/api/src/config/auth.config.ts.
     const cookieName = this.config.get<AuthRuntimeConfig>('auth')?.cookie.name ?? 'FS_AUTH';
     const cookies = request.cookies as Record<string, string> | undefined;
-    if (cookies?.[cookieName]) {
-      return cookies[cookieName];
+    const cookieToken = cookies?.[cookieName];
+    const authHeader = request.headers.authorization;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+
+    // Distinguish caller class:
+    // - Desktop / SDK (X-Client: desktop): bearer-auth flow. The desktop
+    //   client manages its own token lifecycle and may not send a cookie
+    //   at all; honor the Authorization header even when a (likely stale)
+    //   cookie also happens to be present.
+    // - Browser (no X-Client header, or anything else): cookie-auth flow.
+    //   The cookie is the canonical, refresh-rotated source. A bearer
+    //   header on a browser request would only show up if the web client
+    //   carried a stale cached token across a silent refresh — preferring
+    //   the cookie there avoids the post-refresh 401-loop.
+    const xClientRaw = request.headers['x-client'];
+    const xClient = Array.isArray(xClientRaw) ? xClientRaw[0] : xClientRaw;
+    const isDesktopCaller = xClient === 'desktop';
+
+    if (isDesktopCaller) {
+      // Desktop bearer-auth: prefer Authorization, fall back to cookie.
+      if (bearerToken) return bearerToken;
+      if (cookieToken) return cookieToken;
+      return null;
     }
 
+    // Browser cookie-auth: prefer cookie, fall back to bearer for legacy
+    // callers that don't yet send X-Client (e.g. the few internal scripts
+    // that hit the API with a raw bearer for debugging).
+    if (cookieToken) return cookieToken;
+    if (bearerToken) return bearerToken;
     return null;
   }
 }

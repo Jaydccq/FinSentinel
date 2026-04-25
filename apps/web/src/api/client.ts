@@ -131,13 +131,22 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   // - For paths other than /auth/refresh: try POST /auth/refresh, retry on success.
   // - If silent refresh fails or returns non-OK, fall back to the existing
   //   "drop cache + retry under fresh token" path used by desktop bearer flow.
+  //
+  // CRITICAL: clear the cached bearer BEFORE the retry. After refresh the
+  // backend has rotated FS_AUTH (cookie); the cached bearer in localStorage
+  // is the now-stale token from the previous session. authHeaders() reads
+  // from that cache, so without this clear the retried request would send
+  // `Authorization: Bearer <stale>` AND the new FS_AUTH cookie — and the
+  // JwtGuard's bearer-first ordering would reject the stale bearer with 401
+  // again, sending us into a tight refresh loop. Dropping the cache here
+  // forces the retry to authenticate via the cookie alone.
   if (res.status === 401 && !path.startsWith('/auth/refresh')) {
     const refreshed = await attemptSilentRefresh();
+    clearCachedToken();
+    res = await buildRequest(path, options);
     if (refreshed) {
-      res = await buildRequest(path, options);
-    } else {
-      clearCachedToken();
-      res = await buildRequest(path, options);
+      // Successful refresh path: the retry above used the new cookie and
+      // (because we cleared the cache) NOT the stale bearer.
     }
   }
 
