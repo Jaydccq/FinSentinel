@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { X, Save, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
-  watchlistApi,
   type WatchlistItemResponse,
   type WatchlistCategoryResponse,
 } from '../api/watchlist';
+import { useWatchlist } from '../hooks/api/use-watchlist';
 
 interface Props {
   /** Symbol being edited — used to look up the item in the category. */
@@ -32,45 +32,39 @@ interface Props {
  * items[] from day one would be cleaner but touches far more code.
  */
 export default function WatchlistItemEditor({ symbol, categoryName, onClose, onSaved }: Props) {
-  const [loading, setLoading] = useState(true);
+  const { data: overview, error, isLoading, updateItem } = useWatchlist();
   const [saving, setSaving] = useState(false);
   const [item, setItem] = useState<WatchlistItemResponse | null>(null);
   const [thesis, setThesis] = useState('');
   const [notes, setNotes] = useState('');
   const [priority, setPriority] = useState(0);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const loading = isLoading;
 
-  // Load on mount — find the matching item across the user's categories.
+  // Resolve the matching item once SWR delivers the overview. Errors and
+  // missing items both close the drawer with a toast.
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const overview = await watchlistApi.list();
-        if (cancelled) return;
-        const category: WatchlistCategoryResponse | undefined = overview.categories.find(
-          (c) => c.name === categoryName,
-        );
-        const found = category?.items.find((i) => i.symbol.toUpperCase() === symbol.toUpperCase());
-        if (!found) {
-          toast.error(`${symbol} not found in ${categoryName}`);
-          onClose();
-          return;
-        }
-        setItem(found);
-        setThesis(found.thesis ?? '');
-        setNotes(found.notes ?? '');
-        setPriority(found.priority ?? 0);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Failed to load item');
-        onClose();
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [symbol, categoryName, onClose]);
+    if (isLoading) return;
+    if (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to load item');
+      onClose();
+      return;
+    }
+    if (!overview) return;
+    const category: WatchlistCategoryResponse | undefined = overview.categories.find(
+      (c) => c.name === categoryName,
+    );
+    const found = category?.items.find((i) => i.symbol.toUpperCase() === symbol.toUpperCase());
+    if (!found) {
+      toast.error(`${symbol} not found in ${categoryName}`);
+      onClose();
+      return;
+    }
+    setItem(found);
+    setThesis(found.thesis ?? '');
+    setNotes(found.notes ?? '');
+    setPriority(found.priority ?? 0);
+  }, [overview, error, isLoading, symbol, categoryName, onClose]);
 
   // Close on Escape — keeps keyboard users out of trap scenarios.
   useEffect(() => {
@@ -85,7 +79,7 @@ export default function WatchlistItemEditor({ symbol, categoryName, onClose, onS
     if (!item) return;
     setSaving(true);
     try {
-      const updated = await watchlistApi.updateItem(item.id, {
+      const updated = await updateItem(item.id, {
         thesis: thesis.trim() || undefined,
         notes: notes.trim() || undefined,
         priority: Number.isFinite(priority) ? priority : 0,
