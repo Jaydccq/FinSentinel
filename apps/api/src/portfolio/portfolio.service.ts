@@ -356,10 +356,16 @@ export class PortfolioService {
   private toPortfolioResponse(
     row: typeof portfolios.$inferSelect | undefined,
     holdingRows: Array<typeof holdings.$inferSelect>,
+    quoteTimestamps: Array<number | null | undefined> = [],
   ): PortfolioResponse {
     if (!row) {
       throw new NotFoundException('Portfolio record missing');
     }
+    // TODO(pl-7-phase2): plumb quote.timestamp from MarketDataService through
+    // the read paths (getPortfolio / getPortfolios / createPortfolio /
+    // updatePortfolio) so callers can populate `quoteTimestamps`. Today no
+    // caller fetches quotes at response build time — `currentPrice` comes
+    // straight from the holdings row — so `valuedAt` is always null.
     return {
       id: row.id,
       name: row.name,
@@ -368,7 +374,29 @@ export class PortfolioService {
       holdings: holdingRows.map((h) => this.toHoldingResponse(h)),
       createdAt:
         row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+      valuedAt: PortfolioService.computeValuedAt(quoteTimestamps),
     };
+  }
+
+  /**
+   * Compute the snapshot timestamp for a portfolio response from the per-holding
+   * quote timestamps used to fill `currentPrice`. Returns the freshest-of (min)
+   * timestamp as ISO-8601 string, or `null` when no quote was used.
+   *
+   * Defensively coerces seconds → milliseconds: any value below 1e12 is
+   * treated as seconds and multiplied by 1000. This matches the freshness
+   * coercion in `apps/web/src/lib/freshness/quote-timestamp.ts` and remains
+   * correct after the FMP provider normalization (which is a sibling task).
+   */
+  static computeValuedAt(quoteTimestamps: Array<number | null | undefined>): string | null {
+    const normalized: number[] = [];
+    for (const ts of quoteTimestamps) {
+      if (ts == null || !Number.isFinite(ts)) continue;
+      const ms = ts < 1e12 ? ts * 1000 : ts;
+      normalized.push(ms);
+    }
+    if (normalized.length === 0) return null;
+    return new Date(Math.min(...normalized)).toISOString();
   }
 
   /** Row type returned by Drizzle `select().from(holdings)`. */
