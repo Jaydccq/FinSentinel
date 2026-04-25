@@ -49,6 +49,16 @@
      stay `reverse_engineered_synthetic`. True real-user promotion
      (from `rag_query_logs` / `chat_messages`) still requires a
      populated source. See `golden.meta.json` v2.1.
+     - **2026-04-25 update:** Promotion CLI now exists at
+       `pnpm --filter @finsentinel/api rag:eval:promote` (source
+       `apps/api/src/rag/eval/rag-promote-eval.cli.ts`). Real
+       promotion can begin as soon as `rag_query_logs` carries
+       enough representative traffic AND `rag.queryLog.piiEnabled`
+       is set in the staging window so `query_preview` is non-NULL.
+       Operator steps in
+       `docs/runbooks/2026-04-25-rag-eval-promotion-runbook.md`.
+       Phase 1 ships tooling only — reviewer-driven promotion of
+       actual rows is a separate operational PR.
   3. **Query rewrite / HyDE eval timeout** — CLOSED 2026-04-21.
      `fetch_retrieval_results` now accepts `timeout_s` via config
      `retrieval.timeout_s` or env `RAG_EVAL_TIMEOUT_S`; default 30s,
@@ -154,7 +164,11 @@ embed-1b-v2` going forward. V16 rewritten to declare
   3. Run shadow evaluation against rules-only routing.
   4. Promote only if the labelled set shows a bucket-level win with no overall
      regression.
-- **Status:** Blocked on labelled eval data.
+- **Status:** Blocked on labelled eval data. The unblock path is the
+  rag:eval:promote CLI shipped 2026-04-25 — see
+  `docs/runbooks/2026-04-25-rag-eval-promotion-runbook.md` for how to
+  grow the labelled set from real `rag_query_logs` rows. The next item-9
+  attempt should start there, not at the synthetic golden set.
 
 ### Frontend typed-client/SWR/trading-status rollout is blocked on UX state design
 
