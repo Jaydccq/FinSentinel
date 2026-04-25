@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { eq, and, desc, inArray } from 'drizzle-orm';
+import { eq, and, desc, lt, inArray } from 'drizzle-orm';
 import {
   orderLedger,
   type DrizzleDB,
@@ -233,6 +233,102 @@ export class OrderLedgerService {
       .update(orderLedger)
       .set({ status, errorReason, updatedAt: new Date() })
       .where(inArray(orderLedger.id, rowIds));
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // M3 — reconciler scan
+  // ───────────────────────────────────────────────────────────────────────
+
+  /**
+   * Return rows stuck in EXECUTING longer than `staleAfterMs`. Capped to
+   * `limit` rows so a per-tick scan is bounded under backlog. Ordered by
+   * updated_at ASC so the oldest stuck rows are resolved first.
+   */
+  async findStuckExecuting(staleAfterMs: number, limit: number): Promise<OrderLedgerRow[]> {
+    const cutoff = new Date(Date.now() - staleAfterMs);
+    return this.db
+      .select()
+      .from(orderLedger)
+      .where(and(eq(orderLedger.status, 'EXECUTING'), lt(orderLedger.updatedAt, cutoff)))
+      .orderBy(orderLedger.updatedAt)
+      .limit(limit);
+  }
+
+  /**
+   * Apply a single reconciler outcome to one row. Used by LedgerReconcilerService
+   * to fan transitions across many rows in a per-tick batch.
+   *
+   * - 'pending' is the no-op heartbeat: bump updated_at so the same row isn't
+   *   re-scanned on the next tick.
+   * - 'unknown' parks the row for operator review; once a row enters this
+   *   state the reconciler ignores it (status filter excludes it).
+   */
+  async applyReconcilerOutcome(
+    rowId: string,
+    outcome:
+      | { kind: 'executed'; brokerOrderId?: string; filledQty?: string; avgPrice?: string }
+      | { kind: 'failed'; brokerOrderId?: string; errorReason: string }
+      | { kind: 'pending' }
+      | { kind: 'unknown'; errorReason: string },
+  ): Promise<void> {
+    const now = new Date();
+    if (outcome.kind === 'pending') {
+      // Heartbeat-only: re-stamp updated_at without changing status so we
+      // won't re-scan this row immediately, but it stays an EXECUTING row
+      // for the next tick.
+      await this.db
+        .update(orderLedger)
+        .set({ updatedAt: now })
+        .where(eq(orderLedger.id, rowId));
+      return;
+    }
+
+    if (outcome.kind === 'executed') {
+      await this.db
+        .update(orderLedger)
+        .set({
+          status: 'EXECUTED',
+          brokerOrderId: outcome.brokerOrderId ?? null,
+          price: outcome.avgPrice ?? null,
+          brokerResponse: {
+            filledQty: outcome.filledQty,
+            avgPrice: outcome.avgPrice,
+            reconciled: true,
+          } as Record<string, unknown>,
+          errorReason: null,
+          updatedAt: now,
+        })
+        .where(eq(orderLedger.id, rowId));
+      return;
+    }
+
+    if (outcome.kind === 'failed') {
+      await this.db
+        .update(orderLedger)
+        .set({
+          status: 'FAILED',
+          brokerOrderId: outcome.brokerOrderId ?? null,
+          errorReason: outcome.errorReason,
+          brokerResponse: { reconciled: true } as Record<string, unknown>,
+          updatedAt: now,
+        })
+        .where(eq(orderLedger.id, rowId));
+      return;
+    }
+
+    // 'unknown'
+    await this.db
+      .update(orderLedger)
+      .set({
+        status: 'UNKNOWN_REQUIRES_OPERATOR_REVIEW',
+        errorReason: outcome.errorReason,
+        brokerResponse: { reconciled: true, requiresOperatorReview: true } as Record<
+          string,
+          unknown
+        >,
+        updatedAt: now,
+      })
+      .where(eq(orderLedger.id, rowId));
   }
 
   private deriveSide(action: unknown): string {
