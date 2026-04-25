@@ -143,3 +143,31 @@ Total effort: ~2 engineer-weeks. **Do not bundle M4 with M1–M3.**
 ## 11. Owner
 
 TBD — needs explicit signoff because this touches the critical trading path.
+
+## 12. Progress log
+
+### 2026-04-24 — M1 order_ledger table + dual-write (DONE, commit `43441a4`)
+
+Shipped:
+- `packages/db/migrations/V23__order_ledger.sql` — table with status CHECK constraint (`STAGED`, `COMMITTED`, `EXECUTING`, `EXECUTED`, `PARTIALLY_FAILED`, `FAILED`, `CANCELLED`), four indexes (user+created DESC, commit_hash, idempotency-where-not-null, broker+status), FK to users with `ON DELETE CASCADE`. Decimal-string columns for qty/amount/price per §3.
+- `packages/db/src/schema/order-ledger.ts` — Drizzle schema mirroring V23, `ORDER_LEDGER_STATUSES` const + `OrderLedgerStatus` type. Re-exported from package root.
+- `apps/api/src/trading/order-ledger/order-ledger.service.ts` — three methods: `recordExecutionResults`, `findByIdempotency`, `findByCommitHash`. Each operation in a commit becomes one row; success → `EXECUTED`, failure → `FAILED` with `errorReason`. Side derived from action (close → sell, sell → sell, else → buy).
+- `apps/api/src/trading/unified-trading.service.ts` — dual-write hook in `execute()` AFTER the wallet persist (step 6b), wrapped in `try/catch` with WARN log. Failure to write the ledger does NOT abort the trading flow — wallet remains the system of record during this M1 window.
+- `apps/api/src/trading/trading.module.ts` — `OrderLedgerService` registered as provider + exported.
+
+Tests:
+- `apps/api/src/trading/order-ledger/__tests__/order-ledger.service.spec.ts`: 9/9 green (insert mapping, success → EXECUTED, failure → FAILED with reason, side derivation incl. close → sell, no-op on empty operations, decimal string serialization, find-by-idempotency / find-by-commit-hash).
+- `unified-trading.service.spec.ts`: 23/23 green (extended with stub `OrderLedgerService` provider).
+- `src/__tests__/integration/trading-flow.integration.spec.ts`: 7/7 green (real `OrderLedgerService` against the integration mock DB — confirms the dual-write path doesn't break end-to-end).
+- `pnpm --filter @finsentinel/api typecheck` clean.
+
+What this milestone does NOT do (per scope):
+- No state machine flip — `execute()` still uses `GETDEL` to consume pending; `wallet.commitHistory` is still the system of record.
+- No EXECUTING-status transition; no PARTIALLY_FAILED handling; no reconciler.
+- order_ledger rows are written-only — no read paths consume them in production yet.
+
+### Deferred (M2 / M3 / M4)
+
+- **M2** (next, in flight on `feat/2026-04-25-trading-state-machine-and-auth-refresh`): full state machine. Atomic Redis Lua transition COMMITTED → EXECUTING (no more GETDEL); ledger rows written in EXECUTING state, transitioned to EXECUTED / PARTIALLY_FAILED / FAILED based on broker outcome; ledger-first idempotency lookup. **Behind feature flag `TRADING_STATE_MACHINE_ENABLED`, default OFF** — flipping the system of record is a semantic change that needs human signoff before flag-on rollout.
+- **M3** (queued, depends on M2): cron-driven reconciler scanning `WHERE status='EXECUTING' AND updated_at < now() - 60s`, querying broker for status, transitioning row.
+- **M4** (queued): remove legacy `wallet.commitHistory` dual-write once M2 + M3 have soaked.

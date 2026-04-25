@@ -124,3 +124,30 @@ Total effort: ~1 engineer-week. Do **not** land as a single PR.
 ## 9. Owner
 
 TBD — reviewer triage PRD leaves this to wave 1 P1 per §3.
+
+## 10. Progress log
+
+### 2026-04-24 — M1 shared decimal schema (DONE, commit `2d100ea`, merged via `76fc088`)
+
+Shipped:
+- `packages/shared/src/money.ts` — `Decimal = DecimalJs.clone({ precision: 40, rounding: ROUND_HALF_EVEN })`, `DecimalValue` type, `decimalStringRegex = /^(?!0+(\.0+)?$)\d+(\.\d{1,8})?$/` (positive, ≤ 8 frac digits, no zero).
+- `packages/shared/src/schemas/decimal-string.ts` — reusable `decimalString` Zod validator.
+- `packages/shared/src/schemas/order-draft.ts` — added `decimalOrderDraftSchema` (sibling, not replacement) with `qty` / `amount` / `percentNav` mutual-exclusion `.refine()`. Legacy `orderDraftSchema` left untouched to avoid sweeping consumer migration; the M3+M4 work below replaces consumers gradually.
+- Root barrel re-exports: `Decimal`, `DecimalValue`, `decimalStringRegex`, `decimalString`.
+- `packages/shared` dep gained `decimal.js`.
+
+Tests: 28 new cases in `packages/shared/src/__tests__/decimal-order-draft-schema.test.ts` (regex edge cases, mutual-exclusion combos, field-level validation). `pnpm --filter @finsentinel/shared test` and `typecheck` clean. `apps/api` typecheck unaffected — no shims required.
+
+### 2026-04-24 — M2 paper broker decimal arithmetic (DONE, commit `e4f9bdd`)
+
+Shipped:
+- `apps/api/src/trading/engines/paper-trading.engine.ts` — internal `cash` / `realizedPnL` / `initialCash` stored as `DecimalValue`; new `DecimalPosition` interface for shares / avgCost / currentPrice, converted to/from public `PositionMap` (number-typed) at the `setPositions` / `getPositionMaps` boundary. All math (cost, weighted avg, proceeds, P&L, market value) via `Decimal.plus/minus/times/dividedBy/greaterThan/equals`. Quote prices wrapped via `new Decimal(quote.close)` on ingest.
+
+Public API preserved (verified): `setCash(number)`, `getCash(): number`, `setPositions(PositionMap[])`, `getPositionMaps(): PositionMap[]`, `setRealizedPnL/getRealizedPnL`, `getInitialCash(): number`, `AccountInfo.{cashValue,totalValue,buyingPower}: number` all unchanged. UnifiedTradingService still compiles untouched — M3 picks it up.
+
+Tests: 180/180 trading suite green (was 178; +2 new). New cases: 1000-iteration drift regression at qty=0.1 @ price=0.1 — `account.cashValue === 100000 - 10` exactly, position.qty `"100"`, avgCost `"0.1"`. Plus a deterministic-property test: 100 randomized buy/sell ops produce byte-identical `String(getCash())` across two runs. **No existing test expectations needed adjustment** — Decimal `.toString()` matches the prior `String(Number(...))` byte-for-byte.
+
+### Deferred (M3 + M4)
+
+- **M3** (next, in flight on `feat/2026-04-25-trading-state-machine-and-auth-refresh`): port `unified-trading.service.execute()` arithmetic to Decimal; widen wallet persistence to `.toFixed(8)`; integration tests. Lands jointly with item 3 M2 because both touch the same execute() path.
+- **M4** (queued): broker adapter normalization (Alpaca / OKX / CCXT) + frontend form schema migration. Independent — can ship after M3.
