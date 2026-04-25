@@ -1,0 +1,8 @@
+# Commits listed here are skipped by `git blame` when you configure:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# Add commits that are pure reformatting / mass-rename refactors so blame
+# traces through to the last meaningful change.
+
+# 2026-04-24 — prettier format-everything sweep (577 files reflowed)
+8caed2ee28a6fa69f630f3c8c4f5d70d96c9768c
