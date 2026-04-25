@@ -87,7 +87,8 @@ export class FmpMarketDataProvider implements MarketDataProvider {
       low: quote.dayLow.toFixed(2),
       close: quote.price.toFixed(2),
       volume: quote.volume,
-      timestamp: quote.timestamp,
+      // FMP returns Unix seconds; MarketQuote contract is milliseconds (matches Yahoo/Polygon).
+      timestamp: quote.timestamp * 1000,
     };
   }
 

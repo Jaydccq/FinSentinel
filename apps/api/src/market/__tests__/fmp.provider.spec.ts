@@ -71,7 +71,7 @@ describe('FmpMarketDataProvider', () => {
         low: '147.50',
         close: '153.50',
         volume: 50000000,
-        timestamp: 1700245600,
+        timestamp: 1700245600000, // seconds * 1000
       });
     });
 
