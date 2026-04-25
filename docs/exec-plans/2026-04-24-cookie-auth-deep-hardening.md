@@ -100,3 +100,26 @@ M4 (P2): 3.4 jti blacklist  — 2 days, depends on M3 (shares Redis keys)
 ## 6. Owner
 
 TBD — user-level decisions (token lifetimes, lockout policy) need product + security signoff before M1 starts.
+
+## 7. Progress log
+
+### 2026-04-24 — M1 CSRF double-submit + Origin check (DONE on `feat/2026-04-24-csrf-double-submit`)
+
+Implemented:
+- `apps/api/src/auth/csrf.middleware.ts` — Nest middleware; SAFE_METHODS pass through, allow-list (`/api/auth/login`, `/api/auth/register`, `/api/auth/refresh`, `/api/health`) pass through, no-`FS_AUTH`-cookie path passes through (bearer-token / SDK callers), Origin (or Referer fallback) checked against `auth.corsOrigins`, `X-CSRF-Token` header compared to `FS_CSRF` cookie value. Fail paths throw `ForbiddenException` (403) with distinct messages.
+- Wired globally via `AppModule.configure()` (`forRoutes('*')`); registered as a provider in `AuthModule` so DI picks up `ConfigService`.
+- `apps/api/src/auth/auth.controller.ts` — register/login now also set `FS_CSRF` cookie (`randomUUID()`, `httpOnly: false`, secure/sameSite/maxAge mirror `FS_AUTH`). Logout clears both `FS_AUTH` and `FS_CSRF`.
+- `apps/web/src/api/client.ts` — exported `withCsrfHeader(method, headers)` helper that reads `document.cookie` for `FS_CSRF` and stamps `X-CSRF-Token` on POST/PUT/PATCH/DELETE. `apiFetch` calls it automatically; scattered direct-fetch sites (`chat.ts`, `documents.ts`, `analysis.ts`, `okx.ts`, `analysis-approvals.ts`, `analysis-runs.ts`) updated to call it explicitly.
+
+Verification:
+- `apps/api/src/auth/__tests__/csrf.middleware.spec.ts` (10 cases incl. GET pass-through, allow-list, no-cookie pass-through, missing/mismatched/bad-origin/bad-token 403s, happy path, Referer fallback). PASS.
+- `apps/api/src/auth/__tests__/auth.controller.spec.ts` extended to assert FS_CSRF set on register/login (non-HttpOnly) and cleared on logout. PASS.
+- `pnpm exec vitest run src/auth` → 5 files / 43 tests PASS.
+- `pnpm exec vitest run src/__tests__/integration` → 3 files / 20 tests PASS (auth-flow, trading-flow, chat-stream all green; integration tests use bearer-token clients via `X-Client: desktop`, so CSRF middleware passes them through unchanged — no setup edits needed).
+- `pnpm --filter @finsentinel/api typecheck` → clean.
+- `pnpm --filter @finsentinel/web typecheck` → clean.
+- `pnpm --filter @finsentinel/web lint` → clean.
+- `pnpm --filter @finsentinel/web test -- --run` → 19 files / 85 tests PASS (added `withCsrfHeader` to the `vi.mock('../client', …)` stub in `analysis-runs.test.ts`).
+
+Out of this milestone (deferred):
+- M2 rate-limit, M3 refresh/access split, M4 jti blacklist.

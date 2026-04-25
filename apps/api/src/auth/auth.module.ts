@@ -5,11 +5,12 @@ import { JwtGuard } from './jwt.guard';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { LocalUserSeeder } from './local-user.seeder';
+import { CsrfMiddleware } from './csrf.middleware';
 
 @Module({
   imports: [],
   controllers: [AuthController],
-  providers: [JwtService, JwtGuard, AuthService, LocalUserSeeder],
-  exports: [JwtService, JwtGuard],
+  providers: [JwtService, JwtGuard, AuthService, LocalUserSeeder, CsrfMiddleware],
+  exports: [JwtService, JwtGuard, CsrfMiddleware],
 })
 export class AuthModule {}

@@ -1,9 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { LoggerModule } from 'nestjs-pino';
 import { AppConfigModule, DatabaseModule } from './config';
 import { HealthController } from './health/health.controller';
 import { AuthModule } from './auth/auth.module';
+import { CsrfMiddleware } from './auth/csrf.middleware';
 import { CommonModule } from './common/common.module';
 import { MarketModule } from './market/market.module';
 import { AgentModule } from './agent/agent.module';
@@ -101,4 +102,11 @@ import { WatchlistModule } from './watchlist/watchlist.module';
   ],
   controllers: [HealthController],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  // F-9 M1 (2026-04-24): CSRF double-submit + Origin check on cookie-auth
+  // write requests. Must run AFTER cookie-parser (registered in main.ts and
+  // in the integration test factory) so that req.cookies is populated.
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(CsrfMiddleware).forRoutes('*');
+  }
+}

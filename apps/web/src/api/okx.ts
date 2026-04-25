@@ -1,4 +1,4 @@
-import { apiFetch, resolveBase, authHeaders } from './client';
+import { apiFetch, resolveBase, authHeaders, withCsrfHeader } from './client';
 
 // ---- Types ----
 
@@ -148,11 +148,11 @@ export const okxApi = {
         {
           method: 'POST',
           credentials: 'include',
-          headers: {
+          headers: withCsrfHeader('POST', {
             'Content-Type': 'application/json',
             Accept: 'text/event-stream',
             ...authHeaders(),
-          },
+          }),
         },
       );
 
@@ -229,10 +229,10 @@ export const okxApi = {
       const res = await fetch(`${resolveBase()}/okx/analysis/health`, {
         method: 'POST',
         credentials: 'include',
-        headers: {
+        headers: withCsrfHeader('POST', {
           'Content-Type': 'application/json',
           ...authHeaders(),
-        },
+        }),
       });
 
       if (!res.ok) {

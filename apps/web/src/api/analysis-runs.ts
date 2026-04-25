@@ -5,7 +5,7 @@ import {
   type AnalysisPreset,
 } from '@finsentinel/shared';
 
-import { resolveBase, authHeaders } from './client';
+import { resolveBase, authHeaders, withCsrfHeader } from './client';
 
 export type AnalysisStageKey =
   | 'INTELLIGENCE'
@@ -180,10 +180,15 @@ export interface AnalysisRunStreamHandle {
 }
 
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
+  const baseHeaders: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...authHeaders(),
+    ...(init?.headers as Record<string, string> | undefined),
+  };
   const res = await fetch(`${resolveBase()}${path}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
     ...init,
+    headers: withCsrfHeader(init?.method, baseHeaders),
   });
   if (!res.ok) throw new Error(`${init?.method ?? 'GET'} ${path} failed: ${res.status}`);
   return (await res.json()) as T;

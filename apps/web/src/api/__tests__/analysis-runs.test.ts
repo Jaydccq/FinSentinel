@@ -9,6 +9,7 @@ vi.stubGlobal('fetch', fetchMock);
 vi.mock('../client', () => ({
   resolveBase: () => '/api',
   authHeaders: () => ({}),
+  withCsrfHeader: (_method: string | undefined, headers: Record<string, string> = {}) => headers,
 }));
 
 const { analysisRunsApi, isStrategyArchivePayload, sanitizeDecisionObjectJsonForDisplay } =

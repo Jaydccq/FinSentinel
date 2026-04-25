@@ -1,5 +1,6 @@
 import { Controller, Post, Body, Res, Headers, HttpCode, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { randomUUID } from 'crypto';
 import type { Response } from 'express';
 import { registerRequestSchema, loginRequestSchema } from '@finsentinel/shared';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
@@ -8,6 +9,7 @@ import type { RegisterRequest, LoginRequest } from '@finsentinel/shared';
 import type { AuthRuntimeConfig } from '../config/auth.config';
 
 const DESKTOP_CLIENT = 'desktop';
+const CSRF_COOKIE_NAME = 'FS_CSRF';
 
 @Controller('auth')
 export class AuthController {
@@ -32,8 +34,34 @@ export class AuthController {
     };
   }
 
+  /**
+   * CSRF cookie options mirror the auth cookie's secure/sameSite/maxAge so the
+   * two cookies have the same lifetime, but `httpOnly` is FALSE so that the
+   * frontend JS can read the value out and echo it back in the
+   * `X-CSRF-Token` header (double-submit pattern).
+   */
+  private csrfCookieOpts() {
+    const cfg = this.readAuthConfig();
+    return {
+      httpOnly: false,
+      secure: cfg.cookie.secure,
+      sameSite: cfg.cookie.sameSite,
+      maxAge: cfg.cookie.maxAgeMs,
+      path: '/',
+      ...(cfg.cookie.domain ? { domain: cfg.cookie.domain } : {}),
+    };
+  }
+
   private cookieName(): string {
     return this.readAuthConfig().cookie.name;
+  }
+
+  /**
+   * Generate a new CSRF value and set the FS_CSRF cookie. Called on
+   * register/login so each session gets a fresh per-session token.
+   */
+  private issueCsrfCookie(res: Response): void {
+    res.cookie(CSRF_COOKIE_NAME, randomUUID(), this.csrfCookieOpts());
   }
 
   /**
@@ -60,6 +88,7 @@ export class AuthController {
   ) {
     const result = await this.authService.register(body);
     res.cookie(this.cookieName(), result.token, this.cookieOpts());
+    this.issueCsrfCookie(res);
     return this.shapeBody(result, headers);
   }
 
@@ -72,6 +101,7 @@ export class AuthController {
   ) {
     const result = await this.authService.login(body);
     res.cookie(this.cookieName(), result.token, this.cookieOpts());
+    this.issueCsrfCookie(res);
     return this.shapeBody(result, headers);
   }
 
@@ -79,12 +109,14 @@ export class AuthController {
   @HttpCode(HttpStatus.NO_CONTENT)
   logout(@Res({ passthrough: true }) res: Response) {
     const opts = this.cookieOpts();
-    res.clearCookie(this.cookieName(), {
+    const clearOpts = {
       httpOnly: opts.httpOnly,
       secure: opts.secure,
       sameSite: opts.sameSite,
       path: opts.path,
       ...('domain' in opts ? { domain: opts.domain as string } : {}),
-    });
+    };
+    res.clearCookie(this.cookieName(), clearOpts);
+    res.clearCookie(CSRF_COOKIE_NAME, { ...clearOpts, httpOnly: false });
   }
 }
