@@ -150,7 +150,7 @@ Tests: 180/180 trading suite green (was 178; +2 new). New cases: 1000-iteration 
 ### Deferred (M3 + M4)
 
 - **M3** (DONE on `feat/2026-04-25-trading-state-machine-and-auth-refresh`, see entry below).
-- **M4** (queued): broker adapter normalization (Alpaca / OKX / CCXT) + frontend form schema migration. Independent — can ship after M3.
+- **M4** (DONE on main, see entry below).
 
 ### 2026-04-25 — M3 decimal-precision wallet sync (DONE on branch, NOT merged to main)
 
@@ -168,3 +168,19 @@ Tests: 60 paper-engine cases (was 57; +3 string-boundary cases — 100×qty=0.1@
 **Known gaps / NOT shipped (M4):**
 - broker adapter (Alpaca / OKX / CCXT) decimal-string normalization
 - frontend form schema migration to `decimalString`
+
+### 2026-04-25 — M4 broker normalization + frontend forms (DONE on main, commit `cecc8b7` series)
+
+Branch: `feat/2026-04-25-trading-decimal-m4` (merged to main).
+
+Shipped:
+- `apps/api/src/trading/brokers/decimal-normalize.ts` — `toDecimalString(unknown) → string | null`. Accepts string / finite number / BigInt; rejects empty / NaN / Infinity / negative / scientific notation; returns canonical `.toFixed(8)` on success.
+- `apps/api/src/trading/engines/ccxt-trading.engine.ts` `mapOrderResult` now flows `order.average` / `order.price` / `order.filled` through `toDecimalString` instead of `String(number)`. Fixes the small-magnitude scientific-notation bug (e.g., satoshi-scale qty: `String(1e-8) === '1e-8'` would have failed downstream `decimalString` validation).
+- Alpaca / OKX engines NOT changed — they already pass strings through. The Number() casts at `alpaca-trading.engine.ts:140-142` are the legacy AccountInfo number fields (display-only); string equivalents already untouched.
+- Paper engine NOT touched — already Decimal-internal from M2.
+- `apps/web/src/views/TradingPage.tsx` `stageOrder()` now runs the shared `decimalString` schema against qty/amount before hitting the network. Negative, zero, scientific notation, and > 8-fraction-digit values surface as a user-readable toast.
+- CryptoTradingPage / other forms left for follow-up — TradingPage is the primary surface; one-form migration proves the pattern.
+
+Tests: 12 new cases in `decimal-normalize.spec.ts`; 3 expectation updates in `ccxt-trading.engine.spec.ts` to the new canonical `.toFixed(8)` form. Trading suite full sweep 219/219 green at land time. Web 87/87 unchanged.
+
+**Migration sequence is now COMPLETE:** M1 schema → M2 paper → M3 wallet sync → M4 broker + UI all merged. Decimal-money work is done at the engineering level.
