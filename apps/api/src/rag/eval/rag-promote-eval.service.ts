@@ -193,7 +193,9 @@ export function appendPromotedRows(
     added.push(r);
     existing.add(r.source_query_log_id);
   }
-  goldenSet.entries.push(...added);
+  for (const row of added) {
+    goldenSet.entries.push(row as unknown as Record<string, unknown> & { id?: string });
+  }
   return { added, skipped };
 }
 
