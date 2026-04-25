@@ -41,6 +41,15 @@ export const portfolioResponseSchema = z.object({
   totalValue: z.string(),
   holdings: z.array(holdingResponseSchema),
   createdAt: z.string().datetime(),
+  /**
+   * ISO-8601 timestamp of the freshest-of quotes used to fill `currentPrice`
+   * across the holdings in this response, or `null` when no quote was used.
+   *
+   * Nullable (not optional) so the wire shape is stable: the frontend never
+   * needs to disambiguate "absent" from "unknown". `null` is the explicit
+   * unknown signal for the freshness badge.
+   */
+  valuedAt: z.string().datetime().nullable(),
 });
 export type PortfolioResponse = z.infer<typeof portfolioResponseSchema>;
 

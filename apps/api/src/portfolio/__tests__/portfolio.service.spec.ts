@@ -343,6 +343,82 @@ describe('PortfolioService', () => {
       expect(parseFloat(result.holdingWeights[0]!.weightPercent)).toBeCloseTo(25, 1);
     });
 
+  });
+
+  // ── valuedAt (PL-7 phase 2 — holdings snapshot timestamp) ──────────────
+  describe('computeValuedAt', () => {
+    it('returns ISO timestamp for a single quote at 1714000000000', () => {
+      // 2024-04-25T00:26:40.000Z
+      expect(PortfolioService.computeValuedAt([1714000000000])).toBe('2024-04-24T23:06:40.000Z');
+    });
+
+    it('returns the minimum (freshest-of) when multiple quotes are supplied', () => {
+      const min = 1713000000000;
+      const mid = 1714000000000;
+      const max = 1715000000000;
+      expect(PortfolioService.computeValuedAt([max, min, mid])).toBe(
+        new Date(min).toISOString(),
+      );
+    });
+
+    it('coerces second-granularity timestamps to milliseconds defensively', () => {
+      // 1714000000 seconds → 1714000000000 ms → 2024-04-25T00:26:40.000Z
+      expect(PortfolioService.computeValuedAt([1714000000])).toBe('2024-04-24T23:06:40.000Z');
+    });
+
+    it('returns null when given an empty list (no holdings / no quotes)', () => {
+      expect(PortfolioService.computeValuedAt([])).toBeNull();
+    });
+
+    it('returns null when all entries are null/undefined', () => {
+      expect(PortfolioService.computeValuedAt([null, undefined])).toBeNull();
+    });
+  });
+
+  // ── valuedAt wire-shape integration ────────────────────────────────────
+  describe('PortfolioResponse.valuedAt wire shape', () => {
+    it('includes valuedAt: null on createPortfolio response (no quotes plumbed)', async () => {
+      const created = {
+        id: PORTFOLIO_ID,
+        name: 'Tech Growth',
+        description: 'Tech-heavy portfolio',
+        userId: USER_ID,
+        totalValue: '0',
+        createdAt: NOW,
+        updatedAt: NOW,
+      };
+      mockDb._insertChain.returning.mockResolvedValueOnce([created]);
+
+      const result = await service.createPortfolio(USER_ID, {
+        name: 'Tech Growth',
+        description: 'Tech-heavy portfolio',
+      });
+
+      expect(result.valuedAt).toBeNull();
+      expect(Object.prototype.hasOwnProperty.call(result, 'valuedAt')).toBe(true);
+    });
+
+    it('includes valuedAt: null on getPortfolio response when no quotes are plumbed', async () => {
+      mockDb.enqueueSelect([
+        {
+          id: PORTFOLIO_ID,
+          name: 'Tech Growth',
+          description: null,
+          userId: USER_ID,
+          totalValue: '0',
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+      ]);
+      mockDb.enqueueSelect([]);
+
+      const result = await service.getPortfolio(USER_ID, PORTFOLIO_ID);
+
+      expect(result.valuedAt).toBeNull();
+    });
+  });
+
+  describe('getPortfolioAnalytics — concentration warnings', () => {
     it('detects concentration warnings', async () => {
       // getPortfolio: portfolio lookup
       mockDb.enqueueSelect([
