@@ -19,6 +19,8 @@ import { marketApi, type QuoteData } from '../api/market';
 import { newsApi, type NewsSummary, type NewsItemResponse } from '../api/news';
 import { researchApi, type CompanyProfile, type FinancialMetrics } from '../api/research';
 import StockAnalysisSection from '../components/StockAnalysisSection';
+import { FreshnessBadge } from '../components/freshness/FreshnessBadge';
+import { normalizeQuoteTimestampMs } from '../lib/freshness/quote-timestamp';
 
 interface HistoryBar {
   t: number;
@@ -264,6 +266,10 @@ export default function StockDetailPage() {
               <span className="text-3xl font-bold text-[var(--text-primary)] font-data tabular-nums">
                 ${quote.close.toFixed(2)}
               </span>
+              <FreshnessBadge
+                surface="quote"
+                sourceTimestampMs={normalizeQuoteTimestampMs(quote.timestamp)}
+              />
               {change !== null && (
                 <span
                   className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-sm font-medium ${
