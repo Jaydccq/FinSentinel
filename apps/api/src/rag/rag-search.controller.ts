@@ -6,9 +6,11 @@ import {
   Logger,
   Optional,
   Post,
+  UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RagRetrievalService, type RagSearchResult } from './rag-retrieval.service';
+import { LocalhostOnlyGuard } from './guards/localhost-only.guard';
 
 /**
  * Minimal HTTP endpoint for driving RagRetrievalService from the
@@ -50,7 +52,11 @@ export interface RagSearchApiResponse {
   results: RagSearchResult[];
 }
 
+// Localhost-only guard is applied IN ADDITION to the
+// `RAG_EVAL_ENDPOINT_ENABLED` env flag below. See triage PRD
+// docs/exec-plans/2026-04-24-codebase-optimization-triage-prd.md §5 Q1.
 @Controller('rag')
+@UseGuards(LocalhostOnlyGuard)
 export class RagSearchController {
   private readonly logger = new Logger(RagSearchController.name);
   private readonly enabled: boolean;
