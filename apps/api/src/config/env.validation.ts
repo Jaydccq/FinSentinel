@@ -71,6 +71,22 @@ const baseEnvSchema = z.object({
   AI_MODEL: optionalEnvString,
   AI_EMBEDDING_MODEL: optionalEnvString,
 
+  // ── Embedding client reliability ─────────────────────────────────
+  // Per-request abort timeout for `/v1/embeddings` calls.
+  EMBEDDING_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  // Total attempts (including the first) for retryable upstream failures
+  // (HTTP 429 / 502 / 503 / 504). Other 4xx errors are never retried.
+  EMBEDDING_MAX_RETRIES: z.coerce.number().int().positive().default(3),
+  // Maximum in-flight embedding requests per client instance. Hand-rolled
+  // FIFO semaphore caps fan-out from the RAG pipeline.
+  EMBEDDING_CONCURRENCY: z.coerce.number().int().positive().default(8),
+  // Optional expected vector dimension. When set, the client throws
+  // `InvalidEmbeddingDimensionError` on mismatch instead of returning a
+  // partial vector that pgvector would later reject. Unset by default
+  // because the dimension varies by provider/model
+  // (text-embedding-3-small=1536, llama-nemotron-embed-1b-v2=2048).
+  EMBEDDING_DIMENSION: z.coerce.number().int().positive().optional(),
+
   // ── Market Data ──────────────────────────────────────────────────
   POLYGON_API_KEY: z.string().min(1),
 

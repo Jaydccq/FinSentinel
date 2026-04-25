@@ -63,6 +63,19 @@ export const aiConfig = registerAs('ai', () => {
     embeddingModel:
       process.env['AI_EMBEDDING_MODEL'] || readDefaultEmbeddingModel(embeddingProvider),
 
+    /**
+     * Embedding client reliability tuning. Validated by
+     * `apps/api/src/config/env.validation.ts` — Zod coerces strings to
+     * numbers and applies the defaults documented there. We read raw
+     * `process.env` here for parity with the rest of this config module.
+     */
+    embeddingTimeoutMs: Number(process.env['EMBEDDING_TIMEOUT_MS']) || 30_000,
+    embeddingMaxRetries: Number(process.env['EMBEDDING_MAX_RETRIES']) || 3,
+    embeddingConcurrency: Number(process.env['EMBEDDING_CONCURRENCY']) || 8,
+    embeddingDimension: process.env['EMBEDDING_DIMENSION']
+      ? Number(process.env['EMBEDDING_DIMENSION'])
+      : undefined,
+
     // Backwards-compatible names for existing tests and call sites.
     openrouterApiKey: openrouterApiKey || '',
     openrouterBaseUrl: openrouterBaseUrl || DEFAULT_OPENROUTER_BASE_URL,
