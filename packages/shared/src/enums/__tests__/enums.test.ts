@@ -36,10 +36,11 @@ describe('DocumentType', () => {
 });
 
 describe('DocumentStatus', () => {
-  it('has exactly 4 values', () => {
-    expect(Object.values(DocumentStatus)).toHaveLength(4);
+  it('has exactly 5 values', () => {
+    expect(Object.values(DocumentStatus)).toHaveLength(5);
   });
   it('contains all statuses', () => {
+    expect(DocumentStatus.PENDING_UPLOAD).toBe('PENDING_UPLOAD');
     expect(DocumentStatus.PENDING).toBe('PENDING');
     expect(DocumentStatus.PROCESSING).toBe('PROCESSING');
     expect(DocumentStatus.COMPLETED).toBe('COMPLETED');
