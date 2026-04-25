@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { z } from 'zod';
+import { z } from '@finsentinel/shared';
 import { typedFetch, ResponseValidationError } from '../typed-client';
 
 vi.mock('../../lib/auth/local-login', () => ({

@@ -1,4 +1,9 @@
-import type { ZodTypeAny, z } from 'zod';
+// IMPORTANT: type-import zod through `@finsentinel/shared`. The web app
+// does not declare zod as a direct dependency, so node module resolution
+// can find a different zod copy in a parent node_modules — that creates
+// two distinct ZodType brands and breaks composition with shared schemas.
+// See `packages/shared/src/index.ts` for the matching value-side fix.
+import type { z, ZodTypeAny } from '@finsentinel/shared';
 import { apiFetch, ApiError } from './client';
 
 /**

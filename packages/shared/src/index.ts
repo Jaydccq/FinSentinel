@@ -13,6 +13,7 @@ export { Decimal, decimalStringRegex, type DecimalValue } from './money';
  * inner schema's internal slot mismatches the wrapper's instance.
  */
 export { z } from 'zod';
+export type { ZodType, ZodTypeAny } from 'zod';
 // NOTE: './utils' is intentionally NOT re-exported from the package root.
 // `utils/hash.ts` uses `node:crypto`, which breaks Next.js client-side
 // webpack bundling when the barrel pulls it in via consumer imports from
