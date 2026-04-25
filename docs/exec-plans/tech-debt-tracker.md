@@ -191,6 +191,25 @@ embed-1b-v2` going forward. V16 rewritten to declare
     `trading.ts`, plus the holdings/analytics/insights tail of
     `portfolio.ts`. SWR rollout and trading-status UI remain blocked on
     UX/state-model input.
+- **Status update (2026-04-25):** SWR phase 1 landed for portfolio +
+  watchlist on `feat/2026-04-25-swr-rollout-phase1`:
+  - `swr@^2` added to `apps/web`; global `SWRConfig` (dedupe 2s, no
+    focus revalidation, two retries) wraps the app in
+    `apps/web/src/providers.tsx`.
+  - New hooks under `apps/web/src/hooks/api/`: `usePortfolios`,
+    `usePortfolio`, `useWatchlist` (with `save`/`updateItem`/`deleteItem`
+    wrappers that revalidate on success).
+  - `PortfolioPage` migrated from `useEffect + setState` to
+    `usePortfolios()`; `WatchlistItemEditor` migrated to `useWatchlist()`.
+  - Plan deviation: `usePortfolioPositions` was dropped — `portfolioApi`
+    has no `positions` method; holdings are nested in the portfolio
+    response. The watchlist page route does not exist, so the
+    `WatchlistItemEditor` component was the migrated surface.
+  - Remaining 14 pages still on raw `useEffect + setState`
+    (chat, analysis, news, market, reports, autonomy, dashboard,
+    documents, env-self-check, settings, stock, trading, crypto,
+    private-docs). Trading status UI remains blocked on UX state design
+    (see next plan).
 
 ### `apps/web` full lint is blocked by pre-existing violations
 

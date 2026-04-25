@@ -8,11 +8,11 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import {
   portfolioApi,
-  type PortfolioResponse,
   type PortfolioAnalytics,
   type PortfolioInsight,
 } from '../api/portfolio';
 import { marketApi } from '../api/market';
+import { usePortfolios } from '../hooks/api/use-portfolios';
 import { PortfolioListSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import TickerSearchInput from '../components/TickerSearchInput';
@@ -146,7 +146,10 @@ function InputField({
 }
 
 export default function PortfolioPage() {
-  const [portfolios, setPortfolios] = useState<PortfolioResponse[]>([]);
+  const { data: portfoliosData, isLoading, mutate } = usePortfolios();
+  const portfolios = portfoliosData ?? [];
+  const loading = isLoading;
+  const refresh = () => mutate();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [showCreatePortfolio, setShowCreatePortfolio] = useState(false);
   const [showAddHolding, setShowAddHolding] = useState<string | null>(null);
@@ -158,7 +161,6 @@ export default function PortfolioPage() {
     averageCost: '',
     sector: '',
   });
-  const [loading, setLoading] = useState(true);
   const [analytics, setAnalytics] = useState<Record<string, PortfolioAnalytics>>({});
   const [holdingQuotes, setHoldingQuotes] = useState<
     Record<string, Record<string, { close: number }>>
@@ -168,15 +170,6 @@ export default function PortfolioPage() {
   );
   const [insights, setInsights] = useState<Record<string, PortfolioInsight>>({});
   const [insightsLoading, setInsightsLoading] = useState<Record<string, boolean>>({});
-
-  const refresh = () =>
-    portfolioApi
-      .list()
-      .then(setPortfolios)
-      .finally(() => setLoading(false));
-  useEffect(() => {
-    refresh();
-  }, []);
 
   const createPortfolio = async () => {
     try {
