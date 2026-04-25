@@ -291,31 +291,37 @@ embed-1b-v2` going forward. V16 rewritten to declare
 
 - **Observed:** 2026-04-25 during the PL-7 source-timestamp audit (see plan
   background section).
-- **Citation gap:** `packages/shared/src/schemas/analysis.ts:83`
-  `citationSchema = { artifactId?, url?, title?, excerpt? }` has no
-  timestamp field. Adding `surface: 'citation'` to the badge requires:
-  1. Decide which timestamp matters — chunk capture time, source
-     document publish date, or RAG retrieval time. Source publish date
-     is the product-correct answer for a trust UI; chunk capture is
-     what the system can produce cheaply.
-  2. Wire the chosen field through `apps/api/src/rag/` retrieval path
-     and into the citation contract in `packages/shared`.
-  3. Then add `surface: 'citation'` consumption in the web app — config
-     keys are already present in `freshness-config.ts`.
-- **Holdings gap:** `packages/shared/src/schemas/portfolio.ts:25-45`
-  exposes `portfolioResponseSchema.createdAt` (creation time, not
-  as-of) and `holdingResponseSchema.currentPrice` (untimestamped).
-  Adding `surface: 'holdings'` to the badge requires either
-  `portfolioResponseSchema.snapshot.asOf` (one timestamp for the whole
-  table) or `holdingResponseSchema.priceAt` (per-row); pick one
-  product-side, then expose it from
-  `apps/api/src/portfolio/portfolio.service.ts`.
-- **Provider-side timestamp normalization:** `fmp.provider.ts:90`
-  passes upstream `quote.timestamp` through unchanged (FMP REST emits
-  seconds). Phase-1 web defensive coercion is at
-  `apps/web/src/lib/freshness/quote-timestamp.ts`. Long-term fix is to
-  multiply by 1000 in the FMP provider so all providers emit ms.
-- **Status:** Open. Closing this entry is a phase-2 prerequisite.
+- **Plan:** `docs/exec-plans/2026-04-25-pl7-phase2-backend.md` (drafted and
+  shipped 2026-04-25).
+- **Citation gap:** ~~`citationSchema` has no timestamp field~~ → CLOSED 2026-04-25
+  via commit `c265be6`. `citationSchema` now has optional
+  `publishedAt: z.string().datetime().optional()`. Citation builders propagate
+  the field end-to-end via `RoleExecutorService.parseStructured()` →
+  `flatMap` into team output; LLM-emitted `publishedAt` flows through
+  without per-team plumbing changes.
+- **Holdings gap:** ~~`portfolioResponseSchema` lacks a snapshot timestamp~~ →
+  PARTIALLY CLOSED 2026-04-25 via commit `132d944`. `portfolioResponseSchema`
+  now has nullable `valuedAt: z.string().datetime().nullable()`.
+  `PortfolioService.computeValuedAt(timestamps[])` helper landed with
+  defensive seconds→ms coerce, freshest-of min, null on empty.
+  **Remaining sub-gap:** the wire population currently sets `valuedAt: null`
+  with a `TODO(pl-7-phase2)` because `PortfolioService` does not depend on
+  `MarketDataService` today. Plumbing `quote.timestamp` from quote fetches
+  into the response builder is a separate change; until it lands, the
+  Holdings badge will degrade to Unknown for all responses.
+- **Provider-side timestamp normalization:** ~~`fmp.provider.ts:90` emits
+  seconds~~ → CLOSED 2026-04-25 via commit `b58838d`. FMP now multiplies
+  upstream timestamp by 1000 at the provider boundary; all providers emit
+  ms uniformly. The web defensive coerce in
+  `apps/web/src/lib/freshness/quote-timestamp.ts` stays for now (cheap
+  belt-and-braces) and can be removed in a later cleanup once we trust
+  the provider contract has held.
+- **Frontend wiring:** Citation badge can ship now. Holdings badge ships
+  whenever `valuedAt` is wired to real quote timestamps; until then the
+  badge will render Unknown — acceptable, but means phase-2 frontend
+  work for Holdings is gated on the quote-timestamp plumbing follow-up.
+- **Status:** Backend prerequisites mostly closed; Holdings wire-side
+  population is the remaining sub-gap.
 
 ## 2026-04-17 — carried over from v1.1 hardening
 
