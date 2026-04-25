@@ -85,6 +85,7 @@ export const citationSchema = z.object({
   url: z.string().url().optional(),
   title: z.string().optional(),
   excerpt: z.string().optional(),
+  publishedAt: z.string().datetime().optional(),
 });
 export type Citation = z.infer<typeof citationSchema>;
 

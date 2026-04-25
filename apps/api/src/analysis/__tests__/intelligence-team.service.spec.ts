@@ -174,6 +174,40 @@ describe('IntelligenceTeamService.execute', () => {
     ]);
   });
 
+  it('forwards publishedAt on news-sourced citations into the committed team output', async () => {
+    const newsCitation = {
+      url: 'https://example.com/article',
+      title: 'AAPL beats Q1 estimates',
+      excerpt: 'Apple posted strong revenue growth.',
+      publishedAt: '2026-04-20T12:34:56.000Z',
+    };
+    roleExec.run.mockImplementation(async ({ roleKey }: { roleKey: string }) => ({
+      roleKey,
+      structured: {
+        summary: 's',
+        thesis: 't',
+        risks: [],
+        openQuestions: [],
+        citations: roleKey === 'NEWS_ANALYST' ? [newsCitation] : [],
+        confidence: 0.8,
+      },
+      rawMarkdown: '# r',
+      durationMs: 50,
+      toolCallCount: 1,
+    }));
+
+    await svc.execute({ runId: 'r1', userId: 'u1' });
+
+    const commitArg = checkpoints.commitStage.mock.calls[0]?.[0];
+    const citations = commitArg?.structuredOutput?.citations as Array<{
+      publishedAt?: string;
+      url?: string;
+    }>;
+    const forwarded = citations.find((c) => c.url === newsCitation.url);
+    expect(forwarded).toBeDefined();
+    expect(forwarded?.publishedAt).toBe('2026-04-20T12:34:56.000Z');
+  });
+
   it('renders the strategy archive markdown section after the analyst reports', async () => {
     await svc.execute({ runId: 'r1', userId: 'u1' });
     const commitArg = checkpoints.commitStage.mock.calls[0]?.[0];
