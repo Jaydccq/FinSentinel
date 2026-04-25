@@ -141,3 +141,15 @@ This PRD ships the three P0 items that are surgical, low-risk, and don't depend 
 - Blocked: 3 axes (3 M4, 6, 9) blocked on data/soak; 2 axes (10b/c, 14) blocked on design/product input.
 
 The codebase moved from "14 reviewer-flagged axes with mostly PRDs" to "11 axes engineering-shipped, 1 axis branch-pending review, 5 axis-pieces blocked on data/design/product/soak — each with named recoverable blockers."
+
+### Item 5 — review cycle 2 (2026-04-25, branch only)
+
+External human review of `feat/2026-04-25-live-trading-guards` (commit `7aaf561`) found three issues that the initial self-review missed. All three landed as `8bf58ce` on the same branch:
+
+- **[P1] Failed broker orders permanently consumed daily cap.** `preflight()` reserved the proposed notional via Redis INCRBY but the LIVE loop in `UnifiedTradingService` never called `rollbackDailyReservation()` for failed/partially-filled outcomes. Fix: after the LIVE broker loop, compute realized cents (filledQty × avgPrice for fills, fall back to op.amount for notional-mode, fall back to enriched qty × indicativePrice last; 0 for failures) and roll back `proposed - realized`. Rollback failures log WARN and over-count temporarily until UTC rollover.
+- **[P1] qty-only orders bricked by guards.** `TradingGuardsService.preflight` needs `indicativePrice` to compute notional from qty; `UnifiedTradingService` was passing raw `commitData.operations`. With per-order cap > 0 (default $10k): every qty order returned "Cannot determine notional". With per-order cap = 0 (disabled): qty orders bypassed the daily cap entirely. Fix: new `enrichOperationsForPreflight()` helper fetches the close price from `MarketDataService.getQuote` and stamps it as `indicativePrice` BEFORE preflight. Quote-fetch failures leave the op unpriceable (fail-closed).
+- **[P2] Paper executions consumed live daily cap.** `seedDailyCounterFromLedger` summed every `EXECUTED` row without filtering broker/trading-mode. Fix: add `ne(orderLedger.broker, 'paper')` to the seed WHERE.
+
+Tests: 6 new UnifiedTradingService-level integration cases wire the REAL `TradingGuardsService` against mock Redis/DB and exercise `execute()` end-to-end through the qty-enrichment + preflight + broker-call + rollback path. Trading suite 244/244 green at land time.
+
+**Branch still NOT merged to main.** Awaiting human signoff. The `8bf58ce` commit closes the three review findings; whether more findings remain is a question for the reviewer.
