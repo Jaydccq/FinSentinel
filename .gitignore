@@ -129,6 +129,9 @@ docs/exec-plans/*
 !docs/exec-plans/2026-04-24-f4-document-outbox.md
 !docs/exec-plans/2026-04-24-f10-release-signing.md
 !docs/exec-plans/2026-04-24-codebase-optimization-triage-prd.md
+!docs/exec-plans/2026-04-24-decimal-money-migration.md
+!docs/exec-plans/2026-04-24-cookie-auth-deep-hardening.md
+!docs/exec-plans/2026-04-24-trading-order-ledger-state-machine.md
 !docs/technical-guides/
 !docs/technical-guides/autonomous-investment-platform-interview-guide.md
 !docs/technical-guides/autonomous-investment-platform-interview-guide-print.css
