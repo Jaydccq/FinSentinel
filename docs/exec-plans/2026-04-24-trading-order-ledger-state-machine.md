@@ -168,6 +168,46 @@ What this milestone does NOT do (per scope):
 
 ### Deferred (M2 / M3 / M4)
 
-- **M2** (next, in flight on `feat/2026-04-25-trading-state-machine-and-auth-refresh`): full state machine. Atomic Redis Lua transition COMMITTED → EXECUTING (no more GETDEL); ledger rows written in EXECUTING state, transitioned to EXECUTED / PARTIALLY_FAILED / FAILED based on broker outcome; ledger-first idempotency lookup. **Behind feature flag `TRADING_STATE_MACHINE_ENABLED`, default OFF** — flipping the system of record is a semantic change that needs human signoff before flag-on rollout.
-- **M3** (queued, depends on M2): cron-driven reconciler scanning `WHERE status='EXECUTING' AND updated_at < now() - 60s`, querying broker for status, transitioning row.
+- **M2** (DONE on `feat/2026-04-25-trading-state-machine-and-auth-refresh`, see entry below).
+- **M3** (queued, depends on M2): cron-driven reconciler scanning `WHERE status='EXECUTING' AND updated_at < now() - 60s`, querying broker for status, transitioning row. M2's durable-first ordering (see fix `4fccae4`) makes the reconciler's job tractable — stuck rows are guaranteed to exist when needed.
 - **M4** (queued): remove legacy `wallet.commitHistory` dual-write once M2 + M3 have soaked.
+
+### 2026-04-25 — M2 state machine flip (DONE on branch, NOT merged to main)
+
+Branch: `feat/2026-04-25-trading-state-machine-and-auth-refresh`. Commits:
+- `f2e1cbb` — `feat(trading): state machine flip behind TRADING_STATE_MACHINE_ENABLED (item 3 M2)` — initial implementation.
+- `4fccae4` — `fix(trading): durable-first state machine — INSERT EXECUTING before DEL pending` — fixed an atomicity hole that contradicted the "ledger as system of record" claim (see "Known gaps" below).
+
+**Feature flag:** `TRADING_STATE_MACHINE_ENABLED`, default `false`. Validated in `env.validation.ts` (commit `e254a1e`).
+
+Shipped:
+- `OrderLedgerService` gained three M2 methods:
+  - `recordExecuting(input)` — inserts one EXECUTING row per operation, returns row ids in operation order so the caller can pair broker outcomes back to rows.
+  - `transitionFromExecuting(rowIds, outcomes)` — strict-length-invariant per-row UPDATE to EXECUTED or FAILED with `broker_response` / `error_reason`.
+  - `transitionAll(rowIds, status, errorReason)` — bulk-set for pre-broker cancel/fail paths.
+- `unified-trading.service.execute()` reads `tradingFlags()` once at the top, then branches at four points: ledger-first idempotency by `(user, idempotency_key)`; legacy hash-idempotency via `wallet.commitHistory` SKIP when flag-on; EXECUTING insert BEFORE broker invocation (durable-first ordering — see below); wallet persistence omits `commitHistory` from the `.set()` when flag-on; post-broker calls `transitionFromExecuting` instead of the M1 dual-write `recordExecutionResults`.
+
+**Durable-first ordering (commit `4fccae4`):**
+- Read pending with `GET` (not `GETDEL`) on flag-on.
+- INSERT EXECUTING rows.
+- DEL pending only AFTER the INSERT succeeds.
+- Pre-INSERT, look up by `(user, commit_hash)` — if any EXECUTING/EXECUTED/PARTIALLY_FAILED/FAILED rows exist, surface 409 with the existing row status. This catches the "crash after INSERT, before DEL" retry path.
+
+Crash recovery surface:
+- Crash GET→INSERT: pending intact, no rows → next attempt finds nothing for the hash and proceeds normally.
+- Crash INSERT→DEL: pending + EXECUTING rows both present → next attempt 409s, refusing to re-run brokers; operator / M3 reconciler resolves.
+- Crash DEL→transition: pending gone, EXECUTING rows present → M3 reconciler picks them up by stale `updated_at` and queries the broker for ground truth.
+
+Tests: 195 unified-trading cases green (was 186; +9 new in commit `4fccae4`):
+- flag-on uses `GET` (NOT `GETDEL`)
+- ordering invariant via call-order tracker: `recordExecuting` → `del-pending` → `transitionFromExecuting`
+- 409 on prior EXECUTING row for same `(user, commit_hash)`
+- per-`(user, hash)` check ignores rows from OTHER users with the same hash
+- (existing terminal-status idempotency rejection retained)
+
+14 order-ledger cases (was 9; +5 covering recordExecuting / transitionFromExecuting / transitionAll incl. length-mismatch invariant). 7 trading-flow integration cases unchanged (flag-off baseline).
+
+**Known gaps / NOT shipped (M3 + M4):**
+- M3 reconciler not yet built. Stuck EXECUTING rows would persist indefinitely until M3 lands. Acceptable while flag is off.
+- Hydration of cached `ExecuteResult` from ledger rows on Redis cache-miss: still 400s on retry, mirroring the legacy `commitHistory`-hash-check 400. M3 territory.
+- Reading paths (history endpoints, audit trails) still consult `wallet.commitHistory`. M4 swaps them.

@@ -12,12 +12,14 @@ import type {
   V2StagedResponse,
 } from '@finsentinel/shared';
 import { stableStringify } from '@finsentinel/shared/utils';
+import { ConfigService } from '@nestjs/config';
 import { BrokerRegistry } from './broker-registry.service';
 import { PaperBroker } from './brokers/paper.broker';
 import type { MarketDataService } from '../market/market-data.service';
 import type { ExecuteResult } from './interfaces/execute-result';
-import type { PositionMap } from './engines/paper-trading.engine';
+import type { PositionMap, PositionMapString } from './engines/paper-trading.engine';
 import { OrderLedgerService } from './order-ledger/order-ledger.service';
+import type { TradingRuntimeConfig } from '../config/trading.config';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -142,7 +144,23 @@ export class UnifiedTradingService {
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     @Inject('MarketDataService') private readonly marketDataService: MarketDataService,
     private readonly orderLedger: OrderLedgerService,
+    private readonly config: ConfigService,
   ) {}
+
+  /**
+   * Read the trading runtime config. The two M3-era flags
+   * (`decimalExecuteEnabled`, `stateMachineEnabled`) default to false so
+   * existing deployments behave byte-identically until explicitly opted in.
+   * Returns null-safe defaults if the config provider isn't bound (test
+   * harnesses that omit ConfigService).
+   */
+  private tradingFlags(): { decimalExecuteEnabled: boolean; stateMachineEnabled: boolean } {
+    const cfg = this.config?.get<TradingRuntimeConfig>('trading');
+    return {
+      decimalExecuteEnabled: cfg?.decimalExecuteEnabled ?? false,
+      stateMachineEnabled: cfg?.stateMachineEnabled ?? false,
+    };
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Phase 1: Stage
@@ -330,6 +348,7 @@ export class UnifiedTradingService {
     const execCacheKey = idempotencyKey
       ? IDEM_EXEC_KEY_PREFIX + userId + ':' + idempotencyKey
       : null;
+    const flags = this.tradingFlags();
 
     // 0. Cache hit: prior successful execute returns the same ExecuteResult.
     if (execCacheKey) {
@@ -340,10 +359,40 @@ export class UnifiedTradingService {
       }
     }
 
-    // 1. Atomic get-and-delete pending commit (Redis 6.2+ GETDEL)
-    const raw = await (
-      this.redis as Redis & { getdel(key: string): Promise<string | null> }
-    ).getdel(pendingKey);
+    // 0b. Ledger-first idempotency check (M2 only). If we have terminal-state
+    // ledger rows for this (user, idempotencyKey), the execute already
+    // happened — surface 400 like the legacy commitHistory path does.
+    // Hydrating the full ExecuteResult from rows is M3 territory; for now we
+    // mirror the legacy "already executed" 400 to keep the contract identical.
+    if (flags.stateMachineEnabled && idempotencyKey) {
+      const prior = await this.orderLedger.findByIdempotency(userId, idempotencyKey);
+      const terminal = prior.filter((r) =>
+        r.status === 'EXECUTED' || r.status === 'FAILED' || r.status === 'PARTIALLY_FAILED',
+      );
+      if (terminal.length > 0) {
+        throw new BadRequestException(
+          `Idempotency key already used (ledger contains ${terminal.length} terminal row(s))`,
+        );
+      }
+    }
+
+    // 1. Read pending commit.
+    // - Legacy path: GETDEL is the atomic single-Redis-op consume.
+    // - M2 path (state machine): GET only — pending stays in Redis as the
+    //   safety net until the durable ledger row exists. We DEL after the
+    //   EXECUTING insert succeeds, so a crash between the GET and the
+    //   INSERT leaves both untouched and the next attempt is safe; a crash
+    //   between the INSERT and the DEL leaves rows AND pending, and the
+    //   per-(user, commit_hash) duplicate-detection step below surfaces a
+    //   409 instead of letting the broker run twice.
+    let raw: string | null;
+    if (flags.stateMachineEnabled) {
+      raw = await this.redis.get(pendingKey);
+    } else {
+      raw = await (
+        this.redis as Redis & { getdel(key: string): Promise<string | null> }
+      ).getdel(pendingKey);
+    }
 
     if (!raw) {
       throw new BadRequestException('No pending commit found. Stage and commit operations first.');
@@ -354,12 +403,64 @@ export class UnifiedTradingService {
     // 2. Get or create wallet
     const wallet = await this.getOrCreateWallet(userId);
 
-    // 3. Idempotency: check if this hash was already executed
-    const existingHashes = (wallet.commitHistory as CommitData[]).map((c) => c.hash);
-    if (existingHashes.includes(commitData.hash)) {
-      throw new BadRequestException(
-        `Commit ${commitData.hash.substring(0, 8)}... already executed (idempotency check)`,
+    // 3. Idempotency: check if this hash was already executed.
+    // Legacy path: wallet.commitHistory.
+    // M2 path: ledger lookup by commit_hash. If any EXECUTING/EXECUTED/
+    // PARTIALLY_FAILED/FAILED rows exist for this (user, commit_hash),
+    // we are in the durable-record-survived-crash window — surface 409
+    // and let the operator/reconciler decide. Re-running brokers when
+    // EXECUTING rows already exist would double-spend.
+    if (flags.stateMachineEnabled) {
+      const priorByHash = await this.orderLedger.findByCommitHash(commitData.hash);
+      const inflight = priorByHash.filter(
+        (r) =>
+          r.userId === userId &&
+          (r.status === 'EXECUTING' ||
+            r.status === 'EXECUTED' ||
+            r.status === 'PARTIALLY_FAILED' ||
+            r.status === 'FAILED'),
       );
+      if (inflight.length > 0) {
+        throw new BadRequestException(
+          `Commit ${commitData.hash.substring(0, 8)}... already has ${inflight.length} ledger row(s) (status=${inflight[0]!.status}); refusing to re-execute`,
+        );
+      }
+    } else {
+      const existingHashes = (wallet.commitHistory as CommitData[]).map((c) => c.hash);
+      if (existingHashes.includes(commitData.hash)) {
+        throw new BadRequestException(
+          `Commit ${commitData.hash.substring(0, 8)}... already executed (idempotency check)`,
+        );
+      }
+    }
+
+    // 3b. M2 only — durable-first state machine transition.
+    // Order:
+    //   (a) INSERT EXECUTING rows (durable record exists)
+    //   (b) DEL pending (now safe — rows are the system of record)
+    //   (c) broker calls
+    //   (d) transitionFromExecuting → EXECUTED/FAILED
+    // Crash between (a) and (b): pending + EXECUTING rows present; retry
+    //   is caught by the per-(user, commit_hash) check above and 409s.
+    // Crash between (b) and (d): pending gone, EXECUTING rows present;
+    //   the M3 reconciler picks them up by stale updated_at and queries
+    //   the broker for ground truth.
+    let executingRowIds: string[] = [];
+    if (flags.stateMachineEnabled) {
+      executingRowIds = await this.orderLedger.recordExecuting({
+        userId,
+        commitHash: commitData.hash,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+        broker: (wallet.tradingMode as TradingMode) === TradingMode.PAPER ? 'paper' : 'live',
+        operations: commitData.operations as {
+          symbol: unknown;
+          action: unknown;
+          qty?: unknown;
+          amount?: unknown;
+        }[],
+      });
+      // Durable record now exists. Safe to clear pending.
+      await this.redis.del(pendingKey);
     }
 
     // 4. Execute operations
@@ -378,16 +479,32 @@ export class UnifiedTradingService {
 
       const engine = broker.engine();
 
-      // Sync wallet state to engine
-      engine.setCash(Number(wallet.cashBalance));
-      engine.setPositions(
-        (wallet.positions as PositionMap[]).map((p) => ({
-          ticker: p.ticker,
-          shares: p.shares,
-          avgCost: p.avgCost,
-          currentPrice: p.currentPrice,
-        })),
-      );
+      // Sync wallet state to engine. When the decimal-execute flag is on,
+      // load via string-based methods so prior wallet writes preserved at
+      // .toFixed(8) round-trip without going through `Number(...)`.
+      if (this.tradingFlags().decimalExecuteEnabled) {
+        engine.setCashFromString(String(wallet.cashBalance));
+        const positionsAsStrings = (wallet.positions as unknown[]).map((p) => {
+          const pos = p as PositionMap | PositionMapString;
+          return {
+            ticker: pos.ticker,
+            shares: String(pos.shares),
+            avgCost: String(pos.avgCost),
+            currentPrice: String(pos.currentPrice),
+          };
+        });
+        engine.setPositionsFromStrings(positionsAsStrings);
+      } else {
+        engine.setCash(Number(wallet.cashBalance));
+        engine.setPositions(
+          (wallet.positions as PositionMap[]).map((p) => ({
+            ticker: p.ticker,
+            shares: p.shares,
+            avgCost: p.avgCost,
+            currentPrice: p.currentPrice,
+          })),
+        );
+      }
 
       // Execute each operation
       for (const op of commitData.operations) {
@@ -430,9 +547,17 @@ export class UnifiedTradingService {
         }
       }
 
-      // Sync engine state back to wallet
-      wallet.cashBalance = String(engine.getCash());
-      wallet.positions = engine.getPositionMaps() as unknown[];
+      // Sync engine state back to wallet.
+      // When TRADING_DECIMAL_EXECUTE_ENABLED=true (item 4 M3), use the
+      // string-based boundary so wallet persistence keeps Decimal precision.
+      // Default behavior — number round-trip — is identical to today.
+      if (this.tradingFlags().decimalExecuteEnabled) {
+        wallet.cashBalance = engine.getCashAsString();
+        wallet.positions = engine.getPositionMapsAsStrings() as unknown[];
+      } else {
+        wallet.cashBalance = String(engine.getCash());
+        wallet.positions = engine.getPositionMaps() as unknown[];
+      }
     } else {
       // LIVE mode: resolve broker per-contract via BrokerRegistry
       for (const op of commitData.operations) {
@@ -478,48 +603,75 @@ export class UnifiedTradingService {
       }
     }
 
-    // 5. Add commit to wallet.commitHistory (capped at MAX_COMMIT_HISTORY)
-    const history = [...(wallet.commitHistory as CommitData[])];
-    history.push({
-      ...commitData,
-    });
-    // Cap at MAX_COMMIT_HISTORY — remove oldest entries
-    while (history.length > MAX_COMMIT_HISTORY) {
-      history.shift();
+    // 5. Persist wallet (cash + positions always — read paths still need
+    // them). When state-machine flag is OFF, also append commitHistory
+    // (legacy system of record). When ON, ledger rows are the system of
+    // record and commitHistory is left untouched.
+    const now = new Date();
+    if (flags.stateMachineEnabled) {
+      await this.db
+        .update(tradeWallets)
+        .set({
+          cashBalance: wallet.cashBalance,
+          positions: wallet.positions,
+          updatedAt: now,
+        })
+        .where(eq(tradeWallets.id, wallet.id));
+    } else {
+      const history = [...(wallet.commitHistory as CommitData[])];
+      history.push({ ...commitData });
+      while (history.length > MAX_COMMIT_HISTORY) {
+        history.shift();
+      }
+      await this.db
+        .update(tradeWallets)
+        .set({
+          cashBalance: wallet.cashBalance,
+          positions: wallet.positions,
+          commitHistory: history,
+          updatedAt: now,
+        })
+        .where(eq(tradeWallets.id, wallet.id));
     }
 
-    // 6. Persist wallet to DB
-    const now = new Date();
-    await this.db
-      .update(tradeWallets)
-      .set({
-        cashBalance: wallet.cashBalance,
-        positions: wallet.positions,
-        commitHistory: history,
-        updatedAt: now,
-      })
-      .where(eq(tradeWallets.id, wallet.id));
-
-    // 6b. order_ledger dual-write (M1 of trading-order-ledger PRD).
-    // Additive only: failure here MUST NOT abort the trading flow —
-    // the wallet path remains the system of record during the M1
-    // window. M2 will flip the source of truth to order_ledger and
-    // introduce the EXECUTING/PARTIALLY_FAILED state machine.
-    try {
-      await this.orderLedger.recordExecutionResults({
-        userId,
-        commitHash: commitData.hash,
-        ...(idempotencyKey ? { idempotencyKey } : {}),
-        broker: mode === TradingMode.PAPER ? 'paper' : 'live',
-        operations: operationResults as unknown as Parameters<
-          typeof this.orderLedger.recordExecutionResults
-        >[0]['operations'],
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.warn(
-        `order_ledger dual-write failed user=${userId} commit=${commitData.hash.substring(0, 8)}... err=${msg} (trading flow continues; wallet remains source of truth)`,
-      );
+    // 6. Ledger update.
+    // - Flag OFF (M1 dual-write): insert terminal-status rows now that the
+    //   wallet write committed. Failures are non-fatal.
+    // - Flag ON (M2 state machine): rows already inserted as EXECUTING up
+    //   front; transition them to EXECUTED/FAILED in matching order.
+    if (flags.stateMachineEnabled) {
+      try {
+        await this.orderLedger.transitionFromExecuting(
+          executingRowIds,
+          operationResults as unknown as Parameters<
+            typeof this.orderLedger.transitionFromExecuting
+          >[1],
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        // M2 invariant violation — surface loudly. Reconciler (M3) will
+        // pick the EXECUTING rows up by their stale updated_at.
+        this.logger.error(
+          `order_ledger M2 transition failed user=${userId} commit=${commitData.hash.substring(0, 8)}... err=${msg}; rows remain EXECUTING for reconciler`,
+        );
+      }
+    } else {
+      try {
+        await this.orderLedger.recordExecutionResults({
+          userId,
+          commitHash: commitData.hash,
+          ...(idempotencyKey ? { idempotencyKey } : {}),
+          broker: mode === TradingMode.PAPER ? 'paper' : 'live',
+          operations: operationResults as unknown as Parameters<
+            typeof this.orderLedger.recordExecutionResults
+          >[0]['operations'],
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `order_ledger dual-write failed user=${userId} commit=${commitData.hash.substring(0, 8)}... err=${msg} (trading flow continues; wallet remains source of truth)`,
+        );
+      }
     }
 
     // 7. Build report

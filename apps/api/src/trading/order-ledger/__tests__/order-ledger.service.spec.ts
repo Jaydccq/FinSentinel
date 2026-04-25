@@ -13,11 +13,17 @@ function createMockDb() {
     where: vi.fn().mockReturnThis(),
     orderBy: vi.fn().mockResolvedValue([]),
   };
+  const updateChain = {
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue(undefined),
+  };
   return {
     insert: vi.fn().mockReturnValue(insertChain),
     select: vi.fn().mockReturnValue(selectChain),
+    update: vi.fn().mockReturnValue(updateChain),
     _insertChain: insertChain,
     _selectChain: selectChain,
+    _updateChain: updateChain,
   };
 }
 
@@ -176,6 +182,83 @@ describe('OrderLedgerService', () => {
       mockDb._selectChain.orderBy.mockResolvedValue([{ id: 'row-2' }]);
       const out = await service.findByCommitHash('h'.repeat(64));
       expect(out).toEqual([{ id: 'row-2' }]);
+    });
+  });
+
+  // ── M2 state machine transitions ────────────────────────────────────────
+  describe('recordExecuting / transitionFromExecuting / transitionAll (M2)', () => {
+    it('recordExecuting inserts EXECUTING rows and returns ids in input order', async () => {
+      const ids = await service.recordExecuting({
+        userId: TEST_USER,
+        commitHash: 'a'.repeat(64),
+        idempotencyKey: 'idem-sm',
+        broker: 'paper',
+        operations: [
+          { symbol: 'AAPL', action: 'buy', qty: '10' },
+          { symbol: 'TSLA', action: 'sell', qty: '5' },
+        ],
+      });
+      expect(ids).toHaveLength(2);
+      const rows = mockDb._insertChain.values.mock.calls[0]![0] as Array<Record<string, unknown>>;
+      expect(rows[0]).toMatchObject({ status: 'EXECUTING', symbol: 'AAPL', side: 'buy' });
+      expect(rows[1]).toMatchObject({ status: 'EXECUTING', symbol: 'TSLA', side: 'sell' });
+      expect(rows[0]!.brokerResponse).toBeNull();
+      expect(rows[0]!.errorReason).toBeNull();
+      expect(ids[0]).toBe(rows[0]!.id);
+      expect(ids[1]).toBe(rows[1]!.id);
+    });
+
+    it('recordExecuting is a no-op for empty operations (does not call insert)', async () => {
+      const ids = await service.recordExecuting({
+        userId: TEST_USER,
+        commitHash: 'b'.repeat(64),
+        broker: 'paper',
+        operations: [],
+      });
+      expect(ids).toEqual([]);
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it('transitionFromExecuting updates each row to EXECUTED or FAILED matching outcomes order', async () => {
+      await service.transitionFromExecuting(
+        ['row-A', 'row-B'],
+        [
+          { symbol: 'AAPL', action: 'buy', success: true, filledQty: '10', avgPrice: '150' },
+          { symbol: 'TSLA', action: 'sell', success: false, errorMessage: 'broker rejected' },
+        ],
+      );
+      // Two updates, same order
+      expect(mockDb.update).toHaveBeenCalledTimes(2);
+      const setCall0 = mockDb._updateChain.set.mock.calls[0]![0] as Record<string, unknown>;
+      const setCall1 = mockDb._updateChain.set.mock.calls[1]![0] as Record<string, unknown>;
+      expect(setCall0).toMatchObject({ status: 'EXECUTED' });
+      expect(setCall0.errorReason).toBeNull();
+      expect(setCall1).toMatchObject({ status: 'FAILED', errorReason: 'broker rejected' });
+      expect(setCall1.brokerResponse).toBeNull();
+    });
+
+    it('transitionFromExecuting throws on length mismatch', async () => {
+      await expect(
+        service.transitionFromExecuting(['row-1'], [
+          { symbol: 'A', action: 'buy', success: true },
+          { symbol: 'B', action: 'buy', success: true },
+        ]),
+      ).rejects.toThrow(/length=1.*length=2/);
+    });
+
+    it('transitionAll bulk-sets status + errorReason for a list of rows', async () => {
+      await service.transitionAll(['r1', 'r2'], 'CANCELLED', 'pre-broker validation failed');
+      expect(mockDb.update).toHaveBeenCalledTimes(1);
+      const setCall = mockDb._updateChain.set.mock.calls[0]![0] as Record<string, unknown>;
+      expect(setCall).toMatchObject({
+        status: 'CANCELLED',
+        errorReason: 'pre-broker validation failed',
+      });
+    });
+
+    it('transitionAll is a no-op for empty rowIds', async () => {
+      await service.transitionAll([], 'FAILED', 'never reached');
+      expect(mockDb.update).not.toHaveBeenCalled();
     });
   });
 });

@@ -149,5 +149,22 @@ Tests: 180/180 trading suite green (was 178; +2 new). New cases: 1000-iteration 
 
 ### Deferred (M3 + M4)
 
-- **M3** (next, in flight on `feat/2026-04-25-trading-state-machine-and-auth-refresh`): port `unified-trading.service.execute()` arithmetic to Decimal; widen wallet persistence to `.toFixed(8)`; integration tests. Lands jointly with item 3 M2 because both touch the same execute() path.
+- **M3** (DONE on `feat/2026-04-25-trading-state-machine-and-auth-refresh`, see entry below).
 - **M4** (queued): broker adapter normalization (Alpaca / OKX / CCXT) + frontend form schema migration. Independent — can ship after M3.
+
+### 2026-04-25 — M3 decimal-precision wallet sync (DONE on branch, NOT merged to main)
+
+Branch: `feat/2026-04-25-trading-state-machine-and-auth-refresh`. Commit: `55ed19d` (`feat(trading): decimal-precision wallet sync behind TRADING_DECIMAL_EXECUTE_ENABLED`).
+
+**Feature flag:** `TRADING_DECIMAL_EXECUTE_ENABLED`, default `false`. Validated in `apps/api/src/config/env.validation.ts` via `envBoolean.default(false)` (added in fix commit `e254a1e`).
+
+Shipped:
+- `engines/paper-trading.engine.ts` — new public methods `setCashFromString` / `getCashAsString` / `setPositionsFromStrings` / `getPositionMapsAsStrings` returning `.toFixed(8)` strings. New `PositionMapString` type. Number-based methods retained unchanged.
+- `unified-trading.service.ts` — `tradingFlags()` helper at top; the wallet→engine sync site and the engine→wallet sync site each branch on the flag, using the string boundary when on.
+- `config/trading.config.ts` — `decimalExecuteEnabled` boolean (and the sibling `stateMachineEnabled` for item 3 M2).
+
+Tests: 60 paper-engine cases (was 57; +3 string-boundary cases — 100×qty=0.1@price=0.1 produces exact `99999.00000000` with no float drift). 89 trading unified-service + order-ledger + engine cases all green. Flag-off path tested under default config; flag-on path covered by direct boundary tests.
+
+**Known gaps / NOT shipped (M4):**
+- broker adapter (Alpaca / OKX / CCXT) decimal-string normalization
+- frontend form schema migration to `decimalString`

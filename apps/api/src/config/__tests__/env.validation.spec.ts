@@ -415,4 +415,33 @@ describe('envSchema', () => {
     expect(typeof result.JWT_EXPIRATION).toBe('number');
     expect(typeof result.APP_CRYPTO_NEWS_ENABLED).toBe('boolean');
   });
+
+  // ── Trading feature flags (item 4 M3 + item 3 M2) ──────────────────
+  describe('TRADING_DECIMAL_EXECUTE_ENABLED / TRADING_STATE_MACHINE_ENABLED', () => {
+    it('defaults both flags to false when env keys are absent', () => {
+      const result = envSchema.parse(validConfig);
+      expect(result.TRADING_DECIMAL_EXECUTE_ENABLED).toBe(false);
+      expect(result.TRADING_STATE_MACHINE_ENABLED).toBe(false);
+    });
+
+    it('coerces "true" / "false" strings via envBoolean', () => {
+      const a = envSchema.parse({
+        ...validConfig,
+        TRADING_DECIMAL_EXECUTE_ENABLED: 'true',
+        TRADING_STATE_MACHINE_ENABLED: 'false',
+      });
+      expect(a.TRADING_DECIMAL_EXECUTE_ENABLED).toBe(true);
+      expect(a.TRADING_STATE_MACHINE_ENABLED).toBe(false);
+    });
+
+    it('treats unrecognized strings as false (envBoolean is permissive — only "true"/"1" become true)', () => {
+      const result = envSchema.parse({
+        ...validConfig,
+        TRADING_STATE_MACHINE_ENABLED: 'not-a-boolean',
+        TRADING_DECIMAL_EXECUTE_ENABLED: '1',
+      });
+      expect(result.TRADING_STATE_MACHINE_ENABLED).toBe(false);
+      expect(result.TRADING_DECIMAL_EXECUTE_ENABLED).toBe(true);
+    });
+  });
 });

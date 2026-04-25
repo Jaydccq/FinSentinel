@@ -3,6 +3,16 @@ import { registerAs } from '@nestjs/config';
 export const tradingConfig = registerAs('trading', () => ({
   defaultMode: (process.env['APP_TRADING_DEFAULT_MODE'] || 'PAPER') as 'PAPER' | 'LIVE',
 
+  // Item 4 M3 / item 3 M2 feature flags. Schema validation lives in
+  // apps/api/src/config/env.validation.ts; we read the same env vars here
+  // so the runtime config object exposes booleans to consumers without an
+  // extra string-cast everywhere. Default behavior (both OFF) is
+  // byte-identical to pre-flag main.
+  // See docs/exec-plans/2026-04-24-decimal-money-migration.md §10
+  // and docs/exec-plans/2026-04-24-trading-order-ledger-state-machine.md §12.
+  decimalExecuteEnabled: process.env['TRADING_DECIMAL_EXECUTE_ENABLED'] === 'true',
+  stateMachineEnabled: process.env['TRADING_STATE_MACHINE_ENABLED'] === 'true',
+
   alpaca: {
     apiKey: process.env['ALPACA_API_KEY'],
     secretKey: process.env['ALPACA_SECRET_KEY'],
@@ -17,3 +27,5 @@ export const tradingConfig = registerAs('trading', () => ({
     sandbox: process.env['OKX_SANDBOX'] === 'true',
   },
 }));
+
+export type TradingRuntimeConfig = ReturnType<typeof tradingConfig>;

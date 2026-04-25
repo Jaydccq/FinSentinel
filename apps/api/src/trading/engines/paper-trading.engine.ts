@@ -25,6 +25,23 @@ export interface PositionMap {
 }
 
 /**
+ * Decimal-precision wallet sync shape used by the M3 string-based
+ * boundary methods (`setPositionsFromStrings`, `getPositionMapsAsStrings`).
+ * String fields preserve full Decimal precision across the engine ↔
+ * wallet round-trip; the legacy `PositionMap` (number-typed) drops to
+ * ~15 sig figs and is retained for backward compat with existing callers
+ * that haven't been migrated.
+ */
+export interface PositionMapString {
+  ticker: string;
+  shares: string;
+  avgCost: string;
+  currentPrice: string;
+}
+
+const DECIMAL_FIXED_DIGITS = 8;
+
+/**
  * Internal position structure — Decimal-backed.
  * Not exported; engine converts to/from `PositionMap` at the public boundary.
  */
@@ -209,6 +226,40 @@ export class PaperTradingEngine implements TradingEngine {
 
   getInitialCash(): number {
     return this.initialCash.toNumber();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Decimal-precision boundary (item 4 M3 — string-based wallet sync)
+  // ---------------------------------------------------------------------------
+  // Used by UnifiedTradingService when TRADING_DECIMAL_EXECUTE_ENABLED=true so
+  // wallet persistence keeps full Decimal precision instead of going through
+  // a number round-trip. Public number-based methods above remain the default
+  // behavior to avoid breaking any in-flight caller that hasn't migrated.
+
+  setCashFromString(cash: string): void {
+    this.cash = new Decimal(cash);
+  }
+
+  getCashAsString(): string {
+    return this.cash.toFixed(DECIMAL_FIXED_DIGITS);
+  }
+
+  setPositionsFromStrings(positions: PositionMapString[]): void {
+    this.positions = positions.map((p) => ({
+      ticker: p.ticker,
+      shares: new Decimal(p.shares),
+      avgCost: new Decimal(p.avgCost),
+      currentPrice: new Decimal(p.currentPrice),
+    }));
+  }
+
+  getPositionMapsAsStrings(): PositionMapString[] {
+    return this.positions.map((p) => ({
+      ticker: p.ticker,
+      shares: p.shares.toFixed(DECIMAL_FIXED_DIGITS),
+      avgCost: p.avgCost.toFixed(DECIMAL_FIXED_DIGITS),
+      currentPrice: p.currentPrice.toFixed(DECIMAL_FIXED_DIGITS),
+    }));
   }
 
   // ---------------------------------------------------------------------------

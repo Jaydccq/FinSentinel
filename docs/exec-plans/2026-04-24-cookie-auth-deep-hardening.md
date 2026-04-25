@@ -144,7 +144,47 @@ Notes:
 - `AuthModule` ⇄ `CommonModule` cycle resolved with `forwardRef` on the `imports` array (CommonModule already imported AuthModule for `JwtGuard`).
 - `/api/auth/register` intentionally NOT rate-limited here (different threat model — needs CAPTCHA/email-verification, not throttling).
 
-### Deferred (M3 + M4 — in flight on `feat/2026-04-25-trading-state-machine-and-auth-refresh`)
+### 2026-04-25 — M3 refresh + access token split (DONE on branch, NOT merged to main)
 
-- **M3 refresh + access split**: separate `FS_REFRESH` cookie (HttpOnly, path-scoped to `/api/auth/refresh`), 15-min access lifetime, rolling refresh rotation, refresh-reuse detection revokes all user tokens. Frontend silent-refresh on 401. **Behind feature flag `AUTH_REFRESH_TOKENS_ENABLED`, default OFF** because shorter access lifetime is UX-visible (silent-refresh failures surface as logout).
-- **M4 jti blacklist**: Redis `revoked_jti:<jti>` with TTL = exp - now; `JwtGuard` checks the store after Zod parse; logout adds the current jti before clearing cookies. Independent of M3 in code, but value depends on M3 (without short access tokens, blacklist is tiny window). Default OFF behind `AUTH_JTI_REVOCATION_ENABLED`.
+Branch: `feat/2026-04-25-trading-state-machine-and-auth-refresh`. Commit: `b09df4f` (`feat(auth): refresh+access token split behind AUTH_REFRESH_TOKENS_ENABLED (item 2 M3)`).
+
+**Feature flag:** `AUTH_REFRESH_TOKENS_ENABLED`, default `false`. Already validated in `env.validation.ts` from the auth subagent's work.
+
+Shipped:
+- New `RefreshService` (`apps/api/src/auth/refresh.service.ts`) — Redis-backed refresh-family registry. `issueNewFamily(username, userId)` mints a new `familyId` + `refreshJti`, `SET refresh:family:<userId>:<familyId>` with refresh-lifetime TTL, signs a refresh JWT carrying both. `rotate(token)` verifies, checks the family key, on mismatch DELs the family and returns null (reuse detection — a stolen refresh becomes evident the moment the legitimate holder rotates). `invalidateFamily(userId, familyId)` for logout.
+- `JwtService` gained `generateAccessToken(username, userId, ttlMs)` and refresh-aware sign helpers using the existing iss/aud/jti machinery; refresh tokens carry `aud='finsentinel-refresh'` so they can't be replayed against access endpoints.
+- `auth.controller.ts` `setAuthCookies(res, legacyToken, username, userId)` — single-cookie legacy path when flag-off; mints short access + family-anchored refresh when flag-on, sets both cookies plus rotates `FS_CSRF`.
+- New `POST /api/auth/refresh` — verifies refresh, on success rotates the family + issues new access cookie. Already on the CSRF allow-list from M1, so the call itself doesn't need `X-CSRF-Token`.
+- Logout when flag-on: `invalidateFamily` on the user's current family; `clearCookie` on FS_AUTH, FS_REFRESH, FS_CSRF.
+- `apps/web/src/api/client.ts` — `attemptSilentRefresh()` helper; `apiFetch()` retries ONCE on 401 against `/api/auth/refresh`, then retries the original request.
+
+Tests:
+- `refresh.service.spec.ts` — rotation creates new family entry, reuse detection triggers DEL, expired refresh rejected, missing family key rejected.
+- `auth.controller.spec.ts` extended for flag-on register/login (both cookies set), logout (both cleared).
+- `auth-refresh-flow.integration.spec.ts` — full register → /api/auth/refresh → access works.
+- `apps/web/src/api/__tests__/client.test.ts` — 401 triggers exactly ONE refresh attempt; success retries; refresh failure surfaces 401.
+
+**Known gaps / fix landed on the same branch (commit `7ac004b`):**
+- Original implementation had a stale-bearer 401 loop: after silent refresh succeeded, the web client's retry still sent `Authorization: Bearer <stale>` from `getCachedToken()`, and JwtGuard's bearer-first ordering picked the stale bearer over the rotated cookie. Fix:
+  - `apps/web/src/api/client.ts` — `apiFetch()` calls `clearCachedToken()` before the retry on the 401 path so the retry sends NO `Authorization` header. The cookie alone authenticates.
+  - `apps/api/src/auth/jwt.guard.ts` — caller-class precedence via existing `X-Client: desktop` header. Browser (no X-Client) → cookie wins, bearer is fallback. Desktop (`X-Client: desktop`) → bearer wins, cookie is fallback. +4 precedence tests in `jwt.guard.spec.ts`.
+
+### 2026-04-25 — M4 jti revocation on logout (DONE on branch, NOT merged to main)
+
+Branch: same as M3. Commit: `1e64bb2` (`feat(auth): jti revocation on logout behind AUTH_JTI_REVOCATION_ENABLED (item 2 M4)`).
+
+**Feature flag:** `AUTH_JTI_REVOCATION_ENABLED`, default `false`.
+
+Shipped:
+- `RevocationService` (`apps/api/src/auth/revocation.service.ts`) — `revoke(jti, expSeconds)` SETs `revoked_jti:<jti>` with TTL; `isRevoked(jti)` EXISTS-checks.
+- `JwtGuard.canActivate` — after Zod-parsing the payload, if `cfg?.jtiRevocationEnabled && payload.jti`, consult the revocation store. Reject with 401 if revoked. **Flag-off path short-circuits before any Redis call** — byte-identical to pre-M4 admit-on-signature-valid behavior.
+- `auth.controller.logout` — when flag-on, decode the FS_AUTH cookie (no signature recheck — we trust we minted it), call `revocationService.revoke(jti, exp - now)` before clearing cookies. When refresh tokens are also on, additionally invalidate the refresh family.
+
+Tests:
+- `revocation.service.spec.ts` — revoke + isRevoked + TTL math.
+- `jwt.guard.spec.ts` — flag OFF: `isRevoked` not consulted; flag ON + revoked: 401; flag ON + not revoked: 200.
+- `auth-flow.integration.spec.ts` extended for flag-on logout-then-replay → 401.
+
+**Known gaps:**
+- jti blacklist value is bounded by access-token lifetime. With M3 flag-off (24h tokens), the blacklist holds entries for up to 24h. With M3 flag-on (15-min access), blacklist windows are short — the meaningful long-lived revocation surface is the M3 refresh-family invalidation.
+- No admin endpoint to revoke arbitrary jtis yet — only the user's own logout writes to the store. Out of scope per PRD §5.
