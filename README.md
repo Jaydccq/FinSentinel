@@ -7,6 +7,14 @@ The active product path is:
 - `apps/web`: Next.js frontend
 - `packages/db`, `packages/shared`: shared workspace packages
 
+## App status matrix
+
+| App | Status | Notes |
+| --- | --- | --- |
+| `apps/api` | canonical | In CI, primary target. |
+| `apps/web` | canonical | In CI, primary target. |
+| `apps/desktop` | experimental | Smoke CI only, no release artifacts yet. |
+
 ## Workspace Layout
 
 ```text

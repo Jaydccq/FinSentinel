@@ -1,5 +1,8 @@
 # @finsentinel/desktop
 
+> **Status: experimental.** Smoke CI only, no release artifacts yet.
+> See the App status matrix in the [root README](../../README.md#app-status-matrix).
+
 Tauri 2.x desktop shell for FinSentinel.
 
 ## Architecture
