@@ -4,13 +4,18 @@ import {
   ExecutionContext,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import { JwtService } from './jwt.service';
 import type { CurrentUserPayload } from './decorators/current-user.decorator';
+import type { AuthRuntimeConfig } from '../config/auth.config';
 
 @Injectable()
 export class JwtGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly config: ConfigService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -41,10 +46,14 @@ export class JwtGuard implements CanActivate {
       return authHeader.slice(7);
     }
 
-    // 2. Try FS_AUTH cookie
+    // 2. Try the configured auth cookie. The name is env-driven via
+    // AUTH_COOKIE_NAME (default 'FS_AUTH') so it must mirror what
+    // AuthController writes — see apps/api/src/config/auth.config.ts.
+    const cookieName =
+      this.config.get<AuthRuntimeConfig>('auth')?.cookie.name ?? 'FS_AUTH';
     const cookies = request.cookies as Record<string, string> | undefined;
-    if (cookies?.['FS_AUTH']) {
-      return cookies['FS_AUTH'];
+    if (cookies?.[cookieName]) {
+      return cookies[cookieName];
     }
 
     return null;
