@@ -136,6 +136,47 @@ embed-1b-v2` going forward. V16 rewritten to declare
   bug — may already have the fix.
 - **Status:** Open.
 
+### Query-planner classifier is blocked on labelled RAG eval data
+
+- **Observed:** 2026-04-25 while cleaning up the 14-axis triage records.
+- **Evidence:** `docs/exec-plans/2026-04-24-codebase-optimization-triage-prd.md`
+  item 9 proposes a rules + lightweight-classifier hybrid, but the current
+  durable RAG quality records require labelled eval data before quality claims
+  are meaningful. The existing planner work in
+  `docs/exec-plans/2026-04-19-rag-wave2-production-rollout-plan.md` already
+  has rule-based query classes and traceable routing.
+- **Impact:** Adding a classifier now would create a new routing surface without
+  a trustworthy way to prove it improves recall, precision, or latency.
+- **Likely fix path:**
+  1. Reuse the labelled eval set required by the RAG 2048-dim strategy work.
+  2. Define a feature-flagged classifier contract that emits both the rules
+     decision and classifier decision into the existing trace.
+  3. Run shadow evaluation against rules-only routing.
+  4. Promote only if the labelled set shows a bucket-level win with no overall
+     regression.
+- **Status:** Blocked on labelled eval data.
+
+### Frontend typed-client/SWR/trading-status rollout is blocked on UX state design
+
+- **Observed:** 2026-04-25 while cleaning up the 14-axis triage records.
+- **Evidence:** `docs/exec-plans/2026-04-24-codebase-optimization-triage-prd.md`
+  item 10 groups typed API client generation, SWR/TanStack Query rollout, and
+  trading status UI. Item 10a (`/api/health/components` + env self-check page)
+  has shipped, but 10b/c still combines API shape, caching semantics, and
+  money-path UI states.
+- **Impact:** Implementing all remaining frontend work in one branch would
+  couple generated-client churn, cache behavior changes, and trading ledger UI
+  decisions. The result would be hard to review and risky to regress.
+- **Likely fix path:**
+  1. Split the work into three execution plans: typed API codegen, page-scoped
+     SWR/TanStack rollout, and trading status UI.
+  2. Define the trading status state model before UI implementation:
+     `pending`, `executing`, `executed`, `partially_failed`, `failed`,
+     `unknown_requires_operator_review`, plus retry/acknowledgement behavior.
+  3. Land typed API generation first if it remains the highest-value P1.
+  4. Roll out cache changes per page with page-level tests.
+- **Status:** Blocked on UX/state-model input.
+
 ### `apps/web` full lint is blocked by pre-existing violations
 
 - **Observed:** 2026-04-18 while verifying the Operator Console Timeline UI.

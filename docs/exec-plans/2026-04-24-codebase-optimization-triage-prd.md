@@ -125,22 +125,22 @@ This PRD ships the three P0 items that are surgical, low-risk, and don't depend 
 
 **SHIPPED to main this session and prior (engineering-complete):** 1a JwtGuard cookie name, 1b JWT payload Zod + iss/aud/jti, 7 embedding reliability, 7b rerank top-up, 8 RAG eval localhost-only, 11 desktop README label, 12 prettier sweep, 4 M1-M4 (decimal.js migration end-to-end including broker normalization + frontend form), 3 M1-M3 (order_ledger + state machine + reconciler), 2 M1-M4 (CSRF + rate-limit + refresh+access split + jti revocation), 13 DB migration audit, 10a `/api/health/components` + frontend env self-check page.
 
-**ON A BRANCH, NOT MERGED:** 5 live-trading guards on `feat/2026-04-25-live-trading-guards`. Codex CLI review was blocked in this env — `gpt-5.5` (default) requires CLI upgrade past 0.122.0; `gpt-5` and `gpt-5-codex` reject as "not supported when using Codex with a ChatGPT account." Self-review found and fixed a [P1] race in the per-day cap (atomic Redis INCRBY now). Branch needs human signoff before merge to main since it touches the money path.
+**SHIPPED to main after review:** 5 live-trading guards landed via merge commit `8544c71` (PR #14) from `feat/2026-04-25-live-trading-guards`. Review cycle 2 found and fixed the daily-cap race, qty-order preflight pricing, paper-ledger seeding, and a fourth rollback reservation edge (`b0ca52c`). Item 5 is no longer branch-only.
 
 **BLOCKED with named blockers (NOT done tonight):**
 - **3 M4** (legacy commitHistory removal): premature — zero production hours of M2/M3, zero operator UI for UNKNOWN_REQUIRES_OPERATOR_REVIEW review, zero audit of read paths still consulting commitHistory. Removing now is self-sabotage.
 - **6** (RAG 2048-dim HNSW strategy): blocked on eval golden set with real labels per `2026-04-21-rag-quality-next-steps.md`. Without labels any tier-strategy change is guessing.
 - **9** (query planner classifier): same labels block as item 6.
-- **10b/c** (frontend SWR / typed-API-client codegen / trading status UI): UX-heavy, design-sensitive, autonomous version would be an unreviewable megabranch.
-- **14** (product-loop features): explicit product roadmap, not engineering. Original triage put these in product bucket.
+- **10b/c** (frontend SWR / typed-API-client codegen / trading status UI): UX-heavy, design-sensitive, autonomous version would be an unreviewable megabranch. Durable blocker + split path: `tech-debt-tracker.md` entry "Frontend typed-client/SWR/trading-status rollout is blocked on UX state design".
+- **14** (product-loop features): explicit product roadmap, not engineering. Split into seven product epics in `docs/product-specs/2026-04-25-product-loop-roadmap-triage.md`.
 
 ### Net engineering coverage of the 14-axis triage
 
-- DONE on main: 11 of 14 axes engineering-complete (1a, 1b, 4, 3 partial through M3, 2, 7, 7b, 8, 11, 12, 13, 10a).
-- Branch-only: 1 axis (5) shipped on a branch awaiting signoff.
+- DONE on main: 12 of 14 axes engineering-complete or shipped to the latest planned milestone (1a, 1b, 4, 3 through M3, 2, 5, 7, 7b, 8, 11, 12, 13, 10a).
+- Branch-only: 0 axes.
 - Blocked: 3 axes (3 M4, 6, 9) blocked on data/soak; 2 axes (10b/c, 14) blocked on design/product input.
 
-The codebase moved from "14 reviewer-flagged axes with mostly PRDs" to "11 axes engineering-shipped, 1 axis branch-pending review, 5 axis-pieces blocked on data/design/product/soak — each with named recoverable blockers."
+The codebase moved from "14 reviewer-flagged axes with mostly PRDs" to "12 axes engineering-shipped or milestone-complete, 5 axis-pieces blocked on data/design/product/soak — each with named recoverable blockers."
 
 ### Item 5 — review cycle 2 (2026-04-25, branch only)
 
@@ -152,4 +152,91 @@ External human review of `feat/2026-04-25-live-trading-guards` (commit `7aaf561`
 
 Tests: 6 new UnifiedTradingService-level integration cases wire the REAL `TradingGuardsService` against mock Redis/DB and exercise `execute()` end-to-end through the qty-enrichment + preflight + broker-call + rollback path. Trading suite 244/244 green at land time.
 
-**Branch still NOT merged to main.** Awaiting human signoff. The `8bf58ce` commit closes the three review findings; whether more findings remain is a question for the reviewer.
+Review cycle 2 is now merged to `main` through PR #14 (`8544c71`). The final branch also included `b0ca52c`, which fixed a fourth edge case: rollback only happens when preflight actually reserved daily-cap budget.
+
+### Remaining blocked items — step-by-step completion playbook
+
+This section is the current map. Detailed execution records live in the linked
+artifacts.
+
+#### Item 3 M4 — legacy `commitHistory` removal
+
+Record of detail: `docs/exec-plans/2026-04-24-trading-order-ledger-state-machine.md` ("Still deferred — M4").
+
+Steps:
+1. Run M2 + M3 in staging with real broker traffic for at least one week.
+   Verify: no unexplained `UNKNOWN_REQUIRES_OPERATOR_REVIEW` pile-up.
+2. Audit all production read paths that still consult `wallet.commitHistory`.
+   Verify: produce a file/function checklist before changing code.
+3. Build or expose an operator review surface for stuck ledger rows.
+   Verify: an operator can inspect and resolve UNKNOWN rows without DB access.
+4. Migrate history/audit reads to `order_ledger`.
+   Verify: behavior-preserving tests compare old commitHistory-shaped results
+   with ledger-backed results.
+5. Remove the dual-write legacy path.
+   Verify: trading tests, integration trading flow, and typecheck pass.
+
+Do not start M4 until steps 1-3 are true.
+
+#### Item 6 — RAG 2048-dim index/tier strategy
+
+Record of detail: `docs/exec-plans/tech-debt-tracker.md` ("Canonical embedding provider = NVIDIA 2048-dim") and `docs/exec-plans/2026-04-21-rag-quality-next-steps.md`.
+
+Steps:
+1. Promote or collect a labelled eval set that can measure retrieval quality by
+   bucket.
+   Verify: eval labels are real enough to distinguish recall/precision changes.
+2. Baseline current 2048-dim seq-scan behavior on representative row counts.
+   Verify: latency and quality numbers are recorded with dataset size.
+3. Compare candidate strategies: keep 2048 seq-scan, IVFFlat, halfvec, or
+   1536-index + 2048 rerank tier.
+   Verify: each strategy has quality, latency, migration, and rollback notes.
+4. Pick one strategy and write a focused execution plan.
+   Verify: no index/migration work starts without a chosen acceptance metric.
+
+#### Item 9 — query-planner classifier
+
+Record of detail: `docs/exec-plans/tech-debt-tracker.md` ("Query-planner classifier is blocked on labelled RAG eval data").
+
+Steps:
+1. Reuse the same labelled eval set required by item 6.
+   Verify: query-class labels or bucket labels exist for classifier evaluation.
+2. Define the classifier contract behind a feature flag.
+   Verify: trace output records rule decision, classifier decision, and final
+   route.
+3. Run shadow evaluation against the current rules-only planner.
+   Verify: classifier improves the target bucket without degrading overall
+   recall/MRR beyond the agreed threshold.
+4. Only then implement default-on routing.
+   Verify: canary and rollback flags are documented.
+
+#### Item 10b/c — SWR, typed API codegen, trading status UI
+
+Record of detail: `docs/exec-plans/tech-debt-tracker.md` ("Frontend typed-client/SWR/trading-status rollout is blocked on UX state design").
+
+Steps:
+1. Split surfaces: typed API codegen, SWR/TanStack rollout, trading status UI.
+   Verify: each surface has its own acceptance tests and owner.
+2. Design the trading status state model before coding UI.
+   Verify: pending/executing/executed/failed/partial/unknown states have copy,
+   transitions, retry affordances, and data source defined.
+3. Land typed API generation first if it remains P1.
+   Verify: generated client and shared Zod schemas agree in typecheck.
+4. Roll out SWR/TanStack per page, not globally.
+   Verify: no page changes cache semantics without a page-level test.
+5. Build trading status UI after the state model is accepted.
+   Verify: mocked ledger states render without overlapping or ambiguous actions.
+
+#### Item 14 — product-loop features
+
+Record of detail: `docs/product-specs/2026-04-25-product-loop-roadmap-triage.md`.
+
+Steps:
+1. Rank the seven product epics by user workflow value.
+   Verify: one epic is selected as the next product PRD, not all six.
+2. For the selected epic, write a normal product spec with user story,
+   acceptance criteria, data contracts, and non-goals.
+   Verify: engineering can estimate it without guessing product behavior.
+3. Convert that product spec into an execution plan only after acceptance is
+   clear.
+   Verify: implementation steps include concrete tests or UI checks.
