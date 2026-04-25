@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { UnifiedTradingService } from '../unified-trading.service';
 import { BrokerRegistry } from '../broker-registry.service';
 import { OrderLedgerService } from '../order-ledger/order-ledger.service';
@@ -151,6 +152,20 @@ describe('UnifiedTradingService', () => {
             recordExecutionResults: vi.fn().mockResolvedValue(undefined),
             findByIdempotency: vi.fn().mockResolvedValue([]),
             findByCommitHash: vi.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: ConfigService,
+          useValue: {
+            get: <T>(key: string): T | undefined => {
+              if (key === 'trading') {
+                return {
+                  decimalExecuteEnabled: false,
+                  stateMachineEnabled: false,
+                } as unknown as T;
+              }
+              return undefined;
+            },
           },
         },
       ],

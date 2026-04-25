@@ -12,12 +12,14 @@ import type {
   V2StagedResponse,
 } from '@finsentinel/shared';
 import { stableStringify } from '@finsentinel/shared/utils';
+import { ConfigService } from '@nestjs/config';
 import { BrokerRegistry } from './broker-registry.service';
 import { PaperBroker } from './brokers/paper.broker';
 import type { MarketDataService } from '../market/market-data.service';
 import type { ExecuteResult } from './interfaces/execute-result';
-import type { PositionMap } from './engines/paper-trading.engine';
+import type { PositionMap, PositionMapString } from './engines/paper-trading.engine';
 import { OrderLedgerService } from './order-ledger/order-ledger.service';
+import type { TradingRuntimeConfig } from '../config/trading.config';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -142,7 +144,23 @@ export class UnifiedTradingService {
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     @Inject('MarketDataService') private readonly marketDataService: MarketDataService,
     private readonly orderLedger: OrderLedgerService,
+    private readonly config: ConfigService,
   ) {}
+
+  /**
+   * Read the trading runtime config. The two M3-era flags
+   * (`decimalExecuteEnabled`, `stateMachineEnabled`) default to false so
+   * existing deployments behave byte-identically until explicitly opted in.
+   * Returns null-safe defaults if the config provider isn't bound (test
+   * harnesses that omit ConfigService).
+   */
+  private tradingFlags(): { decimalExecuteEnabled: boolean; stateMachineEnabled: boolean } {
+    const cfg = this.config?.get<TradingRuntimeConfig>('trading');
+    return {
+      decimalExecuteEnabled: cfg?.decimalExecuteEnabled ?? false,
+      stateMachineEnabled: cfg?.stateMachineEnabled ?? false,
+    };
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Phase 1: Stage
@@ -378,16 +396,32 @@ export class UnifiedTradingService {
 
       const engine = broker.engine();
 
-      // Sync wallet state to engine
-      engine.setCash(Number(wallet.cashBalance));
-      engine.setPositions(
-        (wallet.positions as PositionMap[]).map((p) => ({
-          ticker: p.ticker,
-          shares: p.shares,
-          avgCost: p.avgCost,
-          currentPrice: p.currentPrice,
-        })),
-      );
+      // Sync wallet state to engine. When the decimal-execute flag is on,
+      // load via string-based methods so prior wallet writes preserved at
+      // .toFixed(8) round-trip without going through `Number(...)`.
+      if (this.tradingFlags().decimalExecuteEnabled) {
+        engine.setCashFromString(String(wallet.cashBalance));
+        const positionsAsStrings = (wallet.positions as unknown[]).map((p) => {
+          const pos = p as PositionMap | PositionMapString;
+          return {
+            ticker: pos.ticker,
+            shares: String(pos.shares),
+            avgCost: String(pos.avgCost),
+            currentPrice: String(pos.currentPrice),
+          };
+        });
+        engine.setPositionsFromStrings(positionsAsStrings);
+      } else {
+        engine.setCash(Number(wallet.cashBalance));
+        engine.setPositions(
+          (wallet.positions as PositionMap[]).map((p) => ({
+            ticker: p.ticker,
+            shares: p.shares,
+            avgCost: p.avgCost,
+            currentPrice: p.currentPrice,
+          })),
+        );
+      }
 
       // Execute each operation
       for (const op of commitData.operations) {
@@ -430,9 +464,17 @@ export class UnifiedTradingService {
         }
       }
 
-      // Sync engine state back to wallet
-      wallet.cashBalance = String(engine.getCash());
-      wallet.positions = engine.getPositionMaps() as unknown[];
+      // Sync engine state back to wallet.
+      // When TRADING_DECIMAL_EXECUTE_ENABLED=true (item 4 M3), use the
+      // string-based boundary so wallet persistence keeps Decimal precision.
+      // Default behavior — number round-trip — is identical to today.
+      if (this.tradingFlags().decimalExecuteEnabled) {
+        wallet.cashBalance = engine.getCashAsString();
+        wallet.positions = engine.getPositionMapsAsStrings() as unknown[];
+      } else {
+        wallet.cashBalance = String(engine.getCash());
+        wallet.positions = engine.getPositionMaps() as unknown[];
+      }
     } else {
       // LIVE mode: resolve broker per-contract via BrokerRegistry
       for (const op of commitData.operations) {

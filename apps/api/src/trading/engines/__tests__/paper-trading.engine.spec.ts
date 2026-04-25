@@ -494,4 +494,63 @@ describe('PaperTradingEngine', () => {
 
     expect(runA).toBe(runB);
   });
+
+  // ── 16. M3 string-precision boundary methods ───────────────────────────
+  // setCashFromString / getCashAsString / setPositionsFromStrings /
+  // getPositionMapsAsStrings — used by UnifiedTradingService when
+  // TRADING_DECIMAL_EXECUTE_ENABLED=true so the engine ↔ wallet round-trip
+  // doesn't drop precision through Number.
+  describe('Decimal-precision boundary (item 4 M3)', () => {
+    it('round-trips cash via string at .toFixed(8) precision without drift', () => {
+      engine.setCashFromString('123456789.12345678');
+      expect(engine.getCashAsString()).toBe('123456789.12345678');
+    });
+
+    it('persists position fields via string at .toFixed(8) precision', () => {
+      engine.setPositionsFromStrings([
+        {
+          ticker: 'AAPL',
+          shares: '10.12345678',
+          avgCost: '150.05',
+          currentPrice: '155',
+        },
+      ]);
+      const out = engine.getPositionMapsAsStrings();
+      expect(out).toEqual([
+        {
+          ticker: 'AAPL',
+          shares: '10.12345678',
+          avgCost: '150.05000000',
+          currentPrice: '155.00000000',
+        },
+      ]);
+    });
+
+    it('string boundary survives a sequence that drifts under Number', async () => {
+      (mockMarketData.getQuote as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ticker: 'AAPL',
+        open: '0.1',
+        high: '0.1',
+        low: '0.1',
+        close: '0.1',
+        volume: 0,
+        timestamp: Date.now(),
+      });
+
+      engine.setCashFromString('100000');
+      for (let i = 0; i < 100; i += 1) {
+        await engine.placeOrder({
+          symbol: 'AAPL',
+          side: 'buy',
+          type: 'market',
+          qty: '0.1',
+        });
+      }
+      // Exactly 100 fills at qty=0.1 @ price=0.1 = 1.0 spent.
+      expect(engine.getCashAsString()).toBe('99999.00000000');
+      const [pos] = engine.getPositionMapsAsStrings();
+      expect(pos!.shares).toBe('10.00000000');
+      expect(pos!.avgCost).toBe('0.10000000');
+    });
+  });
 });
