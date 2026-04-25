@@ -67,6 +67,18 @@ async function bootstrap() {
 
   app.useGlobalFilters(new GlobalExceptionFilter());
 
+  // Loud warn (non-fatal) if the RAG eval endpoint is enabled in production.
+  // The endpoint is bound to localhost-only via LocalhostOnlyGuard, but it
+  // should still be disabled in prod unless an operator explicitly opted in.
+  if (
+    process.env['RAG_EVAL_ENDPOINT_ENABLED'] === 'true' &&
+    process.env['NODE_ENV'] === 'production'
+  ) {
+    console.warn(
+      'WARN: RAG eval endpoint is ENABLED in production. It is bound to localhost-only but should be disabled unless explicitly needed.',
+    );
+  }
+
   const port = process.env['PORT'] ?? 3001;
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}`);
