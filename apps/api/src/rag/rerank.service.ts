@@ -105,13 +105,46 @@ export class RerankService {
     }
 
     const candidateMap = new Map(candidates.map((c) => [c.chunkId, c]));
-    return parsed.data.results
+    const sidecarPrefix: RerankedCandidate[] = parsed.data.results
       .filter((r) => candidateMap.has(r.id))
       .map((r) => ({
         ...candidateMap.get(r.id)!,
         rerankScore: r.score,
         fallbackReason: null as FallbackReason,
       }));
+
+    // If the sidecar returned a full result set (>= topK), use it as-is.
+    if (sidecarPrefix.length >= topK) {
+      return sidecarPrefix.slice(0, topK);
+    }
+
+    // Partial result: fill the tail from RRF-ordered input candidates that
+    // were not already returned by the sidecar. This guards against silent
+    // truncation when the reranker degrades and returns fewer than top_k.
+    const seen = new Set(sidecarPrefix.map((c) => c.chunkId));
+    const rrfOrdered = [...candidates].sort((a, b) => b.rrfScore - a.rrfScore);
+    const fillers: RerankedCandidate[] = [];
+    for (const c of rrfOrdered) {
+      if (sidecarPrefix.length + fillers.length >= topK) break;
+      if (seen.has(c.chunkId)) continue;
+      fillers.push({
+        ...c,
+        rerankScore: c.rrfScore,
+        fallbackReason: null as FallbackReason,
+      });
+      seen.add(c.chunkId);
+    }
+
+    const merged = [...sidecarPrefix, ...fillers].slice(0, topK);
+    this.logger.warn(
+      `Reranker returned partial result (${sidecarPrefix.length} of topK=${topK}); topped up with ${fillers.length} RRF filler(s), final size=${merged.length}`,
+    );
+    this.metrics?.incrementCounter(
+      'rag_rerank_partial_topup_total',
+      'Total rerank responses where partial sidecar result was topped up from RRF',
+      {},
+    );
+    return merged;
   }
 
   private buildCandidateText(c: FusedCandidate): string {
