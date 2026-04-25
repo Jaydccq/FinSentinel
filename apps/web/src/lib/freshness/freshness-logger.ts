@@ -17,6 +17,5 @@ export interface FreshnessLogEvent {
 
 export function logFreshnessRender(event: FreshnessLogEvent): void {
   // console.info keeps this visible in browser devtools and harmless in SSR.
-  // eslint-disable-next-line no-console
   console.info('freshness.render', event);
 }
