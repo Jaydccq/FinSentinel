@@ -148,6 +148,7 @@ docs/runbooks/*
 !docs/runbooks/2026-04-21-golden-set-labeling-sop.md
 !docs/runbooks/2026-04-21-rag-live-baseline-capture.md
 !docs/runbooks/2026-04-24-f3-localstorage-shim-removal.md
+!docs/runbooks/2026-04-25-rag-eval-promotion-runbook.md
 !docs/superpowers/
 docs/superpowers/*
 !docs/superpowers/plans/
