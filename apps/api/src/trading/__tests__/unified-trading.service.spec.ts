@@ -1118,5 +1118,103 @@ describe('UnifiedTradingService', () => {
       );
       expect(built.mockBroker.placeOrder).not.toHaveBeenCalled();
     });
+
+    // ── New blocker: rollback must be conditional on a real reservation ──
+    // The execute() LIVE path used to compute proposedCents locally and
+    // always call rollbackDailyReservation when refundCents > 0, even
+    // when preflight made no reservation (flag off, or per-day cap = 0).
+    // That created a negative Redis counter that the next preflight
+    // mistook for a seeded baseline, inflating the user's effective cap.
+    // The fix: preflight returns { reservedCents }, and execute() skips
+    // rollback when reservedCents === 0.
+    it('flag OFF: failed broker order does NOT create a negative daily counter', async () => {
+      const built = await buildLive({
+        cfg: { liveGuardsEnabled: false }, // <-- guards disabled
+        quoteClose: '100',
+        brokerOutcome: { kind: 'fail', message: 'broker rejected' },
+      });
+      built.localRedis.getdel.mockResolvedValue(JSON.stringify(livePending));
+      primeLiveWallet(built.localDb);
+
+      await built.service.execute(TEST_USER_ID);
+
+      // No daily-cap key should exist at all — flag was off.
+      const dayKey = Object.keys(built.localRedis._store).find((k) =>
+        k.startsWith('trading:daily_cents:'),
+      );
+      expect(dayKey).toBeUndefined();
+    });
+
+    it('per-day cap = 0: failed broker order does NOT create a negative daily counter', async () => {
+      const built = await buildLive({
+        cfg: { liveGuardsEnabled: true, livePerDayNotionalUsd: 0 }, // per-day disabled
+        quoteClose: '100',
+        brokerOutcome: { kind: 'fail', message: 'broker rejected' },
+      });
+      built.localRedis.getdel.mockResolvedValue(JSON.stringify(livePending));
+      primeLiveWallet(built.localDb);
+
+      await built.service.execute(TEST_USER_ID);
+
+      // The daily-cap key path was never touched: preflight returned
+      // reservedCents=0, so execute() skipped rollback.
+      const dayKey = Object.keys(built.localRedis._store).find((k) =>
+        k.startsWith('trading:daily_cents:'),
+      );
+      expect(dayKey).toBeUndefined();
+    });
+
+    it('per-day cap = 0 followed by enabled cap: counter starts from a TRUE baseline (no phantom budget)', async () => {
+      // Two-phase scenario: first request with daily cap disabled fails;
+      // operator then enables the daily cap. The seed must be the true
+      // ledger baseline (0 here, since the mock DB returns []), NOT the
+      // negative residue that the old buggy rollback would have left.
+      const built = await buildLive({
+        cfg: { liveGuardsEnabled: true, livePerDayNotionalUsd: 0 },
+        quoteClose: '100',
+        brokerOutcome: { kind: 'fail', message: 'broker rejected' },
+      });
+      built.localRedis.getdel.mockResolvedValue(JSON.stringify(livePending));
+      primeLiveWallet(built.localDb);
+      await built.service.execute(TEST_USER_ID);
+
+      // Same Redis store, but build a NEW service with daily cap enabled.
+      // (Simulates an operator turning the cap on between requests.)
+      const enabledCfg = {
+        decimalExecuteEnabled: false,
+        stateMachineEnabled: false,
+        liveGuardsEnabled: true,
+        livePerOrderNotionalUsd: 10_000,
+        livePerDayNotionalUsd: 1_000, // small cap so phantom budget would be obvious
+      };
+      const realGuards2 = new (
+        await import('../guards/trading-guards.service')
+      ).TradingGuardsService(
+        built.localRedis as unknown as Parameters<typeof TradingGuardsService>[0],
+        built.localDb as unknown as Parameters<typeof TradingGuardsService>[1],
+        {
+          get: <T>(key: string): T | undefined =>
+            key === 'trading' ? (enabledCfg as unknown as T) : undefined,
+        } as ConfigService,
+      );
+
+      // Reserve $500. Pre-fix: phantom -500 baseline could have masked a $500
+      // overshoot on a $1_000 cap (newTotal = -500 + 50_000 = 49_500 < 100_000).
+      // Post-fix: baseline = 0, newTotal = 0 + 50_000 = 50_000 ≤ 100_000 → allowed,
+      // and importantly, a *second* $500 reservation would push to 100_000 ≤
+      // 100_000 → still allowed; a *third* $500 would push to 150_000 > 100_000
+      // and reject. That's the correct shape — the bug would have shifted that
+      // boundary by the negative residue.
+      const receipt = await realGuards2.preflight({
+        userId: TEST_USER_ID,
+        operations: [{ symbol: 'AAPL', action: 'BUY', amount: '500' }],
+      });
+      expect(receipt.reservedCents).toBe(50_000);
+
+      const dayKey = Object.keys(built.localRedis._store).find((k) =>
+        k.startsWith('trading:daily_cents:'),
+      );
+      expect(Number(built.localRedis._store[dayKey!])).toBe(50_000); // exactly $500
+    });
   });
 });

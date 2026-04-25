@@ -73,14 +73,22 @@ export class TradingGuardsService {
   ) {}
 
   /**
-   * Run all live-mode pre-flight checks. Throws on any breach. Returns
-   * silently when the flag is off OR when all checks pass.
+   * Run all live-mode pre-flight checks. Throws on any breach.
+   *
+   * Returns a reservation receipt: `{ reservedCents }` is the EXACT amount
+   * committed to the per-day Redis counter. The caller MUST pass this
+   * value to `rollbackDailyReservation` for any unspent portion after the
+   * broker call resolves. Returning 0 means "no reservation was made"
+   * (flag off, per-day cap disabled, or proposed sum was 0) and the
+   * caller MUST NOT call rollback in that case — calling INCRBY -X with
+   * no prior reservation would create a negative counter that future
+   * preflights mistake for a seeded baseline, inflating capacity.
    *
    * Caller invokes only on the LIVE-mode branch of execute().
    */
-  async preflight(input: PreflightInput): Promise<void> {
+  async preflight(input: PreflightInput): Promise<{ reservedCents: number }> {
     const cfg = this.tradingCfg();
-    if (!cfg.liveGuardsEnabled) return;
+    if (!cfg.liveGuardsEnabled) return { reservedCents: 0 };
 
     // 1. Kill switch — cheapest check, runs first.
     const killed = await this.redis.exists(KILL_SWITCH_KEY);
@@ -126,46 +134,61 @@ export class TradingGuardsService {
     // bubbles up. The DB SELECT remains as a one-shot seed on first
     // request per day so the counter starts from a true post-restart
     // baseline (operator restarts mid-day shouldn't reset the cap).
-    if (cfg.livePerDayNotionalUsd > 0) {
-      const proposedSum = input.operations.reduce((acc, op) => {
-        const n = this.opNotional(op);
-        return n ? acc.plus(n) : acc;
-      }, new Decimal(0));
-
-      // Cents-precision integer to live cleanly inside Redis INCRBY.
-      const proposedCents = Math.round(proposedSum.times(100).toNumber());
-      const limitCents = Math.round(cfg.livePerDayNotionalUsd * 100);
-
-      const utcDay = this.utcDateKey(new Date());
-      const counterKey = `trading:daily_cents:${input.userId}:${utcDay}`;
-
-      // First request per (user, day) seeds the counter from order_ledger.
-      // setnx is no-op if the key already exists; subsequent requests
-      // skip the SELECT entirely, so the steady state cost is one INCRBY.
-      const exists = await this.redis.exists(counterKey);
-      if (!exists) {
-        const todayCents = await this.seedDailyCounterFromLedger(input.userId);
-        // SET NX with the seed value + 25h TTL (overlaps day boundary so
-        // the key can't be evicted mid-day by Redis).
-        await this.redis.set(counterKey, String(todayCents), 'EX', 25 * 60 * 60, 'NX');
-      }
-
-      // Atomic INCRBY — either we end up at total or we don't, no race window.
-      const newTotal = await this.redis.incrby(counterKey, proposedCents);
-
-      if (newTotal > limitCents) {
-        // Rollback the reservation immediately so a subsequent legitimate
-        // order from the same user can still proceed.
-        await this.redis.incrby(counterKey, -proposedCents);
-        throw new ForbiddenException(
-          `Per-day notional cap would be exceeded: total $${(newTotal / 100).toFixed(2)} > limit $${cfg.livePerDayNotionalUsd}`,
-        );
-      }
-
-      // Counter is now reserved; if downstream broker call fails, caller
-      // MUST call rollbackDailyReservation(userId, proposedCents) so a
-      // failed-broker request doesn't permanently consume cap.
+    //
+    // When the cap is disabled (limit = 0), we explicitly return
+    // reservedCents = 0 so the caller does NOT call rollback. INCRBY -X
+    // with no prior reservation would seed the counter at -X; the next
+    // preflight would see the key exists and skip the DB seed, leaving
+    // the user with -X cents of phantom budget.
+    if (cfg.livePerDayNotionalUsd <= 0) {
+      return { reservedCents: 0 };
     }
+
+    const proposedSum = input.operations.reduce((acc, op) => {
+      const n = this.opNotional(op);
+      return n ? acc.plus(n) : acc;
+    }, new Decimal(0));
+
+    // Cents-precision integer to live cleanly inside Redis INCRBY.
+    const proposedCents = Math.round(proposedSum.times(100).toNumber());
+    if (proposedCents <= 0) {
+      // No priceable ops or all ops were 0 notional — nothing to reserve.
+      // Per-order check above already would have failed-closed if relevant.
+      return { reservedCents: 0 };
+    }
+
+    const limitCents = Math.round(cfg.livePerDayNotionalUsd * 100);
+
+    const utcDay = this.utcDateKey(new Date());
+    const counterKey = `trading:daily_cents:${input.userId}:${utcDay}`;
+
+    // First request per (user, day) seeds the counter from order_ledger.
+    // setnx is no-op if the key already exists; subsequent requests
+    // skip the SELECT entirely, so the steady state cost is one INCRBY.
+    const exists = await this.redis.exists(counterKey);
+    if (!exists) {
+      const todayCents = await this.seedDailyCounterFromLedger(input.userId);
+      // SET NX with the seed value + 25h TTL (overlaps day boundary so
+      // the key can't be evicted mid-day by Redis).
+      await this.redis.set(counterKey, String(todayCents), 'EX', 25 * 60 * 60, 'NX');
+    }
+
+    // Atomic INCRBY — either we end up at total or we don't, no race window.
+    const newTotal = await this.redis.incrby(counterKey, proposedCents);
+
+    if (newTotal > limitCents) {
+      // Rollback the reservation immediately so a subsequent legitimate
+      // order from the same user can still proceed.
+      await this.redis.incrby(counterKey, -proposedCents);
+      throw new ForbiddenException(
+        `Per-day notional cap would be exceeded: total $${(newTotal / 100).toFixed(2)} > limit $${cfg.livePerDayNotionalUsd}`,
+      );
+    }
+
+    // Counter is now reserved; if downstream broker call fails, caller
+    // MUST call rollbackDailyReservation(userId, refundCents) where
+    // refundCents <= reservedCents.
+    return { reservedCents: proposedCents };
   }
 
   /**

@@ -147,7 +147,7 @@ describe('TradingGuardsService', () => {
           userId: TEST_USER,
           operations: [{ symbol: 'AAPL', action: 'BUY', amount: '100' }],
         }),
-      ).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ reservedCents: expect.any(Number) });
     });
 
     it('killSwitchStatus reflects engaged + reason', async () => {
@@ -186,7 +186,7 @@ describe('TradingGuardsService', () => {
           userId: TEST_USER,
           operations: [{ symbol: 'AAPL', action: 'BUY', amount: '1000' }],
         }),
-      ).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ reservedCents: expect.any(Number) });
     });
 
     it('qty * indicativePrice > limit → ForbiddenException', async () => {
@@ -231,7 +231,7 @@ describe('TradingGuardsService', () => {
           userId: TEST_USER,
           operations: [{ symbol: 'AAPL', action: 'BUY', amount: '4999' }],
         }),
-      ).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ reservedCents: expect.any(Number) });
 
       await expect(
         service.preflight({
@@ -275,7 +275,7 @@ describe('TradingGuardsService', () => {
           userId: TEST_USER,
           operations: [{ symbol: 'AAPL', action: 'BUY', amount: '3000' }],
         }),
-      ).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ reservedCents: expect.any(Number) });
     });
 
     it('per-day cap = 0 → check skipped', async () => {
@@ -289,7 +289,7 @@ describe('TradingGuardsService', () => {
           userId: TEST_USER,
           operations: [{ symbol: 'AAPL', action: 'BUY', amount: '1' }],
         }),
-      ).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ reservedCents: expect.any(Number) });
     });
 
     it('on overshoot, rolls back the reservation (counter ends at pre-attempt value)', async () => {
@@ -339,7 +339,7 @@ describe('TradingGuardsService', () => {
           userId: TEST_USER,
           operations: [{ symbol: 'AAPL', action: 'BUY', amount: '4000' }],
         }),
-      ).resolves.toBeUndefined();
+      ).resolves.toMatchObject({ reservedCents: expect.any(Number) });
 
       // Counter is now $5k seed + $4k accepted = $9k = 900_000 cents.
       const dayKey = Object.keys(redis._store).find((k) => k.startsWith('trading:daily_cents:'))!;

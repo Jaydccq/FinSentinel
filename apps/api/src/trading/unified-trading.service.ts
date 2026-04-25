@@ -713,18 +713,22 @@ export class UnifiedTradingService {
       const enrichedOperations = await this.enrichOperationsForPreflight(
         commitData.operations,
       );
-      const proposedCents = this.tradingGuards.proposedCentsFor(
-        enrichedOperations as Parameters<
-          typeof this.tradingGuards.proposedCentsFor
-        >[0],
-      );
+      // preflight returns { reservedCents } reflecting the EXACT amount
+      // committed to Redis. Returns 0 when no reservation was made
+      // (TRADING_LIVE_GUARDS_ENABLED=false, TRADING_LIVE_PER_DAY_NOTIONAL_USD=0,
+      // or proposed sum was 0). We MUST refund based on this number, NOT
+      // a locally-computed proposed value: calling INCRBY -X with no
+      // prior reservation creates a negative counter that the next
+      // preflight mistakes for a seeded baseline, inflating capacity.
+      let reservedCents = 0;
       try {
-        await this.tradingGuards.preflight({
+        const receipt = await this.tradingGuards.preflight({
           userId,
           operations: enrichedOperations as Parameters<
             typeof this.tradingGuards.preflight
           >[0]['operations'],
         });
+        reservedCents = receipt.reservedCents;
       } catch (guardErr) {
         const reason = guardErr instanceof Error ? guardErr.message : String(guardErr);
         // Bubble FAILED to EXECUTING rows so the ledger reflects the block.
@@ -777,28 +781,36 @@ export class UnifiedTradingService {
         }
       }
 
-      // Reconcile the daily-cap reservation against realized fills. The
-      // preflight reserved `proposedCents`; broker rejections + partial
-      // fills mean realized < proposed in many cases. Roll back the
-      // unspent delta so failed orders don't permanently consume the
-      // user's daily live-trading budget.
-      const realizedCents = this.computeRealizedCents(
-        operationResults as unknown as Parameters<
-          UnifiedTradingService['computeRealizedCents']
-        >[0],
-        enrichedOperations,
-      );
-      const refundCents = proposedCents - realizedCents;
-      if (refundCents > 0) {
-        try {
-          await this.tradingGuards.rollbackDailyReservation(userId, refundCents);
-        } catch (err) {
-          // Rollback failure is non-fatal — overcounting is conservative
-          // (caps tighter than intended) and self-heals at UTC rollover.
-          const msg = err instanceof Error ? err.message : String(err);
-          this.logger.warn(
-            `Daily-cap rollback failed user=${userId} refundCents=${refundCents} err=${msg} — overcounted by this amount until UTC rollover`,
-          );
+      // Reconcile the daily-cap reservation against realized fills.
+      // Skip entirely when no reservation was made (reservedCents=0):
+      // calling INCRBY -X without a prior reservation would create a
+      // negative counter that the next preflight mistakes for a seeded
+      // baseline (existing key → seed-skip → INCRBY against negative
+      // baseline → user gets phantom extra capacity).
+      if (reservedCents > 0) {
+        const realizedCents = this.computeRealizedCents(
+          operationResults as unknown as Parameters<
+            UnifiedTradingService['computeRealizedCents']
+          >[0],
+          enrichedOperations,
+        );
+        // Clamp refund to [0, reservedCents]: realized > reserved would
+        // only happen if the broker overfilled, which preflight wouldn't
+        // have approved. Belt-and-braces — never refund more than was
+        // reserved, never refund a negative.
+        const refundCents = Math.max(0, reservedCents - Math.max(0, realizedCents));
+        const cappedRefund = Math.min(refundCents, reservedCents);
+        if (cappedRefund > 0) {
+          try {
+            await this.tradingGuards.rollbackDailyReservation(userId, cappedRefund);
+          } catch (err) {
+            // Rollback failure is non-fatal — overcounting is conservative
+            // (caps tighter than intended) and self-heals at UTC rollover.
+            const msg = err instanceof Error ? err.message : String(err);
+            this.logger.warn(
+              `Daily-cap rollback failed user=${userId} refundCents=${cappedRefund} err=${msg} — overcounted by this amount until UTC rollover`,
+            );
+          }
         }
       }
     }
