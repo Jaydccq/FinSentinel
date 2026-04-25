@@ -175,7 +175,22 @@ embed-1b-v2` going forward. V16 rewritten to declare
      `unknown_requires_operator_review`, plus retry/acknowledgement behavior.
   3. Land typed API generation first if it remains the highest-value P1.
   4. Roll out cache changes per page with page-level tests.
-- **Status:** Blocked on UX/state-model input.
+- **Status:** Typed API codegen — phase 1 landed (2026-04-25 on
+  `feat/2026-04-25-typed-api-codegen`):
+  - `apps/web/src/api/typed-client.ts` wraps `apiFetch` with Zod request +
+    response validation, surfaces drift as `ResponseValidationError`.
+  - `apps/web/src/api/registry.ts` binds `(path, method)` descriptors to
+    shared `@finsentinel/shared` schemas.
+  - 3 client modules migrated: `watchlist.ts`, `auth.ts`, `portfolio.ts`
+    (CRUD surface only — holdings/analytics/insights/reports stay on raw
+    `apiFetch` for now).
+  - 16 client modules still on raw `apiFetch`, pending follow-up phases:
+    `analysis.ts`, `analysis-approvals.ts`, `analysis-runs.ts`,
+    `autonomy.ts`, `chat.ts`, `documents.ts`, `events.ts`, `market.ts`,
+    `news.ts`, `okx.ts`, `reports.ts`, `research.ts`, `settings.ts`,
+    `trading.ts`, plus the holdings/analytics/insights tail of
+    `portfolio.ts`. SWR rollout and trading-status UI remain blocked on
+    UX/state-model input.
 
 ### `apps/web` full lint is blocked by pre-existing violations
 
