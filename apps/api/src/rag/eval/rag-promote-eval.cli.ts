@@ -92,6 +92,10 @@ export function parsePromoteArgs(argv: string[], now: Date = new Date()): Promot
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
+    if (a === '--') {
+      // pnpm passes through `--` as a separator before user args; ignore it.
+      continue;
+    }
     if (a === '--dry-run') {
       args.dryRun = true;
     } else if (a === '--per-class' && argv[i + 1] !== undefined) {
