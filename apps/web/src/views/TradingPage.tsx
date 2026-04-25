@@ -29,6 +29,7 @@ import {
 import { okxApi, type OkxAccountInfo, type OkxPositionInfo } from '../api/okx';
 import { decimalString } from '@finsentinel/shared';
 import EmptyState from '../components/EmptyState';
+import { RecentOrdersSection } from '../components/trading/RecentOrdersSection';
 
 type TradingTab = 'paper' | 'okx';
 
@@ -959,6 +960,9 @@ export default function TradingPage() {
               )}
             </AnimatePresence>
           </motion.section>
+
+          {/* ─── Section 5: Recent Orders (read-only ledger surface) ─── */}
+          <RecentOrdersSection />
         </>
       )}
 

@@ -32,6 +32,8 @@ import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { IdempotencyKey } from '../common/decorators/idempotency-key.decorator';
 import { parseIntParam } from '../common/utils/parse-int-param';
 import { UnifiedTradingService } from './unified-trading.service';
+import { OrderLedgerService } from './order-ledger/order-ledger.service';
+import type { OrderLedgerListResponse } from '@finsentinel/shared';
 
 /**
  * Trading controller exposing compatibility endpoints and the UTA surface.
@@ -42,7 +44,10 @@ import { UnifiedTradingService } from './unified-trading.service';
 @Controller('trading')
 @UseGuards(JwtGuard)
 export class TradingController {
-  constructor(private readonly tradingService: UnifiedTradingService) {}
+  constructor(
+    private readonly tradingService: UnifiedTradingService,
+    private readonly orderLedgerService: OrderLedgerService,
+  ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
   // v1 Endpoints
@@ -228,5 +233,35 @@ export class TradingController {
       return [];
     }
     return this.tradingService.searchAssets(user.userId, query);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Order Ledger — read-only surface for the trading-status UI (phase 1).
+  // See docs/superpowers/plans/2026-04-25-trading-status-ui.md.
+  // Operator actions (retry / acknowledge) land with item 3 M4.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  @Get('ledger')
+  async getLedger(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('limit') limitParam?: string,
+  ): Promise<OrderLedgerListResponse> {
+    const limit = parseIntParam(limitParam, 25, 1, 50);
+    const rows = await this.orderLedgerService.findRecentByUser(user.userId, limit);
+    return rows.map((r) => ({
+      id: r.id,
+      commitHash: r.commitHash,
+      status: r.status as OrderLedgerListResponse[number]['status'],
+      symbol: r.symbol,
+      side: r.side,
+      qty: r.qty ?? null,
+      amount: r.amount ?? null,
+      price: r.price ?? null,
+      broker: r.broker,
+      brokerOrderId: r.brokerOrderId ?? null,
+      errorReason: r.errorReason ?? null,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+    }));
   }
 }

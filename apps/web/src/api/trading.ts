@@ -1,4 +1,7 @@
 import { apiFetch } from './client';
+import { routes } from './registry';
+import { typedFetch } from './typed-client';
+import type { OrderLedgerListResponse } from '@finsentinel/shared';
 
 export interface TradeOperation {
   action: string;
@@ -123,4 +126,19 @@ export const tradingApiV2 = {
 
   search: (query: string) =>
     apiFetch<AssetSearchResult[]>(`/trading/v2/search?query=${encodeURIComponent(query)}`),
+};
+
+/* ─── Order Ledger (read-only — phase 1 trading-status UI) ─── */
+
+/**
+ * Routes through the typed registry so the response is Zod-validated at
+ * runtime — silent JSON drift surfaces as `ResponseValidationError`
+ * instead of poisoning the SWR cache.
+ */
+export const tradingLedgerApi = {
+  list: (limit = 25): Promise<OrderLedgerListResponse> =>
+    typedFetch({
+      ...routes.trading.ledger,
+      query: { limit },
+    }),
 };
