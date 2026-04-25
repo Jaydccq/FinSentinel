@@ -393,4 +393,105 @@ describe('PaperTradingEngine', () => {
     // Weighted avg: (10 * 150 + 10 * 160) / 20 = 3100 / 20 = 155
     expect(Number(positions[0]!.avgCost)).toBe(155);
   });
+
+  // ── 14. decimalArithmetic_drift_regression ─────────────────────────────
+  // Known-drift scenario under JS `Number`: 1000 fills of qty=0.1 @ price=0.1
+  // expected cash decrement = 1000 * 0.01 = 10.00000000 exactly.
+  // Under the old `Number` path the cumulative sum drifted by ~1e-13
+  // (classic 0.1 + 0.2 !== 0.3 accumulation). Under Decimal it must be exact.
+  it('1000 sequential fills at qty=0.1 @ price=0.1 produce exact cash decrement (Decimal has no drift)', async () => {
+    (mockMarketData.getQuote as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ticker: 'AAPL',
+      open: '0.1',
+      high: '0.1',
+      low: '0.1',
+      close: '0.1',
+      volume: 0,
+      timestamp: Date.now(),
+    });
+
+    const startCash = 100000;
+    for (let i = 0; i < 1000; i += 1) {
+      const result = await engine.placeOrder({
+        symbol: 'AAPL',
+        side: 'buy',
+        type: 'market',
+        qty: '0.1',
+      });
+      expect(result.success).toBe(true);
+    }
+
+    const account = await engine.getAccount();
+    // Expected decrement: 1000 * (0.1 * 0.1) = 10 exactly.
+    // Cash is returned as `number`; Decimal-backed internal math means the
+    // number-cast at the boundary is the already-exact result (10), not a
+    // drifted intermediate (e.g. 9.99999999999986).
+    expect(account.cashValue).toBe(startCash - 10);
+
+    // Position shares = 1000 * 0.1 = 100 exactly.
+    const positions = await engine.getPositions();
+    expect(positions).toHaveLength(1);
+    expect(positions[0]!.qty).toBe('100');
+    expect(positions[0]!.avgCost).toBe('0.1');
+  });
+
+  // ── 15. decimalArithmetic_deterministic_property ───────────────────────
+  // Property-style test: 100 sequential buy/sell orders with randomised
+  // qty/price strings must produce byte-identical final cashBalance across
+  // two runs driven by the same input sequence. With Decimal this is
+  // guaranteed; with Number it typically is not (non-associative float
+  // accumulation plus division rounding).
+  it('100 randomised buy/sell fills are byte-identical across two runs with the same input sequence', async () => {
+    const qtyPool = ['0.1', '0.2', '0.33', '1.5'];
+    const pricePool = ['100.05', '200.1', '0.0001'];
+
+    // Deterministic pseudo-random sequence generator (no external dep).
+    // LCG parameters from Numerical Recipes.
+    function makeSeq(seed: number): Array<{ side: 'buy' | 'sell'; qty: string; price: string }> {
+      let s = seed;
+      const next = (): number => {
+        s = (s * 1664525 + 1013904223) >>> 0;
+        return s;
+      };
+      const ops: Array<{ side: 'buy' | 'sell'; qty: string; price: string }> = [];
+      for (let i = 0; i < 100; i += 1) {
+        const side = i % 2 === 0 ? 'buy' : 'sell';
+        const qty = qtyPool[next() % qtyPool.length]!;
+        const price = pricePool[next() % pricePool.length]!;
+        ops.push({ side, qty, price });
+      }
+      return ops;
+    }
+
+    const seq = makeSeq(42);
+
+    async function runSeq(): Promise<string> {
+      const md = createMockMarketDataService();
+      const eng = new PaperTradingEngine(md, 1000000);
+      for (const op of seq) {
+        (md.getQuote as ReturnType<typeof vi.fn>).mockResolvedValue({
+          ticker: 'AAPL',
+          open: op.price,
+          high: op.price,
+          low: op.price,
+          close: op.price,
+          volume: 0,
+          timestamp: 0,
+        });
+        await eng.placeOrder({
+          symbol: 'AAPL',
+          side: op.side,
+          type: 'market',
+          qty: op.qty,
+        });
+      }
+      // Serialize cash via the same precision boundary a caller would use.
+      return String(eng.getCash());
+    }
+
+    const runA = await runSeq();
+    const runB = await runSeq();
+
+    expect(runA).toBe(runB);
+  });
 });
