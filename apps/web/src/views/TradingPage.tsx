@@ -27,6 +27,7 @@ import {
   type AssetSearchResult,
 } from '../api/trading';
 import { okxApi, type OkxAccountInfo, type OkxPositionInfo } from '../api/okx';
+import { decimalString } from '@finsentinel/shared';
 import EmptyState from '../components/EmptyState';
 
 type TradingTab = 'paper' | 'okx';
@@ -233,6 +234,18 @@ export default function TradingPage() {
     }
     if (orderMode === 'amount' && !amount.trim()) {
       toast.error('Dollar amount is required.');
+      return;
+    }
+    // Item 4 M4: validate qty / amount via the shared decimalString schema
+    // so the frontend rejects negative, zero, scientific-notation, and
+    // > 8-frac-digit values BEFORE the network round-trip — same regex the
+    // backend `decimalString` validator enforces.
+    const valueToCheck = orderMode === 'qty' ? qty.trim() : amount.trim();
+    const parsed = decimalString.safeParse(valueToCheck);
+    if (!parsed.success) {
+      toast.error(
+        `Invalid ${orderMode}: ${parsed.error.issues[0]?.message ?? 'must be a positive decimal with ≤ 8 fraction digits'}`,
+      );
       return;
     }
     setStaging(true);
