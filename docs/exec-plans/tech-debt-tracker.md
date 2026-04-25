@@ -210,6 +210,31 @@ embed-1b-v2` going forward. V16 rewritten to declare
     documents, env-self-check, settings, stock, trading, crypto,
     private-docs). Trading status UI remains blocked on UX state design
     (see next plan).
+- **Status update (2026-04-25):** Trading status UI phase 1 landed on
+  `feat/2026-04-25-trading-status-ui-phase1`:
+  - State model anchored to the actual `order_ledger.status` enum
+    (`STAGED | COMMITTED | EXECUTING | EXECUTED | PARTIALLY_FAILED |
+    FAILED | CANCELLED | UNKNOWN_REQUIRES_OPERATOR_REVIEW`) instead of
+    the plan's invented names. Single source of truth lives at
+    `apps/web/src/lib/trading/order-status-copy.ts`.
+  - New backend read endpoint `GET /api/trading/ledger?limit=N` (max
+    50, default 25) backed by `OrderLedgerService.findRecentByUser`.
+    Wire format mirrored in `@finsentinel/shared`
+    (`orderLedgerListResponseSchema`).
+  - New web surfaces: `OrderStatusBadge`, `OrderLedgerCard`,
+    `RecentOrdersSection` rendered on `views/TradingPage.tsx` (Paper
+    tab); SWR-backed `useOrderLedger` hook polls every 10s.
+  - Phase 1 is read-only. Retry / Acknowledge buttons render `disabled`
+    with a `title="Coming in phase 2"` tooltip. Wiring is blocked on
+    item 3 M4 (operator-action backend).
+  - Plan deviations: status enum names corrected to match the SQL CHECK
+    (no `PENDING` / `PARTIALLY_FILLED`); copy module covers all 8 real
+    enum values; backend ledger read endpoint added (the plan assumed
+    one already existed).
+  - Verification: `pnpm --filter @finsentinel/web typecheck` PASS,
+    `pnpm --filter @finsentinel/web test` 134/134 PASS,
+    `pnpm --filter @finsentinel/api typecheck` PASS,
+    `pnpm --filter @finsentinel/api test` 1752/1752 PASS (1 skipped).
 
 ### `apps/web` full lint is blocked by pre-existing violations
 

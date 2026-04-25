@@ -4,6 +4,7 @@ import { INestApplication, BadRequestException } from '@nestjs/common';
 import request from 'supertest';
 import { TradingController } from '../trading.controller';
 import { UnifiedTradingService } from '../unified-trading.service';
+import { OrderLedgerService } from '../order-ledger/order-ledger.service';
 import { JwtGuard } from '../../auth/jwt.guard';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -27,6 +28,10 @@ const mockTradingService = {
   searchAssets: vi.fn(),
 };
 
+const mockOrderLedgerService = {
+  findRecentByUser: vi.fn(),
+};
+
 // ── Fake JwtGuard ─────────────────────────────────────────────────────────
 const fakeJwtGuard = {
   canActivate: (context: { switchToHttp: () => { getRequest: () => Record<string, unknown> } }) => {
@@ -44,7 +49,10 @@ describe('TradingController', () => {
 
     const module = await Test.createTestingModule({
       controllers: [TradingController],
-      providers: [{ provide: UnifiedTradingService, useValue: mockTradingService }],
+      providers: [
+        { provide: UnifiedTradingService, useValue: mockTradingService },
+        { provide: OrderLedgerService, useValue: mockOrderLedgerService },
+      ],
     })
       .overrideGuard(JwtGuard)
       .useValue(fakeJwtGuard)
@@ -317,6 +325,58 @@ describe('TradingController', () => {
 
       expect(res.body).toEqual([]);
       expect(mockTradingService.searchAssets).not.toHaveBeenCalled();
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GET /api/trading/ledger — read-only ledger surface (phase 1)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe('GET /api/trading/ledger', () => {
+    it('returns recent ledger rows mapped to the wire format', async () => {
+      const createdAt = new Date('2026-04-25T12:00:00Z');
+      const updatedAt = new Date('2026-04-25T12:00:05Z');
+      mockOrderLedgerService.findRecentByUser.mockResolvedValueOnce([
+        {
+          id: 'lg-1',
+          userId: USER_ID,
+          commitHash: COMMIT_HASH,
+          idempotencyKey: null,
+          status: 'EXECUTED',
+          symbol: 'AAPL',
+          side: 'buy',
+          qty: '10',
+          amount: null,
+          price: '150.00',
+          broker: 'paper',
+          brokerOrderId: null,
+          brokerRequest: {},
+          brokerResponse: null,
+          errorReason: null,
+          createdAt,
+          updatedAt,
+        },
+      ]);
+
+      const res = await request(app.getHttpServer()).get('/api/trading/ledger').expect(200);
+
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0]).toMatchObject({
+        id: 'lg-1',
+        status: 'EXECUTED',
+        symbol: 'AAPL',
+        broker: 'paper',
+        commitHash: COMMIT_HASH,
+        createdAt: createdAt.toISOString(),
+        updatedAt: updatedAt.toISOString(),
+      });
+      expect(mockOrderLedgerService.findRecentByUser).toHaveBeenCalledWith(USER_ID, 25);
+    });
+
+    it('clamps the limit query parameter to [1, 50]', async () => {
+      mockOrderLedgerService.findRecentByUser.mockResolvedValueOnce([]);
+      await request(app.getHttpServer()).get('/api/trading/ledger?limit=999').expect(200);
+      expect(mockOrderLedgerService.findRecentByUser).toHaveBeenCalledWith(USER_ID, 50);
     });
   });
 });

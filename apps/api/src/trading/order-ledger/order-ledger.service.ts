@@ -123,6 +123,22 @@ export class OrderLedgerService {
       .orderBy(desc(orderLedger.createdAt));
   }
 
+  /**
+   * Most recent ledger rows for a user, newest first. Capped at `limit`
+   * (max 50) so the read endpoint stays bounded. Powers the read-only
+   * "Recent Orders" surface in the web UI (phase 1 trading-status UI —
+   * docs/superpowers/plans/2026-04-25-trading-status-ui.md).
+   */
+  async findRecentByUser(userId: string, limit: number): Promise<OrderLedgerRow[]> {
+    const cap = Math.max(1, Math.min(limit, 50));
+    return this.db
+      .select()
+      .from(orderLedger)
+      .where(eq(orderLedger.userId, userId))
+      .orderBy(desc(orderLedger.createdAt))
+      .limit(cap);
+  }
+
   // ───────────────────────────────────────────────────────────────────────
   // M2 — state machine transition methods
   // ───────────────────────────────────────────────────────────────────────

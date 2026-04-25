@@ -11,6 +11,7 @@ import {
   authResponseSchema,
   portfolioRequestSchema,
   portfolioResponseSchema,
+  orderLedgerListResponseSchema,
 } from '@finsentinel/shared';
 
 /**
@@ -98,6 +99,18 @@ export const routes = {
       method: 'POST',
       requestSchema: undefined,
       responseSchema: z.undefined(),
+    }),
+  },
+  trading: {
+    /**
+     * Read-only ledger surface backing the phase-1 trading-status UI.
+     * Operator actions (retry / acknowledge) land with item 3 M4.
+     */
+    ledger: defineRoute({
+      path: '/trading/ledger',
+      method: 'GET',
+      requestSchema: undefined,
+      responseSchema: orderLedgerListResponseSchema,
     }),
   },
   portfolio: {
