@@ -376,13 +376,23 @@ export class UnifiedTradingService {
       }
     }
 
-    // 1. Atomic get-and-delete pending commit (Redis 6.2+ GETDEL).
-    // M2 retains GETDEL — atomic single-Redis-op semantics are preserved.
-    // M3 reconciler is responsible for orphan EXECUTING rows if a process
-    // crash occurs between GETDEL and the EXECUTING row insert.
-    const raw = await (
-      this.redis as Redis & { getdel(key: string): Promise<string | null> }
-    ).getdel(pendingKey);
+    // 1. Read pending commit.
+    // - Legacy path: GETDEL is the atomic single-Redis-op consume.
+    // - M2 path (state machine): GET only — pending stays in Redis as the
+    //   safety net until the durable ledger row exists. We DEL after the
+    //   EXECUTING insert succeeds, so a crash between the GET and the
+    //   INSERT leaves both untouched and the next attempt is safe; a crash
+    //   between the INSERT and the DEL leaves rows AND pending, and the
+    //   per-(user, commit_hash) duplicate-detection step below surfaces a
+    //   409 instead of letting the broker run twice.
+    let raw: string | null;
+    if (flags.stateMachineEnabled) {
+      raw = await this.redis.get(pendingKey);
+    } else {
+      raw = await (
+        this.redis as Redis & { getdel(key: string): Promise<string | null> }
+      ).getdel(pendingKey);
+    }
 
     if (!raw) {
       throw new BadRequestException('No pending commit found. Stage and commit operations first.');
@@ -394,10 +404,28 @@ export class UnifiedTradingService {
     const wallet = await this.getOrCreateWallet(userId);
 
     // 3. Idempotency: check if this hash was already executed.
-    // Legacy path uses wallet.commitHistory; M2 skips this because the ledger
-    // already covers idempotency via the (user, idempotency_key) lookup above
-    // AND because once flag-on we stop appending to commitHistory.
-    if (!flags.stateMachineEnabled) {
+    // Legacy path: wallet.commitHistory.
+    // M2 path: ledger lookup by commit_hash. If any EXECUTING/EXECUTED/
+    // PARTIALLY_FAILED/FAILED rows exist for this (user, commit_hash),
+    // we are in the durable-record-survived-crash window — surface 409
+    // and let the operator/reconciler decide. Re-running brokers when
+    // EXECUTING rows already exist would double-spend.
+    if (flags.stateMachineEnabled) {
+      const priorByHash = await this.orderLedger.findByCommitHash(commitData.hash);
+      const inflight = priorByHash.filter(
+        (r) =>
+          r.userId === userId &&
+          (r.status === 'EXECUTING' ||
+            r.status === 'EXECUTED' ||
+            r.status === 'PARTIALLY_FAILED' ||
+            r.status === 'FAILED'),
+      );
+      if (inflight.length > 0) {
+        throw new BadRequestException(
+          `Commit ${commitData.hash.substring(0, 8)}... already has ${inflight.length} ledger row(s) (status=${inflight[0]!.status}); refusing to re-execute`,
+        );
+      }
+    } else {
       const existingHashes = (wallet.commitHistory as CommitData[]).map((c) => c.hash);
       if (existingHashes.includes(commitData.hash)) {
         throw new BadRequestException(
@@ -406,11 +434,17 @@ export class UnifiedTradingService {
       }
     }
 
-    // 3b. M2 only — insert EXECUTING rows for each operation BEFORE invoking
-    // brokers. After each broker call returns, transitionFromExecuting()
-    // updates the matching row to EXECUTED/FAILED. If a process crash occurs
-    // between this insert and the broker call, the M3 reconciler picks the
-    // stuck EXECUTING rows up and queries the broker for true status.
+    // 3b. M2 only — durable-first state machine transition.
+    // Order:
+    //   (a) INSERT EXECUTING rows (durable record exists)
+    //   (b) DEL pending (now safe — rows are the system of record)
+    //   (c) broker calls
+    //   (d) transitionFromExecuting → EXECUTED/FAILED
+    // Crash between (a) and (b): pending + EXECUTING rows present; retry
+    //   is caught by the per-(user, commit_hash) check above and 409s.
+    // Crash between (b) and (d): pending gone, EXECUTING rows present;
+    //   the M3 reconciler picks them up by stale updated_at and queries
+    //   the broker for ground truth.
     let executingRowIds: string[] = [];
     if (flags.stateMachineEnabled) {
       executingRowIds = await this.orderLedger.recordExecuting({
@@ -425,6 +459,8 @@ export class UnifiedTradingService {
           amount?: unknown;
         }[],
       });
+      // Durable record now exists. Safe to clear pending.
+      await this.redis.del(pendingKey);
     }
 
     // 4. Execute operations
