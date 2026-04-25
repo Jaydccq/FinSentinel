@@ -1,5 +1,5 @@
-import { z } from 'zod';
 import {
+  z,
   watchlistOverviewResponseSchema,
   watchlistCategoryResponseSchema,
   watchlistItemResponseSchema,
