@@ -18,6 +18,11 @@ export const tradingConfig = registerAs('trading', () => ({
   reconcilerEnabled: process.env['TRADING_LEDGER_RECONCILER_ENABLED'] === 'true',
   reconcilerStaleAfterMs: Number(process.env['TRADING_LEDGER_RECONCILER_STALE_AFTER_MS'] ?? 60_000),
 
+  // Item 5 — live trading guards.
+  liveGuardsEnabled: process.env['TRADING_LIVE_GUARDS_ENABLED'] === 'true',
+  livePerOrderNotionalUsd: Number(process.env['TRADING_LIVE_PER_ORDER_NOTIONAL_USD'] ?? 10_000),
+  livePerDayNotionalUsd: Number(process.env['TRADING_LIVE_PER_DAY_NOTIONAL_USD'] ?? 50_000),
+
   alpaca: {
     apiKey: process.env['ALPACA_API_KEY'],
     secretKey: process.env['ALPACA_SECRET_KEY'],

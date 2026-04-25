@@ -3,7 +3,8 @@ import { createHash } from 'crypto';
 import type Redis from 'ioredis';
 import { tradeWallets, eq } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
-import { TradingMode, Contract, AgentEventType, SecurityType } from '@finsentinel/shared';
+import { Decimal, TradingMode, Contract, AgentEventType, SecurityType } from '@finsentinel/shared';
+import type { DecimalValue } from '@finsentinel/shared';
 import type { AgentEventType as AgentEventTypeValue } from '@finsentinel/shared';
 import type {
   UnifiedStageRequest,
@@ -19,6 +20,7 @@ import type { MarketDataService } from '../market/market-data.service';
 import type { ExecuteResult } from './interfaces/execute-result';
 import type { PositionMap, PositionMapString } from './engines/paper-trading.engine';
 import { OrderLedgerService } from './order-ledger/order-ledger.service';
+import { TradingGuardsService } from './guards/trading-guards.service';
 import type { TradingRuntimeConfig } from '../config/trading.config';
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -144,6 +146,7 @@ export class UnifiedTradingService {
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     @Inject('MarketDataService') private readonly marketDataService: MarketDataService,
     private readonly orderLedger: OrderLedgerService,
+    private readonly tradingGuards: TradingGuardsService,
     private readonly config: ConfigService,
   ) {}
 
@@ -160,6 +163,137 @@ export class UnifiedTradingService {
       decimalExecuteEnabled: cfg?.decimalExecuteEnabled ?? false,
       stateMachineEnabled: cfg?.stateMachineEnabled ?? false,
     };
+  }
+
+  /**
+   * Enrich qty-only ops with an indicative price from the market data
+   * service so TradingGuardsService can compute notional. Ops that
+   * already carry `amount` (notional-mode) pass through untouched.
+   * Quote-fetch failures leave the op unpriceable; the guards layer
+   * fail-closes on it (per-order cap throws Forbidden), which is the
+   * desired safety posture — better to block than silently bypass.
+   */
+  private async enrichOperationsForPreflight(
+    operations: Record<string, unknown>[],
+  ): Promise<
+    Array<{
+      symbol: unknown;
+      action: unknown;
+      qty?: unknown;
+      amount?: unknown;
+      indicativePrice?: unknown;
+    }>
+  > {
+    const enriched: Array<{
+      symbol: unknown;
+      action: unknown;
+      qty?: unknown;
+      amount?: unknown;
+      indicativePrice?: unknown;
+    }> = [];
+    for (const op of operations) {
+      const out: {
+        symbol: unknown;
+        action: unknown;
+        qty?: unknown;
+        amount?: unknown;
+        indicativePrice?: unknown;
+      } = { symbol: op.symbol, action: op.action };
+      if (op.qty != null) out.qty = op.qty;
+      if (op.amount != null) out.amount = op.amount;
+
+      // Need an indicative price only when we have qty and no amount.
+      const needsPrice = out.qty != null && out.amount == null;
+      if (needsPrice) {
+        try {
+          const symbol = String(op.symbol ?? '');
+          if (symbol.length > 0) {
+            const quote = await this.marketDataService.getQuote(symbol);
+            // getQuote shape: { close: string, ... } — close is the
+            // most-recent print, suitable for sizing decisions.
+            const close = (quote as { close?: unknown })?.close;
+            if (close != null) out.indicativePrice = String(close);
+          }
+        } catch (err) {
+          // Quote unavailable → op stays unpriceable → guards fail-close
+          // on it. Log so an operator knows why their qty order rejected.
+          const msg = err instanceof Error ? err.message : String(err);
+          this.logger.warn(
+            `Preflight quote-fetch failed symbol=${String(op.symbol)} err=${msg} — op will be unpriceable to guards`,
+          );
+        }
+      }
+      enriched.push(out);
+    }
+    return enriched;
+  }
+
+  /**
+   * Compute realized notional in cents from broker outcomes, paired
+   * with the enriched ops so we know each op's intent (qty+price vs
+   * amount). Used to roll back the daily-cap reservation for the
+   * portion that did NOT actually fill.
+   *
+   * - Successful fill with filledQty + avgPrice: realized = filledQty * avgPrice.
+   * - Successful fill with only amount (notional order): realized = amount.
+   * - Failure: realized = 0 for that op.
+   * - Successful fill missing both pieces: best-effort fall back to the
+   *   enriched op's proposed notional (conservative — assume the user
+   *   spent their intent rather than under-counting).
+   */
+  private computeRealizedCents(
+    outcomes: Array<{
+      success: boolean;
+      filledQty?: unknown;
+      avgPrice?: unknown;
+      symbol?: unknown;
+    }>,
+    enriched: Array<{
+      symbol: unknown;
+      qty?: unknown;
+      amount?: unknown;
+      indicativePrice?: unknown;
+    }>,
+  ): number {
+    if (outcomes.length === 0) return 0;
+    let realized: DecimalValue = new Decimal(0);
+    for (let i = 0; i < outcomes.length; i += 1) {
+      const out = outcomes[i]!;
+      if (!out.success) continue;
+      // Try filledQty * avgPrice first
+      const fq = out.filledQty != null ? this.tryDecimal(out.filledQty) : null;
+      const ap = out.avgPrice != null ? this.tryDecimal(out.avgPrice) : null;
+      if (fq && ap) {
+        realized = realized.plus(fq.times(ap));
+        continue;
+      }
+      // Fall back to op.amount (notional-mode order)
+      const op = enriched[i];
+      if (op?.amount != null) {
+        const a = this.tryDecimal(op.amount);
+        if (a) {
+          realized = realized.plus(a);
+          continue;
+        }
+      }
+      // Conservative fallback: count the op's proposed qty * price
+      if (op?.qty != null && op.indicativePrice != null) {
+        const q = this.tryDecimal(op.qty);
+        const p = this.tryDecimal(op.indicativePrice);
+        if (q && p) realized = realized.plus(q.times(p));
+      }
+    }
+    return Math.round(realized.times(100).toNumber());
+  }
+
+  private tryDecimal(input: unknown): DecimalValue | null {
+    try {
+      const d = new Decimal(String(input));
+      if (!d.isFinite() || d.isNegative()) return null;
+      return d;
+    } catch {
+      return null;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -559,6 +693,51 @@ export class UnifiedTradingService {
         wallet.positions = engine.getPositionMaps() as unknown[];
       }
     } else {
+      // LIVE mode: pre-flight guards (item 5) — kill switch + per-order
+      // notional cap + per-day per-user cumulative cap. Throws on breach;
+      // throw propagates BEFORE any broker call so a guard breach never
+      // triggers a partial fill. EXECUTING rows already inserted by M2 are
+      // transitioned to FAILED with the breach reason in the catch below.
+      //
+      // Enrich qty-only operations with an indicative price BEFORE handing
+      // them to preflight. Without this:
+      //   - per-order cap path: qty ops have no price → unpriceable →
+      //     fail-closed Forbidden, which bricks every legitimate qty
+      //     order under default config.
+      //   - per-day cap path: if the per-order cap is 0 (disabled), the
+      //     unpriceable check is skipped AND opNotional returns null,
+      //     causing qty ops to bypass the daily cap entirely.
+      // The market-data lookup here is "trusted enough" for guard sizing —
+      // the broker will fill at its own price, and the rollback step below
+      // reconciles realized vs proposed when there's drift.
+      const enrichedOperations = await this.enrichOperationsForPreflight(
+        commitData.operations,
+      );
+      // preflight returns { reservedCents } reflecting the EXACT amount
+      // committed to Redis. Returns 0 when no reservation was made
+      // (TRADING_LIVE_GUARDS_ENABLED=false, TRADING_LIVE_PER_DAY_NOTIONAL_USD=0,
+      // or proposed sum was 0). We MUST refund based on this number, NOT
+      // a locally-computed proposed value: calling INCRBY -X with no
+      // prior reservation creates a negative counter that the next
+      // preflight mistakes for a seeded baseline, inflating capacity.
+      let reservedCents = 0;
+      try {
+        const receipt = await this.tradingGuards.preflight({
+          userId,
+          operations: enrichedOperations as Parameters<
+            typeof this.tradingGuards.preflight
+          >[0]['operations'],
+        });
+        reservedCents = receipt.reservedCents;
+      } catch (guardErr) {
+        const reason = guardErr instanceof Error ? guardErr.message : String(guardErr);
+        // Bubble FAILED to EXECUTING rows so the ledger reflects the block.
+        if (flags.stateMachineEnabled && executingRowIds.length > 0) {
+          await this.orderLedger.transitionAll(executingRowIds, 'FAILED', reason);
+        }
+        throw guardErr;
+      }
+
       // LIVE mode: resolve broker per-contract via BrokerRegistry
       for (const op of commitData.operations) {
         try {
@@ -599,6 +778,39 @@ export class UnifiedTradingService {
             errorMessage: errorMsg,
           });
           reportLines.push(`[FAIL] ${op.action} ${op.symbol}: ${errorMsg}`);
+        }
+      }
+
+      // Reconcile the daily-cap reservation against realized fills.
+      // Skip entirely when no reservation was made (reservedCents=0):
+      // calling INCRBY -X without a prior reservation would create a
+      // negative counter that the next preflight mistakes for a seeded
+      // baseline (existing key → seed-skip → INCRBY against negative
+      // baseline → user gets phantom extra capacity).
+      if (reservedCents > 0) {
+        const realizedCents = this.computeRealizedCents(
+          operationResults as unknown as Parameters<
+            UnifiedTradingService['computeRealizedCents']
+          >[0],
+          enrichedOperations,
+        );
+        // Clamp refund to [0, reservedCents]: realized > reserved would
+        // only happen if the broker overfilled, which preflight wouldn't
+        // have approved. Belt-and-braces — never refund more than was
+        // reserved, never refund a negative.
+        const refundCents = Math.max(0, reservedCents - Math.max(0, realizedCents));
+        const cappedRefund = Math.min(refundCents, reservedCents);
+        if (cappedRefund > 0) {
+          try {
+            await this.tradingGuards.rollbackDailyReservation(userId, cappedRefund);
+          } catch (err) {
+            // Rollback failure is non-fatal — overcounting is conservative
+            // (caps tighter than intended) and self-heals at UTC rollover.
+            const msg = err instanceof Error ? err.message : String(err);
+            this.logger.warn(
+              `Daily-cap rollback failed user=${userId} refundCents=${cappedRefund} err=${msg} — overcounted by this amount until UTC rollover`,
+            );
+          }
         }
       }
     }

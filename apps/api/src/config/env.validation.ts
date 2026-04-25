@@ -141,6 +141,32 @@ const baseEnvSchema = z.object({
   // against still-in-flight broker calls.
   TRADING_LEDGER_RECONCILER_STALE_AFTER_MS: z.coerce.number().int().positive().default(60_000),
 
+  // Item 5 — live trading guards. Default OFF. When ON, every LIVE-mode
+  // execute() goes through TradingGuardsService.preflight():
+  //   - Global kill switch (operator-toggleable Redis flag) → blocks all
+  //     live orders without a redeploy.
+  //   - Per-order notional cap (single buy/sell value).
+  //   - Per-day per-user cumulative notional cap (sum of EXECUTED rows
+  //     in order_ledger since UTC midnight).
+  // PAPER mode is unaffected even when the flag is on.
+  TRADING_LIVE_GUARDS_ENABLED: envBoolean.default(false),
+
+  // Per-order notional cap in USD-equivalent units. Rejects any single
+  // commit-op whose `amount` (or `qty * indicative_price`) exceeds this.
+  TRADING_LIVE_PER_ORDER_NOTIONAL_USD: z.coerce
+    .number()
+    .nonnegative()
+    .default(10_000),
+
+  // Per-day per-user cumulative notional cap in USD. The sum of all
+  // EXECUTED order_ledger rows (paper + live) for the current UTC day
+  // is checked against this; the SUM is computed from `amount` if
+  // present, else from `qty * price`. 0 means "no per-day cap".
+  TRADING_LIVE_PER_DAY_NOTIONAL_USD: z.coerce
+    .number()
+    .nonnegative()
+    .default(50_000),
+
   // Alpaca (optional — US equities broker)
   ALPACA_API_KEY: z.string().optional(),
   ALPACA_SECRET_KEY: z.string().optional(),

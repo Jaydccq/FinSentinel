@@ -11,6 +11,7 @@ import { OrderDraftValidator } from './order-draft-validator.service';
 import { OrderDraftMapper } from './order-draft-mapper.service';
 import { OrderLedgerService } from './order-ledger/order-ledger.service';
 import { LedgerReconcilerService } from './reconciler/ledger-reconciler.service';
+import { TradingGuardsService } from './guards/trading-guards.service';
 
 /**
  * Trading module — Phase 5 + Phase 12 controllers.
@@ -34,6 +35,7 @@ import { LedgerReconcilerService } from './reconciler/ledger-reconciler.service'
     OrderDraftMapper,
     OrderLedgerService,
     LedgerReconcilerService,
+    TradingGuardsService,
     {
       provide: 'MarketDataService',
       useExisting: MarketDataService,
@@ -46,6 +48,7 @@ import { LedgerReconcilerService } from './reconciler/ledger-reconciler.service'
     OrderDraftMapper,
     OrderLedgerService,
     LedgerReconcilerService,
+    TradingGuardsService,
   ],
 })
 export class TradingModule {}

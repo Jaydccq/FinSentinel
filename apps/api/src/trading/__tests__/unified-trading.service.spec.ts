@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { UnifiedTradingService } from '../unified-trading.service';
 import { BrokerRegistry } from '../broker-registry.service';
 import { OrderLedgerService } from '../order-ledger/order-ledger.service';
+import { TradingGuardsService } from '../guards/trading-guards.service';
 import type { MarketDataService } from '../../market/market-data.service';
 import { TradingMode, Contract } from '@finsentinel/shared';
 
@@ -155,6 +156,13 @@ describe('UnifiedTradingService', () => {
           },
         },
         {
+          provide: TradingGuardsService,
+          useValue: {
+            // Default for these tests: guard is a no-op (flag-off equivalent).
+            preflight: vi.fn().mockResolvedValue(undefined),
+          },
+        },
+        {
           provide: ConfigService,
           useValue: {
             get: <T>(key: string): T | undefined => {
@@ -162,6 +170,7 @@ describe('UnifiedTradingService', () => {
                 return {
                   decimalExecuteEnabled: false,
                   stateMachineEnabled: false,
+                  liveGuardsEnabled: false,
                 } as unknown as T;
               }
               return undefined;
@@ -652,6 +661,10 @@ describe('UnifiedTradingService', () => {
           { provide: 'MarketDataService', useValue: mockMarketData },
           { provide: OrderLedgerService, useValue: stateMachineLedger },
           {
+            provide: TradingGuardsService,
+            useValue: { preflight: vi.fn().mockResolvedValue(undefined) },
+          },
+          {
             provide: ConfigService,
             useValue: {
               get: <T>(key: string): T | undefined => {
@@ -810,6 +823,398 @@ describe('UnifiedTradingService', () => {
 
       await expect(stateMachineService.execute(TEST_USER_ID)).resolves.toBeDefined();
       expect(stateMachineLedger.recordExecuting).toHaveBeenCalled();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Item 5 live-trading guards — UnifiedTradingService-level integration
+  // ─────────────────────────────────────────────────────────────────────────
+  // These tests wire the REAL TradingGuardsService against mock Redis/DB so
+  // execute()'s LIVE-mode preflight + rollback + qty-enrichment paths run
+  // end-to-end. Catches regressions like:
+  //   - qty-only ops being passed to preflight without an indicative price
+  //     (the "P1 qty bypass" finding from review)
+  //   - failed broker calls permanently consuming the daily cap (the "P1
+  //     no rollback" finding from review)
+  describe('LIVE-mode preflight wiring (item 5 integration — real guards)', () => {
+    const liveSymbol = 'AAPL';
+    const livePending = {
+      hash: 'live123abc'.padEnd(64, '0'),
+      message: 'live qty buy',
+      timestamp: new Date().toISOString(),
+      operations: [{ action: 'BUY', symbol: liveSymbol, qty: '5' }],
+    };
+
+    /**
+     * Build a UnifiedTradingService with a real TradingGuardsService and
+     * a stub broker that we control per test. The wallet is forced into
+     * LIVE mode by the spec's primeWallet helper.
+     */
+    /**
+     * Extend the spec's createMockRedis with the methods TradingGuardsService
+     * needs (exists / incrby / set with NX flag). Also keeps a backing
+     * store so tests can inspect counter values after the fact.
+     */
+    function createGuardCapableRedis() {
+      const base = createMockRedis();
+      const store: Record<string, string> = {};
+      const richRedis = {
+        ...base,
+        exists: vi.fn(async (k: string) => (store[k] != null ? 1 : 0)),
+        incrby: vi.fn(async (k: string, delta: number) => {
+          const cur = store[k] != null ? Number(store[k]) : 0;
+          const next = cur + delta;
+          store[k] = String(next);
+          return next;
+        }),
+        // Override set/get/del to share the same store so the integration
+        // can also exercise the guards' set NX path realistically.
+        set: vi.fn(async (k: string, v: string, ...args: unknown[]) => {
+          const isNx = args.includes('NX');
+          if (isNx && store[k] != null) return null;
+          store[k] = v;
+          return 'OK';
+        }),
+        get: vi.fn(async (k: string) => store[k] ?? null),
+        del: vi.fn(async (k: string) => {
+          const had = store[k] != null;
+          delete store[k];
+          return had ? 1 : 0;
+        }),
+        _store: store,
+      };
+      return richRedis;
+    }
+
+    async function buildLive(opts: {
+      cfg?: Partial<{
+        liveGuardsEnabled: boolean;
+        livePerOrderNotionalUsd: number;
+        livePerDayNotionalUsd: number;
+      }>;
+      quoteClose?: string | null;
+      brokerOutcome?:
+        | { kind: 'ok'; filledQty: string; avgPrice: string }
+        | { kind: 'fail'; message: string }
+        | { kind: 'throw'; error: string };
+    }) {
+      const cfg = {
+        decimalExecuteEnabled: false,
+        stateMachineEnabled: false,
+        liveGuardsEnabled: true,
+        livePerOrderNotionalUsd: 10_000,
+        livePerDayNotionalUsd: 50_000,
+        ...opts.cfg,
+      };
+
+      const localRedis = createGuardCapableRedis();
+      const localDb = createMockDb();
+      // Two different consumers of `db.select(...).from().where(...)`:
+      //   - Wallet load: continues with `.limit(1)` then awaits (terminal = limit)
+      //   - Guards seed: awaits the where() directly (terminal = where, returns [])
+      // Default mockReturnThis on where breaks the second case (resolves
+      // to the chain, not an array). Make the chain itself a thenable that
+      // resolves to [] so `await chain` returns [], while still supporting
+      // `.limit()` for the wallet path.
+      const chain = localDb._selectChain as Record<string, unknown>;
+      chain['then'] = (resolve: (v: unknown) => void) => resolve([]);
+
+      // Wire the real guards service so the integration covers preflight,
+      // proposedCentsFor, and rollbackDailyReservation as a unit.
+      const realGuards = new TradingGuardsService(
+        localRedis as unknown as Parameters<typeof TradingGuardsService>[0],
+        localDb as unknown as Parameters<typeof TradingGuardsService>[1],
+        {
+          get: <T>(key: string): T | undefined =>
+            key === 'trading' ? (cfg as unknown as T) : undefined,
+        } as ConfigService,
+      );
+
+      const mockBroker = {
+        placeOrder: vi.fn().mockImplementation(async () => {
+          const o = opts.brokerOutcome ?? { kind: 'ok', filledQty: '5', avgPrice: '150' };
+          if (o.kind === 'throw') throw new Error(o.error);
+          if (o.kind === 'fail') {
+            return {
+              success: false,
+              orderId: '',
+              status: 'rejected',
+              filledQty: '0',
+              avgPrice: '0',
+              errorMessage: o.message,
+              timestamp: new Date().toISOString(),
+            };
+          }
+          return {
+            success: true,
+            orderId: 'broker-order-1',
+            status: 'filled',
+            filledQty: o.filledQty,
+            avgPrice: o.avgPrice,
+            errorMessage: null,
+            timestamp: new Date().toISOString(),
+          };
+        }),
+      };
+      const liveBrokerRegistry = {
+        resolve: vi.fn().mockReturnValue(mockBroker),
+      };
+
+      const localMarketData = createMockMarketDataService();
+      // Override the quote close so we can probe the qty-enrichment path.
+      if (opts.quoteClose === null) {
+        (localMarketData.getQuote as Mock).mockRejectedValue(new Error('quote outage'));
+      } else if (opts.quoteClose) {
+        (localMarketData.getQuote as Mock).mockResolvedValue({
+          ticker: liveSymbol,
+          open: opts.quoteClose,
+          high: opts.quoteClose,
+          low: opts.quoteClose,
+          close: opts.quoteClose,
+          volume: 0,
+          timestamp: Date.now(),
+        });
+      }
+
+      const module = await Test.createTestingModule({
+        providers: [
+          UnifiedTradingService,
+          { provide: BrokerRegistry, useValue: liveBrokerRegistry },
+          { provide: 'REDIS', useValue: localRedis },
+          { provide: 'DRIZZLE_DB', useValue: localDb },
+          { provide: 'MarketDataService', useValue: localMarketData },
+          {
+            provide: OrderLedgerService,
+            useValue: {
+              recordExecutionResults: vi.fn().mockResolvedValue(undefined),
+              findByIdempotency: vi.fn().mockResolvedValue([]),
+              findByCommitHash: vi.fn().mockResolvedValue([]),
+            },
+          },
+          { provide: TradingGuardsService, useValue: realGuards },
+          {
+            provide: ConfigService,
+            useValue: {
+              get: <T>(key: string): T | undefined =>
+                key === 'trading' ? (cfg as unknown as T) : undefined,
+            },
+          },
+        ],
+      }).compile();
+
+      const service = module.get(UnifiedTradingService);
+      return { service, realGuards, localRedis, localDb, mockBroker };
+    }
+
+    function primeLiveWallet(localDb: ReturnType<typeof createMockDb>) {
+      localDb._selectChain.limit.mockResolvedValue([
+        {
+          id: TEST_WALLET_ID,
+          userId: TEST_USER_ID,
+          initialCapital: '100000.00',
+          cashBalance: '100000.00',
+          tradingMode: 'LIVE',
+          positions: [],
+          commitHistory: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+    }
+
+    it('qty-only op gets quoted and PASSES preflight when notional ≤ caps (P1 qty bypass fix)', async () => {
+      const built = await buildLive({
+        quoteClose: '100', // 5 * 100 = $500 notional, well under $10k cap
+        brokerOutcome: { kind: 'ok', filledQty: '5', avgPrice: '100' },
+      });
+      built.localRedis.getdel.mockResolvedValue(JSON.stringify(livePending));
+      primeLiveWallet(built.localDb);
+
+      await expect(built.service.execute(TEST_USER_ID)).resolves.toBeDefined();
+
+      // Broker was called (preflight passed)
+      expect(built.mockBroker.placeOrder).toHaveBeenCalledTimes(1);
+      // Daily counter ended up at exactly 50000 cents = $500 (one fill at intent)
+      const dayKey = Object.keys(built.localRedis._store).find((k) =>
+        k.startsWith('trading:daily_cents:'),
+      );
+      expect(dayKey).toBeDefined();
+      expect(Number(built.localRedis._store[dayKey!])).toBe(50_000);
+    });
+
+    it('qty-only op without a quote (market data outage) BLOCKS at preflight, no broker call', async () => {
+      const built = await buildLive({
+        quoteClose: null, // getQuote will throw
+      });
+      built.localRedis.getdel.mockResolvedValue(JSON.stringify(livePending));
+      primeLiveWallet(built.localDb);
+
+      await expect(built.service.execute(TEST_USER_ID)).rejects.toThrow(
+        /Cannot determine notional/,
+      );
+      expect(built.mockBroker.placeOrder).not.toHaveBeenCalled();
+    });
+
+    it('failed broker order rolls back the daily-cap reservation (P1 no-rollback fix)', async () => {
+      const built = await buildLive({
+        quoteClose: '100', // proposed = $500 = 50_000 cents
+        brokerOutcome: { kind: 'fail', message: 'broker rejected: insufficient buying power' },
+      });
+      built.localRedis.getdel.mockResolvedValue(JSON.stringify(livePending));
+      primeLiveWallet(built.localDb);
+
+      await built.service.execute(TEST_USER_ID);
+
+      // Reservation should be rolled back to 0 since the order didn't fill.
+      const dayKey = Object.keys(built.localRedis._store).find((k) =>
+        k.startsWith('trading:daily_cents:'),
+      );
+      expect(dayKey).toBeDefined();
+      expect(Number(built.localRedis._store[dayKey!])).toBe(0);
+    });
+
+    it('partial fill rolls back ONLY the unfilled portion', async () => {
+      const built = await buildLive({
+        quoteClose: '100', // proposed = 5 * 100 = $500 = 50_000 cents
+        brokerOutcome: { kind: 'ok', filledQty: '3', avgPrice: '100' }, // realized = $300 = 30_000
+      });
+      built.localRedis.getdel.mockResolvedValue(JSON.stringify(livePending));
+      primeLiveWallet(built.localDb);
+
+      await built.service.execute(TEST_USER_ID);
+
+      const dayKey = Object.keys(built.localRedis._store).find((k) =>
+        k.startsWith('trading:daily_cents:'),
+      );
+      // Daily counter = realized 30_000, NOT proposed 50_000.
+      expect(Number(built.localRedis._store[dayKey!])).toBe(30_000);
+    });
+
+    it('broker throws → rollback to zero (whole reservation refunded)', async () => {
+      const built = await buildLive({
+        quoteClose: '100',
+        brokerOutcome: { kind: 'throw', error: 'broker timeout' },
+      });
+      built.localRedis.getdel.mockResolvedValue(JSON.stringify(livePending));
+      primeLiveWallet(built.localDb);
+
+      await built.service.execute(TEST_USER_ID);
+
+      const dayKey = Object.keys(built.localRedis._store).find((k) =>
+        k.startsWith('trading:daily_cents:'),
+      );
+      expect(Number(built.localRedis._store[dayKey!])).toBe(0);
+    });
+
+    it('per-order cap breach throws BEFORE broker call (proposed > $10k limit)', async () => {
+      const built = await buildLive({
+        quoteClose: '5000', // 5 * 5000 = $25k > $10k per-order cap
+      });
+      built.localRedis.getdel.mockResolvedValue(JSON.stringify(livePending));
+      primeLiveWallet(built.localDb);
+
+      await expect(built.service.execute(TEST_USER_ID)).rejects.toThrow(
+        /Per-order notional cap exceeded/,
+      );
+      expect(built.mockBroker.placeOrder).not.toHaveBeenCalled();
+    });
+
+    // ── New blocker: rollback must be conditional on a real reservation ──
+    // The execute() LIVE path used to compute proposedCents locally and
+    // always call rollbackDailyReservation when refundCents > 0, even
+    // when preflight made no reservation (flag off, or per-day cap = 0).
+    // That created a negative Redis counter that the next preflight
+    // mistook for a seeded baseline, inflating the user's effective cap.
+    // The fix: preflight returns { reservedCents }, and execute() skips
+    // rollback when reservedCents === 0.
+    it('flag OFF: failed broker order does NOT create a negative daily counter', async () => {
+      const built = await buildLive({
+        cfg: { liveGuardsEnabled: false }, // <-- guards disabled
+        quoteClose: '100',
+        brokerOutcome: { kind: 'fail', message: 'broker rejected' },
+      });
+      built.localRedis.getdel.mockResolvedValue(JSON.stringify(livePending));
+      primeLiveWallet(built.localDb);
+
+      await built.service.execute(TEST_USER_ID);
+
+      // No daily-cap key should exist at all — flag was off.
+      const dayKey = Object.keys(built.localRedis._store).find((k) =>
+        k.startsWith('trading:daily_cents:'),
+      );
+      expect(dayKey).toBeUndefined();
+    });
+
+    it('per-day cap = 0: failed broker order does NOT create a negative daily counter', async () => {
+      const built = await buildLive({
+        cfg: { liveGuardsEnabled: true, livePerDayNotionalUsd: 0 }, // per-day disabled
+        quoteClose: '100',
+        brokerOutcome: { kind: 'fail', message: 'broker rejected' },
+      });
+      built.localRedis.getdel.mockResolvedValue(JSON.stringify(livePending));
+      primeLiveWallet(built.localDb);
+
+      await built.service.execute(TEST_USER_ID);
+
+      // The daily-cap key path was never touched: preflight returned
+      // reservedCents=0, so execute() skipped rollback.
+      const dayKey = Object.keys(built.localRedis._store).find((k) =>
+        k.startsWith('trading:daily_cents:'),
+      );
+      expect(dayKey).toBeUndefined();
+    });
+
+    it('per-day cap = 0 followed by enabled cap: counter starts from a TRUE baseline (no phantom budget)', async () => {
+      // Two-phase scenario: first request with daily cap disabled fails;
+      // operator then enables the daily cap. The seed must be the true
+      // ledger baseline (0 here, since the mock DB returns []), NOT the
+      // negative residue that the old buggy rollback would have left.
+      const built = await buildLive({
+        cfg: { liveGuardsEnabled: true, livePerDayNotionalUsd: 0 },
+        quoteClose: '100',
+        brokerOutcome: { kind: 'fail', message: 'broker rejected' },
+      });
+      built.localRedis.getdel.mockResolvedValue(JSON.stringify(livePending));
+      primeLiveWallet(built.localDb);
+      await built.service.execute(TEST_USER_ID);
+
+      // Same Redis store, but build a NEW service with daily cap enabled.
+      // (Simulates an operator turning the cap on between requests.)
+      const enabledCfg = {
+        decimalExecuteEnabled: false,
+        stateMachineEnabled: false,
+        liveGuardsEnabled: true,
+        livePerOrderNotionalUsd: 10_000,
+        livePerDayNotionalUsd: 1_000, // small cap so phantom budget would be obvious
+      };
+      const realGuards2 = new (
+        await import('../guards/trading-guards.service')
+      ).TradingGuardsService(
+        built.localRedis as unknown as Parameters<typeof TradingGuardsService>[0],
+        built.localDb as unknown as Parameters<typeof TradingGuardsService>[1],
+        {
+          get: <T>(key: string): T | undefined =>
+            key === 'trading' ? (enabledCfg as unknown as T) : undefined,
+        } as ConfigService,
+      );
+
+      // Reserve $500. Pre-fix: phantom -500 baseline could have masked a $500
+      // overshoot on a $1_000 cap (newTotal = -500 + 50_000 = 49_500 < 100_000).
+      // Post-fix: baseline = 0, newTotal = 0 + 50_000 = 50_000 ≤ 100_000 → allowed,
+      // and importantly, a *second* $500 reservation would push to 100_000 ≤
+      // 100_000 → still allowed; a *third* $500 would push to 150_000 > 100_000
+      // and reject. That's the correct shape — the bug would have shifted that
+      // boundary by the negative residue.
+      const receipt = await realGuards2.preflight({
+        userId: TEST_USER_ID,
+        operations: [{ symbol: 'AAPL', action: 'BUY', amount: '500' }],
+      });
+      expect(receipt.reservedCents).toBe(50_000);
+
+      const dayKey = Object.keys(built.localRedis._store).find((k) =>
+        k.startsWith('trading:daily_cents:'),
+      );
+      expect(Number(built.localRedis._store[dayKey!])).toBe(50_000); // exactly $500
     });
   });
 });
