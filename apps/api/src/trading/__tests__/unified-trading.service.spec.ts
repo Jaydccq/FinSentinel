@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { UnifiedTradingService } from '../unified-trading.service';
 import { BrokerRegistry } from '../broker-registry.service';
+import { OrderLedgerService } from '../order-ledger/order-ledger.service';
 import type { MarketDataService } from '../../market/market-data.service';
 import { TradingMode, Contract } from '@finsentinel/shared';
 
@@ -143,6 +144,14 @@ describe('UnifiedTradingService', () => {
         {
           provide: 'MarketDataService',
           useValue: mockMarketData,
+        },
+        {
+          provide: OrderLedgerService,
+          useValue: {
+            recordExecutionResults: vi.fn().mockResolvedValue(undefined),
+            findByIdempotency: vi.fn().mockResolvedValue([]),
+            findByCommitHash: vi.fn().mockResolvedValue([]),
+          },
         },
       ],
     }).compile();

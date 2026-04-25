@@ -34,6 +34,12 @@ export { contextJournalEntries } from './context-journal-entries';
 export { executionReviewLedgers } from './execution-review-ledgers';
 export { ragQueryLogs } from './rag-query-logs';
 export { ragShadowComparisons } from './rag-shadow-comparisons';
+export { orderLedger, ORDER_LEDGER_STATUSES } from './order-ledger';
+export type {
+  OrderLedgerRow,
+  NewOrderLedgerRow,
+  OrderLedgerStatus,
+} from './order-ledger';
 
 // Relations
 export {

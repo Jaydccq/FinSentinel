@@ -17,6 +17,7 @@ import { PaperBroker } from './brokers/paper.broker';
 import type { MarketDataService } from '../market/market-data.service';
 import type { ExecuteResult } from './interfaces/execute-result';
 import type { PositionMap } from './engines/paper-trading.engine';
+import { OrderLedgerService } from './order-ledger/order-ledger.service';
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -140,6 +141,7 @@ export class UnifiedTradingService {
     @Inject('REDIS') private readonly redis: Redis,
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     @Inject('MarketDataService') private readonly marketDataService: MarketDataService,
+    private readonly orderLedger: OrderLedgerService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -497,6 +499,28 @@ export class UnifiedTradingService {
         updatedAt: now,
       })
       .where(eq(tradeWallets.id, wallet.id));
+
+    // 6b. order_ledger dual-write (M1 of trading-order-ledger PRD).
+    // Additive only: failure here MUST NOT abort the trading flow —
+    // the wallet path remains the system of record during the M1
+    // window. M2 will flip the source of truth to order_ledger and
+    // introduce the EXECUTING/PARTIALLY_FAILED state machine.
+    try {
+      await this.orderLedger.recordExecutionResults({
+        userId,
+        commitHash: commitData.hash,
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+        broker: mode === TradingMode.PAPER ? 'paper' : 'live',
+        operations: operationResults as unknown as Parameters<
+          typeof this.orderLedger.recordExecutionResults
+        >[0]['operations'],
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `order_ledger dual-write failed user=${userId} commit=${commitData.hash.substring(0, 8)}... err=${msg} (trading flow continues; wallet remains source of truth)`,
+      );
+    }
 
     // 7. Build report
     const report = [

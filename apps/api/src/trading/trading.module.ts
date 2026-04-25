@@ -9,6 +9,7 @@ import { UnifiedTradingService } from './unified-trading.service';
 import { TradingController } from './trading.controller';
 import { OrderDraftValidator } from './order-draft-validator.service';
 import { OrderDraftMapper } from './order-draft-mapper.service';
+import { OrderLedgerService } from './order-ledger/order-ledger.service';
 
 /**
  * Trading module — Phase 5 + Phase 12 controllers.
@@ -30,11 +31,18 @@ import { OrderDraftMapper } from './order-draft-mapper.service';
     UnifiedTradingService,
     OrderDraftValidator,
     OrderDraftMapper,
+    OrderLedgerService,
     {
       provide: 'MarketDataService',
       useExisting: MarketDataService,
     },
   ],
-  exports: [BrokerRegistry, UnifiedTradingService, OrderDraftValidator, OrderDraftMapper],
+  exports: [
+    BrokerRegistry,
+    UnifiedTradingService,
+    OrderDraftValidator,
+    OrderDraftMapper,
+    OrderLedgerService,
+  ],
 })
 export class TradingModule {}
