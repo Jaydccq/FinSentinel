@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, inArray } from 'drizzle-orm';
 import {
   orderLedger,
   type DrizzleDB,
@@ -121,6 +121,118 @@ export class OrderLedgerService {
       .from(orderLedger)
       .where(eq(orderLedger.commitHash, commitHash))
       .orderBy(desc(orderLedger.createdAt));
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // M2 — state machine transition methods
+  // ───────────────────────────────────────────────────────────────────────
+  // Used by UnifiedTradingService.execute() when TRADING_STATE_MACHINE_ENABLED
+  // is on. Inserts EXECUTING rows BEFORE broker calls, then transitions each
+  // to EXECUTED/FAILED based on outcome. The op-index in the request payload
+  // pins which row corresponds to which operation so we can transition by id.
+
+  /**
+   * Insert one EXECUTING row per operation. Returns the row IDs in the same
+   * order as `input.operations` so the caller can pair each broker outcome
+   * back to its row for the EXECUTING → EXECUTED/FAILED transition.
+   */
+  async recordExecuting(input: {
+    userId: string;
+    commitHash: string;
+    idempotencyKey?: string;
+    broker: string;
+    operations: { symbol: unknown; action: unknown; qty?: unknown; amount?: unknown }[];
+  }): Promise<string[]> {
+    if (input.operations.length === 0) return [];
+
+    const now = new Date();
+    const rowsWithIds = input.operations.map((op) => {
+      const symbol = op.symbol == null ? '' : String(op.symbol);
+      return {
+        id: randomUUID(),
+        userId: input.userId,
+        commitHash: input.commitHash,
+        idempotencyKey: input.idempotencyKey ?? null,
+        status: 'EXECUTING' as OrderLedgerStatus,
+        symbol,
+        side: this.deriveSide(op.action),
+        qty: op.qty != null ? String(op.qty) : null,
+        amount: op.amount != null ? String(op.amount) : null,
+        price: null,
+        broker: input.broker,
+        brokerOrderId: null,
+        brokerRequest: { symbol, action: op.action, qty: op.qty, amount: op.amount } as Record<
+          string,
+          unknown
+        >,
+        brokerResponse: null,
+        errorReason: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+    });
+
+    await this.db.insert(orderLedger).values(rowsWithIds);
+    this.logger.log(
+      `order_ledger EXECUTING user=${input.userId} commit=${input.commitHash.substring(0, 8)}... rows=${rowsWithIds.length}`,
+    );
+    return rowsWithIds.map((r) => r.id);
+  }
+
+  /**
+   * Transition each EXECUTING row to EXECUTED or FAILED based on outcomes.
+   * `rowIds[i]` corresponds to `outcomes[i]` — caller must preserve order.
+   */
+  async transitionFromExecuting(
+    rowIds: string[],
+    outcomes: ExecutedOperation[],
+  ): Promise<void> {
+    if (rowIds.length === 0) return;
+    if (rowIds.length !== outcomes.length) {
+      throw new Error(
+        `transitionFromExecuting: rowIds.length=${rowIds.length} != outcomes.length=${outcomes.length}`,
+      );
+    }
+    const now = new Date();
+    // Drizzle doesn't expose a batch-update-with-different-values helper that
+    // reliably maps to one round-trip without raw SQL, so issue per-row
+    // updates. The cardinality is bounded by MAX_COMMIT_HISTORY (100), and
+    // updates are by primary key so each is O(1).
+    for (let i = 0; i < rowIds.length; i += 1) {
+      const op = outcomes[i]!;
+      const status: OrderLedgerStatus = op.success ? 'EXECUTED' : 'FAILED';
+      await this.db
+        .update(orderLedger)
+        .set({
+          status,
+          price: op.avgPrice != null ? String(op.avgPrice) : null,
+          brokerResponse: op.success
+            ? ({
+                filledQty: op.filledQty,
+                avgPrice: op.avgPrice,
+              } as Record<string, unknown>)
+            : null,
+          errorReason: op.errorMessage ?? null,
+          updatedAt: now,
+        })
+        .where(eq(orderLedger.id, rowIds[i]!));
+    }
+  }
+
+  /**
+   * Bulk-set status for a list of rows (used to mark all as FAILED if the
+   * pre-broker validation barfed before any individual op was attempted).
+   */
+  async transitionAll(
+    rowIds: string[],
+    status: OrderLedgerStatus,
+    errorReason: string,
+  ): Promise<void> {
+    if (rowIds.length === 0) return;
+    await this.db
+      .update(orderLedger)
+      .set({ status, errorReason, updatedAt: new Date() })
+      .where(inArray(orderLedger.id, rowIds));
   }
 
   private deriveSide(action: unknown): string {

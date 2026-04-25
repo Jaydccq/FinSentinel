@@ -614,4 +614,147 @@ describe('UnifiedTradingService', () => {
       expect(getMarketClock).toHaveBeenCalledOnce();
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Item 3 M2 — state machine flag-on coverage (TRADING_STATE_MACHINE_ENABLED)
+  // ─────────────────────────────────────────────────────────────────────────
+  describe('execute (TRADING_STATE_MACHINE_ENABLED=true)', () => {
+    let stateMachineService: UnifiedTradingService;
+    let stateMachineLedger: {
+      recordExecutionResults: ReturnType<typeof vi.fn>;
+      findByIdempotency: ReturnType<typeof vi.fn>;
+      findByCommitHash: ReturnType<typeof vi.fn>;
+      recordExecuting: ReturnType<typeof vi.fn>;
+      transitionFromExecuting: ReturnType<typeof vi.fn>;
+      transitionAll: ReturnType<typeof vi.fn>;
+    };
+
+    beforeEach(async () => {
+      stateMachineLedger = {
+        recordExecutionResults: vi.fn().mockResolvedValue(undefined),
+        findByIdempotency: vi.fn().mockResolvedValue([]),
+        findByCommitHash: vi.fn().mockResolvedValue([]),
+        recordExecuting: vi
+          .fn()
+          .mockImplementation(async (input: { operations: unknown[] }) =>
+            input.operations.map((_o, i) => `row-${i}`),
+          ),
+        transitionFromExecuting: vi.fn().mockResolvedValue(undefined),
+        transitionAll: vi.fn().mockResolvedValue(undefined),
+      };
+
+      const module = await Test.createTestingModule({
+        providers: [
+          UnifiedTradingService,
+          { provide: BrokerRegistry, useValue: brokerRegistry },
+          { provide: 'REDIS', useValue: mockRedis },
+          { provide: 'DRIZZLE_DB', useValue: mockDb },
+          { provide: 'MarketDataService', useValue: mockMarketData },
+          { provide: OrderLedgerService, useValue: stateMachineLedger },
+          {
+            provide: ConfigService,
+            useValue: {
+              get: <T>(key: string): T | undefined => {
+                if (key === 'trading') {
+                  return {
+                    decimalExecuteEnabled: false,
+                    stateMachineEnabled: true,
+                  } as unknown as T;
+                }
+                return undefined;
+              },
+            },
+          },
+        ],
+      }).compile();
+
+      stateMachineService = module.get(UnifiedTradingService);
+    });
+
+    const pendingCommit = {
+      hash: 'sm123abc'.padEnd(64, '0'),
+      message: 'SM Buy AAPL',
+      timestamp: new Date().toISOString(),
+      operations: [
+        { action: 'BUY', symbol: 'AAPL', qty: '10' },
+        { action: 'BUY', symbol: 'TSLA', qty: '5' },
+      ],
+    };
+
+    it('inserts EXECUTING rows BEFORE broker calls and transitions them after', async () => {
+      mockRedis.getdel.mockResolvedValue(JSON.stringify(pendingCommit));
+      mockDb._selectChain.limit.mockResolvedValue([
+        {
+          id: TEST_WALLET_ID,
+          userId: TEST_USER_ID,
+          initialCapital: '100000.00',
+          cashBalance: '100000.00',
+          tradingMode: 'PAPER',
+          positions: [],
+          commitHistory: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      await stateMachineService.execute(TEST_USER_ID);
+
+      expect(stateMachineLedger.recordExecuting).toHaveBeenCalledTimes(1);
+      const recordExecutingCall = stateMachineLedger.recordExecuting.mock.calls[0]![0] as {
+        operations: unknown[];
+      };
+      expect(recordExecutingCall.operations).toHaveLength(2);
+
+      expect(stateMachineLedger.transitionFromExecuting).toHaveBeenCalledTimes(1);
+      const [rowIds, outcomes] = stateMachineLedger.transitionFromExecuting.mock.calls[0]!;
+      expect(rowIds).toEqual(['row-0', 'row-1']);
+      expect(outcomes).toHaveLength(2);
+
+      // Legacy dual-write must NOT have run when flag on.
+      expect(stateMachineLedger.recordExecutionResults).not.toHaveBeenCalled();
+
+      // Wallet was updated, but commitHistory must NOT have been included.
+      expect(mockDb.update).toHaveBeenCalled();
+      const updateSetArg = mockDb._updateChain.set.mock.calls[0]![0] as Record<string, unknown>;
+      expect(updateSetArg).not.toHaveProperty('commitHistory');
+      expect(updateSetArg).toHaveProperty('cashBalance');
+      expect(updateSetArg).toHaveProperty('positions');
+    });
+
+    it('rejects when ledger has terminal rows for the (user, idempotencyKey) pair', async () => {
+      stateMachineLedger.findByIdempotency.mockResolvedValueOnce([
+        { id: 'old', status: 'EXECUTED' },
+      ]);
+
+      await expect(stateMachineService.execute(TEST_USER_ID, 'IDEM-PRIOR')).rejects.toThrow(
+        /already used/,
+      );
+
+      // Did not consume the pending commit.
+      expect(mockRedis.getdel).not.toHaveBeenCalled();
+      expect(stateMachineLedger.recordExecuting).not.toHaveBeenCalled();
+    });
+
+    it('does NOT consult wallet.commitHistory for hash-idempotency when flag on', async () => {
+      mockRedis.getdel.mockResolvedValue(JSON.stringify(pendingCommit));
+      // Wallet already has this hash in history — flag-off path would 400,
+      // but flag-on path ignores commitHistory entirely.
+      mockDb._selectChain.limit.mockResolvedValue([
+        {
+          id: TEST_WALLET_ID,
+          userId: TEST_USER_ID,
+          initialCapital: '100000.00',
+          cashBalance: '100000.00',
+          tradingMode: 'PAPER',
+          positions: [],
+          commitHistory: [{ hash: pendingCommit.hash }],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      await expect(stateMachineService.execute(TEST_USER_ID)).resolves.toBeDefined();
+      expect(stateMachineLedger.recordExecuting).toHaveBeenCalled();
+    });
+  });
 });
