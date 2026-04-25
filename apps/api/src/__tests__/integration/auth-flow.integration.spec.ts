@@ -163,6 +163,63 @@ describe('Auth Flow (integration)', () => {
     expect(Array.isArray(res.body)).toBe(true);
   });
 
+  it('10 consecutive wrong-password attempts lock the account; clearing the lock key restores access', async () => {
+    // The real soft-delay schedule sums to ~30s across 10 fails, which
+    // would dwarf this test. Patch the delay to a no-op for the duration
+    // of this test only — we still exercise INCR + lock + reset paths.
+    const { LoginProtectionService } = await import('../../auth/login-protection.service');
+    const proto = LoginProtectionService.prototype;
+    const origDelay = proto.computeDelayMs;
+    proto.computeDelayMs = () => 0;
+
+    try {
+      const credentials = {
+        username: 'lockoutuser',
+        email: 'lockout@example.com',
+        password: 'SecurePass1',
+      };
+
+      // Pre-condition: register the account.
+      await request(app.getHttpServer())
+        .post('/api/auth/register')
+        .send(credentials)
+        .expect(201);
+
+      // Drive 10 wrong-password attempts. Each one returns 401.
+      // (The supertest client connects from 127.0.0.1, so all attempts share
+      // the same (username, ip) lockout key.)
+      for (let i = 0; i < 10; i++) {
+        await request(app.getHttpServer())
+          .post('/api/auth/login')
+          .send({ username: credentials.username, password: 'WrongPass1' })
+          .expect(401);
+      }
+
+      // 11th attempt — even with the CORRECT password — is locked out.
+      await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ username: credentials.username, password: credentials.password })
+        .expect(423);
+
+      // Simulate the 15-min TTL elapsing by clearing the lock key directly.
+      // We can't predict the exact IP supertest reports (typically
+      // ::ffff:127.0.0.1 or 127.0.0.1) — match the lock prefix instead.
+      const lockPrefix = `login:lock:${credentials.username}:`;
+      const store = (mockRedis as unknown as { _store: Map<string, string> })._store;
+      for (const k of [...store.keys()]) {
+        if (k.startsWith(lockPrefix)) store.delete(k);
+      }
+
+      // After the lock clears, the correct password works again.
+      await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({ username: credentials.username, password: credentials.password })
+        .expect(200);
+    } finally {
+      proto.computeDelayMs = origDelay;
+    }
+  }, 30_000);
+
   it('logout clears the FS_AUTH cookie', async () => {
     const res = await request(app.getHttpServer()).post('/api/auth/logout').expect(204);
 
