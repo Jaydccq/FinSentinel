@@ -344,7 +344,34 @@ out of scope here.
 - 2026-04-25: Plan drafted. Audit of source timestamps complete; spec scope
   trimmed to Quote + News for v1. Citation and Holdings queued under named
   backend prerequisites.
+- 2026-04-25: Phase 1 implemented on `feat/2026-04-25-pl7-freshness-badge-phase1`.
+  - Step 0 callsites confirmed: Quote at `apps/web/src/views/StockDetailPage.tsx`
+    price header (around `${quote.close.toFixed(2)}`); News at
+    `apps/web/src/views/NewsPage.tsx` `NewsCard` metadata row.
+  - Step 1 — `freshness-config.ts` + sanity tests.
+  - Step 2 — `freshness-state.ts` pure function + table-driven tests covering
+    boundary, null, NaN, future-timestamp clamp, label rendering.
+  - Step 3 — `useFreshnessNow()` 60s tick with `visibilitychange` freeze and
+    immediate re-snap on return; pinned with fake-timer + visibilitychange tests.
+  - Step 4 — `FreshnessBadge` component (role=status, tabIndex=0, aria-label,
+    ISO tooltip) + thin `freshness-logger.ts` console.info shim.
+  - Step 5 — Quote integration. Added `normalizeQuoteTimestampMs(ts)` defensive
+    seconds-vs-ms coercion in `apps/web/src/lib/freshness/quote-timestamp.ts`
+    (FMP emits seconds; Yahoo/Polygon emit ms). Provider-side normalization is
+    a separate backend change tracked in the tech-debt tracker under "PL-7
+    phase 2 prerequisites".
+  - Step 6 — News integration. `Date.parse(item.publishedAt)` feeds
+    `<FreshnessBadge surface="news" />`. Existing relative-time text retained
+    (badge is additive, not replacement).
+  - Step 7 — Tech-debt tracker updated with phase-1 closed entry and named
+    phase-2 prerequisites for Citation/Holdings + FMP provider normalization.
+- 2026-04-25: Verification: `pnpm --filter @finsentinel/web typecheck` pass;
+  `pnpm --filter @finsentinel/web test` pass (full suite green, 17+ new
+  freshness tests landed); touched-files lint pass.
 
 ## Final outcome
 
-(Filled after merge.)
+Phase 1 ready to merge. Quote + News surfaces show a four-state freshness
+indicator. Citation + Holdings deferred behind named backend gaps. Tab
+visibility correctness pinned by tests so a long-hidden tab cannot show
+"Live" forever.

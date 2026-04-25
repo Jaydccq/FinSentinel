@@ -268,6 +268,55 @@ embed-1b-v2` going forward. V16 rewritten to declare
 - **Likely fix path:** Review whether `packages/db` should build as an ES module-compatible target, or move the `import.meta` usage behind a CommonJS-safe helper.
 - **Status:** Open.
 
+### PL-7 Freshness Badge phase 1 landed
+
+- **Observed:** 2026-04-25 while shipping `feat/2026-04-25-pl7-freshness-badge-phase1`.
+- **Plan:** `docs/exec-plans/2026-04-25-pl7-freshness-badge.md`.
+- **What landed:** Quote (`apps/web/src/views/StockDetailPage.tsx`) and News
+  (`apps/web/src/views/NewsPage.tsx`) surfaces now render `<FreshnessBadge>`.
+  Per-surface thresholds in `apps/web/src/lib/freshness/freshness-config.ts`.
+  Pure state computation in `freshness-state.ts`. Visibility-aware
+  `useFreshnessNow()` ticker. Local `freshness-logger.ts` shim emits one
+  `freshness.render` console event per render — replace when an
+  observability module lands.
+- **What is intentionally not solved here:** `marketQuoteSchema.timestamp`
+  is mixed seconds (FMP) / ms (Yahoo, Polygon). Phase 1 normalizes
+  defensively in `apps/web/src/lib/freshness/quote-timestamp.ts`. The
+  right long-term fix is provider-side normalization in
+  `apps/api/src/market/providers/fmp.provider.ts:90` (multiply by 1000).
+  Tracked separately under "PL-7 phase 2 prerequisites".
+- **Status:** Closed (phase 1).
+
+### PL-7 phase 2 prerequisites — Citation and Holdings need source timestamps
+
+- **Observed:** 2026-04-25 during the PL-7 source-timestamp audit (see plan
+  background section).
+- **Citation gap:** `packages/shared/src/schemas/analysis.ts:83`
+  `citationSchema = { artifactId?, url?, title?, excerpt? }` has no
+  timestamp field. Adding `surface: 'citation'` to the badge requires:
+  1. Decide which timestamp matters — chunk capture time, source
+     document publish date, or RAG retrieval time. Source publish date
+     is the product-correct answer for a trust UI; chunk capture is
+     what the system can produce cheaply.
+  2. Wire the chosen field through `apps/api/src/rag/` retrieval path
+     and into the citation contract in `packages/shared`.
+  3. Then add `surface: 'citation'` consumption in the web app — config
+     keys are already present in `freshness-config.ts`.
+- **Holdings gap:** `packages/shared/src/schemas/portfolio.ts:25-45`
+  exposes `portfolioResponseSchema.createdAt` (creation time, not
+  as-of) and `holdingResponseSchema.currentPrice` (untimestamped).
+  Adding `surface: 'holdings'` to the badge requires either
+  `portfolioResponseSchema.snapshot.asOf` (one timestamp for the whole
+  table) or `holdingResponseSchema.priceAt` (per-row); pick one
+  product-side, then expose it from
+  `apps/api/src/portfolio/portfolio.service.ts`.
+- **Provider-side timestamp normalization:** `fmp.provider.ts:90`
+  passes upstream `quote.timestamp` through unchanged (FMP REST emits
+  seconds). Phase-1 web defensive coercion is at
+  `apps/web/src/lib/freshness/quote-timestamp.ts`. Long-term fix is to
+  multiply by 1000 in the FMP provider so all providers emit ms.
+- **Status:** Open. Closing this entry is a phase-2 prerequisite.
+
 ## 2026-04-17 — carried over from v1.1 hardening
 
 - **[RUNTIME-TD-01] Staging deploy for analysis runtime.** Blocked on credentials.
