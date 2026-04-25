@@ -42,7 +42,7 @@ OpenAlice 的 agent teams 能把团队配置、角色分工、执行深度和运
 
 - 2026-04-17: 初版计划从 Agent Teams V2 PRD 拆出。
 - 2026-04-17: 按现有代码修正 web Vitest 配置、Testing Library 断言、role executor snippet 和 run setup API shape。
-- 2026-04-18 (status sync): repo audit — still not started. `createRunRequestSchema` already has `enabledTeams` and `researchDepth`, so Task 1 only needs to *add* `presetSchema`, `roleSummarySchema`, and extend the existing request schema (not redefine it). `agent-event-type.ts` already has role-specific events (`POSITIVE_CASE_*`, `THESIS_LEAD_*`) but missing generic `ROLE_STARTED/COMPLETED/FAILED` and `STAGE_SKIPPED`. `AnalysisCheckpointService` has `markStageFailed` but no `markStageSkipped`. `RoleExecutorService.run()` does not yet return `durationMs`/`toolCallCount`. Execution now consolidated in [openalice remaining-work plan](2026-04-18-openalice-remaining-work-plan.md) Phase 1.
+- 2026-04-18 (status sync): repo audit — still not started. `createRunRequestSchema` already has `enabledTeams` and `researchDepth`, so Task 1 only needs to _add_ `presetSchema`, `roleSummarySchema`, and extend the existing request schema (not redefine it). `agent-event-type.ts` already has role-specific events (`POSITIVE_CASE_*`, `THESIS_LEAD_*`) but missing generic `ROLE_STARTED/COMPLETED/FAILED` and `STAGE_SKIPPED`. `AnalysisCheckpointService` has `markStageFailed` but no `markStageSkipped`. `RoleExecutorService.run()` does not yet return `durationMs`/`toolCallCount`. Execution now consolidated in [openalice remaining-work plan](2026-04-18-openalice-remaining-work-plan.md) Phase 1.
 
 ## Key Decisions
 
@@ -93,6 +93,7 @@ OpenAlice 的 agent teams 能把团队配置、角色分工、执行深度和运
 ### Task 1: Promote Preset And Runtime Config To Shared Contracts
 
 **Files:**
+
 - Modify: `packages/shared/src/schemas/analysis.ts`
 - Modify: `packages/shared/src/enums/agent-event-type.ts`
 - Modify: `packages/shared/src/__tests__/analysis-schema.test.ts`
@@ -101,11 +102,7 @@ OpenAlice 的 agent teams 能把团队配置、角色分工、执行深度和运
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import {
-  analysisPresetSchema,
-  createRunRequestSchema,
-  roleSummarySchema,
-} from '../analysis';
+import { analysisPresetSchema, createRunRequestSchema, roleSummarySchema } from '../analysis';
 
 describe('analysis runtime config schema', () => {
   it('accepts a run request with preset and research depth', () => {
@@ -200,6 +197,7 @@ git commit -m "feat: add team runtime config contracts"
 ### Task 2: Resolve Presets Into A Real Stage Graph
 
 **Files:**
+
 - Create: `apps/api/src/analysis/team-preset.service.ts`
 - Create: `apps/api/src/analysis/stage-graph.service.ts`
 - Modify: `apps/api/src/analysis/analysis-run.service.ts`
@@ -269,11 +267,12 @@ export class TeamPresetService {
 export class StageGraphService {
   build(args: { preset: AnalysisPreset; enabledTeams?: AnalysisStageKey[] }) {
     const selected = new Set(args.enabledTeams ?? []);
-    return (['INTELLIGENCE', 'THESIS', 'RISK', 'EXECUTION_PREP', 'HUMAN_APPROVAL'] as const)
-      .map((stageKey) => ({
+    return (['INTELLIGENCE', 'THESIS', 'RISK', 'EXECUTION_PREP', 'HUMAN_APPROVAL'] as const).map(
+      (stageKey) => ({
         stageKey,
         status: selected.size === 0 || selected.has(stageKey) ? 'ENABLED' : 'SKIPPED',
-      }));
+      }),
+    );
   }
 }
 ```
@@ -297,9 +296,16 @@ inputSnapshotJson: {
 const graph = this.stageGraph.build(run.inputSnapshotJson as RuntimeRunConfig);
 const node = graph.find((item) => item.stageKey === data.stageKey);
 if (node?.status === 'SKIPPED') {
-  await this.checkpoints.markStageSkipped(data.userId, data.runId, data.stageKey, { reason: 'disabled_by_runtime_config' });
+  await this.checkpoints.markStageSkipped(data.userId, data.runId, data.stageKey, {
+    reason: 'disabled_by_runtime_config',
+  });
   const next = this.stageGraph.nextEnabled(graph, data.stageKey);
-  if (next) await this.producer.enqueueExecuteStage({ runId: data.runId, userId: data.userId, stageKey: next });
+  if (next)
+    await this.producer.enqueueExecuteStage({
+      runId: data.runId,
+      userId: data.userId,
+      stageKey: next,
+    });
   return;
 }
 ```
@@ -324,6 +330,7 @@ git commit -m "feat: resolve presets into a real analysis stage graph"
 ### Task 3: Make Research Depth And Roles Affect Runtime Behavior
 
 **Files:**
+
 - Modify: `apps/api/src/analysis/teams/role-executor.service.ts`
 - Modify: `apps/api/src/analysis/teams/intelligence-team.service.ts`
 - Modify: `apps/api/src/analysis/teams/thesis-team.service.ts`
@@ -463,6 +470,7 @@ git commit -m "feat: make team runtime config affect role execution"
 ### Task 4: Align Run Setup And Live Progress With Actual Runtime
 
 **Files:**
+
 - Modify: `apps/web/src/api/analysis-runs.ts`
 - Modify: `apps/web/vitest.config.ts`
 - Modify: `apps/web/src/components/analysis/RunSetupPanel.tsx`
@@ -485,7 +493,13 @@ it('submits preset and research depth together', async () => {
 
 ```tsx
 it('renders skipped stages distinctly', () => {
-  render(<LiveProgressPanel run={run} stages={[{ stageKey: 'EXECUTION_PREP', status: 'SKIPPED' } as never]} onRefresh={async () => {}} />);
+  render(
+    <LiveProgressPanel
+      run={run}
+      stages={[{ stageKey: 'EXECUTION_PREP', status: 'SKIPPED' } as never]}
+      onRefresh={async () => {}}
+    />,
+  );
   expect(screen.getByText(/SKIPPED/i)).toBeTruthy();
 });
 ```
@@ -526,32 +540,40 @@ export interface CreateRunRequest {
 
 ```tsx
 // apps/web/src/components/analysis/RunSetupPanel.tsx
-const [preset, setPreset] = useState<'FAST_RISK_CHECK' | 'STANDARD_ANALYSIS' | 'DEEP_THESIS' | 'EXECUTION_READY'>('STANDARD_ANALYSIS');
+const [preset, setPreset] = useState<
+  'FAST_RISK_CHECK' | 'STANDARD_ANALYSIS' | 'DEEP_THESIS' | 'EXECUTION_READY'
+>('STANDARD_ANALYSIS');
 
 <label>
   <span className="field-label">Preset</span>
-  <select className="field-input" value={preset} onChange={(e) => setPreset(e.target.value as typeof preset)}>
+  <select
+    className="field-input"
+    value={preset}
+    onChange={(e) => setPreset(e.target.value as typeof preset)}
+  >
     <option value="FAST_RISK_CHECK">Fast Risk Check</option>
     <option value="STANDARD_ANALYSIS">Standard Analysis</option>
     <option value="DEEP_THESIS">Deep Thesis</option>
     <option value="EXECUTION_READY">Execution Ready</option>
   </select>
-</label>
+</label>;
 ```
 
 - [ ] **Step 4: Surface skipped stages and role summaries in live progress**
 
 ```tsx
 // apps/web/src/components/analysis/LiveProgressPanel.tsx
-{stage?.roleSummaries?.length ? (
-  <ul className="mt-2 space-y-1">
-    {stage.roleSummaries.map((role) => (
-      <li key={role.roleKey} className="text-xs text-slate-400">
-        {role.roleKey} · {role.status} · {Math.round(role.durationMs / 1000)}s
-      </li>
-    ))}
-  </ul>
-) : null}
+{
+  stage?.roleSummaries?.length ? (
+    <ul className="mt-2 space-y-1">
+      {stage.roleSummaries.map((role) => (
+        <li key={role.roleKey} className="text-xs text-slate-400">
+          {role.roleKey} · {role.status} · {Math.round(role.durationMs / 1000)}s
+        </li>
+      ))}
+    </ul>
+  ) : null;
+}
 ```
 
 - [ ] **Step 5: Re-run the web tests and typecheck**

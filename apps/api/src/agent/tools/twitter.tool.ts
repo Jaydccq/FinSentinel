@@ -19,15 +19,11 @@ export function createTwitterTools(service: TwitterToolsService) {
       inputSchema: z.object({
         username: z
           .string()
-          .describe(
-            "Twitter username, e.g. 'elonmusk' (with or without @ prefix)",
-          ),
+          .describe("Twitter username, e.g. 'elonmusk' (with or without @ prefix)"),
       }),
       execute: async ({ username }) => {
         try {
-          return await service.getTwitterProfile(
-            username.replace(/^@/, ''),
-          );
+          return await service.getTwitterProfile(username.replace(/^@/, ''));
         } catch (e) {
           return `Error fetching Twitter profile for @${username}: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -40,45 +36,23 @@ export function createTwitterTools(service: TwitterToolsService) {
         'Returns tweet text, engagement metrics, and author info. ' +
         'Use this to gauge social sentiment around a stock, crypto, or financial event.',
       inputSchema: z.object({
-        keywords: z
-          .string()
-          .describe(
-            "Search keywords, e.g. '$AAPL earnings' or 'bitcoin ETF'",
-          ),
+        keywords: z.string().describe("Search keywords, e.g. '$AAPL earnings' or 'bitcoin ETF'"),
         fromUser: z
           .string()
           .optional()
-          .describe(
-            'Filter by author username (without @), or omit for all users',
-          ),
-        hashtag: z
-          .string()
-          .optional()
-          .describe('Filter by hashtag (without #), or omit for any'),
+          .describe('Filter by author username (without @), or omit for all users'),
+        hashtag: z.string().optional().describe('Filter by hashtag (without #), or omit for any'),
         minLikes: z
           .number()
           .int()
           .min(0)
           .optional()
-          .describe(
-            'Minimum number of likes to filter low-engagement tweets (0 for no filter)',
-          ),
-        limit: z
-          .number()
-          .int()
-          .min(1)
-          .max(20)
-          .describe('Number of tweets to return (1-20)'),
+          .describe('Minimum number of likes to filter low-engagement tweets (0 for no filter)'),
+        limit: z.number().int().min(1).max(20).describe('Number of tweets to return (1-20)'),
       }),
       execute: async ({ keywords, fromUser, hashtag, minLikes, limit }) => {
         try {
-          return await service.searchTweets(
-            keywords,
-            fromUser,
-            hashtag,
-            minLikes ?? 0,
-            limit,
-          );
+          return await service.searchTweets(keywords, fromUser, hashtag, minLikes ?? 0, limit);
         } catch (e) {
           return `Error searching tweets: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -93,22 +67,12 @@ export function createTwitterTools(service: TwitterToolsService) {
       inputSchema: z.object({
         username: z
           .string()
-          .describe(
-            "Twitter username, e.g. 'jimcramer' (with or without @ prefix)",
-          ),
-        limit: z
-          .number()
-          .int()
-          .min(1)
-          .max(20)
-          .describe('Number of tweets to return (1-20)'),
+          .describe("Twitter username, e.g. 'jimcramer' (with or without @ prefix)"),
+        limit: z.number().int().min(1).max(20).describe('Number of tweets to return (1-20)'),
       }),
       execute: async ({ username, limit }) => {
         try {
-          return await service.getUserTweets(
-            username.replace(/^@/, ''),
-            limit,
-          );
+          return await service.getUserTweets(username.replace(/^@/, ''), limit);
         } catch (e) {
           return `Error fetching tweets for @${username}: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -123,15 +87,11 @@ export function createTwitterTools(service: TwitterToolsService) {
       inputSchema: z.object({
         username: z
           .string()
-          .describe(
-            "Twitter username, e.g. 'CathieDWood' (with or without @ prefix)",
-          ),
+          .describe("Twitter username, e.g. 'CathieDWood' (with or without @ prefix)"),
       }),
       execute: async ({ username }) => {
         try {
-          return await service.getKolFollowers(
-            username.replace(/^@/, ''),
-          );
+          return await service.getKolFollowers(username.replace(/^@/, ''));
         } catch (e) {
           return `Error fetching KOL followers for @${username}: ${e instanceof Error ? e.message : 'unknown'}`;
         }

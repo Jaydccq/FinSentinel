@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Inject,
-  Logger,
-  OnApplicationBootstrap,
-} from '@nestjs/common';
+import { Injectable, Inject, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { hash } from 'bcryptjs';
@@ -42,9 +37,7 @@ export class LocalUserSeeder implements OnApplicationBootstrap {
     const email = this.config.getOrThrow<string>('LOCAL_USER_EMAIL');
 
     if (!password) {
-      this.logger.warn(
-        'APP_SEED_LOCAL_USER=true but LOCAL_USER_PASSWORD is unset; skipping seed.',
-      );
+      this.logger.warn('APP_SEED_LOCAL_USER=true but LOCAL_USER_PASSWORD is unset; skipping seed.');
       return;
     }
 

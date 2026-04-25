@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  Inject,
-  Logger,
-  OnModuleInit,
-  OnModuleDestroy,
-} from '@nestjs/common';
+import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 import { ANALYSIS_RUN_QUEUE } from './queue.constants';

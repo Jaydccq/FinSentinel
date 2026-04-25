@@ -51,10 +51,7 @@ describe('ReportService', () => {
     mockDb = createMockDb();
 
     const module = await Test.createTestingModule({
-      providers: [
-        ReportService,
-        { provide: 'DRIZZLE_DB', useValue: mockDb },
-      ],
+      providers: [ReportService, { provide: 'DRIZZLE_DB', useValue: mockDb }],
     }).compile();
 
     service = module.get(ReportService);
@@ -97,9 +94,7 @@ describe('ReportService', () => {
         riskLevel: 'MEDIUM',
       };
 
-      await expect(service.generateReport(USER_ID, data)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.generateReport(USER_ID, data)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -122,9 +117,7 @@ describe('ReportService', () => {
     it('throws NotFoundException when report not found', async () => {
       mockDb._selectChain.limit.mockResolvedValueOnce([]);
 
-      await expect(service.getReport(USER_ID, 'nonexistent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.getReport(USER_ID, 'nonexistent')).rejects.toThrow(NotFoundException);
     });
 
     it('throws NotFoundException when portfolio not owned', async () => {
@@ -133,9 +126,7 @@ describe('ReportService', () => {
       // But portfolio ownership check fails
       mockDb._selectChain.limit.mockResolvedValueOnce([]);
 
-      await expect(service.getReport(USER_ID, REPORT_ID)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.getReport(USER_ID, REPORT_ID)).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -165,9 +156,7 @@ describe('ReportService', () => {
     it('throws NotFoundException when report not found', async () => {
       mockDb._selectChain.limit.mockResolvedValueOnce([]);
 
-      await expect(service.getReportPdf(USER_ID, 'nonexistent')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.getReportPdf(USER_ID, 'nonexistent')).rejects.toThrow(NotFoundException);
     });
   });
 });

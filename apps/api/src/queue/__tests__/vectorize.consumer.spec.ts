@@ -36,9 +36,11 @@ function createMockDb() {
 
 function createMockParseService() {
   return {
-    parseToCleanText: vi.fn().mockReturnValue(
-      'This is parsed document content that is long enough for chunking and vectorization purposes.',
-    ),
+    parseToCleanText: vi
+      .fn()
+      .mockReturnValue(
+        'This is parsed document content that is long enough for chunking and vectorization purposes.',
+      ),
   };
 }
 

@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import ChatPage from '@/views/ChatPage'
+import ChatPage from '@/views/ChatPage';
 
 export default function Page() {
-  return <ChatPage />
+  return <ChatPage />;
 }

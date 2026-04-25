@@ -1,12 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { TwitterDataService } from '../twitter/twitter-data.service';
 
-const DEFAULT_SEARCH_USERS = [
-  'lookonchain',
-  'WatcherGuru',
-  'whale_alert',
-  'CryptoCapo_',
-];
+const DEFAULT_SEARCH_USERS = ['lookonchain', 'WatcherGuru', 'whale_alert', 'CryptoCapo_'];
 
 interface TweetRecord {
   id?: string;

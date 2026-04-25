@@ -7,9 +7,7 @@ import { MarketCalendarService } from '../../market/market-calendar.service';
  *
  * Market-calendar tool surface exposed to the agent.
  */
-export function createMarketCalendarTools(
-  service: MarketCalendarService,
-) {
+export function createMarketCalendarTools(service: MarketCalendarService) {
   return {
     getUpcomingEarnings: tool({
       description:
@@ -17,9 +15,7 @@ export function createMarketCalendarTools(
         'Shows report date, EPS estimates, and revenue forecasts. ' +
         'Use before earnings season to assess event-driven risk.',
       inputSchema: z.object({
-        ticker: z
-          .string()
-          .describe('Stock ticker symbol, e.g. AAPL'),
+        ticker: z.string().describe('Stock ticker symbol, e.g. AAPL'),
       }),
       execute: async ({ ticker }) => {
         try {
@@ -36,9 +32,7 @@ export function createMarketCalendarTools(
         'Shows ex-dividend dates, payment dates, and dividend amounts. ' +
         'Use for income analysis and dividend capture strategy.',
       inputSchema: z.object({
-        ticker: z
-          .string()
-          .describe('Stock ticker symbol, e.g. MSFT'),
+        ticker: z.string().describe('Stock ticker symbol, e.g. MSFT'),
       }),
       execute: async ({ ticker }) => {
         try {
@@ -54,9 +48,7 @@ export function createMarketCalendarTools(
         'Get stock split history for a ticker. ' +
         'Shows historical split events with ratios and dates.',
       inputSchema: z.object({
-        ticker: z
-          .string()
-          .describe('Stock ticker symbol, e.g. TSLA'),
+        ticker: z.string().describe('Stock ticker symbol, e.g. TSLA'),
       }),
       execute: async ({ ticker }) => {
         try {

@@ -20,19 +20,11 @@ export class TeamRegistry implements OnModuleInit {
 
   onModuleInit(): void {
     for (const team of this.teams()) {
-      this.orchestrator.registerStageExecutor(team.stageKey, (args) =>
-        team.execute(args),
-      );
+      this.orchestrator.registerStageExecutor(team.stageKey, (args) => team.execute(args));
     }
   }
 
   private teams(): TeamService[] {
-    return [
-      this.intelligence,
-      this.thesis,
-      this.risk,
-      this.executionPrep,
-      this.humanApproval,
-    ];
+    return [this.intelligence, this.thesis, this.risk, this.executionPrep, this.humanApproval];
   }
 }

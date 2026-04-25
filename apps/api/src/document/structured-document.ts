@@ -8,9 +8,9 @@
 
 export interface StructuredChunk {
   text: string;
-  title: string | null;      // closest enclosing heading text
-  sectionPath: string[];     // ["Chapter 1", "1.2 Risks", "1.2.3 FX"]
-  parentId: string | null;   // set by DocumentVectorService before insert (null at chunker output)
+  title: string | null; // closest enclosing heading text
+  sectionPath: string[]; // ["Chapter 1", "1.2 Risks", "1.2.3 FX"]
+  parentId: string | null; // set by DocumentVectorService before insert (null at chunker output)
   modality: 'text' | 'table' | 'image' | 'pdf_page';
   pageStart: number | null;
   pageEnd: number | null;

@@ -49,11 +49,7 @@ describe('BrokerRegistry', () => {
 
   // ── 2. paperMode_handlesAnySecurity ────────────────────────────────────
   it('resolve in PAPER mode handles any security type', () => {
-    const stockBroker = registry.resolve(
-      Contract.stock('AAPL'),
-      TradingMode.PAPER,
-      100000,
-    );
+    const stockBroker = registry.resolve(Contract.stock('AAPL'), TradingMode.PAPER, 100000);
     const cryptoBroker = registry.resolve(
       Contract.cryptoSpot('BTC', 'POLYGON', 'USD'),
       TradingMode.PAPER,
@@ -74,9 +70,9 @@ describe('BrokerRegistry', () => {
   it('resolve in LIVE mode with no enabled brokers throws', () => {
     const contract = Contract.stock('AAPL');
 
-    expect(() =>
-      registry.resolve(contract, TradingMode.LIVE, 100000),
-    ).toThrow('No live broker can handle');
+    expect(() => registry.resolve(contract, TradingMode.LIVE, 100000)).toThrow(
+      'No live broker can handle',
+    );
   });
 
   // ── 4. listAvailableBrokers_includesPaperAlways ───────────────────────

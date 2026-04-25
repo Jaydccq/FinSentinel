@@ -9,11 +9,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import {
-  createTestApp,
-  type createMockDb,
-  type createMockRedis,
-} from './test-app.factory';
+import { createTestApp, type createMockDb, type createMockRedis } from './test-app.factory';
 
 describe('Trading Flow (integration)', () => {
   let app: INestApplication;
@@ -57,13 +53,9 @@ describe('Trading Flow (integration)', () => {
       .send({ action: 'BUY', symbol: 'AAPL', qty: '10' })
       .expect(401);
 
-    await request(app.getHttpServer())
-      .get('/api/trading/v2/staged')
-      .expect(401);
+    await request(app.getHttpServer()).get('/api/trading/v2/staged').expect(401);
 
-    await request(app.getHttpServer())
-      .get('/api/trading/v2/wallet')
-      .expect(401);
+    await request(app.getHttpServer()).get('/api/trading/v2/wallet').expect(401);
   });
 
   // ═══════════════════════════════════════════════════════════════════════

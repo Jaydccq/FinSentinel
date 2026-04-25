@@ -18,10 +18,7 @@ export class MarketCalendarService {
    * @param startDate - optional start date (YYYY-MM-DD)
    * @param endDate   - optional end date (YYYY-MM-DD)
    */
-  async getEarningsCalendar(
-    startDate?: string,
-    endDate?: string,
-  ): Promise<unknown> {
+  async getEarningsCalendar(startDate?: string, endDate?: string): Promise<unknown> {
     this.logger.debug(
       `Fetching earnings calendar: ${startDate ?? 'no start'} to ${endDate ?? 'no end'}`,
     );
@@ -30,11 +27,7 @@ export class MarketCalendarService {
     if (startDate) params['start_date'] = startDate;
     if (endDate) params['end_date'] = endDate;
 
-    return this.openbb.queryPublicData(
-      'equity/calendar/earnings',
-      undefined,
-      params,
-    );
+    return this.openbb.queryPublicData('equity/calendar/earnings', undefined, params);
   }
 
   /**
@@ -43,10 +36,7 @@ export class MarketCalendarService {
    * @param startDate - optional start date (YYYY-MM-DD)
    * @param endDate   - optional end date (YYYY-MM-DD)
    */
-  async getDividendCalendar(
-    startDate?: string,
-    endDate?: string,
-  ): Promise<unknown> {
+  async getDividendCalendar(startDate?: string, endDate?: string): Promise<unknown> {
     this.logger.debug(
       `Fetching dividend calendar: ${startDate ?? 'no start'} to ${endDate ?? 'no end'}`,
     );
@@ -55,11 +45,7 @@ export class MarketCalendarService {
     if (startDate) params['start_date'] = startDate;
     if (endDate) params['end_date'] = endDate;
 
-    return this.openbb.queryPublicData(
-      'equity/calendar/dividend',
-      undefined,
-      params,
-    );
+    return this.openbb.queryPublicData('equity/calendar/dividend', undefined, params);
   }
 
   /**
@@ -68,10 +54,7 @@ export class MarketCalendarService {
    * @param startDate - optional start date (YYYY-MM-DD)
    * @param endDate   - optional end date (YYYY-MM-DD)
    */
-  async getSplitsCalendar(
-    startDate?: string,
-    endDate?: string,
-  ): Promise<unknown> {
+  async getSplitsCalendar(startDate?: string, endDate?: string): Promise<unknown> {
     this.logger.debug(
       `Fetching splits calendar: ${startDate ?? 'no start'} to ${endDate ?? 'no end'}`,
     );
@@ -80,35 +63,25 @@ export class MarketCalendarService {
     if (startDate) params['start_date'] = startDate;
     if (endDate) params['end_date'] = endDate;
 
-    return this.openbb.queryPublicData(
-      'equity/calendar/splits',
-      undefined,
-      params,
-    );
+    return this.openbb.queryPublicData('equity/calendar/splits', undefined, params);
   }
 
   async getUpcomingEarnings(ticker: string): Promise<unknown> {
-    return this.openbb.queryPublicData(
-      'equity/calendar/earnings',
-      undefined,
-      { symbol: ticker.toUpperCase() },
-    );
+    return this.openbb.queryPublicData('equity/calendar/earnings', undefined, {
+      symbol: ticker.toUpperCase(),
+    });
   }
 
   async getDividendHistory(ticker: string): Promise<unknown> {
-    return this.openbb.queryPublicData(
-      'equity/calendar/dividend',
-      undefined,
-      { symbol: ticker.toUpperCase() },
-    );
+    return this.openbb.queryPublicData('equity/calendar/dividend', undefined, {
+      symbol: ticker.toUpperCase(),
+    });
   }
 
   async getSplitHistory(ticker: string): Promise<unknown> {
-    return this.openbb.queryPublicData(
-      'equity/calendar/splits',
-      undefined,
-      { symbol: ticker.toUpperCase() },
-    );
+    return this.openbb.queryPublicData('equity/calendar/splits', undefined, {
+      symbol: ticker.toUpperCase(),
+    });
   }
 
   async getIPOCalendar(): Promise<string> {

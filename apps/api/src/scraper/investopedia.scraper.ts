@@ -19,18 +19,30 @@ export class InvestopediaScraper {
     slug: string;
     url: string;
   }> = [
-    { slug: 'price-to-earnings-ratio', url: 'https://www.investopedia.com/terms/p/price-earningsratio.asp' },
+    {
+      slug: 'price-to-earnings-ratio',
+      url: 'https://www.investopedia.com/terms/p/price-earningsratio.asp',
+    },
     { slug: 'earnings-per-share', url: 'https://www.investopedia.com/terms/e/eps.asp' },
     { slug: 'return-on-equity', url: 'https://www.investopedia.com/terms/r/returnonequity.asp' },
-    { slug: 'debt-to-equity-ratio', url: 'https://www.investopedia.com/terms/d/debtequityratio.asp' },
-    { slug: 'market-capitalization', url: 'https://www.investopedia.com/terms/m/marketcapitalization.asp' },
+    {
+      slug: 'debt-to-equity-ratio',
+      url: 'https://www.investopedia.com/terms/d/debtequityratio.asp',
+    },
+    {
+      slug: 'market-capitalization',
+      url: 'https://www.investopedia.com/terms/m/marketcapitalization.asp',
+    },
     { slug: 'dividend-yield', url: 'https://www.investopedia.com/terms/d/dividendyield.asp' },
     { slug: 'beta', url: 'https://www.investopedia.com/terms/b/beta.asp' },
     { slug: 'alpha', url: 'https://www.investopedia.com/terms/a/alpha.asp' },
     { slug: 'sharpe-ratio', url: 'https://www.investopedia.com/terms/s/sharperatio.asp' },
     { slug: 'bollinger-bands', url: 'https://www.investopedia.com/terms/b/bollingerbands.asp' },
     { slug: 'relative-strength-index', url: 'https://www.investopedia.com/terms/r/rsi.asp' },
-    { slug: 'moving-average-convergence-divergence', url: 'https://www.investopedia.com/terms/m/macd.asp' },
+    {
+      slug: 'moving-average-convergence-divergence',
+      url: 'https://www.investopedia.com/terms/m/macd.asp',
+    },
     { slug: 'simple-moving-average', url: 'https://www.investopedia.com/terms/s/sma.asp' },
     { slug: 'exponential-moving-average', url: 'https://www.investopedia.com/terms/e/ema.asp' },
     { slug: 'volume-weighted-average-price', url: 'https://www.investopedia.com/terms/v/vwap.asp' },
@@ -40,26 +52,50 @@ export class InvestopediaScraper {
     { slug: 'current-ratio', url: 'https://www.investopedia.com/terms/c/currentratio.asp' },
     { slug: 'quick-ratio', url: 'https://www.investopedia.com/terms/q/quickratio.asp' },
     { slug: 'enterprise-value', url: 'https://www.investopedia.com/terms/e/enterprisevalue.asp' },
-    { slug: 'price-to-book-ratio', url: 'https://www.investopedia.com/terms/p/price-to-bookratio.asp' },
-    { slug: 'price-to-sales-ratio', url: 'https://www.investopedia.com/terms/p/price-to-salesratio.asp' },
+    {
+      slug: 'price-to-book-ratio',
+      url: 'https://www.investopedia.com/terms/p/price-to-bookratio.asp',
+    },
+    {
+      slug: 'price-to-sales-ratio',
+      url: 'https://www.investopedia.com/terms/p/price-to-salesratio.asp',
+    },
     { slug: 'short-interest', url: 'https://www.investopedia.com/terms/s/shortinterest.asp' },
     { slug: 'put-call-ratio', url: 'https://www.investopedia.com/terms/p/putcallratio.asp' },
     { slug: 'implied-volatility', url: 'https://www.investopedia.com/terms/i/iv.asp' },
     { slug: 'volatility', url: 'https://www.investopedia.com/terms/v/volatility.asp' },
-    { slug: 'standard-deviation', url: 'https://www.investopedia.com/terms/s/standarddeviation.asp' },
+    {
+      slug: 'standard-deviation',
+      url: 'https://www.investopedia.com/terms/s/standarddeviation.asp',
+    },
     { slug: 'value-at-risk', url: 'https://www.investopedia.com/terms/v/var.asp' },
-    { slug: 'monte-carlo-simulation', url: 'https://www.investopedia.com/terms/m/montecarlosimulation.asp' },
-    { slug: 'efficient-frontier', url: 'https://www.investopedia.com/terms/e/efficientfrontier.asp' },
+    {
+      slug: 'monte-carlo-simulation',
+      url: 'https://www.investopedia.com/terms/m/montecarlosimulation.asp',
+    },
+    {
+      slug: 'efficient-frontier',
+      url: 'https://www.investopedia.com/terms/e/efficientfrontier.asp',
+    },
     { slug: 'capital-asset-pricing-model', url: 'https://www.investopedia.com/terms/c/capm.asp' },
     { slug: 'discounted-cash-flow', url: 'https://www.investopedia.com/terms/d/dcf.asp' },
     { slug: 'net-present-value', url: 'https://www.investopedia.com/terms/n/npv.asp' },
     { slug: 'internal-rate-of-return', url: 'https://www.investopedia.com/terms/i/irr.asp' },
-    { slug: 'weighted-average-cost-of-capital', url: 'https://www.investopedia.com/terms/w/wacc.asp' },
-    { slug: 'earnings-before-interest-taxes', url: 'https://www.investopedia.com/terms/e/ebit.asp' },
+    {
+      slug: 'weighted-average-cost-of-capital',
+      url: 'https://www.investopedia.com/terms/w/wacc.asp',
+    },
+    {
+      slug: 'earnings-before-interest-taxes',
+      url: 'https://www.investopedia.com/terms/e/ebit.asp',
+    },
     { slug: 'ebitda', url: 'https://www.investopedia.com/terms/e/ebitda.asp' },
     { slug: 'gross-domestic-product', url: 'https://www.investopedia.com/terms/g/gdp.asp' },
     { slug: 'inflation', url: 'https://www.investopedia.com/terms/i/inflation.asp' },
-    { slug: 'federal-funds-rate', url: 'https://www.investopedia.com/terms/f/federalfundsrate.asp' },
+    {
+      slug: 'federal-funds-rate',
+      url: 'https://www.investopedia.com/terms/f/federalfundsrate.asp',
+    },
     { slug: 'yield-curve', url: 'https://www.investopedia.com/terms/y/yieldcurve.asp' },
     { slug: 'treasury-bonds', url: 'https://www.investopedia.com/terms/t/treasurybond.asp' },
     { slug: 'hedge-fund', url: 'https://www.investopedia.com/terms/h/hedgefund.asp' },
@@ -68,7 +104,10 @@ export class InvestopediaScraper {
     { slug: 'options', url: 'https://www.investopedia.com/terms/o/option.asp' },
     { slug: 'futures-contract', url: 'https://www.investopedia.com/terms/f/futurescontract.asp' },
     { slug: 'margin-trading', url: 'https://www.investopedia.com/terms/m/margin.asp' },
-    { slug: 'dollar-cost-averaging', url: 'https://www.investopedia.com/terms/d/dollarcostaveraging.asp' },
+    {
+      slug: 'dollar-cost-averaging',
+      url: 'https://www.investopedia.com/terms/d/dollarcostaveraging.asp',
+    },
   ];
 
   constructor(
@@ -100,16 +139,11 @@ export class InvestopediaScraper {
       }
     }
 
-    this.logger.log(
-      `Investopedia scrape complete: ${savedCount} new terms saved`,
-    );
+    this.logger.log(`Investopedia scrape complete: ${savedCount} new terms saved`);
     return savedCount;
   }
 
-  private async scrapeTerm(
-    slug: string,
-    url: string,
-  ): Promise<boolean> {
+  private async scrapeTerm(slug: string, url: string): Promise<boolean> {
     const originalFileName = `investopedia-${slug}`;
 
     // Dedup: skip if document already exists

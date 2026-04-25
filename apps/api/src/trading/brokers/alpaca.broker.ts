@@ -1,8 +1,4 @@
-import {
-  SecurityType,
-  BrokerCapability,
-  Contract,
-} from '@finsentinel/shared';
+import { SecurityType, BrokerCapability, Contract } from '@finsentinel/shared';
 import type { IBroker } from '../interfaces/broker';
 import type { AlpacaTradingEngine } from '../engines/alpaca-trading.engine';
 import type {
@@ -16,9 +12,7 @@ import type {
 /**
  * Alpaca broker capabilities — spot trading only (US equities).
  */
-const ALPACA_CAPABILITIES: Set<BrokerCapability> = new Set([
-  BrokerCapability.SPOT_TRADING,
-]);
+const ALPACA_CAPABILITIES: Set<BrokerCapability> = new Set([BrokerCapability.SPOT_TRADING]);
 
 /**
  * AlpacaBroker — wraps AlpacaTradingEngine with Contract-aware symbol conversion.
@@ -59,10 +53,7 @@ export class AlpacaBroker implements IBroker {
 
   // -- Order execution --------------------------------------------------------
 
-  async placeOrder(
-    contract: Contract,
-    request: OrderRequest,
-  ): Promise<OrderResult> {
+  async placeOrder(contract: Contract, request: OrderRequest): Promise<OrderResult> {
     const adapted: OrderRequest = {
       ...request,
       symbol: contract.toEngineSymbol(),

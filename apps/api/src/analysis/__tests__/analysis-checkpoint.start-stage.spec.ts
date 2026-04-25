@@ -23,8 +23,7 @@ import { AnalysisCheckpointService } from '../analysis-checkpoint.service';
 // Vitest does not load .env automatically; fall back to the known local URL so
 // the test runs when DATABASE_URL is not explicitly exported in the shell.
 const DB_URL =
-  process.env['DATABASE_URL'] ??
-  'postgresql://postgres:123456@localhost:5432/finsentinel';
+  process.env['DATABASE_URL'] ?? 'postgresql://postgres:123456@localhost:5432/finsentinel';
 
 // Test user ID generated per test run — no pre-seeded data required.
 let testUserId: string;
@@ -113,10 +112,7 @@ maybeDescribe('AnalysisCheckpointService.startStage (idempotent)', () => {
     await svc.startStage(runId, 'INTELLIGENCE');
     await svc.startStage(runId, 'INTELLIGENCE');
 
-    const rows = await db
-      .select()
-      .from(analysisStages)
-      .where(eq(analysisStages.runId, runId));
+    const rows = await db.select().from(analysisStages).where(eq(analysisStages.runId, runId));
 
     expect(rows).toHaveLength(1);
     expect(rows[0].checkpointVersion).toBeGreaterThanOrEqual(1);

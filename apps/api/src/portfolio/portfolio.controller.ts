@@ -44,10 +44,7 @@ export class PortfolioController {
   }
 
   @Get(':id')
-  async getPortfolio(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async getPortfolio(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     return this.portfolioService.getPortfolio(user.userId, id);
   }
 
@@ -62,10 +59,7 @@ export class PortfolioController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deletePortfolio(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async deletePortfolio(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     await this.portfolioService.deletePortfolio(user.userId, id);
   }
 
@@ -96,12 +90,7 @@ export class PortfolioController {
     @Param('holdingId') holdingId: string,
     @Body(new ZodValidationPipe(holdingRequestSchema)) body: HoldingRequest,
   ) {
-    return this.portfolioService.updateHolding(
-      user.userId,
-      portfolioId,
-      holdingId,
-      body,
-    );
+    return this.portfolioService.updateHolding(user.userId, portfolioId, holdingId, body);
   }
 
   @Delete(':portfolioId/holdings/:holdingId')
@@ -111,40 +100,27 @@ export class PortfolioController {
     @Param('portfolioId') portfolioId: string,
     @Param('holdingId') holdingId: string,
   ) {
-    await this.portfolioService.deleteHolding(
-      user.userId,
-      portfolioId,
-      holdingId,
-    );
+    await this.portfolioService.deleteHolding(user.userId, portfolioId, holdingId);
   }
 
   // ── Analytics ──────────────────────────────────────────────────────────
 
   @Get(':id/analytics')
-  async getPortfolioAnalytics(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async getPortfolioAnalytics(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     return this.portfolioService.getPortfolioAnalytics(user.userId, id);
   }
 
   // ── Insights ──────────────────────────────────────────────────────────
 
   @Get(':id/insights')
-  async getInsights(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async getInsights(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     return this.insightsService.getInsight(user.userId, id);
   }
 
   // ── Reports ───────────────────────────────────────────────────────────
 
   @Get(':id/reports')
-  async getPortfolioReports(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async getPortfolioReports(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     return this.portfolioService.getReports(user.userId, id);
   }
 }

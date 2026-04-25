@@ -4,11 +4,7 @@ import {
   orderDraftsPayloadSchema,
   strategyArchivePayloadSchema,
 } from '@finsentinel/shared';
-import type {
-  AnalysisStageKey,
-  DecisionObject,
-  SharedContext,
-} from '@finsentinel/shared';
+import type { AnalysisStageKey, DecisionObject, SharedContext } from '@finsentinel/shared';
 
 interface RunReportStage {
   stageKey: AnalysisStageKey;
@@ -53,7 +49,9 @@ export class RunReportAssembler {
     decisionObject: DecisionObject | null;
   } {
     const sections = args.stages
-      .filter((stage) => stage.humanReportMarkdown != null && stage.humanReportMarkdown.trim() !== '')
+      .filter(
+        (stage) => stage.humanReportMarkdown != null && stage.humanReportMarkdown.trim() !== '',
+      )
       .map((stage) => `## ${stage.stageKey}\n\n${stage.humanReportMarkdown}`);
 
     const contextSection = args.sharedContext
@@ -67,11 +65,7 @@ export class RunReportAssembler {
         ].join('\n')
       : '';
 
-    const finalReportMarkdown = [
-      '# Final Analysis Report',
-      contextSection,
-      ...sections,
-    ]
+    const finalReportMarkdown = ['# Final Analysis Report', contextSection, ...sections]
       .filter((section) => section.trim() !== '')
       .join('\n\n');
 

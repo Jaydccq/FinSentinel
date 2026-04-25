@@ -58,9 +58,7 @@ describe('JwtService', () => {
     expect(payload.jti).toBeDefined();
     expect(typeof payload.jti).toBe('string');
     // jti must be a uuid
-    expect(payload.jti).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-    );
+    expect(payload.jti).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
   });
 
   it('validates a freshly generated token and returns username + userId + jti', async () => {
@@ -87,7 +85,10 @@ describe('JwtService', () => {
     }).compile();
 
     const expiredJwtService = module.get(JwtService);
-    const token = await expiredJwtService.generateToken('charlie', 'aaaaaaaa-bbbb-4ccc-dddd-eeeeeeeeeeee');
+    const token = await expiredJwtService.generateToken(
+      'charlie',
+      'aaaaaaaa-bbbb-4ccc-dddd-eeeeeeeeeeee',
+    );
 
     // Wait a tick to ensure the token is expired
     await new Promise((resolve) => setTimeout(resolve, 10));

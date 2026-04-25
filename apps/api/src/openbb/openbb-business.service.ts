@@ -35,11 +35,7 @@ export class OpenbbBusinessDataService {
    * @param endDate   - optional end date (YYYY-MM-DD)
    * @param limit     - optional max number of results
    */
-  async getUsCpi(
-    startDate?: string,
-    endDate?: string,
-    limit?: number,
-  ): Promise<unknown> {
+  async getUsCpi(startDate?: string, endDate?: string, limit?: number): Promise<unknown> {
     return this.queryFredLikeSeries(
       BUSINESS_DEFAULTS.cpiPath,
       BUSINESS_DEFAULTS.macroProvider,
@@ -79,11 +75,7 @@ export class OpenbbBusinessDataService {
    * @param endDate   - optional end date (YYYY-MM-DD)
    * @param limit     - optional max number of results
    */
-  async getUsFedFundsRate(
-    startDate?: string,
-    endDate?: string,
-    limit?: number,
-  ): Promise<unknown> {
+  async getUsFedFundsRate(startDate?: string, endDate?: string, limit?: number): Promise<unknown> {
     return this.queryFredLikeSeries(
       BUSINESS_DEFAULTS.fedFundsPath,
       BUSINESS_DEFAULTS.macroProvider,

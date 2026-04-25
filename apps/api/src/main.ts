@@ -21,9 +21,7 @@ async function bootstrap() {
   // Order matters: requestId first so every downstream log/header has it.
   app.use(requestIdMiddleware());
 
-  const auth = app
-    .get(ConfigService)
-    .get<AuthRuntimeConfig>('auth')!;
+  const auth = app.get(ConfigService).get<AuthRuntimeConfig>('auth')!;
 
   // F-8 (2026-04-24): enable CSP + HSTS.
   //

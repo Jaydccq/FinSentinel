@@ -15,10 +15,7 @@ import { ContextFabricService } from '../context-fabric.service';
 import { RoleExecutorService } from './role-executor.service';
 import { OrderDraftValidator } from '../../trading/order-draft-validator.service';
 import type { TeamService, TeamExecutionArgs } from '../contracts/team-contract';
-import {
-  TRADE_PLANNER_PROMPT,
-  EXECUTION_DRAFT_BUILDER_PROMPT,
-} from '../contracts/prompts';
+import { TRADE_PLANNER_PROMPT, EXECUTION_DRAFT_BUILDER_PROMPT } from '../contracts/prompts';
 
 @Injectable()
 export class ExecutionPrepTeamService implements TeamService {
@@ -75,8 +72,7 @@ export class ExecutionPrepTeamService implements TeamService {
       userId: args.userId,
     });
 
-    const rawDrafts = (builder.structured as unknown as { orderDrafts?: unknown })
-      .orderDrafts;
+    const rawDrafts = (builder.structured as unknown as { orderDrafts?: unknown }).orderDrafts;
     if (!rawDrafts || !Array.isArray(rawDrafts) || rawDrafts.length === 0) {
       throw new Error(
         'ExecutionPrepTeam: builder produced no orderDrafts — cannot proceed to approval',
@@ -101,8 +97,20 @@ export class ExecutionPrepTeamService implements TeamService {
     });
 
     const roleSummaries: RoleSummary[] = [
-      { roleKey: 'TRADE_PLANNER',          status: 'COMPLETED', durationMs: planner.durationMs, toolCallCount: planner.toolCallCount, summary: planner.structured.summary },
-      { roleKey: 'EXECUTION_DRAFT_BUILDER', status: 'COMPLETED', durationMs: builder.durationMs, toolCallCount: builder.toolCallCount, summary: builder.structured.summary },
+      {
+        roleKey: 'TRADE_PLANNER',
+        status: 'COMPLETED',
+        durationMs: planner.durationMs,
+        toolCallCount: planner.toolCallCount,
+        summary: planner.structured.summary,
+      },
+      {
+        roleKey: 'EXECUTION_DRAFT_BUILDER',
+        status: 'COMPLETED',
+        durationMs: builder.durationMs,
+        toolCallCount: builder.toolCallCount,
+        summary: builder.structured.summary,
+      },
     ];
 
     const teamOutput: StageStructuredOutput = {
@@ -124,8 +132,10 @@ export class ExecutionPrepTeamService implements TeamService {
       structuredOutput: teamOutput,
       humanReportMarkdown: [
         '# Execution Prep Team Report',
-        '## Plan', planner.rawMarkdown,
-        '## Builder', builder.rawMarkdown,
+        '## Plan',
+        planner.rawMarkdown,
+        '## Builder',
+        builder.rawMarkdown,
       ].join('\n\n'),
     });
 

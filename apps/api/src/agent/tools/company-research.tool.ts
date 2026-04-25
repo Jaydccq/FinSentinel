@@ -7,9 +7,7 @@ import { CompanyResearchService } from '../../research/company-research.service'
  *
  * Company-research tool surface exposed to the agent.
  */
-export function createCompanyResearchTools(
-  service: CompanyResearchService,
-) {
+export function createCompanyResearchTools(service: CompanyResearchService) {
   return {
     getCompanyProfile: tool({
       description:
@@ -19,9 +17,7 @@ export function createCompanyResearchTools(
         "Use this when the user asks 'tell me about AAPL', 'what does MSFT do?', " +
         "'company overview for TSLA', or any request for basic company information.",
       inputSchema: z.object({
-        ticker: z
-          .string()
-          .describe('Stock ticker symbol, e.g. AAPL, MSFT, TSLA'),
+        ticker: z.string().describe('Stock ticker symbol, e.g. AAPL, MSFT, TSLA'),
       }),
       execute: async ({ ticker }) => {
         try {
@@ -52,11 +48,7 @@ export function createCompanyResearchTools(
       }),
       execute: async ({ ticker, periods }) => {
         try {
-          return JSON.stringify(
-            await service.getFinancialStatements(ticker, periods),
-            null,
-            2,
-          );
+          return JSON.stringify(await service.getFinancialStatements(ticker, periods), null, 2);
         } catch (e) {
           return `Error fetching financial data for ${ticker}: ${e instanceof Error ? e.message : 'unknown'}`;
         }

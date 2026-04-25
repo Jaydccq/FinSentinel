@@ -90,9 +90,9 @@ describe('isObviouslyEphemeralDb', () => {
   it('accepts the well-known test DB names', () => {
     expect(isObviouslyEphemeralDb('postgresql://u:p@prod.example.com/finsentinel_test')).toBe(true);
     expect(isObviouslyEphemeralDb('postgresql://u:p@prod.example.com/finsentinel_ci')).toBe(true);
-    expect(
-      isObviouslyEphemeralDb('postgresql://u:p@prod.example.com/finsentinel_ephemeral'),
-    ).toBe(true);
+    expect(isObviouslyEphemeralDb('postgresql://u:p@prod.example.com/finsentinel_ephemeral')).toBe(
+      true,
+    );
   });
 
   it('rejects unknown host + unknown DB name', () => {
@@ -159,10 +159,7 @@ describe('guardProductionAccidents', () => {
 
 // ── backfillChunkIssuerTickers (core loop) ────────────────────────────────────
 
-function makeRow(
-  id: string,
-  overrides: Partial<ChunkRowForBackfill> = {},
-): ChunkRowForBackfill {
+function makeRow(id: string, overrides: Partial<ChunkRowForBackfill> = {}): ChunkRowForBackfill {
   return {
     id,
     content: `This is the content for chunk ${id}.`,
@@ -195,11 +192,11 @@ describe('backfillChunkIssuerTickers', () => {
       .mockResolvedValue([]);
 
     const capturedUpdates: Array<{ id: string; newFields: Record<string, unknown> }> = [];
-    const updater: ChunkRowUpdater = vi.fn().mockImplementation(
-      async (id: string, newFields: Record<string, unknown>) => {
+    const updater: ChunkRowUpdater = vi
+      .fn()
+      .mockImplementation(async (id: string, newFields: Record<string, unknown>) => {
         capturedUpdates.push({ id, newFields });
-      },
-    );
+      });
 
     const summary = await backfillChunkIssuerTickers({
       fetchBatch: fetcher,
@@ -224,7 +221,7 @@ describe('backfillChunkIssuerTickers', () => {
     // The AAPL row (c1) must carry tickers: ['AAPL'] and issuerName: 'Apple Inc.'.
     const aaplUpdate = capturedUpdates.find((u) => u.id === 'c1');
     expect(aaplUpdate).toBeDefined();
-    expect((aaplUpdate!.newFields['tickers'] as string[])).toContain('AAPL');
+    expect(aaplUpdate!.newFields['tickers'] as string[]).toContain('AAPL');
     expect(aaplUpdate!.newFields['issuerName']).toBe('Apple Inc.');
   });
 
@@ -263,17 +260,14 @@ describe('backfillChunkIssuerTickers', () => {
       docTitle: null,
     });
 
-    const fetcher: ChunkRowFetcher = vi
-      .fn()
-      .mockResolvedValueOnce([row])
-      .mockResolvedValue([]);
+    const fetcher: ChunkRowFetcher = vi.fn().mockResolvedValueOnce([row]).mockResolvedValue([]);
 
     const capturedUpdates: Array<{ id: string; newFields: Record<string, unknown> }> = [];
-    const updater: ChunkRowUpdater = vi.fn().mockImplementation(
-      async (id: string, newFields: Record<string, unknown>) => {
+    const updater: ChunkRowUpdater = vi
+      .fn()
+      .mockImplementation(async (id: string, newFields: Record<string, unknown>) => {
         capturedUpdates.push({ id, newFields });
-      },
-    );
+      });
 
     await backfillChunkIssuerTickers({
       fetchBatch: fetcher,
@@ -302,17 +296,14 @@ describe('backfillChunkIssuerTickers', () => {
       docTitle: 'Apple Inc. Annual Report 2024',
     });
 
-    const fetcher: ChunkRowFetcher = vi
-      .fn()
-      .mockResolvedValueOnce([row])
-      .mockResolvedValue([]);
+    const fetcher: ChunkRowFetcher = vi.fn().mockResolvedValueOnce([row]).mockResolvedValue([]);
 
     const capturedUpdates: Array<{ id: string; newFields: Record<string, unknown> }> = [];
-    const updater: ChunkRowUpdater = vi.fn().mockImplementation(
-      async (id: string, newFields: Record<string, unknown>) => {
+    const updater: ChunkRowUpdater = vi
+      .fn()
+      .mockImplementation(async (id: string, newFields: Record<string, unknown>) => {
         capturedUpdates.push({ id, newFields });
-      },
-    );
+      });
 
     await backfillChunkIssuerTickers({
       fetchBatch: fetcher,

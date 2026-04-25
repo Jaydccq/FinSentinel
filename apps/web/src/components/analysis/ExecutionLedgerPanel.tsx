@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import type { ExecutionReviewLedgerResponse } from '../../api/analysis-runs';
 
@@ -11,9 +11,7 @@ export interface ExecutionLedgerPanelProps {
 export function ExecutionLedgerPanel({ ledger, onCommit, onDispatch }: ExecutionLedgerPanelProps) {
   const showCommit = ledger.status === 'APPROVED' && !ledger.commitHash;
   const showDispatch =
-    !!ledger.commitHash &&
-    ledger.status !== 'EXECUTED' &&
-    ledger.status !== 'FAILED';
+    !!ledger.commitHash && ledger.status !== 'EXECUTED' && ledger.status !== 'FAILED';
 
   return (
     <section className="surface-panel rounded p-4 space-y-3">
@@ -33,9 +31,7 @@ export function ExecutionLedgerPanel({ ledger, onCommit, onDispatch }: Execution
           ))}
         </ul>
       ) : null}
-      {ledger.rejectionNote ? (
-        <p className="text-xs text-red-300">{ledger.rejectionNote}</p>
-      ) : null}
+      {ledger.rejectionNote ? <p className="text-xs text-red-300">{ledger.rejectionNote}</p> : null}
       {showCommit ? (
         <button className="btn-secondary px-3 py-1 text-xs" onClick={onCommit}>
           Create Commit

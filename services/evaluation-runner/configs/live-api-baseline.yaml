@@ -15,9 +15,9 @@
 # against CorpusRetriever). Use this config when running rag-eval-local.sh
 # or when the evaluator targets a real apps/api.
 
-api_base_url: "http://localhost:3001"
+api_base_url: 'http://localhost:3001'
 retrieval:
-  endpoint: "/api/rag/search"
+  endpoint: '/api/rag/search'
   top_k: 10
 
 # Overall floors. Observed 2026-04-21:
@@ -34,38 +34,38 @@ minimum_metrics:
 # Per-bucket floors from live-expansion-ON baseline.
 bucket_minimum_metrics:
   exact_lookup:
-    strict.recall@5: 0.97         # baseline 1.0000
-    strict.recall@10: 0.97        # baseline 1.0000
-    strict.mrr@10: 0.92           # baseline 0.9500
+    strict.recall@5: 0.97 # baseline 1.0000
+    strict.recall@10: 0.97 # baseline 1.0000
+    strict.mrr@10: 0.92 # baseline 0.9500
   factoid:
-    strict.recall@5: 0.97         # baseline 1.0000
-    strict.recall@10: 0.97        # baseline 1.0000
-    strict.mrr@10: 0.97           # baseline 1.0000
+    strict.recall@5: 0.97 # baseline 1.0000
+    strict.recall@10: 0.97 # baseline 1.0000
+    strict.mrr@10: 0.97 # baseline 1.0000
   relational:
-    strict.recall@5: 0.92         # baseline 0.9583
-    strict.recall@10: 0.97        # baseline 1.0000
-    strict.mrr@10: 0.92           # baseline 0.9583
+    strict.recall@5: 0.92 # baseline 0.9583
+    strict.recall@10: 0.97 # baseline 1.0000
+    strict.mrr@10: 0.92 # baseline 0.9583
   analytical:
-    strict.recall@5: 0.70         # baseline 0.7333
-    strict.recall@10: 0.77        # baseline 0.8000
-    strict.mrr@10: 0.72           # baseline 0.7500
+    strict.recall@5: 0.70 # baseline 0.7333
+    strict.recall@10: 0.77 # baseline 0.8000
+    strict.mrr@10: 0.72 # baseline 0.7500
   multi_part:
-    strict.recall@5: 0.97         # baseline 1.0000
-    strict.recall@10: 0.97        # baseline 1.0000
-    strict.mrr@10: 0.97           # baseline 1.0000
+    strict.recall@5: 0.97 # baseline 1.0000
+    strict.recall@10: 0.97 # baseline 1.0000
+    strict.mrr@10: 0.97 # baseline 1.0000
   long_doc:
-    strict.recall@5: 0.87         # baseline 0.9000
-    strict.recall@10: 0.87        # baseline 0.9000
-    strict.mrr@10: 0.87           # baseline 0.9000
+    strict.recall@5: 0.87 # baseline 0.9000
+    strict.recall@10: 0.87 # baseline 0.9000
+    strict.mrr@10: 0.87 # baseline 0.9000
   cross_document:
-    strict.recall@5: 0.87         # baseline 0.9000
-    strict.recall@10: 0.94        # baseline 0.9750
-    strict.mrr@10: 0.87           # baseline 0.9000
+    strict.recall@5: 0.87 # baseline 0.9000
+    strict.recall@10: 0.94 # baseline 0.9750
+    strict.mrr@10: 0.87 # baseline 0.9000
   table_numeric:
-    strict.recall@5: 0.97         # baseline 1.0000
-    strict.recall@10: 0.97        # baseline 1.0000
-    strict.mrr@10: 0.94           # baseline 0.9667
+    strict.recall@5: 0.97 # baseline 1.0000
+    strict.recall@10: 0.97 # baseline 1.0000
+    strict.mrr@10: 0.94 # baseline 0.9667
   colloquial:
-    strict.recall@5: 0.97         # baseline 1.0000
-    strict.recall@10: 0.97        # baseline 1.0000
-    strict.mrr@10: 0.97           # baseline 1.0000
+    strict.recall@5: 0.97 # baseline 1.0000
+    strict.recall@10: 0.97 # baseline 1.0000
+    strict.mrr@10: 0.97 # baseline 1.0000

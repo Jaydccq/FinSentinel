@@ -50,7 +50,7 @@ on:
       - 'packages/shared/**'
       - '.github/workflows/desktop-smoke.yml'
   schedule:
-    - cron: '0 4 * * *'  # 每天 04:00 UTC
+    - cron: '0 4 * * *' # 每天 04:00 UTC
 
 jobs:
   pr-smoke:

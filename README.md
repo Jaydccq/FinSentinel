@@ -3,16 +3,17 @@
 FinSentinel is an AI-assisted investment research and risk platform organized as a TypeScript monorepo.
 
 The active product path is:
+
 - `apps/api`: NestJS API, agent orchestration, trading integrations, document/RAG pipeline
 - `apps/web`: Next.js frontend
 - `packages/db`, `packages/shared`: shared workspace packages
 
 ## App status matrix
 
-| App | Status | Notes |
-| --- | --- | --- |
-| `apps/api` | canonical | In CI, primary target. |
-| `apps/web` | canonical | In CI, primary target. |
+| App            | Status       | Notes                                    |
+| -------------- | ------------ | ---------------------------------------- |
+| `apps/api`     | canonical    | In CI, primary target.                   |
+| `apps/web`     | canonical    | In CI, primary target.                   |
 | `apps/desktop` | experimental | Smoke CI only, no release artifacts yet. |
 
 ## Workspace Layout
@@ -32,6 +33,7 @@ The active product path is:
 ## Development
 
 Requirements:
+
 - Node.js 22+
 - pnpm 10+
 - PostgreSQL
@@ -71,6 +73,7 @@ pnpm --filter @finsentinel/web lint
 ## Docker
 
 Repository-level Docker entrypoints now follow the TypeScript stack:
+
 - `docker-compose.yml`: local TypeScript stack
 - `docker-compose.prod.yml`: production-like TypeScript stack
 
@@ -81,6 +84,7 @@ docker compose up --build
 ```
 
 Default ports:
+
 - Web: `http://localhost:3000`
 - API: `http://localhost:3001/api`
 - API metrics: `http://localhost:3001/api/metrics`
@@ -93,6 +97,7 @@ Grafana ships with a provisioned `FinSentinel RAG Operations` dashboard backed b
 ## Environment
 
 Minimum API environment variables:
+
 - `DATABASE_URL`
 - `REDIS_URL`
 - `JWT_SECRET`
@@ -101,6 +106,7 @@ Minimum API environment variables:
 - `POLYGON_API_KEY`
 
 Common optional variables:
+
 - `AI_PROVIDER` (`openrouter` by default; set `nvidia` for NVIDIA Build/NIM)
 - `AI_MODEL`
 - `AI_EMBEDDING_PROVIDER`
@@ -139,6 +145,7 @@ Changing `AI_EMBEDDING_MODEL` requires reindexing stored RAG vectors so old and
 new embedding dimensions are not mixed.
 
 Storage variables when using RustFS or hybrid storage:
+
 - `STORAGE_PROVIDER`
 - `STORAGE_ENDPOINT`
 - `STORAGE_ACCESS_KEY`

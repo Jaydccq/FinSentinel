@@ -9,10 +9,7 @@ import { EventsModule } from '../events/events.module';
 import { ChatController } from './chat.controller';
 import { ChatCompactionService } from './chat-compaction.service';
 import { ChatService } from './chat.service';
-import {
-  ChatUpgradePlannerService,
-  chatUpgradeFlagProvider,
-} from './chat-upgrade-planner.service';
+import { ChatUpgradePlannerService, chatUpgradeFlagProvider } from './chat-upgrade-planner.service';
 
 /**
  * Chat module — Phase 12.
@@ -39,7 +36,12 @@ import {
     EventsModule,
   ],
   controllers: [ChatController],
-  providers: [ChatCompactionService, ChatService, ChatUpgradePlannerService, chatUpgradeFlagProvider],
+  providers: [
+    ChatCompactionService,
+    ChatService,
+    ChatUpgradePlannerService,
+    chatUpgradeFlagProvider,
+  ],
   exports: [ChatCompactionService, ChatService],
 })
 export class ChatModule {}

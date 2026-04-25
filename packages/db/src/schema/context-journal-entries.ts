@@ -16,9 +16,7 @@ export const contextJournalEntries = pgTable(
     runId: uuid('run_id').references(() => analysisRuns.id, { onDelete: 'cascade' }),
     stageKey: varchar('stage_key', { length: 32 }).$type<AnalysisStageKey>(),
     roleKey: varchar('role_key', { length: 64 }),
-    entryType: varchar('entry_type', { length: 40 })
-      .$type<ContextJournalEntryType>()
-      .notNull(),
+    entryType: varchar('entry_type', { length: 40 }).$type<ContextJournalEntryType>().notNull(),
     sourceType: varchar('source_type', { length: 32 }).notNull(),
     sourceRef: varchar('source_ref', { length: 255 }),
     payloadJson: jsonb('payload_json').$type<Record<string, unknown>>().notNull().default({}),

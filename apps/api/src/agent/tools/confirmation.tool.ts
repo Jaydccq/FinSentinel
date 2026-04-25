@@ -26,17 +26,14 @@ export function createConfirmationTools(config: ConfirmationConfig) {
         action: z
           .string()
           .describe(
-            "Clear description of the action and why you want to do it, " +
+            'Clear description of the action and why you want to do it, ' +
               "e.g. 'I want to sell all AAPL shares because earnings missed expectations'",
           ),
       }),
       execute: async ({ action }) => {
         try {
           // Block LIVE mode transitions unconditionally when configured
-          if (
-            config.blockLiveMode &&
-            action.toLowerCase().includes('live')
-          ) {
+          if (config.blockLiveMode && action.toLowerCase().includes('live')) {
             return (
               `BLOCKED. Action: ${action} — ` +
               'Switching to LIVE trading mode is not permitted via autonomous agent actions. ' +

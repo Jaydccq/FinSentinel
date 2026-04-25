@@ -50,9 +50,7 @@ function parseSparseWeights(raw: string | undefined): [number, number, number, n
  * include `colloquial` (see [RAG-TD-R4-02] in tech-debt-tracker.md). The env
  * key accepts extra keys but they are silently ignored at lookup time.
  */
-function parseMinCandidatesByClass(
-  raw: string | undefined,
-): Record<string, number> {
+function parseMinCandidatesByClass(raw: string | undefined): Record<string, number> {
   const fallback: Record<string, number> = {
     exact_lookup: 5,
     factoid: 15,
@@ -86,7 +84,7 @@ function parseMinCandidatesByClass(
 }
 
 const VALID_ROLLOUT_MODES = ['off', 'shadow', 'canary', 'on'] as const;
-type RolloutModeEnv = typeof VALID_ROLLOUT_MODES[number];
+type RolloutModeEnv = (typeof VALID_ROLLOUT_MODES)[number];
 
 function parseRolloutMode(raw: string | undefined): RolloutModeEnv {
   const value = raw ?? 'off';
@@ -130,7 +128,7 @@ function parseCanaryPercent(raw: string | undefined): Record<string, number> {
 }
 
 const VALID_PREFILTER_MODES = ['off', 'soft', 'hard'] as const;
-type PreFilterModeEnv = typeof VALID_PREFILTER_MODES[number];
+type PreFilterModeEnv = (typeof VALID_PREFILTER_MODES)[number];
 
 function parsePrefilterMode(raw: string | undefined): PreFilterModeEnv {
   const value = raw ?? 'soft';
@@ -147,17 +145,14 @@ export const ragConfig = registerAs('rag', () => ({
   chunking: {
     chunkSize: Number(process.env['RAG_CHUNK_SIZE']) || 500,
     chunkOverlap: Number(process.env['RAG_CHUNK_OVERLAP']) || 50,
-    minChunkSizeChars:
-      Number(process.env['RAG_MIN_CHUNK_SIZE_CHARS']) || 200,
+    minChunkSizeChars: Number(process.env['RAG_MIN_CHUNK_SIZE_CHARS']) || 200,
     maxNumChunks: Number(process.env['RAG_MAX_NUM_CHUNKS']) || 10000,
   },
   retrieval: {
     defaultTopK: Number(process.env['RAG_DEFAULT_TOP_K']) || 5,
-    similarityThreshold:
-      Number(process.env['RAG_SIMILARITY_THRESHOLD']) || 0.65,
+    similarityThreshold: Number(process.env['RAG_SIMILARITY_THRESHOLD']) || 0.65,
     maxTopK: Number(process.env['RAG_MAX_TOP_K']) || 20,
-    queryRewriteEnabled:
-      process.env['RAG_QUERY_REWRITE_ENABLED'] !== 'false',
+    queryRewriteEnabled: process.env['RAG_QUERY_REWRITE_ENABLED'] !== 'false',
     hydeEnabled: process.env['RAG_HYDE_ENABLED'] === 'true',
     queryDecomposeEnabled: process.env['RAG_QUERY_DECOMPOSE_ENABLED'] === 'true',
     /**
@@ -173,10 +168,8 @@ export const ragConfig = registerAs('rag', () => ({
     enabled: process.env['RAG_REINDEX_ENABLED'] !== 'false',
     intervalMs: Number(process.env['RAG_REINDEX_INTERVAL_MS']) || 900000,
     startupDelayMs: Number(process.env['RAG_REINDEX_STARTUP_DELAY_MS']) || 30000,
-    documentBatchSize:
-      Number(process.env['RAG_REINDEX_DOCUMENT_BATCH_SIZE']) || 25,
-    newsBatchSize:
-      Number(process.env['RAG_REINDEX_NEWS_BATCH_SIZE']) || 25,
+    documentBatchSize: Number(process.env['RAG_REINDEX_DOCUMENT_BATCH_SIZE']) || 25,
+    newsBatchSize: Number(process.env['RAG_REINDEX_NEWS_BATCH_SIZE']) || 25,
     force: process.env['RAG_REINDEX_FORCE'] === 'true',
   },
   multiStage: {
@@ -185,20 +178,16 @@ export const ragConfig = registerAs('rag', () => ({
     topKAfterFusion: Number(process.env['RAG_TOP_K_AFTER_FUSION']) || 50,
     topKAfterRerank: Number(process.env['RAG_TOP_K_AFTER_RERANK']) || 10,
     contextMaxTokens: Number(process.env['RAG_CONTEXT_MAX_TOKENS']) || 4096,
-    contextMaxChunksPerSource:
-      Number(process.env['RAG_CONTEXT_MAX_CHUNKS_PER_SOURCE']) || 3,
+    contextMaxChunksPerSource: Number(process.env['RAG_CONTEXT_MAX_CHUNKS_PER_SOURCE']) || 3,
   },
   graph: {
     enabled: process.env['RAG_GRAPH_ENABLED'] === 'true',
     maxHops: Number(process.env['RAG_GRAPH_MAX_HOPS']) || 2,
     hopDecay: Number(process.env['RAG_GRAPH_HOP_DECAY']) || 0.6,
     topologyWeight: Number(process.env['RAG_GRAPH_TOPOLOGY_WEIGHT']) || 0.4,
-    relevanceWeight:
-      Number(process.env['RAG_GRAPH_RELEVANCE_WEIGHT']) || 0.6,
-    minEntityConfidence:
-      Number(process.env['RAG_GRAPH_MIN_ENTITY_CONFIDENCE']) || 0.7,
-    minRelationConfidence:
-      Number(process.env['RAG_GRAPH_MIN_RELATION_CONFIDENCE']) || 0.5,
+    relevanceWeight: Number(process.env['RAG_GRAPH_RELEVANCE_WEIGHT']) || 0.6,
+    minEntityConfidence: Number(process.env['RAG_GRAPH_MIN_ENTITY_CONFIDENCE']) || 0.7,
+    minRelationConfidence: Number(process.env['RAG_GRAPH_MIN_RELATION_CONFIDENCE']) || 0.5,
   },
   rerank: {
     maxTokens: Number(process.env['RAG_RERANK_MAX_TOKENS']) || 480,
@@ -222,7 +211,9 @@ export const ragConfig = registerAs('rag', () => ({
     llmFallbackEnabled: process.env['RAG_METADATA_LLM_FALLBACK_ENABLED'] === 'true',
     llmTimeoutMs: Number(process.env['RAG_METADATA_LLM_TIMEOUT_MS']) || 1500,
     llmConcurrency: Number(process.env['RAG_METADATA_LLM_CONCURRENCY']) || 4,
-    minCandidatesByClass: parseMinCandidatesByClass(process.env['RAG_METADATA_MIN_CANDIDATES_BY_CLASS']),
+    minCandidatesByClass: parseMinCandidatesByClass(
+      process.env['RAG_METADATA_MIN_CANDIDATES_BY_CLASS'],
+    ),
   },
   parser: {
     url: process.env['PARSER_URL'] ?? 'http://localhost:8110',

@@ -10,10 +10,7 @@ const watchlistItemSchema = z.object({
   priority: z.number().int().min(0).max(100).optional().describe('Higher means more important'),
 });
 
-export function createWatchlistTools(
-  service: WatchlistService,
-  userId: string,
-) {
+export function createWatchlistTools(service: WatchlistService, userId: string) {
   return {
     saveWatchlistItems: tool({
       description:
@@ -22,7 +19,10 @@ export function createWatchlistTools(
       inputSchema: z.object({
         categoryName: z.string().min(1).describe('Watchlist category name'),
         categoryDescription: z.string().optional().describe('Optional category description'),
-        categorySummary: z.string().optional().describe('Optional summary of why this category matters'),
+        categorySummary: z
+          .string()
+          .optional()
+          .describe('Optional summary of why this category matters'),
         items: z.array(watchlistItemSchema).min(1).describe('Stocks to save into this category'),
       }),
       execute: async ({ categoryName, categoryDescription, categorySummary, items }) => {
@@ -57,13 +57,19 @@ export function createWatchlistTools(
 
     organizeWatchlistCategory: tool({
       description:
-        "Update category-level organization for a watchlist bucket, including summary, item priorities, and refreshed notes. " +
+        'Update category-level organization for a watchlist bucket, including summary, item priorities, and refreshed notes. ' +
         'Use this after learning a better organizing thesis from the user or after consolidating a category.',
       inputSchema: z.object({
         categoryName: z.string().min(1).describe('Existing or new category name'),
         categoryDescription: z.string().optional().describe('Optional category description'),
-        categorySummary: z.string().optional().describe('Summary of the category thesis or sorting logic'),
-        items: z.array(watchlistItemSchema).optional().describe('Optional item updates within the category'),
+        categorySummary: z
+          .string()
+          .optional()
+          .describe('Summary of the category thesis or sorting logic'),
+        items: z
+          .array(watchlistItemSchema)
+          .optional()
+          .describe('Optional item updates within the category'),
       }),
       execute: async ({ categoryName, categoryDescription, categorySummary, items }) => {
         try {

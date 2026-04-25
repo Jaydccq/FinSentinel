@@ -34,9 +34,7 @@ export type JwtPayload = z.infer<typeof jwtPayloadSchema>;
 export class JwtService {
   private readonly secret: Uint8Array;
 
-  constructor(
-    @Inject(jwtConfig.KEY) private readonly config: ConfigType<typeof jwtConfig>,
-  ) {
+  constructor(@Inject(jwtConfig.KEY) private readonly config: ConfigType<typeof jwtConfig>) {
     this.secret = new TextEncoder().encode(config.secret);
   }
 
@@ -48,9 +46,7 @@ export class JwtService {
       .setAudience(this.config.audience)
       .setJti(randomUUID())
       .setIssuedAt()
-      .setExpirationTime(
-        Math.floor(Date.now() / 1000) + this.config.expiration / 1000,
-      )
+      .setExpirationTime(Math.floor(Date.now() / 1000) + this.config.expiration / 1000)
       .sign(this.secret);
   }
 

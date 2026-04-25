@@ -4,10 +4,26 @@ import { RunReportAssembler } from '../run-report-assembler.service';
 import { strategyArchivePayloadSchema } from '@finsentinel/shared';
 
 const sharedContext = {
-  longTermPreferenceContext: { summary: 'risk aware', sourceIds: [], updatedAt: '2026-04-18T00:00:00.000Z' },
-  midTermStrategyContext: { summary: 'swing trading', sourceIds: [], updatedAt: '2026-04-18T00:00:00.000Z' },
-  shortTermSessionContext: { summary: 'chat summary', sourceIds: [], updatedAt: '2026-04-18T00:00:00.000Z' },
-  retrievalContext: { summary: 'earnings beat', sourceIds: ['news-1'], updatedAt: '2026-04-18T00:00:00.000Z' },
+  longTermPreferenceContext: {
+    summary: 'risk aware',
+    sourceIds: [],
+    updatedAt: '2026-04-18T00:00:00.000Z',
+  },
+  midTermStrategyContext: {
+    summary: 'swing trading',
+    sourceIds: [],
+    updatedAt: '2026-04-18T00:00:00.000Z',
+  },
+  shortTermSessionContext: {
+    summary: 'chat summary',
+    sourceIds: [],
+    updatedAt: '2026-04-18T00:00:00.000Z',
+  },
+  retrievalContext: {
+    summary: 'earnings beat',
+    sourceIds: ['news-1'],
+    updatedAt: '2026-04-18T00:00:00.000Z',
+  },
 };
 
 describe('RunReportAssembler', () => {

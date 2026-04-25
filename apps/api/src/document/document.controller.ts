@@ -102,9 +102,7 @@ export class DocumentController {
     },
   ) {
     if (!body?.originalName || !body?.mimetype || !body?.sizeBytes) {
-      throw new BadRequestException(
-        'upload-url requires { originalName, mimetype, sizeBytes }',
-      );
+      throw new BadRequestException('upload-url requires { originalName, mimetype, sizeBytes }');
     }
     return this.uploadService.prepareDirectUpload(
       user.userId,
@@ -123,10 +121,7 @@ export class DocumentController {
    * vectorization.
    */
   @Post(':id/finalize')
-  async finalizeUpload(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async finalizeUpload(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     return this.uploadService.finalizeDirectUpload(user.userId, id);
   }
 
@@ -141,21 +136,14 @@ export class DocumentController {
   ) {
     const limit = parseIntParam(limitParam, 100, 1, 500);
     const force = forceParam === 'true';
-    return this.ragReindexService.reindexMissingDocumentsForUser(
-      user.userId,
-      limit,
-      force,
-    );
+    return this.ragReindexService.reindexMissingDocumentsForUser(user.userId, limit, force);
   }
 
   /** Requeue a single document for vectorization, even if it was previously marked VECTORIZED. */
   @Post(':id/reindex')
   @RateLimit({ limit: 10, windowSecs: 300 })
   @UseGuards(RateLimitGuard)
-  async reindexOne(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async reindexOne(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     const result = await this.ragReindexService.reindexDocumentById(user.userId, id);
     if (result.queued === 0) {
       throw new NotFoundException(`Document ${id} not found`);
@@ -227,10 +215,7 @@ export class DocumentController {
 
   /** Get a single document by ID. */
   @Get(':id')
-  async getOne(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async getOne(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     const rows = await this.db
       .select()
       .from(documents)
@@ -247,10 +232,7 @@ export class DocumentController {
   /** Delete a document by ID. */
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async remove(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     // Verify ownership before deleting
     const rows = await this.db
       .select({ id: documents.id })
@@ -262,8 +244,6 @@ export class DocumentController {
       throw new NotFoundException(`Document ${id} not found`);
     }
 
-    await this.db
-      .delete(documents)
-      .where(eq(documents.id, id));
+    await this.db.delete(documents).where(eq(documents.id, id));
   }
 }

@@ -90,9 +90,7 @@ describe('GoogleDriveStorageService', () => {
     });
 
     it('download throws not-yet-implemented error', async () => {
-      await expect(service.download('docs/report.pdf')).rejects.toThrow(
-        'not yet implemented',
-      );
+      await expect(service.download('docs/report.pdf')).rejects.toThrow('not yet implemented');
     });
 
     it('delete does not throw (stub)', async () => {

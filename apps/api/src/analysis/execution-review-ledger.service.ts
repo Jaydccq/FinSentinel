@@ -26,7 +26,11 @@ export class ExecutionReviewLedgerService {
     private readonly trading: UnifiedTradingService,
   ) {}
 
-  async createDraft(args: { runId: string; approvalId: string; orderDraftRefs: string[] }): Promise<LedgerRow> {
+  async createDraft(args: {
+    runId: string;
+    approvalId: string;
+    orderDraftRefs: string[];
+  }): Promise<LedgerRow> {
     // Every nullable column explicit — Postgres.js mixed-default bind bug.
     const now = new Date();
     const [row] = await this.db
@@ -66,7 +70,11 @@ export class ExecutionReviewLedgerService {
       .where(eq(executionReviewLedgers.approvalId, args.approvalId));
   }
 
-  async markCommitted(args: { approvalId: string; commitHash: string; operationRefs: string[] }): Promise<void> {
+  async markCommitted(args: {
+    approvalId: string;
+    commitHash: string;
+    operationRefs: string[];
+  }): Promise<void> {
     await this.db
       .update(executionReviewLedgers)
       .set({
@@ -122,11 +130,10 @@ export class ExecutionReviewLedgerService {
     if (ledger.status !== 'APPROVED') {
       throw new BadRequestException(`Cannot commit ledger in status ${ledger.status}`);
     }
-    const committed = await this.trading.commit(
-      userId,
-      `manual:run ${ledger.runId}`,
-      { runId: ledger.runId, ledgerId: ledger.id },
-    );
+    const committed = await this.trading.commit(userId, `manual:run ${ledger.runId}`, {
+      runId: ledger.runId,
+      ledgerId: ledger.id,
+    });
     await this.db
       .update(executionReviewLedgers)
       .set({

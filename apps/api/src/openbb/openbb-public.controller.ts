@@ -1,9 +1,4 @@
-import {
-  Controller,
-  Get,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt.guard';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import { RateLimit } from '../common/decorators/rate-limit.decorator';
@@ -30,14 +25,7 @@ export class OpenbbPublicController {
   @Get('providers')
   async listProviders() {
     return {
-      providers: [
-        'polygon',
-        'fred',
-        'fmp',
-        'intrinio',
-        'alpha_vantage',
-        'yfinance',
-      ],
+      providers: ['polygon', 'fred', 'fmp', 'intrinio', 'alpha_vantage', 'yfinance'],
     };
   }
 

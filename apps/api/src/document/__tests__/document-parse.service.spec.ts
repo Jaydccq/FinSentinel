@@ -39,25 +39,23 @@ describe('DocumentParseService.parseToCleanText', () => {
 
   it('falls back to UTF-8 for unknown MIME', () => {
     const service = makeService();
-    expect(
-      service.parseToCleanText(Buffer.from('raw'), 'application/octet-stream'),
-    ).toBe('raw');
+    expect(service.parseToCleanText(Buffer.from('raw'), 'application/octet-stream')).toBe('raw');
   });
 
   // ── R5.5: PDF / DOC / DOCX must throw USE_ASYNC_PARSER_PATH ──────────────
 
   it('throws USE_ASYNC_PARSER_PATH on PDF in parseToCleanText', () => {
     const service = makeService();
-    expect(() =>
-      service.parseToCleanText(Buffer.from('pdf'), 'application/pdf'),
-    ).toThrow('USE_ASYNC_PARSER_PATH');
+    expect(() => service.parseToCleanText(Buffer.from('pdf'), 'application/pdf')).toThrow(
+      'USE_ASYNC_PARSER_PATH',
+    );
   });
 
   it('throws USE_ASYNC_PARSER_PATH on DOC in parseToCleanText', () => {
     const service = makeService();
-    expect(() =>
-      service.parseToCleanText(Buffer.from('doc'), 'application/msword'),
-    ).toThrow('USE_ASYNC_PARSER_PATH');
+    expect(() => service.parseToCleanText(Buffer.from('doc'), 'application/msword')).toThrow(
+      'USE_ASYNC_PARSER_PATH',
+    );
   });
 
   it('throws USE_ASYNC_PARSER_PATH on DOCX in parseToCleanText', () => {
@@ -91,18 +89,10 @@ describe('DocumentParseService.parseToMarkdown', () => {
     };
 
     const service = makeService(sidecar as unknown as ParserSidecarClient);
-    const result = await service.parseToMarkdown(
-      Buffer.from('pdf'),
-      'application/pdf',
-      'x.pdf',
-    );
+    const result = await service.parseToMarkdown(Buffer.from('pdf'), 'application/pdf', 'x.pdf');
 
     expect(sidecar.parse).toHaveBeenCalledTimes(1);
-    expect(sidecar.parse).toHaveBeenCalledWith(
-      expect.any(Buffer),
-      'application/pdf',
-      'x.pdf',
-    );
+    expect(sidecar.parse).toHaveBeenCalledWith(expect.any(Buffer), 'application/pdf', 'x.pdf');
     expect(result).toContain('Title');
   });
 

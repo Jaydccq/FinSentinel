@@ -25,25 +25,14 @@ export function createAutonomyTools(
         name: z.string().describe('Human-readable schedule name'),
         cronExpression: z
           .string()
-          .describe(
-            "Cron expression with seconds, e.g. '0 0 9 * * MON-FRI'",
-          ),
+          .describe("Cron expression with seconds, e.g. '0 0 9 * * MON-FRI'"),
         taskType: z
-          .enum([
-            'PORTFOLIO_REVIEW',
-            'MARKET_PULSE',
-            'BRAIN_REVIEW',
-            'HEARTBEAT_WAKEUP',
-          ])
-          .describe(
-            'Task type: PORTFOLIO_REVIEW, MARKET_PULSE, BRAIN_REVIEW, HEARTBEAT_WAKEUP',
-          ),
+          .enum(['PORTFOLIO_REVIEW', 'MARKET_PULSE', 'BRAIN_REVIEW', 'HEARTBEAT_WAKEUP'])
+          .describe('Task type: PORTFOLIO_REVIEW, MARKET_PULSE, BRAIN_REVIEW, HEARTBEAT_WAKEUP'),
         payloadJson: z
           .string()
           .optional()
-          .describe(
-            'Optional JSON payload. Example: {"tickers":["AAPL","MSFT"]}',
-          ),
+          .describe('Optional JSON payload. Example: {"tickers":["AAPL","MSFT"]}'),
       }),
       execute: async ({ name, cronExpression, taskType, payloadJson }) => {
         try {
@@ -120,13 +109,8 @@ export function createAutonomyTools(
         'Heartbeat checks wallet health periodically and emits alert events on drawdown breaches.',
       inputSchema: z.object({
         enabled: z.boolean().describe('Enable heartbeat loop'),
-        intervalSeconds: z
-          .number()
-          .int()
-          .describe('Heartbeat interval in seconds, e.g. 600'),
-        drawdownAlertPct: z
-          .number()
-          .describe('Drawdown alert threshold percent, e.g. 10.0'),
+        intervalSeconds: z.number().int().describe('Heartbeat interval in seconds, e.g. 600'),
+        drawdownAlertPct: z.number().describe('Drawdown alert threshold percent, e.g. 10.0'),
       }),
       execute: async ({ enabled, intervalSeconds, drawdownAlertPct }) => {
         try {
@@ -143,8 +127,7 @@ export function createAutonomyTools(
     }),
 
     getHeartbeatConfig: tool({
-      description:
-        'Show current heartbeat configuration and last wake-up timestamp.',
+      description: 'Show current heartbeat configuration and last wake-up timestamp.',
       inputSchema: z.object({}),
       execute: async () => {
         try {

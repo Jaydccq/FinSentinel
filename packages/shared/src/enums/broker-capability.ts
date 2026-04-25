@@ -9,5 +9,4 @@ export const BrokerCapability = {
   SHORT_SELLING: 'SHORT_SELLING',
 } as const;
 
-export type BrokerCapability =
-  (typeof BrokerCapability)[keyof typeof BrokerCapability];
+export type BrokerCapability = (typeof BrokerCapability)[keyof typeof BrokerCapability];

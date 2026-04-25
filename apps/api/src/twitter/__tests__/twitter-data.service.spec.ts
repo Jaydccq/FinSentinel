@@ -89,17 +89,14 @@ describe('TwitterDataService', () => {
 
       expect(result).toEqual(SAMPLE_USER);
       expect(fetchMock).toHaveBeenCalledOnce();
-      expect(fetchMock).toHaveBeenCalledWith(
-        `${BASE_URL}/open/twitter/user_info`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${TOKEN}`,
-          },
-          body: JSON.stringify({ username: 'elonmusk' }),
+      expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/open/twitter/user_info`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TOKEN}`,
         },
-      );
+        body: JSON.stringify({ username: 'elonmusk' }),
+      });
     });
   });
 
@@ -113,17 +110,14 @@ describe('TwitterDataService', () => {
       const result = await service.getUserById('123456');
 
       expect(result).toEqual(SAMPLE_USER);
-      expect(fetchMock).toHaveBeenCalledWith(
-        `${BASE_URL}/open/twitter/user_by_id`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${TOKEN}`,
-          },
-          body: JSON.stringify({ user_id: '123456' }),
+      expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/open/twitter/user_by_id`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TOKEN}`,
         },
-      );
+        body: JSON.stringify({ user_id: '123456' }),
+      });
     });
   });
 
@@ -137,22 +131,19 @@ describe('TwitterDataService', () => {
       const result = await service.getUserTweets('elonmusk');
 
       expect(result).toEqual(SAMPLE_TWEETS);
-      expect(fetchMock).toHaveBeenCalledWith(
-        `${BASE_URL}/open/twitter/user_tweets`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${TOKEN}`,
-          },
-          body: JSON.stringify({
-            username: 'elonmusk',
-            max_results: 20,
-            include_replies: false,
-            include_retweets: false,
-          }),
+      expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/open/twitter/user_tweets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TOKEN}`,
         },
-      );
+        body: JSON.stringify({
+          username: 'elonmusk',
+          max_results: 20,
+          include_replies: false,
+          include_retweets: false,
+        }),
+      });
     });
 
     it('passes custom parameters', async () => {
@@ -161,22 +152,19 @@ describe('TwitterDataService', () => {
 
       await service.getUserTweets('elonmusk', 50, true, true);
 
-      expect(fetchMock).toHaveBeenCalledWith(
-        `${BASE_URL}/open/twitter/user_tweets`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${TOKEN}`,
-          },
-          body: JSON.stringify({
-            username: 'elonmusk',
-            max_results: 50,
-            include_replies: true,
-            include_retweets: true,
-          }),
+      expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/open/twitter/user_tweets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TOKEN}`,
         },
-      );
+        body: JSON.stringify({
+          username: 'elonmusk',
+          max_results: 50,
+          include_replies: true,
+          include_retweets: true,
+        }),
+      });
     });
   });
 
@@ -190,20 +178,17 @@ describe('TwitterDataService', () => {
       const result = await service.getUserFollowers('elonmusk');
 
       expect(result).toEqual(SAMPLE_FOLLOWERS);
-      expect(fetchMock).toHaveBeenCalledWith(
-        `${BASE_URL}/open/twitter/user_followers`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${TOKEN}`,
-          },
-          body: JSON.stringify({
-            username: 'elonmusk',
-            max_results: 20,
-          }),
+      expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/open/twitter/user_followers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TOKEN}`,
         },
-      );
+        body: JSON.stringify({
+          username: 'elonmusk',
+          max_results: 20,
+        }),
+      });
     });
 
     it('passes custom maxResults', async () => {
@@ -212,20 +197,17 @@ describe('TwitterDataService', () => {
 
       await service.getUserFollowers('elonmusk', 100);
 
-      expect(fetchMock).toHaveBeenCalledWith(
-        `${BASE_URL}/open/twitter/user_followers`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${TOKEN}`,
-          },
-          body: JSON.stringify({
-            username: 'elonmusk',
-            max_results: 100,
-          }),
+      expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/open/twitter/user_followers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${TOKEN}`,
         },
-      );
+        body: JSON.stringify({
+          username: 'elonmusk',
+          max_results: 100,
+        }),
+      });
     });
   });
 

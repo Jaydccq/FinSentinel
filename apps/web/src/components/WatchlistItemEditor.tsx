@@ -1,23 +1,23 @@
-'use client'
+'use client';
 
-import { useEffect, useRef, useState } from 'react'
-import { X, Save, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { useEffect, useRef, useState } from 'react';
+import { X, Save, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   watchlistApi,
   type WatchlistItemResponse,
   type WatchlistCategoryResponse,
-} from '../api/watchlist'
+} from '../api/watchlist';
 
 interface Props {
   /** Symbol being edited — used to look up the item in the category. */
-  symbol: string
+  symbol: string;
   /** Category name the item lives under (Dashboard's is a constant). */
-  categoryName: string
+  categoryName: string;
   /** Close handler — parent drives open/close state. */
-  onClose: () => void
+  onClose: () => void;
   /** Called after a successful save so the parent can refresh. */
-  onSaved?: (item: WatchlistItemResponse) => void
+  onSaved?: (item: WatchlistItemResponse) => void;
 }
 
 /**
@@ -31,82 +31,74 @@ interface Props {
  * parent's watchlist state. A full refactor where the parent stores
  * items[] from day one would be cleaner but touches far more code.
  */
-export default function WatchlistItemEditor({
-  symbol,
-  categoryName,
-  onClose,
-  onSaved,
-}: Props) {
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [item, setItem] = useState<WatchlistItemResponse | null>(null)
-  const [thesis, setThesis] = useState('')
-  const [notes, setNotes] = useState('')
-  const [priority, setPriority] = useState(0)
-  const dialogRef = useRef<HTMLDivElement>(null)
+export default function WatchlistItemEditor({ symbol, categoryName, onClose, onSaved }: Props) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [item, setItem] = useState<WatchlistItemResponse | null>(null);
+  const [thesis, setThesis] = useState('');
+  const [notes, setNotes] = useState('');
+  const [priority, setPriority] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   // Load on mount — find the matching item across the user's categories.
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     void (async () => {
       try {
-        const overview = await watchlistApi.list()
-        if (cancelled) return
-        const category: WatchlistCategoryResponse | undefined =
-          overview.categories.find((c) => c.name === categoryName)
-        const found = category?.items.find(
-          (i) => i.symbol.toUpperCase() === symbol.toUpperCase(),
-        )
+        const overview = await watchlistApi.list();
+        if (cancelled) return;
+        const category: WatchlistCategoryResponse | undefined = overview.categories.find(
+          (c) => c.name === categoryName,
+        );
+        const found = category?.items.find((i) => i.symbol.toUpperCase() === symbol.toUpperCase());
         if (!found) {
-          toast.error(`${symbol} not found in ${categoryName}`)
-          onClose()
-          return
+          toast.error(`${symbol} not found in ${categoryName}`);
+          onClose();
+          return;
         }
-        setItem(found)
-        setThesis(found.thesis ?? '')
-        setNotes(found.notes ?? '')
-        setPriority(found.priority ?? 0)
+        setItem(found);
+        setThesis(found.thesis ?? '');
+        setNotes(found.notes ?? '');
+        setPriority(found.priority ?? 0);
       } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : 'Failed to load item',
-        )
-        onClose()
+        toast.error(err instanceof Error ? err.message : 'Failed to load item');
+        onClose();
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) setLoading(false);
       }
-    })()
+    })();
     return () => {
-      cancelled = true
-    }
-  }, [symbol, categoryName, onClose])
+      cancelled = true;
+    };
+  }, [symbol, categoryName, onClose]);
 
   // Close on Escape — keeps keyboard users out of trap scenarios.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const save = async () => {
-    if (!item) return
-    setSaving(true)
+    if (!item) return;
+    setSaving(true);
     try {
       const updated = await watchlistApi.updateItem(item.id, {
         thesis: thesis.trim() || undefined,
         notes: notes.trim() || undefined,
         priority: Number.isFinite(priority) ? priority : 0,
-      })
-      toast.success(`Saved ${updated.symbol}`)
-      onSaved?.(updated)
-      onClose()
+      });
+      toast.success(`Saved ${updated.symbol}`);
+      onSaved?.(updated);
+      onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Save failed')
+      toast.error(err instanceof Error ? err.message : 'Save failed');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <div
@@ -144,8 +136,8 @@ export default function WatchlistItemEditor({
         ) : (
           <form
             onSubmit={(e) => {
-              e.preventDefault()
-              void save()
+              e.preventDefault();
+              void save();
             }}
             className="space-y-3"
           >
@@ -203,11 +195,7 @@ export default function WatchlistItemEditor({
                 disabled={saving || loading}
                 className="btn-primary px-3 py-2 text-sm flex items-center gap-1"
               >
-                {saving ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Save size={14} />
-                )}
+                {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Save
               </button>
             </div>
@@ -215,5 +203,5 @@ export default function WatchlistItemEditor({
         )}
       </div>
     </div>
-  )
+  );
 }

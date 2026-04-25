@@ -3,13 +3,7 @@ import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ConfigType } from '@nestjs/config';
 import { z } from 'zod';
-import {
-  documentChunks,
-  documentChunkRepresentations,
-  eq,
-  and,
-  sql,
-} from '@finsentinel/db';
+import { documentChunks, documentChunkRepresentations, eq, and, sql } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import { aiConfig } from '../config/ai.config';
 import { RagEmbeddingService } from './rag-embedding.service';
@@ -36,7 +30,7 @@ export const RAG_REPRESENTATION_BATCH_SIZE_DEFAULT = 50;
 
 const ENRICHMENT_SYSTEM_PROMPT =
   'You annotate a document chunk for retrieval. Given the chunk text plus optional title and section path, produce a JSON object with these fields:\n' +
-  '- contextual: a paragraph that prepends 40-80 words of doc/section context to the chunk text (Anthropic\'s Contextual Retrieval pattern)\n' +
+  "- contextual: a paragraph that prepends 40-80 words of doc/section context to the chunk text (Anthropic's Contextual Retrieval pattern)\n" +
   '- sample_questions: an array of 1 to 3 concise questions (12-18 words each) that this chunk can directly answer\n' +
   '- summary: one sentence summarizing this chunk (under 25 words)\n' +
   '- keywords: 3 to 8 short keyword or entity tokens that should appear in a lexical search\n\n' +
@@ -185,7 +179,12 @@ export class ChunkRepresentationService {
       .limit(1);
 
     if (existingRows.length > 0) {
-      return { chunkId, status: 'skipped', representationsWritten: 0, reason: 'already enriched at current version' };
+      return {
+        chunkId,
+        status: 'skipped',
+        representationsWritten: 0,
+        reason: 'already enriched at current version',
+      };
     }
 
     // 3. Mark in_progress
@@ -231,7 +230,12 @@ export class ChunkRepresentationService {
         .update(documentChunks)
         .set({ enrichmentStatus: 'failed' })
         .where(eq(documentChunks.id, chunkId));
-      return { chunkId, status: 'failed', representationsWritten: 0, reason: `embedding failed: ${err}` };
+      return {
+        chunkId,
+        status: 'failed',
+        representationsWritten: 0,
+        reason: `embedding failed: ${err}`,
+      };
     }
 
     // 6. INSERT four representation rows (every column, per postgres.js mixed-default INSERT rule)
@@ -316,7 +320,12 @@ export class ChunkRepresentationService {
       ]);
       // R2.7: record per-type writes of search_vector. Lets operators observe
       // sparse-lane health distinct from the umbrella rag_representation_enrich_total.
-      for (const type of ['contextual_text', 'sample_question', 'summary', 'keyword_entity'] as const) {
+      for (const type of [
+        'contextual_text',
+        'sample_question',
+        'summary',
+        'keyword_entity',
+      ] as const) {
         this.metrics.incrementCounter(
           'rag_representation_sparse_populated_total',
           'Count of representation rows written with non-null search_vector',
@@ -328,7 +337,12 @@ export class ChunkRepresentationService {
         .update(documentChunks)
         .set({ enrichmentStatus: 'failed' })
         .where(eq(documentChunks.id, chunkId));
-      return { chunkId, status: 'failed', representationsWritten: 0, reason: `insert failed: ${err}` };
+      return {
+        chunkId,
+        status: 'failed',
+        representationsWritten: 0,
+        reason: `insert failed: ${err}`,
+      };
     }
 
     // 7. Mark succeeded
@@ -393,7 +407,10 @@ export class ChunkRepresentationService {
   }
 
   private parseResponse(raw: string): EnrichmentResponse | null {
-    const cleaned = raw.trim().replace(/^```(?:json)?|```$/g, '').trim();
+    const cleaned = raw
+      .trim()
+      .replace(/^```(?:json)?|```$/g, '')
+      .trim();
     try {
       const obj = JSON.parse(cleaned) as unknown;
       return enrichmentResponseSchema.parse(obj);
@@ -416,7 +433,11 @@ export class ChunkRepresentationService {
   private recordCircuitBreakerError(): void {
     this.cb.consecutiveErrors += 1;
     if (this.cb.consecutiveErrors >= ChunkRepresentationService.CB_THRESHOLD) {
-      const backoffMs = Math.min(60_000, 1_000 * Math.pow(2, this.cb.consecutiveErrors - ChunkRepresentationService.CB_THRESHOLD + 1));
+      const backoffMs = Math.min(
+        60_000,
+        1_000 *
+          Math.pow(2, this.cb.consecutiveErrors - ChunkRepresentationService.CB_THRESHOLD + 1),
+      );
       this.cb.trippedUntil = Date.now() + backoffMs;
       this.metrics.incrementCounter(
         'rag_representation_circuit_breaker_trips_total',
@@ -424,7 +445,7 @@ export class ChunkRepresentationService {
       );
       this.logger.warn(
         `Circuit breaker tripped after ${this.cb.consecutiveErrors} consecutive 429s; ` +
-        `backing off for ${backoffMs}ms`,
+          `backing off for ${backoffMs}ms`,
       );
     }
   }

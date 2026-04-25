@@ -1,72 +1,80 @@
-'use client'
+'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { motion } from 'framer-motion'
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import {
-  Plus, Trash2, Play, Pause, Pencil, ChevronDown,
-  Clock, Heart, Activity, CalendarClock,
-} from 'lucide-react'
-import { toast } from 'sonner'
+  Plus,
+  Trash2,
+  Play,
+  Pause,
+  Pencil,
+  ChevronDown,
+  Clock,
+  Heart,
+  Activity,
+  CalendarClock,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import {
   autonomyApi,
   type ScheduleResponse,
   type ScheduleRequest,
   type HeartbeatConfig,
   type HeartbeatConfigRequest,
-} from '../api/autonomy'
-import { eventsApi, type AgentEvent } from '../api/events'
-import { analysisRunsApi, type AnalysisRunResponse } from '../api/analysis-runs'
-import EmptyState from '../components/EmptyState'
+} from '../api/autonomy';
+import { eventsApi, type AgentEvent } from '../api/events';
+import { analysisRunsApi, type AnalysisRunResponse } from '../api/analysis-runs';
+import EmptyState from '../components/EmptyState';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
 
 function describeCron(expr: string): string {
-  const parts = expr.trim().split(/\s+/)
-  if (parts.length !== 5) return expr
+  const parts = expr.trim().split(/\s+/);
+  if (parts.length !== 5) return expr;
 
-  const [min, hour, , , dow] = parts
+  const [min, hour, , , dow] = parts;
 
   // "0 */N * * *" → "Every N hours"
   if (hour.startsWith('*/')) {
-    const n = hour.slice(2)
-    return `Every ${n} hour${n === '1' ? '' : 's'}`
+    const n = hour.slice(2);
+    return `Every ${n} hour${n === '1' ? '' : 's'}`;
   }
 
   // "*/N * * * *" → "Every N minutes"
   if (min.startsWith('*/')) {
-    const n = min.slice(2)
-    return `Every ${n} minute${n === '1' ? '' : 's'}`
+    const n = min.slice(2);
+    return `Every ${n} minute${n === '1' ? '' : 's'}`;
   }
 
   // Fixed time
   if (/^\d+$/.test(hour) && /^\d+$/.test(min)) {
-    const h = Number(hour)
-    const m = Number(min)
-    const ampm = h >= 12 ? 'PM' : 'AM'
-    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
-    const time = `${h12}:${String(m).padStart(2, '0')} ${ampm}`
+    const h = Number(hour);
+    const m = Number(min);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    const time = `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
 
-    if (dow === '*') return `${time} daily`
-    return `${time}, ${dow}`
+    if (dow === '*') return `${time} daily`;
+    return `${time}, ${dow}`;
   }
 
-  return expr
+  return expr;
 }
 
 function timeAgo(dateStr: string | undefined | null): string {
-  if (!dateStr) return 'Never'
-  const diff = Date.now() - new Date(dateStr).getTime()
-  if (diff < 0) return 'just now'
-  const secs = Math.floor(diff / 1000)
-  if (secs < 60) return `${secs}s ago`
-  const mins = Math.floor(secs / 60)
-  if (mins < 60) return `${mins} min ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs} hour${hrs > 1 ? 's' : ''} ago`
-  const days = Math.floor(hrs / 24)
-  return `${days} day${days > 1 ? 's' : ''} ago`
+  if (!dateStr) return 'Never';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  if (diff < 0) return 'just now';
+  const secs = Math.floor(diff / 1000);
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -75,43 +83,66 @@ function timeAgo(dateStr: string | undefined | null): string {
 
 const TASK_TYPE_STYLE: Record<string, string> = {
   PORTFOLIO_REVIEW: 'bg-blue-500/15 text-blue-200 border-blue-300/30',
-  MARKET_PULSE:     'bg-emerald-500/15 text-emerald-200 border-emerald-300/30',
-  BRAIN_REVIEW:     'bg-violet-500/15 text-violet-200 border-violet-300/30',
+  MARKET_PULSE: 'bg-emerald-500/15 text-emerald-200 border-emerald-300/30',
+  BRAIN_REVIEW: 'bg-violet-500/15 text-violet-200 border-violet-300/30',
   HEARTBEAT_WAKEUP: 'bg-red-500/15 text-red-200 border-red-300/30',
-}
+};
 
 function eventBadgeStyle(eventType: string): string {
-  if (eventType.startsWith('TRADE'))     return 'bg-amber-500/15 text-amber-200 border-amber-300/30'
-  if (eventType === 'HEARTBEAT_ALERT')   return 'bg-red-500/15 text-red-200 border-red-300/30'
-  if (eventType.startsWith('HEARTBEAT')) return 'bg-emerald-500/15 text-emerald-200 border-emerald-300/30'
-  if (eventType.startsWith('SCHEDULE'))  return 'bg-blue-500/15 text-blue-200 border-blue-300/30'
-  if (eventType.startsWith('CHAT'))      return 'bg-purple-500/15 text-purple-200 border-purple-300/30'
-  if (eventType.startsWith('BRAIN'))     return 'bg-violet-500/15 text-violet-200 border-violet-300/30'
-  return 'bg-slate-500/15 text-slate-200 border-slate-400/30'
+  if (eventType.startsWith('TRADE')) return 'bg-amber-500/15 text-amber-200 border-amber-300/30';
+  if (eventType === 'HEARTBEAT_ALERT') return 'bg-red-500/15 text-red-200 border-red-300/30';
+  if (eventType.startsWith('HEARTBEAT'))
+    return 'bg-emerald-500/15 text-emerald-200 border-emerald-300/30';
+  if (eventType.startsWith('SCHEDULE')) return 'bg-blue-500/15 text-blue-200 border-blue-300/30';
+  if (eventType.startsWith('CHAT')) return 'bg-purple-500/15 text-purple-200 border-purple-300/30';
+  if (eventType.startsWith('BRAIN')) return 'bg-violet-500/15 text-violet-200 border-violet-300/30';
+  return 'bg-slate-500/15 text-slate-200 border-slate-400/30';
 }
 
-const TASK_TYPES = ['PORTFOLIO_REVIEW', 'MARKET_PULSE', 'BRAIN_REVIEW', 'HEARTBEAT_WAKEUP'] as const
+const TASK_TYPES = [
+  'PORTFOLIO_REVIEW',
+  'MARKET_PULSE',
+  'BRAIN_REVIEW',
+  'HEARTBEAT_WAKEUP',
+] as const;
 
 /* ------------------------------------------------------------------ */
 /*  Shared components                                                  */
 /* ------------------------------------------------------------------ */
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
-  const dialogRef = useRef<HTMLDivElement>(null)
+function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const firstInput = dialogRef.current?.querySelector<HTMLElement>('input, button, select, textarea')
-    firstInput?.focus()
-  }, [])
+    const firstInput = dialogRef.current?.querySelector<HTMLElement>(
+      'input, button, select, textarea',
+    );
+    firstInput?.focus();
+  }, []);
 
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       <motion.div
         ref={dialogRef}
         initial={{ scale: 0.97, opacity: 0 }}
@@ -121,24 +152,44 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       >
         <h2 className="text-base font-semibold text-[var(--text-primary)] mb-3">{title}</h2>
         {children}
-        <button onClick={onClose} className="btn-ghost mt-3 px-3 py-1.5 text-xs">Cancel</button>
+        <button onClick={onClose} className="btn-ghost mt-3 px-3 py-1.5 text-xs">
+          Cancel
+        </button>
       </motion.div>
     </div>
-  )
+  );
 }
 
 function InputField({
-  id, label, value, onChange, type = 'text', hint,
+  id,
+  label,
+  value,
+  onChange,
+  type = 'text',
+  hint,
 }: {
-  id: string; label: string; value: string; onChange: (v: string) => void; type?: string; hint?: string
+  id: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  hint?: string;
 }) {
   return (
     <div>
-      <label htmlFor={id} className="field-label">{label}</label>
-      <input id={id} type={type} className="field-input" value={value} onChange={e => onChange(e.target.value)} />
+      <label htmlFor={id} className="field-label">
+        {label}
+      </label>
+      <input
+        id={id}
+        type={type}
+        className="field-input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
       {hint && <p className="text-xs text-[var(--text-muted)] mt-1">{hint}</p>}
     </div>
-  )
+  );
 }
 
 function Badge({ text, className }: { text: string; className: string }) {
@@ -146,7 +197,7 @@ function Badge({ text, className }: { text: string; className: string }) {
     <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium border ${className}`}>
       {text}
     </span>
-  )
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -155,136 +206,177 @@ function Badge({ text, className }: { text: string; className: string }) {
 
 export default function AutonomyPage() {
   /* --- Schedules state --- */
-  const [schedules, setSchedules] = useState<ScheduleResponse[]>([])
-  const [schedulesLoading, setSchedulesLoading] = useState(true)
-  const [showModal, setShowModal] = useState(false)
-  const [editingSchedule, setEditingSchedule] = useState<ScheduleResponse | null>(null)
+  const [schedules, setSchedules] = useState<ScheduleResponse[]>([]);
+  const [schedulesLoading, setSchedulesLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<ScheduleResponse | null>(null);
   const [form, setForm] = useState<ScheduleRequest>({
-    name: '', cronExpression: '', taskType: 'PORTFOLIO_REVIEW', payload: {}, enabled: true,
-  })
-  const [tickersInput, setTickersInput] = useState('')
+    name: '',
+    cronExpression: '',
+    taskType: 'PORTFOLIO_REVIEW',
+    payload: {},
+    enabled: true,
+  });
+  const [tickersInput, setTickersInput] = useState('');
 
   /* --- Heartbeat state --- */
-  const [heartbeat, setHeartbeat] = useState<HeartbeatConfig | null>(null)
-  const [hbForm, setHbForm] = useState<HeartbeatConfigRequest>({ enabled: false, intervalSeconds: 300, drawdownAlertPct: 5 })
-  const [hbLoading, setHbLoading] = useState(true)
+  const [heartbeat, setHeartbeat] = useState<HeartbeatConfig | null>(null);
+  const [hbForm, setHbForm] = useState<HeartbeatConfigRequest>({
+    enabled: false,
+    intervalSeconds: 300,
+    drawdownAlertPct: 5,
+  });
+  const [hbLoading, setHbLoading] = useState(true);
 
   /* --- Events state --- */
-  const [events, setEvents] = useState<AgentEvent[]>([])
-  const [eventsLoading, setEventsLoading] = useState(true)
-  const [expandedEvent, setExpandedEvent] = useState<string | null>(null)
-  const [hasMoreEvents, setHasMoreEvents] = useState(true)
+  const [events, setEvents] = useState<AgentEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
+  const [hasMoreEvents, setHasMoreEvents] = useState(true);
 
   /* --- Recent runs state --- */
-  const [recentRuns, setRecentRuns] = useState<AnalysisRunResponse[]>([])
+  const [recentRuns, setRecentRuns] = useState<AnalysisRunResponse[]>([]);
 
   /* ---- Loaders ---- */
   const refreshSchedules = () =>
-    autonomyApi.listSchedules().then(setSchedules).catch(() => toast.error('Failed to load schedules.')).finally(() => setSchedulesLoading(false))
+    autonomyApi
+      .listSchedules()
+      .then(setSchedules)
+      .catch(() => toast.error('Failed to load schedules.'))
+      .finally(() => setSchedulesLoading(false));
 
   const loadHeartbeat = () =>
-    autonomyApi.getHeartbeat()
-      .then(cfg => { setHeartbeat(cfg); setHbForm({ enabled: cfg.enabled, intervalSeconds: cfg.intervalSeconds, drawdownAlertPct: cfg.drawdownAlertPct }) })
-      .catch(() => { /* first-time users may 404 */ })
-      .finally(() => setHbLoading(false))
+    autonomyApi
+      .getHeartbeat()
+      .then((cfg) => {
+        setHeartbeat(cfg);
+        setHbForm({
+          enabled: cfg.enabled,
+          intervalSeconds: cfg.intervalSeconds,
+          drawdownAlertPct: cfg.drawdownAlertPct,
+        });
+      })
+      .catch(() => {
+        /* first-time users may 404 */
+      })
+      .finally(() => setHbLoading(false));
 
   const loadEvents = (afterSeq?: number) => {
-    eventsApi.list(afterSeq, 20)
-      .then(data => {
-        if (data.length < 20) setHasMoreEvents(false)
-        setEvents(prev => afterSeq !== undefined ? [...prev, ...data] : data)
+    eventsApi
+      .list(afterSeq, 20)
+      .then((data) => {
+        if (data.length < 20) setHasMoreEvents(false);
+        setEvents((prev) => (afterSeq !== undefined ? [...prev, ...data] : data));
       })
       .catch(() => toast.error('Failed to load events.'))
-      .finally(() => setEventsLoading(false))
-  }
+      .finally(() => setEventsLoading(false));
+  };
 
   useEffect(() => {
-    refreshSchedules()
-    loadHeartbeat()
-    loadEvents()
-    analysisRunsApi.list().then(setRecentRuns).catch(() => setRecentRuns([]))
-  }, [])
+    refreshSchedules();
+    loadHeartbeat();
+    loadEvents();
+    analysisRunsApi
+      .list()
+      .then(setRecentRuns)
+      .catch(() => setRecentRuns([]));
+  }, []);
 
   /* ---- Schedule CRUD ---- */
   const openCreate = () => {
-    setEditingSchedule(null)
-    setForm({ name: '', cronExpression: '', taskType: 'PORTFOLIO_REVIEW', payload: {}, enabled: true })
-    setTickersInput('')
-    setShowModal(true)
-  }
+    setEditingSchedule(null);
+    setForm({
+      name: '',
+      cronExpression: '',
+      taskType: 'PORTFOLIO_REVIEW',
+      payload: {},
+      enabled: true,
+    });
+    setTickersInput('');
+    setShowModal(true);
+  };
 
   const openEdit = (s: ScheduleResponse) => {
-    setEditingSchedule(s)
-    setForm({ name: s.name, cronExpression: s.cronExpression, taskType: s.taskType, payload: s.payload, enabled: s.enabled })
-    setTickersInput(s.payload?.tickers ? (s.payload.tickers as string[]).join(', ') : '')
-    setShowModal(true)
-  }
+    setEditingSchedule(s);
+    setForm({
+      name: s.name,
+      cronExpression: s.cronExpression,
+      taskType: s.taskType,
+      payload: s.payload,
+      enabled: s.enabled,
+    });
+    setTickersInput(s.payload?.tickers ? (s.payload.tickers as string[]).join(', ') : '');
+    setShowModal(true);
+  };
 
   const submitSchedule = async () => {
-    const payload: Record<string, unknown> = { ...form.payload }
+    const payload: Record<string, unknown> = { ...form.payload };
     if (form.taskType === 'MARKET_PULSE' && tickersInput.trim()) {
-      payload.tickers = tickersInput.split(',').map(t => t.trim()).filter(Boolean)
+      payload.tickers = tickersInput
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean);
     }
-    const req: ScheduleRequest = { ...form, payload }
+    const req: ScheduleRequest = { ...form, payload };
 
     try {
       if (editingSchedule) {
-        await autonomyApi.updateSchedule(editingSchedule.id, req)
-        toast.success(`Schedule "${req.name}" updated.`)
+        await autonomyApi.updateSchedule(editingSchedule.id, req);
+        toast.success(`Schedule "${req.name}" updated.`);
       } else {
-        await autonomyApi.createSchedule(req)
-        toast.success(`Schedule "${req.name}" created.`)
+        await autonomyApi.createSchedule(req);
+        toast.success(`Schedule "${req.name}" created.`);
       }
-      setShowModal(false)
-      refreshSchedules()
+      setShowModal(false);
+      refreshSchedules();
     } catch {
-      toast.error(`Failed to ${editingSchedule ? 'update' : 'create'} schedule.`)
+      toast.error(`Failed to ${editingSchedule ? 'update' : 'create'} schedule.`);
     }
-  }
+  };
 
   const togglePause = async (s: ScheduleResponse) => {
     try {
       if (s.enabled) {
-        await autonomyApi.pauseSchedule(s.id)
-        toast.success(`"${s.name}" paused.`)
+        await autonomyApi.pauseSchedule(s.id);
+        toast.success(`"${s.name}" paused.`);
       } else {
-        await autonomyApi.resumeSchedule(s.id)
-        toast.success(`"${s.name}" resumed.`)
+        await autonomyApi.resumeSchedule(s.id);
+        toast.success(`"${s.name}" resumed.`);
       }
-      refreshSchedules()
+      refreshSchedules();
     } catch {
-      toast.error('Failed to update schedule.')
+      toast.error('Failed to update schedule.');
     }
-  }
+  };
 
   const deleteSchedule = async (s: ScheduleResponse) => {
-    if (!confirm(`Delete schedule "${s.name}"?`)) return
+    if (!confirm(`Delete schedule "${s.name}"?`)) return;
     try {
-      await autonomyApi.deleteSchedule(s.id)
-      toast.success('Schedule deleted.')
-      refreshSchedules()
+      await autonomyApi.deleteSchedule(s.id);
+      toast.success('Schedule deleted.');
+      refreshSchedules();
     } catch {
-      toast.error('Failed to delete schedule.')
+      toast.error('Failed to delete schedule.');
     }
-  }
+  };
 
   /* ---- Heartbeat save ---- */
   const saveHeartbeat = async () => {
     try {
-      const updated = await autonomyApi.updateHeartbeat(hbForm)
-      setHeartbeat(updated)
-      toast.success('Heartbeat config saved.')
+      const updated = await autonomyApi.updateHeartbeat(hbForm);
+      setHeartbeat(updated);
+      toast.success('Heartbeat config saved.');
     } catch {
-      toast.error('Failed to save heartbeat config.')
+      toast.error('Failed to save heartbeat config.');
     }
-  }
+  };
 
   /* ---- Events load more ---- */
   const loadMoreEvents = () => {
-    if (events.length === 0) return
-    const lastSeq = events[events.length - 1].seqNo
-    loadEvents(lastSeq)
-  }
+    if (events.length === 0) return;
+    const lastSeq = events[events.length - 1].seqNo;
+    loadEvents(lastSeq);
+  };
 
   /* ================================================================ */
   /*  Render                                                           */
@@ -295,7 +387,9 @@ export default function AutonomyPage() {
       {/* --- Page Header --- */}
       <section className="glass-panel rounded p-3 md:p-4">
         <h1 className="page-title">Agent Autonomy</h1>
-        <p className="page-subtitle">Manage scheduled tasks, heartbeat monitoring, and audit events.</p>
+        <p className="page-subtitle">
+          Manage scheduled tasks, heartbeat monitoring, and audit events.
+        </p>
       </section>
 
       {/* ============================================================ */}
@@ -314,7 +408,7 @@ export default function AutonomyPage() {
 
         {schedulesLoading ? (
           <div className="space-y-2">
-            {[1, 2].map(i => (
+            {[1, 2].map((i) => (
               <div key={i} className="surface-panel rounded h-16 animate-pulse" />
             ))}
           </div>
@@ -326,7 +420,7 @@ export default function AutonomyPage() {
           />
         ) : (
           <div className="space-y-1.5">
-            {schedules.map(s => (
+            {schedules.map((s) => (
               <motion.div
                 key={s.id}
                 initial={{ opacity: 0 }}
@@ -335,14 +429,23 @@ export default function AutonomyPage() {
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="min-w-0">
-                    <p className="font-semibold text-[var(--text-primary)] truncate text-sm">{s.name}</p>
+                    <p className="font-semibold text-[var(--text-primary)] truncate text-sm">
+                      {s.name}
+                    </p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <Badge
                         text={s.taskType.replace(/_/g, ' ')}
-                        className={TASK_TYPE_STYLE[s.taskType] ?? 'bg-slate-500/15 text-slate-200 border-slate-400/30'}
+                        className={
+                          TASK_TYPE_STYLE[s.taskType] ??
+                          'bg-slate-500/15 text-slate-200 border-slate-400/30'
+                        }
                       />
-                      <span className="text-xs text-[var(--text-muted)] font-data">{describeCron(s.cronExpression)}</span>
-                      <span className={`text-xs font-medium ${s.enabled ? 'text-emerald-400' : 'text-[var(--text-muted)]'}`}>
+                      <span className="text-xs text-[var(--text-muted)] font-data">
+                        {describeCron(s.cronExpression)}
+                      </span>
+                      <span
+                        className={`text-xs font-medium ${s.enabled ? 'text-emerald-400' : 'text-[var(--text-muted)]'}`}
+                      >
                         {s.enabled ? 'Active' : 'Paused'}
                       </span>
                     </div>
@@ -390,7 +493,9 @@ export default function AutonomyPage() {
         <div className="flex items-center gap-2 mb-3">
           {/* Heart is a warning/health indicator — amber is appropriate here */}
           <Heart size={16} className="text-amber-400" />
-          <h2 className="text-sm font-semibold text-[var(--text-primary)]">Heartbeat Configuration</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+            Heartbeat Configuration
+          </h2>
         </div>
 
         {hbLoading ? (
@@ -401,24 +506,30 @@ export default function AutonomyPage() {
             <div className="flex items-center justify-between">
               <label className="text-sm text-[var(--text-secondary)]">Enabled</label>
               <button
-                onClick={() => setHbForm(f => ({ ...f, enabled: !f.enabled }))}
+                onClick={() => setHbForm((f) => ({ ...f, enabled: !f.enabled }))}
                 className={`relative w-10 h-5 rounded transition-colors ${hbForm.enabled ? 'bg-blue-500/70' : 'bg-[var(--border-strong)]'}`}
                 aria-label="Toggle heartbeat"
               >
-                <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded bg-white transition-transform ${hbForm.enabled ? 'translate-x-5' : ''}`} />
+                <span
+                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded bg-white transition-transform ${hbForm.enabled ? 'translate-x-5' : ''}`}
+                />
               </button>
             </div>
 
             {/* Interval */}
             <div>
-              <label className="field-label">Interval ({Math.round((hbForm.intervalSeconds ?? 300) / 60)} min)</label>
+              <label className="field-label">
+                Interval ({Math.round((hbForm.intervalSeconds ?? 300) / 60)} min)
+              </label>
               <input
                 type="range"
                 min={60}
                 max={3600}
                 step={60}
                 value={hbForm.intervalSeconds ?? 300}
-                onChange={e => setHbForm(f => ({ ...f, intervalSeconds: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setHbForm((f) => ({ ...f, intervalSeconds: Number(e.target.value) }))
+                }
                 className="w-full accent-blue-400"
               />
               <div className="flex justify-between text-xs text-[var(--text-muted)] mt-0.5">
@@ -441,7 +552,9 @@ export default function AutonomyPage() {
                 step={0.1}
                 className="field-input w-28"
                 value={hbForm.drawdownAlertPct ?? 5}
-                onChange={e => setHbForm(f => ({ ...f, drawdownAlertPct: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setHbForm((f) => ({ ...f, drawdownAlertPct: Number(e.target.value) }))
+                }
               />
             </div>
 
@@ -452,7 +565,9 @@ export default function AutonomyPage() {
               </p>
             )}
 
-            <button onClick={saveHeartbeat} className="btn-primary px-3.5 py-1.5 text-xs">Save</button>
+            <button onClick={saveHeartbeat} className="btn-primary px-3.5 py-1.5 text-xs">
+              Save
+            </button>
           </div>
         )}
       </section>
@@ -468,7 +583,7 @@ export default function AutonomyPage() {
 
         {eventsLoading ? (
           <div className="space-y-1.5">
-            {[1, 2, 3].map(i => (
+            {[1, 2, 3].map((i) => (
               <div key={i} className="surface-panel rounded h-11 animate-pulse" />
             ))}
           </div>
@@ -480,7 +595,7 @@ export default function AutonomyPage() {
           />
         ) : (
           <div className="space-y-1">
-            {events.map(evt => (
+            {events.map((evt) => (
               <motion.div
                 key={evt.id}
                 initial={{ opacity: 0 }}
@@ -492,16 +607,25 @@ export default function AutonomyPage() {
                   className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-white/[0.03] transition-colors"
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                    <span className="text-xs text-[var(--text-muted)] font-data tabular-nums w-8 shrink-0">#{evt.seqNo}</span>
-                    <Badge text={evt.eventType.replace(/_/g, ' ')} className={eventBadgeStyle(evt.eventType)} />
+                    <span className="text-xs text-[var(--text-muted)] font-data tabular-nums w-8 shrink-0">
+                      #{evt.seqNo}
+                    </span>
+                    <Badge
+                      text={evt.eventType.replace(/_/g, ' ')}
+                      className={eventBadgeStyle(evt.eventType)}
+                    />
                     <span className="text-xs text-[var(--text-muted)]">{evt.aggregateType}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-[var(--text-muted)]">{timeAgo(evt.createdAt)}</span>
+                    <span className="text-xs text-[var(--text-muted)]">
+                      {timeAgo(evt.createdAt)}
+                    </span>
                     <ChevronDown
                       size={13}
                       className="text-[var(--text-muted)] transition-transform duration-150"
-                      style={{ transform: expandedEvent === evt.id ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                      style={{
+                        transform: expandedEvent === evt.id ? 'rotate(180deg)' : 'rotate(0deg)',
+                      }}
                     />
                   </div>
                 </button>
@@ -537,13 +661,12 @@ export default function AutonomyPage() {
             .map((r) => (
               <li key={r.id}>
                 <a href={`/analysis?runId=${r.id}`} className="underline text-slate-300">
-                  {r.id.slice(0, 8)} · {r.status} · {r.sourceMode} · {new Date(r.createdAt).toLocaleString()}
+                  {r.id.slice(0, 8)} · {r.status} · {r.sourceMode} ·{' '}
+                  {new Date(r.createdAt).toLocaleString()}
                 </a>
               </li>
             ))}
-          {recentRuns.length === 0 && (
-            <li className="text-slate-500">No runs yet.</li>
-          )}
+          {recentRuns.length === 0 && <li className="text-slate-500">No runs yet.</li>}
         </ul>
       </section>
 
@@ -560,19 +683,23 @@ export default function AutonomyPage() {
               id="sched-name"
               label="Name"
               value={form.name}
-              onChange={v => setForm(f => ({ ...f, name: v }))}
+              onChange={(v) => setForm((f) => ({ ...f, name: v }))}
             />
 
             <div>
-              <label htmlFor="sched-type" className="field-label">Task Type</label>
+              <label htmlFor="sched-type" className="field-label">
+                Task Type
+              </label>
               <select
                 id="sched-type"
                 className="field-input"
                 value={form.taskType}
-                onChange={e => setForm(f => ({ ...f, taskType: e.target.value }))}
+                onChange={(e) => setForm((f) => ({ ...f, taskType: e.target.value }))}
               >
-                {TASK_TYPES.map(t => (
-                  <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+                {TASK_TYPES.map((t) => (
+                  <option key={t} value={t}>
+                    {t.replace(/_/g, ' ')}
+                  </option>
                 ))}
               </select>
             </div>
@@ -581,8 +708,8 @@ export default function AutonomyPage() {
               id="sched-cron"
               label="Cron Expression"
               value={form.cronExpression}
-              onChange={v => setForm(f => ({ ...f, cronExpression: v }))}
-              hint='e.g., 0 9 * * MON-FRI'
+              onChange={(v) => setForm((f) => ({ ...f, cronExpression: v }))}
+              hint="e.g., 0 9 * * MON-FRI"
             />
 
             {form.taskType === 'MARKET_PULSE' && (
@@ -599,11 +726,13 @@ export default function AutonomyPage() {
             <div className="flex items-center justify-between">
               <label className="text-sm text-[var(--text-secondary)]">Enabled</label>
               <button
-                onClick={() => setForm(f => ({ ...f, enabled: !f.enabled }))}
+                onClick={() => setForm((f) => ({ ...f, enabled: !f.enabled }))}
                 className={`relative w-10 h-5 rounded transition-colors ${form.enabled ? 'bg-blue-500/70' : 'bg-[var(--border-strong)]'}`}
                 aria-label="Toggle enabled"
               >
-                <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded bg-white transition-transform ${form.enabled ? 'translate-x-5' : ''}`} />
+                <span
+                  className={`absolute top-0.5 left-0.5 h-4 w-4 rounded bg-white transition-transform ${form.enabled ? 'translate-x-5' : ''}`}
+                />
               </button>
             </div>
 
@@ -618,5 +747,5 @@ export default function AutonomyPage() {
         </Modal>
       )}
     </div>
-  )
+  );
 }

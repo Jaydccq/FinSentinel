@@ -155,7 +155,9 @@ describe('ToolRegistry', () => {
         const toolObj = t as Record<string, unknown>;
         expect(toolObj, `${name} missing description`).toHaveProperty('description');
         expect(typeof toolObj.description, `${name} description not string`).toBe('string');
-        expect((toolObj.description as string).length, `${name} description empty`).toBeGreaterThan(0);
+        expect((toolObj.description as string).length, `${name} description empty`).toBeGreaterThan(
+          0,
+        );
         expect(toolObj, `${name} missing inputSchema`).toHaveProperty('inputSchema');
         expect(toolObj, `${name} missing parameters`).toHaveProperty('parameters');
         expect(toolObj, `${name} missing execute`).toHaveProperty('execute');
@@ -202,7 +204,9 @@ describe('ToolRegistry', () => {
         const toolObj = t as Record<string, unknown>;
         expect(toolObj, `${name} missing description`).toHaveProperty('description');
         expect(typeof toolObj.description, `${name} description not string`).toBe('string');
-        expect((toolObj.description as string).length, `${name} description empty`).toBeGreaterThan(0);
+        expect((toolObj.description as string).length, `${name} description empty`).toBeGreaterThan(
+          0,
+        );
         expect(toolObj, `${name} missing inputSchema`).toHaveProperty('inputSchema');
         expect(toolObj, `${name} missing parameters`).toHaveProperty('parameters');
         expect(toolObj, `${name} missing execute`).toHaveProperty('execute');

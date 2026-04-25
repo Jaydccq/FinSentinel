@@ -2,16 +2,21 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { RepresentationAdminService } from '../representation-admin.service';
-import { CURRENT_REPRESENTATION_VERSION, RAG_REPRESENTATION_BATCH_SIZE_DEFAULT } from '../../chunk-representation.service';
+import {
+  CURRENT_REPRESENTATION_VERSION,
+  RAG_REPRESENTATION_BATCH_SIZE_DEFAULT,
+} from '../../chunk-representation.service';
 
 // ── Mock factories ─────────────────────────────────────────────────────────────
 
-function makeChunkRow(overrides: Partial<{
-  id: string;
-  sourceType: string;
-  sourceId: string;
-  enrichmentStatus: string;
-}> = {}) {
+function makeChunkRow(
+  overrides: Partial<{
+    id: string;
+    sourceType: string;
+    sourceId: string;
+    enrichmentStatus: string;
+  }> = {},
+) {
   return {
     id: 'chunk-uuid-1',
     sourceType: 'document',
@@ -55,14 +60,18 @@ function createMockDb(selectResults: Array<unknown[]> = []) {
 
     // Build a thenable so `await query` works without calling .limit()
     let resolveThenable!: (v: unknown) => void;
-    const thenablePromise = new Promise((res) => { resolveThenable = res; });
+    const thenablePromise = new Promise((res) => {
+      resolveThenable = res;
+    });
     // Resolve immediately so await works synchronously next tick
     resolveThenable(result);
 
-    const thenFn = vi.fn().mockImplementation(
-      (onFulfilled?: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) =>
-        thenablePromise.then(onFulfilled, onRejected),
-    );
+    const thenFn = vi
+      .fn()
+      .mockImplementation(
+        (onFulfilled?: (value: unknown) => unknown, onRejected?: (reason: unknown) => unknown) =>
+          thenablePromise.then(onFulfilled, onRejected),
+      );
 
     const havingFn = vi.fn().mockImplementation(() => ({
       then: thenFn,
@@ -100,7 +109,9 @@ function createMockDb(selectResults: Array<unknown[]> = []) {
   return {
     select: selectFn,
     _selectFn: selectFn,
-    _resetCallIndex: () => { callIndex = 0; },
+    _resetCallIndex: () => {
+      callIndex = 0;
+    },
   };
 }
 
@@ -226,9 +237,7 @@ describe('RepresentationAdminService', () => {
     });
 
     it('passes limit to DB query when provided', async () => {
-      const rows = Array.from({ length: 5 }, (_, i) =>
-        makeChunkRow({ id: `chunk-${i}` }),
-      );
+      const rows = Array.from({ length: 5 }, (_, i) => makeChunkRow({ id: `chunk-${i}` }));
       db = createMockDb([[], rows]);
       service = await buildService(db, producer);
 
@@ -280,9 +289,7 @@ describe('RepresentationAdminService', () => {
     });
 
     it('passes limit to DB query when provided', async () => {
-      const rows = Array.from({ length: 3 }, (_, i) =>
-        makeChunkRow({ id: `stale-${i}` }),
-      );
+      const rows = Array.from({ length: 3 }, (_, i) => makeChunkRow({ id: `stale-${i}` }));
       db = createMockDb([[], rows]);
       service = await buildService(db, producer);
 
@@ -296,9 +303,9 @@ describe('RepresentationAdminService', () => {
       // This mirrors what Postgres MAX() string comparison does for these version strings.
       const versions = ['rep-v1.0', 'rep-v1.1', 'rep-v2.0'];
 
-      expect('rep-v1.0' <= 'rep-v1.0').toBe(true);  // equal: stale at v1.0
-      expect('rep-v1.0' <= 'rep-v1.1').toBe(true);  // 1.0 < 1.1: stale
-      expect('rep-v1.1' <= 'rep-v2.0').toBe(true);  // 1.1 < 2.0: stale
+      expect('rep-v1.0' <= 'rep-v1.0').toBe(true); // equal: stale at v1.0
+      expect('rep-v1.0' <= 'rep-v1.1').toBe(true); // 1.0 < 1.1: stale
+      expect('rep-v1.1' <= 'rep-v2.0').toBe(true); // 1.1 < 2.0: stale
       expect('rep-v2.0' <= 'rep-v1.1').toBe(false); // 2.0 > 1.1: not stale
       expect('rep-v1.1' <= 'rep-v1.0').toBe(false); // 1.1 > 1.0: not stale
 

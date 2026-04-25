@@ -95,9 +95,7 @@ export class ChatController {
   // ── GET /chat/sessions ────────────────────────────────────────────────
 
   @Get('sessions')
-  async listSessions(
-    @CurrentUser() user: CurrentUserPayload,
-  ): Promise<ChatSessionSummary[]> {
+  async listSessions(@CurrentUser() user: CurrentUserPayload): Promise<ChatSessionSummary[]> {
     return this.chatService.listSessions(user.userId);
   }
 

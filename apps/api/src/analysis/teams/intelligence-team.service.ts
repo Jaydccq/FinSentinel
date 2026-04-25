@@ -83,7 +83,13 @@ export class IntelligenceTeamService implements TeamService {
       });
       roleOutputs[role.key] = out.structured;
       markdownParts.push(`## ${role.key}\n${out.rawMarkdown}`);
-      roleOutputSummaries.push({ roleKey: role.key, status: 'COMPLETED', durationMs: out.durationMs, toolCallCount: out.toolCallCount, summary: out.structured.summary });
+      roleOutputSummaries.push({
+        roleKey: role.key,
+        status: 'COMPLETED',
+        durationMs: out.durationMs,
+        toolCallCount: out.toolCallCount,
+        summary: out.structured.summary,
+      });
     }
     markdownParts.push(
       [
@@ -99,11 +105,15 @@ export class IntelligenceTeamService implements TeamService {
     const teamOutput: StageStructuredOutput = {
       summary: `Intelligence team assembled ${roles.length} analyst reports for ${input.ticker ?? 'subject'}.`,
       thesis: 'Evidence gathered. No thesis formed at this stage.',
-      risks: Object.values(roleOutputs).flatMap((o) => o.risks).slice(0, 10),
+      risks: Object.values(roleOutputs)
+        .flatMap((o) => o.risks)
+        .slice(0, 10),
       openQuestions: Object.values(roleOutputs)
         .flatMap((o) => o.openQuestions)
         .slice(0, 10),
-      citations: Object.values(roleOutputs).flatMap((o) => o.citations).slice(0, 20),
+      citations: Object.values(roleOutputs)
+        .flatMap((o) => o.citations)
+        .slice(0, 20),
       confidence: this.avgConfidence(Object.values(roleOutputs)),
       roleOutputs,
       strategyArchivePayload,

@@ -84,8 +84,10 @@ describe('DocumentChunkingService', () => {
 
   it('splits long paragraphs on sentence boundaries', () => {
     // A single paragraph with multiple sentences, total > chunkSize
-    const sentences = Array.from({ length: 10 }, (_, i) =>
-      `This is sentence number ${i + 1} with enough content to be meaningful in the context of testing.`,
+    const sentences = Array.from(
+      { length: 10 },
+      (_, i) =>
+        `This is sentence number ${i + 1} with enough content to be meaningful in the context of testing.`,
     );
     const text = sentences.join(' ');
 
@@ -161,8 +163,9 @@ describe('DocumentChunkingService', () => {
 
     it('caps output at maxNumChunks', () => {
       // Generate text that would produce many chunks
-      const paragraphs = Array.from({ length: 20 }, (_, i) =>
-        `Paragraph ${i + 1}: ${'word '.repeat(30)}`,
+      const paragraphs = Array.from(
+        { length: 20 },
+        (_, i) => `Paragraph ${i + 1}: ${'word '.repeat(30)}`,
       );
       const text = paragraphs.join('\n\n');
 

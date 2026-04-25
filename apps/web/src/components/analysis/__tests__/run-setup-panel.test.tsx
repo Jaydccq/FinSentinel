@@ -17,7 +17,9 @@ describe('RunSetupPanel', () => {
       return parent?.textContent.includes('Preset');
     }) as HTMLSelectElement;
     expect(presetSelect).toBeDefined();
-    const optionValues = Array.from(presetSelect.querySelectorAll('option')).map((o) => (o as HTMLOptionElement).value);
+    const optionValues = Array.from(presetSelect.querySelectorAll('option')).map(
+      (o) => (o as HTMLOptionElement).value,
+    );
     expect(optionValues).toEqual([
       'FAST_RISK_CHECK',
       'STANDARD_ANALYSIS',

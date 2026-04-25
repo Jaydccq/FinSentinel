@@ -13,7 +13,11 @@ function assertHybridHitShape(h: HybridHit): void {
   const _score: number = h.score;
   const _provenance: 'local' | 'cloud' = h.provenance;
   const _raw: CloudHit | SearchHit = h.raw;
-  void _id; void _content; void _score; void _provenance; void _raw;
+  void _id;
+  void _content;
+  void _score;
+  void _provenance;
+  void _raw;
 }
 
 // ---------------------------------------------------------------------------
@@ -52,7 +56,11 @@ describe('hybridSearch', () => {
     const local = vi.fn().mockResolvedValue([baseLocalHit]);
 
     const out = await hybridSearch({
-      query: 'q', topK: 5, cloudSearch: cloud, localSearch: local, localAvailable: true,
+      query: 'q',
+      topK: 5,
+      cloudSearch: cloud,
+      localSearch: local,
+      localAvailable: true,
     });
 
     expect(cloud).toHaveBeenCalledWith('q', 5);
@@ -68,7 +76,11 @@ describe('hybridSearch', () => {
     const local = vi.fn();
 
     const out = await hybridSearch({
-      query: 'q', topK: 5, cloudSearch: cloud, localSearch: local, localAvailable: false,
+      query: 'q',
+      topK: 5,
+      cloudSearch: cloud,
+      localSearch: local,
+      localAvailable: false,
     });
 
     expect(local).not.toHaveBeenCalled();
@@ -82,7 +94,11 @@ describe('hybridSearch', () => {
     const local = vi.fn().mockRejectedValue(new Error('sqlite down'));
 
     const out = await hybridSearch({
-      query: 'q', topK: 5, cloudSearch: cloud, localSearch: local, localAvailable: true,
+      query: 'q',
+      topK: 5,
+      cloudSearch: cloud,
+      localSearch: local,
+      localAvailable: true,
     });
 
     expect(out).toHaveLength(1);
@@ -92,12 +108,18 @@ describe('hybridSearch', () => {
   it('sorts by normalized score descending', async () => {
     // local distance 0.1 => sim 0.9, cloud score 0.5 => local should sort first
     const cloud = vi.fn().mockResolvedValue([{ id: 'c1', content: 'a', score: 0.5 }]);
-    const local = vi.fn().mockResolvedValue([
-      { chunk_id: 'l1', file_name: 'n.pdf', content: 'b', distance: 0.1, document_id: 'd1' },
-    ]);
+    const local = vi
+      .fn()
+      .mockResolvedValue([
+        { chunk_id: 'l1', file_name: 'n.pdf', content: 'b', distance: 0.1, document_id: 'd1' },
+      ]);
 
     const out = await hybridSearch({
-      query: 'q', topK: 5, cloudSearch: cloud, localSearch: local, localAvailable: true,
+      query: 'q',
+      topK: 5,
+      cloudSearch: cloud,
+      localSearch: local,
+      localAvailable: true,
     });
 
     expect(out[0].provenance).toBe('local');
@@ -112,7 +134,11 @@ describe('hybridSearch', () => {
     const local = vi.fn().mockResolvedValue([]);
 
     const out = await hybridSearch({
-      query: 'q', topK: 5, cloudSearch: cloud, localSearch: local, localAvailable: true,
+      query: 'q',
+      topK: 5,
+      cloudSearch: cloud,
+      localSearch: local,
+      localAvailable: true,
     });
 
     expect(out).toHaveLength(1);
@@ -124,7 +150,10 @@ describe('hybridSearch', () => {
     expect(hit.raw).toEqual(richCloudHit);
     expect((hit.raw as CloudHit).chunkId).toBe('ck-abc123');
     expect((hit.raw as CloudHit).sourceId).toBe('src-xyz');
-    expect((hit.raw as CloudHit).representationTypesSeen).toEqual(['contextual_text', 'sample_question']);
+    expect((hit.raw as CloudHit).representationTypesSeen).toEqual([
+      'contextual_text',
+      'sample_question',
+    ]);
     expect((hit.raw as CloudHit).variantKindsSeen).toEqual(['rewrite', 'hyde']);
     expect((hit.raw as CloudHit).fallbackReason).toBeNull();
     // score unaffected
@@ -142,7 +171,11 @@ describe('hybridSearch', () => {
     const local = vi.fn().mockResolvedValue([baseLocalHit]);
 
     const out = await hybridSearch({
-      query: 'q', topK: 5, cloudSearch: cloud, localSearch: local, localAvailable: true,
+      query: 'q',
+      topK: 5,
+      cloudSearch: cloud,
+      localSearch: local,
+      localAvailable: true,
     });
 
     expect(out).toHaveLength(1);
@@ -164,12 +197,18 @@ describe('hybridSearch', () => {
   it('sorts local hit above cloud hit when local score is higher despite extra cloud fields', async () => {
     // local distance 0.1 => sim 0.90; richCloudHit.score = 0.85 => local first
     const cloud = vi.fn().mockResolvedValue([richCloudHit]);
-    const local = vi.fn().mockResolvedValue([
-      { chunk_id: 'l1', document_id: 'd1', file_name: 'n.pdf', content: 'local', distance: 0.1 },
-    ]);
+    const local = vi
+      .fn()
+      .mockResolvedValue([
+        { chunk_id: 'l1', document_id: 'd1', file_name: 'n.pdf', content: 'local', distance: 0.1 },
+      ]);
 
     const out = await hybridSearch({
-      query: 'q', topK: 5, cloudSearch: cloud, localSearch: local, localAvailable: true,
+      query: 'q',
+      topK: 5,
+      cloudSearch: cloud,
+      localSearch: local,
+      localAvailable: true,
     });
 
     expect(out).toHaveLength(2);
@@ -188,7 +227,11 @@ describe('hybridSearch', () => {
     const local = vi.fn().mockResolvedValue([baseLocalHit]);
 
     const out = await hybridSearch({
-      query: 'q', topK: 5, cloudSearch: cloud, localSearch: local, localAvailable: true,
+      query: 'q',
+      topK: 5,
+      cloudSearch: cloud,
+      localSearch: local,
+      localAvailable: true,
     });
 
     expect(out).toHaveLength(1);
@@ -205,7 +248,11 @@ describe('hybridSearch', () => {
     const local = vi.fn();
 
     const out = await hybridSearch({
-      query: 'q', topK: 5, cloudSearch: cloud, localSearch: local, localAvailable: false,
+      query: 'q',
+      topK: 5,
+      cloudSearch: cloud,
+      localSearch: local,
+      localAvailable: false,
     });
 
     expect(local).not.toHaveBeenCalled();

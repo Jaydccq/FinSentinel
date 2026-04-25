@@ -47,7 +47,7 @@ const GOLDEN = {
   sma20: 182.85,
   atr: { value: 2.615, atrPct: 1.39 },
   stochastic: { k: 90.0, d: 90.16 },
-  adx: { adx: 74.20, plusDI: 19.62, minusDI: 1.08 },
+  adx: { adx: 74.2, plusDI: 19.62, minusDI: 1.08 },
   obv: 1273000000,
 };
 

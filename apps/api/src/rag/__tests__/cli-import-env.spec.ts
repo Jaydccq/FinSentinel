@@ -36,7 +36,9 @@ describe('RAG CLI module imports', () => {
 
   it('do not bootstrap config or exit when helper modules are imported without runtime env', async () => {
     clearRuntimeEnv();
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((code?: string | number | null) => {
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((
+      code?: string | number | null,
+    ) => {
       throw new Error(`process.exit(${String(code)}) during CLI import`);
     }) as typeof process.exit);
 

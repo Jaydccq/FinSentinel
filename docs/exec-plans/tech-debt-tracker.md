@@ -24,12 +24,12 @@
     (`search_vector IS NULL = 0`) and measures the `exact_lookup` bucket
     delta.
   - P3 closes `[RAG-TD-R4-03] / [RAG-TD-R4-05] / [RAG-TD-R4-06] /
-    [RAG-TD-R4-07]` (docType/timeRange routing, dense-lane ticker/issuer
+[RAG-TD-R4-07]` (docType/timeRange routing, dense-lane ticker/issuer
     filters, softFilter consumption, V18 GIN index).
   - P4 replaces the parser stub (closes `[RAG-TD-R5-01]` and
     `[RAG-TD-R6-01]`).
   - P5 makes context expansion conditional on `queryClass ∈
-    {analytical, relational, multi_part}` OR a long-document signal, then
+{analytical, relational, multi_part}` OR a long-document signal, then
     flips the default.
 - **Status:** P1, P3, P4, P5 all closed 2026-04-21; P2 verified via
   direct-insert workaround. Live-API A/B on localhost showed
@@ -38,7 +38,7 @@
   recall@5). Default flipped to on in `rag.config.ts` and
   `context-expander.service.ts`. See
   `docs/runbooks/2026-04-21-rag-live-baseline-capture.md` for commands
-  + numbers.
+  - numbers.
 
   **Follow-up items (all either CLOSED or documented):**
   1. **chunk_id remapping** — CLOSED 2026-04-21 via
@@ -71,7 +71,7 @@
      local Redis + apps/api.
   7. **Canonical embedding provider = NVIDIA 2048-dim.** User
      decision 2026-04-21: standardise on `nvidia/llama-nemotron-
-     embed-1b-v2` going forward. V16 rewritten to declare
+embed-1b-v2` going forward. V16 rewritten to declare
      `embedding vector(2048)` directly (no HNSW — pgvector caps
      at 2000 dims), `STUB_EMBEDDING_DIM` in `seed-fixture.cli.ts` is
      2048, `chunk-representation.service.spec.ts` +
@@ -298,17 +298,17 @@
 
 - **[RAG-TD-R4-02] `QueryClass` union excludes `colloquial`, but the R4 plan and env defaults reference it.**
   `retrieval-planner.service.ts` defines `QueryClass = 'exact_lookup' | 'factoid' |
-  'relational' | 'analytical' | 'multi_part'`. The R4 plan and the default JSON
+'relational' | 'analytical' | 'multi_part'`. The R4 plan and the default JSON
   for `RAG_METADATA_MIN_CANDIDATES_BY_CLASS` (to be parsed in R4.4) both use a
   `colloquial` bucket that the type system never emits. Without a fix, R4.5's
   guardrail (`minCandidatesByClass[queryClass]`) silently becomes a no-op for
   any traffic that would have been `colloquial` (there is none, because the
   classifier cannot produce it). Two resolutions:
   (a) Add `'colloquial'` to the `QueryClass` union and teach the classifier
-      how to emit it; update R4's `MIN_CANDIDATES_BY_CLASS` default to the
-      5-class map (drop `colloquial`).
+  how to emit it; update R4's `MIN_CANDIDATES_BY_CLASS` default to the
+  5-class map (drop `colloquial`).
   (b) Strip `colloquial` from the R4 plan text and from any env-default JSON
-      in `rag.config.ts` before R4.4 ships.
+  in `rag.config.ts` before R4.4 ships.
   Blocks: R4.4 (config wiring) and R4.5 (guardrail). Current workaround: the
   R4.2 spec casts `'colloquial' as any` with a FIXME. Track and resolve before
   R4.4 lands.
@@ -350,7 +350,7 @@
   a ticker filter triggers a seq-scan on `document_chunks`. At
   production scale this is not acceptable. Fix: add a V18 migration
   creating `CREATE INDEX document_chunks_metadata_gin_idx ON
-  document_chunks USING gin (metadata);` (use `jsonb_ops`, not
+document_chunks USING gin (metadata);` (use `jsonb_ops`, not
   `jsonb_path_ops`, because `?|` requires the full operator class).
   Schedule before Wave 2 ships to production.
 - **[RAG-TD-R4-06] Extractor output `docType` and `timeRange` are silently

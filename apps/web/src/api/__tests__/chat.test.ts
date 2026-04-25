@@ -17,7 +17,14 @@ describe('chatApi', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: () => Promise.resolve({ riskScore: 50, riskLevel: 'medium', summary: '', factors: [], actionableAdvice: [] }),
+        json: () =>
+          Promise.resolve({
+            riskScore: 50,
+            riskLevel: 'medium',
+            summary: '',
+            factors: [],
+            actionableAdvice: [],
+          }),
       });
 
       await chatApi.assess('hello', 'port-123', 'sess-1');
@@ -43,7 +50,14 @@ describe('chatApi', () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: () => Promise.resolve({ riskScore: 50, riskLevel: 'medium', summary: '', factors: [], actionableAdvice: [] }),
+        json: () =>
+          Promise.resolve({
+            riskScore: 50,
+            riskLevel: 'medium',
+            summary: '',
+            factors: [],
+            actionableAdvice: [],
+          }),
       });
 
       await chatApi.assess('hello', undefined, 'sess-1');

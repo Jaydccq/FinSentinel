@@ -86,6 +86,7 @@
 ### Task 1: Add Stream-First Analysis Data Access
 
 **Files:**
+
 - Modify: `apps/web/src/api/analysis-runs.ts`
 - Modify: `apps/web/vitest.config.ts`
 - Create: `apps/web/src/hooks/useAnalysisTimeline.ts`
@@ -113,7 +114,10 @@ describe('useAnalysisTimeline', () => {
 it('requests context and stage input from the new analysis endpoints', async () => {
   await analysisRunsApi.getContext('run-1');
   await analysisRunsApi.getStageInput('run-1', 'THESIS');
-  expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/analysis/runs/run-1/context'), expect.anything());
+  expect(fetchMock).toHaveBeenCalledWith(
+    expect.stringContaining('/analysis/runs/run-1/context'),
+    expect.anything(),
+  );
 });
 ```
 
@@ -225,6 +229,7 @@ git commit -m "feat: add stream-first analysis data hooks"
 ### Task 2: Build The Console Shell And Core Panels
 
 **Files:**
+
 - Create: `apps/web/src/components/analysis/RunNavigator.tsx`
 - Create: `apps/web/src/components/analysis/TimelinePanel.tsx`
 - Create: `apps/web/src/components/analysis/ContextPanel.tsx`
@@ -239,10 +244,28 @@ import { render, screen } from '@testing-library/react';
 import { TimelinePanel } from '../TimelinePanel';
 
 it('renders ordered runtime events', () => {
-  render(<TimelinePanel events={[
-    { id: '1', seqNo: 10, aggregateId: 'run-1', eventType: 'RUN_STARTED', payload: {}, createdAt: new Date().toISOString() },
-    { id: '2', seqNo: 11, aggregateId: 'run-1', eventType: 'ROLE_COMPLETED', payload: { roleKey: 'THESIS_LEAD' }, createdAt: new Date().toISOString() },
-  ]} />);
+  render(
+    <TimelinePanel
+      events={[
+        {
+          id: '1',
+          seqNo: 10,
+          aggregateId: 'run-1',
+          eventType: 'RUN_STARTED',
+          payload: {},
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: '2',
+          seqNo: 11,
+          aggregateId: 'run-1',
+          eventType: 'ROLE_COMPLETED',
+          payload: { roleKey: 'THESIS_LEAD' },
+          createdAt: new Date().toISOString(),
+        },
+      ]}
+    />,
+  );
 
   expect(screen.getByText(/RUN_STARTED/)).toBeTruthy();
   expect(screen.getByText(/THESIS_LEAD/)).toBeTruthy();
@@ -251,12 +274,36 @@ it('renders ordered runtime events', () => {
 
 ```tsx
 it('renders context layers with lineage counts', () => {
-  render(<ContextPanel context={{
-    longTermPreferenceContext: { summary: 'risk aware', sourceIds: [], updatedAt: new Date().toISOString(), lineage: ['ctx-1'] },
-    midTermStrategyContext: { summary: 'swing', sourceIds: [], updatedAt: new Date().toISOString(), lineage: [] },
-    shortTermSessionContext: { summary: 'chat compacted', sourceIds: [], updatedAt: new Date().toISOString(), lineage: ['ctx-2', 'ctx-3'] },
-    retrievalContext: { summary: 'earnings beat', sourceIds: ['news-1'], updatedAt: new Date().toISOString(), lineage: ['rag-1'] },
-  }} />);
+  render(
+    <ContextPanel
+      context={{
+        longTermPreferenceContext: {
+          summary: 'risk aware',
+          sourceIds: [],
+          updatedAt: new Date().toISOString(),
+          lineage: ['ctx-1'],
+        },
+        midTermStrategyContext: {
+          summary: 'swing',
+          sourceIds: [],
+          updatedAt: new Date().toISOString(),
+          lineage: [],
+        },
+        shortTermSessionContext: {
+          summary: 'chat compacted',
+          sourceIds: [],
+          updatedAt: new Date().toISOString(),
+          lineage: ['ctx-2', 'ctx-3'],
+        },
+        retrievalContext: {
+          summary: 'earnings beat',
+          sourceIds: ['news-1'],
+          updatedAt: new Date().toISOString(),
+          lineage: ['rag-1'],
+        },
+      }}
+    />,
+  );
 
   expect(screen.getByText(/2 lineage items/i)).toBeTruthy();
 });
@@ -347,6 +394,7 @@ git commit -m "feat: add analysis operator console shell"
 ### Task 3: Replace Raw JSON With Human-Readable Artifacts And Final Decision
 
 **Files:**
+
 - Create: `apps/web/src/components/analysis/ArtifactRenderer.tsx`
 - Create: `apps/web/src/components/analysis/JsonTree.tsx`
 - Modify: `apps/web/src/components/analysis/ArtifactsPanel.tsx`
@@ -361,12 +409,30 @@ import { ArtifactRenderer } from '../ArtifactRenderer';
 
 it('renders markdown and structured json differently', () => {
   const { rerender } = render(
-    <ArtifactRenderer artifact={{ artifactKind: 'STAGE_HUMAN_REPORT', artifactName: 'risk-report.md', mimeType: 'text/markdown', payload: { markdown: '# Risk' } } as never} />,
+    <ArtifactRenderer
+      artifact={
+        {
+          artifactKind: 'STAGE_HUMAN_REPORT',
+          artifactName: 'risk-report.md',
+          mimeType: 'text/markdown',
+          payload: { markdown: '# Risk' },
+        } as never
+      }
+    />,
   );
   expect(screen.getByText(/Risk/)).toBeTruthy();
 
   rerender(
-    <ArtifactRenderer artifact={{ artifactKind: 'STAGE_STRUCTURED_OUTPUT', artifactName: 'risk.json', mimeType: 'application/json', payload: { confidence: 0.82 } } as never} />,
+    <ArtifactRenderer
+      artifact={
+        {
+          artifactKind: 'STAGE_STRUCTURED_OUTPUT',
+          artifactName: 'risk.json',
+          mimeType: 'application/json',
+          payload: { confidence: 0.82 },
+        } as never
+      }
+    />,
   );
   expect(screen.getByText(/confidence/i)).toBeTruthy();
 });
@@ -384,7 +450,9 @@ Expected: FAIL because the renderer does not exist.
 // apps/web/src/components/analysis/ArtifactRenderer.tsx
 export function ArtifactRenderer({ artifact }: { artifact: AnalysisArtifactResponse }) {
   if (artifact.mimeType === 'text/markdown') {
-    return <pre className="whitespace-pre-wrap text-sm">{String(artifact.payload?.markdown ?? '')}</pre>;
+    return (
+      <pre className="whitespace-pre-wrap text-sm">{String(artifact.payload?.markdown ?? '')}</pre>
+    );
   }
 
   if (artifact.mimeType === 'application/json') {
@@ -416,18 +484,22 @@ export function JsonTree({ value }: { value: unknown }) {
 
 ```tsx
 // apps/web/src/components/analysis/ArtifactsPanel.tsx
-{isOpen && (
-  <div className="p-3">
-    <ArtifactRenderer artifact={a} />
-  </div>
-)}
+{
+  isOpen && (
+    <div className="p-3">
+      <ArtifactRenderer artifact={a} />
+    </div>
+  );
+}
 ```
 
 ```tsx
 // apps/web/src/components/analysis/FinalReportPanel.tsx
 <section className="surface-panel rounded p-4 space-y-3">
   <h2 className="text-base font-semibold">Final Decision</h2>
-  {run.finalReportMarkdown ? <pre className="whitespace-pre-wrap text-sm">{run.finalReportMarkdown}</pre> : null}
+  {run.finalReportMarkdown ? (
+    <pre className="whitespace-pre-wrap text-sm">{run.finalReportMarkdown}</pre>
+  ) : null}
   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
     <JsonTree value={run.decisionObjectJson ?? riskReport?.payload ?? null} />
     <JsonTree value={executionPayload?.payload ?? orderDrafts?.payload ?? null} />
@@ -455,6 +527,7 @@ git commit -m "feat: render analysis artifacts as readable console views"
 ### Task 4: Connect Chat And Autonomy Into The Same Console
 
 **Files:**
+
 - Modify: `apps/web/src/views/ChatPage.tsx`
 - Modify: `apps/web/src/views/AutonomyPage.tsx`
 - Modify: `apps/web/src/components/analysis/HumanApprovalRail.tsx`
@@ -486,19 +559,24 @@ Expected: FAIL or partial-fail because the chat/autonomy links and rail content 
 
 ```tsx
 // apps/web/src/views/ChatPage.tsx
-{upgradeRunId && (
-  <div className="surface-panel rounded p-3 my-2 space-y-2">
-    <div className="flex items-center justify-between">
-      <span className="text-sm">
-        This request is running in the operator console{upgradeReason ? ` (${upgradeReason})` : ''}.
-      </span>
-      <a className="btn-primary px-3 py-1 text-xs" href={`/analysis?runId=${upgradeRunId}`}>
-        Open Run
-      </a>
+{
+  upgradeRunId && (
+    <div className="surface-panel rounded p-3 my-2 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-sm">
+          This request is running in the operator console
+          {upgradeReason ? ` (${upgradeReason})` : ''}.
+        </span>
+        <a className="btn-primary px-3 py-1 text-xs" href={`/analysis?runId=${upgradeRunId}`}>
+          Open Run
+        </a>
+      </div>
+      <p className="text-xs text-slate-400">
+        Timeline, context lineage, approval, and final decision live in the same run workspace.
+      </p>
     </div>
-    <p className="text-xs text-slate-400">Timeline, context lineage, approval, and final decision live in the same run workspace.</p>
-  </div>
-)}
+  );
+}
 ```
 
 - [ ] **Step 4: Add console links to Autonomy and strengthen the approval rail**
@@ -523,7 +601,9 @@ Expected: FAIL or partial-fail because the chat/autonomy links and rail content 
 // apps/web/src/components/analysis/HumanApprovalRail.tsx
 <aside className="surface-panel rounded p-4 sticky top-4 space-y-3">
   <h2 className="text-base font-semibold">Control Rail</h2>
-  <p className="text-xs text-slate-400">Approval blocks execution-only actions. Research artifacts remain visible in the workspace.</p>
+  <p className="text-xs text-slate-400">
+    Approval blocks execution-only actions. Research artifacts remain visible in the workspace.
+  </p>
   {pendingApproval ? (
     <>
       <pre className="max-h-56 overflow-auto rounded bg-slate-950/70 p-2 text-xs">

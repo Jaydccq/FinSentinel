@@ -1,9 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
-import {
-  createOpenAICompatibleModel,
-  streamAgentTextFromMessages,
-} from '@finsentinel/ai-runtime';
+import { createOpenAICompatibleModel, streamAgentTextFromMessages } from '@finsentinel/ai-runtime';
 import { ToolRegistry } from './tool-registry';
 import { aiConfig } from '../config/ai.config';
 
@@ -81,21 +78,14 @@ export class StockAnalysisService {
         try {
           for await (const chunk of textStream) {
             const data = JSON.stringify({ content: chunk, sessionId });
-            controller.enqueue(
-              encoder.encode(`event: message\ndata: ${data}\n\n`),
-            );
+            controller.enqueue(encoder.encode(`event: message\ndata: ${data}\n\n`));
           }
-          controller.enqueue(
-            encoder.encode('event: done\ndata: [DONE]\n\n'),
-          );
+          controller.enqueue(encoder.encode('event: done\ndata: [DONE]\n\n'));
         } catch (err) {
-          const errorMessage =
-            err instanceof Error ? err.message : 'Unknown streaming error';
+          const errorMessage = err instanceof Error ? err.message : 'Unknown streaming error';
           logger.error('SSE stream error', err);
           const data = JSON.stringify({ error: errorMessage });
-          controller.enqueue(
-            encoder.encode(`event: error\ndata: ${data}\n\n`),
-          );
+          controller.enqueue(encoder.encode(`event: error\ndata: ${data}\n\n`));
         } finally {
           controller.close();
         }

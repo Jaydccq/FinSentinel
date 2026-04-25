@@ -1,18 +1,8 @@
-import {
-  Body,
-  Controller,
-  Param,
-  ParseUUIDPipe,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { CurrentUserPayload } from '../auth/decorators/current-user.decorator';
-import {
-  approveExecutionRequestSchema,
-  type ApproveExecutionRequest,
-} from '@finsentinel/shared';
+import { approveExecutionRequestSchema, type ApproveExecutionRequest } from '@finsentinel/shared';
 import { AnalysisApprovalService } from './analysis-approval.service';
 
 @Controller('analysis/approvals')

@@ -8,7 +8,10 @@ export interface MidTermLoader {
   load(userId: string, portfolioId?: string): Promise<string>;
 }
 export interface SessionLoader {
-  load(userId: string, sessionId: string | undefined): Promise<{
+  load(
+    userId: string,
+    sessionId: string | undefined,
+  ): Promise<{
     summary: string;
     count: number;
   }>;

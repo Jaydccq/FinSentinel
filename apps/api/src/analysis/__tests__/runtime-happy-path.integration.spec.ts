@@ -19,15 +19,7 @@
  * suite skips automatically. DATABASE_URL falls back to the known local URL so
  * the test runs without exporting the variable explicitly.
  */
-import {
-  describe,
-  it,
-  expect,
-  beforeAll,
-  afterAll,
-  beforeEach,
-  afterEach,
-} from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
@@ -70,8 +62,7 @@ import type { LlmRunner } from '../teams/role-executor.service';
 // ── Database URL ──────────────────────────────────────────────────────────────
 
 const DB_URL =
-  process.env['DATABASE_URL'] ??
-  'postgresql://postgres:123456@localhost:5432/finsentinel';
+  process.env['DATABASE_URL'] ?? 'postgresql://postgres:123456@localhost:5432/finsentinel';
 
 // ── Skip guard ─────────────────────────────────────────────────────────────────
 // Skip when Postgres is definitely unavailable:
@@ -339,10 +330,7 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
     // ── Build team services ───────────────────────────────────────────────
     const llmStub = makeLlmStub();
     const toolRegistry = makeToolRegistryStub();
-    const roleExecutor = new RoleExecutorService(
-      toolRegistry as never,
-      llmStub,
-    );
+    const roleExecutor = new RoleExecutorService(toolRegistry as never, llmStub);
     const fabric = makeContextFabricStub();
     const strategyEvidence = {
       buildArchive: vi.fn().mockImplementation(async ({ ticker }) => {
@@ -386,13 +374,7 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
       fabric,
       eventsSvc,
     );
-    const riskTeam = new RiskTeamService(
-      roleExecutor,
-      runsSvc,
-      checkpointsSvc,
-      fabric,
-      eventsSvc,
-    );
+    const riskTeam = new RiskTeamService(roleExecutor, runsSvc, checkpointsSvc, fabric, eventsSvc);
     const executionPrepTeam = new ExecutionPrepTeamService(
       roleExecutor,
       runsSvc,
@@ -402,24 +384,12 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
       fabric,
       eventsSvc,
     );
-    const humanApprovalGate = new HumanApprovalGateService(
-      runsSvc,
-      checkpointsSvc,
-      eventsSvc,
-    );
+    const humanApprovalGate = new HumanApprovalGateService(runsSvc, checkpointsSvc, eventsSvc);
 
     // ── Register stage executors (same as TeamRegistry.onModuleInit) ──────
-    const teams = [
-      intelligenceTeam,
-      thesisTeam,
-      riskTeam,
-      executionPrepTeam,
-      humanApprovalGate,
-    ];
+    const teams = [intelligenceTeam, thesisTeam, riskTeam, executionPrepTeam, humanApprovalGate];
     for (const team of teams) {
-      orchestrator.registerStageExecutor(team.stageKey, (args) =>
-        team.execute(args),
-      );
+      orchestrator.registerStageExecutor(team.stageKey, (args) => team.execute(args));
     }
 
     // ── Seed a test user ──────────────────────────────────────────────────
@@ -462,12 +432,11 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
     await db.delete(analysisApprovals).where(eq(analysisApprovals.runId, runId));
     await db.delete(analysisArtifacts).where(eq(analysisArtifacts.runId, runId));
     await db.delete(analysisStages).where(eq(analysisStages.runId, runId));
-    await db.delete(agentEvents).where(
-      and(
-        eq(agentEvents.userId, testUserId),
-        eq(agentEvents.aggregateType, 'ANALYSIS_RUN'),
-      ),
-    );
+    await db
+      .delete(agentEvents)
+      .where(
+        and(eq(agentEvents.userId, testUserId), eq(agentEvents.aggregateType, 'ANALYSIS_RUN')),
+      );
     await db.delete(analysisRuns).where(eq(analysisRuns.id, runId));
   });
 
@@ -475,200 +444,174 @@ maybeDescribe('runtime happy-path (service-level integration)', () => {
   // Main happy-path
   // ════════════════════════════════════════════════════════════════════════════
 
-  it(
-    'PREFLIGHT → all stages COMPLETED → WAITING_APPROVAL → APPROVE → COMPLETED + EXECUTION_PAYLOAD',
-    async () => {
-      // ── Step 1: Drive the state machine ──────────────────────────────────
-      // The trampoline producer synchronously fans the pipeline through
-      // INTELLIGENCE → THESIS → RISK → EXECUTION_PREP → HUMAN_APPROVAL.
-      // The run lands at WAITING_APPROVAL after this call returns.
-      await orchestrator.step({
-        runId,
-        userId: testUserId,
-        stepKind: 'PREFLIGHT',
-      });
+  it('PREFLIGHT → all stages COMPLETED → WAITING_APPROVAL → APPROVE → COMPLETED + EXECUTION_PAYLOAD', async () => {
+    // ── Step 1: Drive the state machine ──────────────────────────────────
+    // The trampoline producer synchronously fans the pipeline through
+    // INTELLIGENCE → THESIS → RISK → EXECUTION_PREP → HUMAN_APPROVAL.
+    // The run lands at WAITING_APPROVAL after this call returns.
+    await orchestrator.step({
+      runId,
+      userId: testUserId,
+      stepKind: 'PREFLIGHT',
+    });
 
-      // ── Step 2: Verify run is WAITING_APPROVAL ────────────────────────────
-      const runAfterPipeline = await runsSvc.getForUser(testUserId, runId);
-      expect(runAfterPipeline?.status).toBe('WAITING_APPROVAL');
+    // ── Step 2: Verify run is WAITING_APPROVAL ────────────────────────────
+    const runAfterPipeline = await runsSvc.getForUser(testUserId, runId);
+    expect(runAfterPipeline?.status).toBe('WAITING_APPROVAL');
 
-      // ── Step 3: All four team stages should be COMPLETED ─────────────────
-      const stages = await runsSvc.listStagesForRun(runId);
-      const stageMap = Object.fromEntries(
-        stages.map((s) => [s.stageKey, s.status]),
-      );
-      // INTELLIGENCE, THESIS, RISK, EXECUTION_PREP — each must be COMPLETED
-      expect(stageMap['INTELLIGENCE']).toBe('COMPLETED');
-      expect(stageMap['THESIS']).toBe('COMPLETED');
-      expect(stageMap['RISK']).toBe('COMPLETED');
-      expect(stageMap['EXECUTION_PREP']).toBe('COMPLETED');
+    // ── Step 3: All four team stages should be COMPLETED ─────────────────
+    const stages = await runsSvc.listStagesForRun(runId);
+    const stageMap = Object.fromEntries(stages.map((s) => [s.stageKey, s.status]));
+    // INTELLIGENCE, THESIS, RISK, EXECUTION_PREP — each must be COMPLETED
+    expect(stageMap['INTELLIGENCE']).toBe('COMPLETED');
+    expect(stageMap['THESIS']).toBe('COMPLETED');
+    expect(stageMap['RISK']).toBe('COMPLETED');
+    expect(stageMap['EXECUTION_PREP']).toBe('COMPLETED');
 
-      // ── Step 4: An EXECUTION_APPROVAL_REQUIRED approval should be PENDING ─
-      const approvals = await runsSvc.listApprovalsForRun(runId);
-      expect(approvals).toHaveLength(1);
-      const approval = approvals[0];
-      expect(approval?.status).toBe('PENDING');
-      const approvalId = approval?.id as string;
-      expect(approvalId).toBeTruthy();
+    // ── Step 4: An EXECUTION_APPROVAL_REQUIRED approval should be PENDING ─
+    const approvals = await runsSvc.listApprovalsForRun(runId);
+    expect(approvals).toHaveLength(1);
+    const approval = approvals[0];
+    expect(approval?.status).toBe('PENDING');
+    const approvalId = approval?.id as string;
+    expect(approvalId).toBeTruthy();
 
-      // ── Step 5: STRATEGY_ARCHIVE artifact should exist ────────────────────
-      const artifacts = await runsSvc.listArtifactsForRun(runId);
-      const strategyArchiveArtifact = artifacts.find(
-        (a) => a.artifactKind === 'STRATEGY_ARCHIVE',
-      );
-      expect(strategyArchiveArtifact).toBeDefined();
-      expect(strategyArchiveArtifact?.payloadJson).toEqual(VALID_STRATEGY_ARCHIVE);
+    // ── Step 5: STRATEGY_ARCHIVE artifact should exist ────────────────────
+    const artifacts = await runsSvc.listArtifactsForRun(runId);
+    const strategyArchiveArtifact = artifacts.find((a) => a.artifactKind === 'STRATEGY_ARCHIVE');
+    expect(strategyArchiveArtifact).toBeDefined();
+    expect(strategyArchiveArtifact?.payloadJson).toEqual(VALID_STRATEGY_ARCHIVE);
 
-      // ── Step 6: ORDER_DRAFTS artifact should still come from EXECUTION_PREP ─
-      const orderDraftsArtifact = artifacts.find(
-        (a) => a.artifactKind === 'ORDER_DRAFTS',
-      );
-      expect(orderDraftsArtifact).toBeDefined();
-      expect(orderDraftsArtifact?.payloadJson).toEqual({
+    // ── Step 6: ORDER_DRAFTS artifact should still come from EXECUTION_PREP ─
+    const orderDraftsArtifact = artifacts.find((a) => a.artifactKind === 'ORDER_DRAFTS');
+    expect(orderDraftsArtifact).toBeDefined();
+    expect(orderDraftsArtifact?.payloadJson).toEqual({
+      orderDrafts: [VALID_DRAFT],
+    });
+
+    // ── Step 7: Resolve the approval ──────────────────────────────────────
+    await approvalsSvc.resolve({
+      userId: testUserId,
+      approvalId,
+      decision: 'APPROVE',
+    });
+
+    // ── Step 8: Run should now be COMPLETED ───────────────────────────────
+    const runAfterApproval = await runsSvc.getForUser(testUserId, runId);
+    expect(runAfterApproval?.status).toBe('COMPLETED');
+
+    const completedRun = await db
+      .select()
+      .from(analysisRuns)
+      .where(eq(analysisRuns.id, runId))
+      .limit(1);
+    expect(completedRun[0]?.decisionObjectJson).toMatchObject({
+      strategyArchivePayload: VALID_STRATEGY_ARCHIVE,
+      executionPayload: {
         orderDrafts: [VALID_DRAFT],
-      });
+      },
+    });
 
-      // ── Step 7: Resolve the approval ──────────────────────────────────────
-      await approvalsSvc.resolve({
-        userId: testUserId,
-        approvalId,
-        decision: 'APPROVE',
-      });
+    // ── Step 9: EXECUTION_PAYLOAD artifact should exist ───────────────────
+    const artifactsAfter = await runsSvc.listArtifactsForRun(runId);
+    const execPayload = artifactsAfter.find((a) => a.artifactKind === 'EXECUTION_PAYLOAD');
+    expect(execPayload).toBeDefined();
+    expect(execPayload?.payloadJson).toMatchObject({
+      orderDrafts: [VALID_DRAFT],
+      stageRequests: [{ action: 'BUY', symbol: 'AAPL', qty: '10' }],
+    });
 
-      // ── Step 8: Run should now be COMPLETED ───────────────────────────────
-      const runAfterApproval = await runsSvc.getForUser(testUserId, runId);
-      expect(runAfterApproval?.status).toBe('COMPLETED');
-
-      const completedRun = await db
-        .select()
-        .from(analysisRuns)
-        .where(eq(analysisRuns.id, runId))
-        .limit(1);
-      expect(completedRun[0]?.decisionObjectJson).toMatchObject({
-        strategyArchivePayload: VALID_STRATEGY_ARCHIVE,
-        executionPayload: {
-          orderDrafts: [VALID_DRAFT],
-        },
-      });
-
-      // ── Step 9: EXECUTION_PAYLOAD artifact should exist ───────────────────
-      const artifactsAfter = await runsSvc.listArtifactsForRun(runId);
-      const execPayload = artifactsAfter.find(
-        (a) => a.artifactKind === 'EXECUTION_PAYLOAD',
+    // ── Step 10: Lifecycle events in agent_events ─────────────────────────
+    const events = await db
+      .select()
+      .from(agentEvents)
+      .where(
+        and(eq(agentEvents.userId, testUserId), eq(agentEvents.aggregateType, 'ANALYSIS_RUN')),
       );
-      expect(execPayload).toBeDefined();
-      expect(execPayload?.payloadJson).toMatchObject({
-        orderDrafts: [VALID_DRAFT],
-        stageRequests: [{ action: 'BUY', symbol: 'AAPL', qty: '10' }],
-      });
 
-      // ── Step 10: Lifecycle events in agent_events ─────────────────────────
-      const events = await db
-        .select()
-        .from(agentEvents)
-        .where(
-          and(
-            eq(agentEvents.userId, testUserId),
-            eq(agentEvents.aggregateType, 'ANALYSIS_RUN'),
-          ),
-        );
+    const eventTypes = new Set(events.map((e) => e.eventType));
 
-      const eventTypes = new Set(events.map((e) => e.eventType));
+    const expectedLifecycle: AgentEventType[] = [
+      AgentEventType.RUN_QUEUED,
+      AgentEventType.RUN_STARTED,
+      AgentEventType.INTELLIGENCE_TEAM_COMPLETED,
+      AgentEventType.THESIS_TEAM_COMPLETED,
+      AgentEventType.RISK_TEAM_COMPLETED,
+      AgentEventType.EXECUTION_PREP_TEAM_COMPLETED,
+      AgentEventType.EXECUTION_APPROVAL_REQUIRED,
+      AgentEventType.RUN_COMPLETED,
+    ];
 
-      const expectedLifecycle: AgentEventType[] = [
-        AgentEventType.RUN_QUEUED,
-        AgentEventType.RUN_STARTED,
-        AgentEventType.INTELLIGENCE_TEAM_COMPLETED,
-        AgentEventType.THESIS_TEAM_COMPLETED,
-        AgentEventType.RISK_TEAM_COMPLETED,
-        AgentEventType.EXECUTION_PREP_TEAM_COMPLETED,
-        AgentEventType.EXECUTION_APPROVAL_REQUIRED,
-        AgentEventType.RUN_COMPLETED,
-      ];
+    for (const expected of expectedLifecycle) {
+      expect(eventTypes, `expected event ${expected}`).toContain(expected);
+    }
 
-      for (const expected of expectedLifecycle) {
-        expect(eventTypes, `expected event ${expected}`).toContain(expected);
-      }
-
-      // EXECUTION_APPROVED lives on the ANALYSIS_APPROVAL aggregate
-      const approvalEvents = await db
-        .select()
-        .from(agentEvents)
-        .where(
-          and(
-            eq(agentEvents.userId, testUserId),
-            eq(agentEvents.aggregateType, 'ANALYSIS_APPROVAL'),
-          ),
-        );
-      const approvalEventTypes = new Set(approvalEvents.map((e) => e.eventType));
-      expect(approvalEventTypes).toContain(AgentEventType.EXECUTION_APPROVED);
-    },
-    120_000,
-  );
+    // EXECUTION_APPROVED lives on the ANALYSIS_APPROVAL aggregate
+    const approvalEvents = await db
+      .select()
+      .from(agentEvents)
+      .where(
+        and(eq(agentEvents.userId, testUserId), eq(agentEvents.aggregateType, 'ANALYSIS_APPROVAL')),
+      );
+    const approvalEventTypes = new Set(approvalEvents.map((e) => e.eventType));
+    expect(approvalEventTypes).toContain(AgentEventType.EXECUTION_APPROVED);
+  }, 120_000);
 
   // ════════════════════════════════════════════════════════════════════════════
   // Rejection path
   // ════════════════════════════════════════════════════════════════════════════
 
-  it(
-    'APPROVE=REJECT transitions run to CANCELED',
-    async () => {
-      // Drive to WAITING_APPROVAL
-      await orchestrator.step({
-        runId,
-        userId: testUserId,
-        stepKind: 'PREFLIGHT',
-      });
+  it('APPROVE=REJECT transitions run to CANCELED', async () => {
+    // Drive to WAITING_APPROVAL
+    await orchestrator.step({
+      runId,
+      userId: testUserId,
+      stepKind: 'PREFLIGHT',
+    });
 
-      const approvals = await runsSvc.listApprovalsForRun(runId);
-      const approvalId = approvals[0]?.id as string;
+    const approvals = await runsSvc.listApprovalsForRun(runId);
+    const approvalId = approvals[0]?.id as string;
 
-      await approvalsSvc.resolve({
-        userId: testUserId,
-        approvalId,
-        decision: 'REJECT',
-        note: 'Not now',
-      });
+    await approvalsSvc.resolve({
+      userId: testUserId,
+      approvalId,
+      decision: 'REJECT',
+      note: 'Not now',
+    });
 
-      const run = await runsSvc.getForUser(testUserId, runId);
-      expect(run?.status).toBe('CANCELED');
+    const run = await runsSvc.getForUser(testUserId, runId);
+    expect(run?.status).toBe('CANCELED');
 
-      // EXECUTION_PAYLOAD must NOT exist
-      const artifacts = await runsSvc.listArtifactsForRun(runId);
-      const execPayload = artifacts.find((a) => a.artifactKind === 'EXECUTION_PAYLOAD');
-      expect(execPayload).toBeUndefined();
-    },
-    120_000,
-  );
+    // EXECUTION_PAYLOAD must NOT exist
+    const artifacts = await runsSvc.listArtifactsForRun(runId);
+    const execPayload = artifacts.find((a) => a.artifactKind === 'EXECUTION_PAYLOAD');
+    expect(execPayload).toBeUndefined();
+  }, 120_000);
 
   // ════════════════════════════════════════════════════════════════════════════
   // Checkpoint idempotency under the real pipeline
   // ════════════════════════════════════════════════════════════════════════════
 
-  it(
-    're-running PREFLIGHT step twice results in exactly one row per stage (idempotent startStage)',
-    async () => {
-      // Run the pipeline once
-      await orchestrator.step({ runId, userId: testUserId, stepKind: 'PREFLIGHT' });
+  it('re-running PREFLIGHT step twice results in exactly one row per stage (idempotent startStage)', async () => {
+    // Run the pipeline once
+    await orchestrator.step({ runId, userId: testUserId, stepKind: 'PREFLIGHT' });
 
-      // The run is now WAITING_APPROVAL — reset it to QUEUED so we can re-trigger
-      await db
-        .update(analysisRuns)
-        .set({ status: 'QUEUED', currentStageKey: null, updatedAt: new Date() })
-        .where(eq(analysisRuns.id, runId));
+    // The run is now WAITING_APPROVAL — reset it to QUEUED so we can re-trigger
+    await db
+      .update(analysisRuns)
+      .set({ status: 'QUEUED', currentStageKey: null, updatedAt: new Date() })
+      .where(eq(analysisRuns.id, runId));
 
-      // Re-run — ON CONFLICT DO UPDATE in startStage should prevent duplicate stage rows
-      await orchestrator.step({ runId, userId: testUserId, stepKind: 'PREFLIGHT' });
+    // Re-run — ON CONFLICT DO UPDATE in startStage should prevent duplicate stage rows
+    await orchestrator.step({ runId, userId: testUserId, stepKind: 'PREFLIGHT' });
 
-      const stages = await runsSvc.listStagesForRun(runId);
-      // Each stageKey should appear at most once (upsert, not insert-duplicate)
-      const stageKeySet = new Set(stages.map((s) => s.stageKey));
-      expect(stageKeySet.size).toBe(stages.length);
-      // All four team stages present
-      for (const key of ['INTELLIGENCE', 'THESIS', 'RISK', 'EXECUTION_PREP']) {
-        expect(stageKeySet).toContain(key);
-      }
-    },
-    120_000,
-  );
+    const stages = await runsSvc.listStagesForRun(runId);
+    // Each stageKey should appear at most once (upsert, not insert-duplicate)
+    const stageKeySet = new Set(stages.map((s) => s.stageKey));
+    expect(stageKeySet.size).toBe(stages.length);
+    // All four team stages present
+    for (const key of ['INTELLIGENCE', 'THESIS', 'RISK', 'EXECUTION_PREP']) {
+      expect(stageKeySet).toContain(key);
+    }
+  }, 120_000);
 });

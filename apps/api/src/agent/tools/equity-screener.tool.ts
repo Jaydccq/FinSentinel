@@ -7,13 +7,11 @@ import { EquityScreenerService } from '../../research/equity-screener.service';
  *
  * Equity-screener tool surface exposed to the agent.
  */
-export function createEquityScreenerTools(
-  service: EquityScreenerService,
-) {
+export function createEquityScreenerTools(service: EquityScreenerService) {
   return {
     screenStocks: tool({
       description:
-        "Screen for stocks matching specific criteria such as exchange, market cap range, " +
+        'Screen for stocks matching specific criteria such as exchange, market cap range, ' +
         "or name search. Use when the user asks 'find large cap tech stocks', 'show me NASDAQ stocks " +
         "with market cap over $10B', or 'screen for small-cap stocks on NYSE'. " +
         'All parameters are optional — omit any you do not need.',
@@ -21,9 +19,7 @@ export function createEquityScreenerTools(
         sector: z
           .string()
           .optional()
-          .describe(
-            "Sector filter, e.g. 'Technology', 'Healthcare', 'Finance'. Optional.",
-          ),
+          .describe("Sector filter, e.g. 'Technology', 'Healthcare', 'Finance'. Optional."),
         exchange: z
           .string()
           .optional()
@@ -31,21 +27,15 @@ export function createEquityScreenerTools(
         marketCapMin: z
           .string()
           .optional()
-          .describe(
-            "Minimum market cap in dollars, e.g. '10000000000' for $10B. Optional.",
-          ),
+          .describe("Minimum market cap in dollars, e.g. '10000000000' for $10B. Optional."),
         marketCapMax: z
           .string()
           .optional()
-          .describe(
-            "Maximum market cap in dollars, e.g. '50000000000' for $50B. Optional.",
-          ),
+          .describe("Maximum market cap in dollars, e.g. '50000000000' for $50B. Optional."),
         search: z
           .string()
           .optional()
-          .describe(
-            "Search keyword for company name or ticker, e.g. 'apple', 'semi'. Optional.",
-          ),
+          .describe("Search keyword for company name or ticker, e.g. 'apple', 'semi'. Optional."),
         limit: z
           .number()
           .int()
@@ -54,14 +44,7 @@ export function createEquityScreenerTools(
           .optional()
           .describe('Max number of results to return, 1-50. Defaults to 20.'),
       }),
-      execute: async ({
-        sector,
-        exchange,
-        marketCapMin,
-        marketCapMax,
-        search,
-        limit,
-      }) => {
+      execute: async ({ sector, exchange, marketCapMin, marketCapMax, search, limit }) => {
         try {
           return JSON.stringify(
             await service.screenStocks(
@@ -106,14 +89,14 @@ export function createEquityScreenerTools(
 
     searchStocks: tool({
       description:
-        "Search for stocks by name or ticker keyword. Use when the user says " +
+        'Search for stocks by name or ticker keyword. Use when the user says ' +
         "'find stocks related to semiconductors', 'search for Amazon', 'look up TSLA', " +
         'or needs to discover tickers for a particular company or industry.',
       inputSchema: z.object({
         query: z
           .string()
           .describe(
-            "Search query — company name, ticker, or keyword. " +
+            'Search query — company name, ticker, or keyword. ' +
               "Examples: 'tesla', 'AAPL', 'semiconductor', 'artificial intelligence'.",
           ),
         limit: z
@@ -126,11 +109,7 @@ export function createEquityScreenerTools(
       }),
       execute: async ({ query, limit }) => {
         try {
-          return JSON.stringify(
-            await service.searchStocks(query, limit ?? 10),
-            null,
-            2,
-          );
+          return JSON.stringify(await service.searchStocks(query, limit ?? 10), null, 2);
         } catch (e) {
           return `Error searching for stocks: ${e instanceof Error ? e.message : 'unknown'}`;
         }

@@ -5,7 +5,10 @@ import { AgentEventType, strategyArchivePayloadSchema } from '@finsentinel/share
 describe('IntelligenceTeamService.execute', () => {
   let roleExec: { run: ReturnType<typeof vi.fn> };
   let runs: { getForUser: ReturnType<typeof vi.fn> };
-  let checkpoints: { commitStage: ReturnType<typeof vi.fn>; writeStrategyArchive: ReturnType<typeof vi.fn> };
+  let checkpoints: {
+    commitStage: ReturnType<typeof vi.fn>;
+    writeStrategyArchive: ReturnType<typeof vi.fn>;
+  };
   let strategyEvidence: { buildArchive: ReturnType<typeof vi.fn> };
   let fabric: { assemble: ReturnType<typeof vi.fn>; toPromptReady: ReturnType<typeof vi.fn> };
   let events: { append: ReturnType<typeof vi.fn> };

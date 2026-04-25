@@ -20,9 +20,7 @@ export function createQuantAnalysisTools(service: QuantAnalysisService) {
       inputSchema: z.object({
         barsJson: z
           .string()
-          .describe(
-            'JSON array of price bars [{o,h,l,c,v,t}, ...] from getHistoricalPrices',
-          ),
+          .describe('JSON array of price bars [{o,h,l,c,v,t}, ...] from getHistoricalPrices'),
       }),
       execute: async ({ barsJson }) => {
         try {
@@ -40,15 +38,13 @@ export function createQuantAnalysisTools(service: QuantAnalysisService) {
         'Calculate Value at Risk (VaR) and Conditional VaR (Expected Shortfall) for a stock. ' +
         "VaR answers: 'What is the maximum expected daily loss at a given confidence level?' " +
         'For example, 95% VaR of -2% on a $100K position means you should not lose more than $2,000 ' +
-        "in a single day 95% of the time. CVaR measures average loss in the worst cases beyond VaR. " +
+        'in a single day 95% of the time. CVaR measures average loss in the worst cases beyond VaR. ' +
         "Use 'historical' method for non-normal distributions or 'parametric' for normal assumption. " +
         'Input is JSON array of OHLCV bars from getHistoricalPrices.',
       inputSchema: z.object({
         barsJson: z
           .string()
-          .describe(
-            'JSON array of price bars [{o,h,l,c,v,t}, ...] from getHistoricalPrices',
-          ),
+          .describe('JSON array of price bars [{o,h,l,c,v,t}, ...] from getHistoricalPrices'),
         method: z
           .enum(['historical', 'parametric'])
           .describe(
@@ -77,9 +73,7 @@ export function createQuantAnalysisTools(service: QuantAnalysisService) {
       inputSchema: z.object({
         barsJson: z
           .string()
-          .describe(
-            'JSON array of price bars [{o,h,l,c,v,t}, ...] from getHistoricalPrices',
-          ),
+          .describe('JSON array of price bars [{o,h,l,c,v,t}, ...] from getHistoricalPrices'),
       }),
       execute: async ({ barsJson }) => {
         try {

@@ -12,9 +12,7 @@ const strategyTemplateKeySchema = z.enum([
  * Strategy template tools expose analysis-only strategy quality checks.
  * They do not stage, commit, or execute trades.
  */
-export function createStrategyTemplateTools(
-  strategyTemplateService: StrategyTemplateService,
-) {
+export function createStrategyTemplateTools(strategyTemplateService: StrategyTemplateService) {
   return {
     evaluateStrategyTemplate: tool({
       description:

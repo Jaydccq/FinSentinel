@@ -1,9 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type {
-  MarketQuote,
-  MarketBar,
-  TickerSearchResult,
-} from '@finsentinel/shared';
+import type { MarketQuote, MarketBar, TickerSearchResult } from '@finsentinel/shared';
 import type { MarketDataProvider } from '../interfaces/market-data-provider';
 
 /** Shape of a single quote from the FMP /quote/{ticker} response. */
@@ -73,9 +69,7 @@ export class FmpMarketDataProvider implements MarketDataProvider {
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(
-        `FMP API error: ${response.status} ${response.statusText}`,
-      );
+      throw new Error(`FMP API error: ${response.status} ${response.statusText}`);
     }
 
     const data = (await response.json()) as FmpQuote[];
@@ -109,16 +103,12 @@ export class FmpMarketDataProvider implements MarketDataProvider {
       `${this.baseUrl}/historical-price-full/${ticker}` +
       `?from=${fromStr}&to=${toStr}&apikey=${this.apiKey}`;
 
-    this.logger.debug(
-      `FMP history request: ${url.replace(this.apiKey, '***')}`,
-    );
+    this.logger.debug(`FMP history request: ${url.replace(this.apiKey, '***')}`);
 
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(
-        `FMP API error: ${response.status} ${response.statusText}`,
-      );
+      throw new Error(`FMP API error: ${response.status} ${response.statusText}`);
     }
 
     const data = (await response.json()) as FmpHistoricalResponse;
@@ -148,10 +138,7 @@ export class FmpMarketDataProvider implements MarketDataProvider {
    *
    * See https://site.financialmodelingprep.com/developer/docs#Symbol-Search
    */
-  async searchTickers(
-    query: string,
-    limit: number,
-  ): Promise<TickerSearchResult[]> {
+  async searchTickers(query: string, limit: number): Promise<TickerSearchResult[]> {
     const url = new URL(`${this.baseUrl}/search`);
     url.searchParams.set('query', query);
     url.searchParams.set('limit', String(limit));

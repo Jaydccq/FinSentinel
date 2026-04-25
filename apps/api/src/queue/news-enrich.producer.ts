@@ -25,13 +25,17 @@ export class NewsEnrichProducer {
    * @param newsItemId - UUID of the news item to enrich
    */
   async send(newsItemId: string): Promise<void> {
-    await this.queue.add('news-enrich', { newsItemId }, {
-      jobId: `news-enrich:${newsItemId}`,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 3_000 },
-      removeOnComplete: 100,
-      removeOnFail: 500,
-    });
+    await this.queue.add(
+      'news-enrich',
+      { newsItemId },
+      {
+        jobId: `news-enrich:${newsItemId}`,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 3_000 },
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    );
     this.metrics.incrementCounter(
       'rag_jobs_enqueued_total',
       'Total number of RAG-related jobs enqueued',

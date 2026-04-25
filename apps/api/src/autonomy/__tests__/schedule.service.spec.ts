@@ -87,10 +87,7 @@ describe('ScheduleService', () => {
     mockDb = createMockDb();
 
     const module = await Test.createTestingModule({
-      providers: [
-        ScheduleService,
-        { provide: 'DRIZZLE_DB', useValue: mockDb },
-      ],
+      providers: [ScheduleService, { provide: 'DRIZZLE_DB', useValue: mockDb }],
     }).compile();
 
     service = module.get(ScheduleService);
@@ -137,14 +134,14 @@ describe('ScheduleService', () => {
       service.create(USER_ID, 'Bad schedule', 'not-a-cron', 'MARKET_PULSE'),
     ).rejects.toThrow(BadRequestException);
 
-    await expect(
-      service.create(USER_ID, 'Bad schedule', '', 'MARKET_PULSE'),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.create(USER_ID, 'Bad schedule', '', 'MARKET_PULSE')).rejects.toThrow(
+      BadRequestException,
+    );
 
     // Too few fields
-    await expect(
-      service.create(USER_ID, 'Bad schedule', '0 9 *', 'MARKET_PULSE'),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.create(USER_ID, 'Bad schedule', '0 9 *', 'MARKET_PULSE')).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   // ── Test: max schedules ──────────────────────────────────────────────────
@@ -153,9 +150,9 @@ describe('ScheduleService', () => {
     // Count query: user has 20 schedules
     mockDb.enqueueSelect([{ count: 20 }]);
 
-    await expect(
-      service.create(USER_ID, 'One more', '0 9 * * *', 'MARKET_PULSE'),
-    ).rejects.toThrow(BadRequestException);
+    await expect(service.create(USER_ID, 'One more', '0 9 * * *', 'MARKET_PULSE')).rejects.toThrow(
+      BadRequestException,
+    );
 
     // Insert should NOT have been called
     expect(mockDb.insert).not.toHaveBeenCalled();
@@ -188,8 +185,6 @@ describe('ScheduleService', () => {
     // Ownership check: schedule not found
     mockDb.enqueueSelect([]);
 
-    await expect(
-      service.delete(USER_ID, SCHEDULE_ID),
-    ).rejects.toThrow(NotFoundException);
+    await expect(service.delete(USER_ID, SCHEDULE_ID)).rejects.toThrow(NotFoundException);
   });
 });

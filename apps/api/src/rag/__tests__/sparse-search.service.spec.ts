@@ -88,8 +88,8 @@ describe('SparseSearchService', () => {
     ]);
 
     const results = await service.search('AAPL', {}, 10);
-    const ids = results.map(r => r.chunkId);
-    expect(ids.filter(id => id === 'c1')).toHaveLength(1);
+    const ids = results.map((r) => r.chunkId);
+    expect(ids.filter((id) => id === 'c1')).toHaveLength(1);
   });
 
   it('SQL includes representation_type IN filter for representation table query', async () => {
@@ -250,11 +250,7 @@ describe('SparseSearchService', () => {
   describe('softFilter ranking boost', () => {
     it('emits a CASE ... 1.15 multiplier when softFilter.tickers is non-empty', async () => {
       mockDb.execute.mockResolvedValueOnce([]);
-      await service.search(
-        'quarterly earnings',
-        { softFilter: { tickers: ['AAPL'] } },
-        5,
-      );
+      await service.search('quarterly earnings', { softFilter: { tickers: ['AAPL'] } }, 5);
 
       const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
       // The emitted SQL must contain a CASE expression that multiplies the
@@ -267,11 +263,7 @@ describe('SparseSearchService', () => {
 
     it('emits a CASE multiplier when softFilter.issuerName is non-empty', async () => {
       mockDb.execute.mockResolvedValueOnce([]);
-      await service.search(
-        'quarterly earnings',
-        { softFilter: { issuerName: ['Apple Inc.'] } },
-        5,
-      );
+      await service.search('quarterly earnings', { softFilter: { issuerName: ['Apple Inc.'] } }, 5);
 
       const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
       expect(sqlStr).toContain('CASE');
@@ -291,11 +283,7 @@ describe('SparseSearchService', () => {
 
     it('empty softFilter arrays emit no CASE boost (length guard)', async () => {
       mockDb.execute.mockResolvedValueOnce([]);
-      await service.search(
-        'revenue',
-        { softFilter: { tickers: [], issuerName: [] } },
-        5,
-      );
+      await service.search('revenue', { softFilter: { tickers: [], issuerName: [] } }, 5);
 
       const sqlStr = JSON.stringify(mockDb.execute.mock.calls[0][0]);
       expect(sqlStr).not.toContain('CASE');
@@ -308,16 +296,24 @@ describe('SparseSearchService', () => {
       // chunkFilterClauses / repFilterClauses, this test will fire because the
       // baseline call count to mock rows (rank-only, not filtered) will change.
       mockDb.execute.mockResolvedValueOnce([
-        { id: 'c-no-ticker', source_id: 'd', content: 'generic', metadata: {},
-          rank_score: 0.5, hit_count: 1 },
-        { id: 'c-with-ticker', source_id: 'd', content: 'generic',
-          metadata: { tickers: ['AAPL'] }, rank_score: 0.4, hit_count: 1 },
+        {
+          id: 'c-no-ticker',
+          source_id: 'd',
+          content: 'generic',
+          metadata: {},
+          rank_score: 0.5,
+          hit_count: 1,
+        },
+        {
+          id: 'c-with-ticker',
+          source_id: 'd',
+          content: 'generic',
+          metadata: { tickers: ['AAPL'] },
+          rank_score: 0.4,
+          hit_count: 1,
+        },
       ]);
-      const hits = await service.search(
-        'generic',
-        { softFilter: { tickers: ['AAPL'] } },
-        5,
-      );
+      const hits = await service.search('generic', { softFilter: { tickers: ['AAPL'] } }, 5);
       // Both rows must come back — soft hints never exclude.
       expect(hits.map((h) => h.chunkId).sort()).toEqual(['c-no-ticker', 'c-with-ticker']);
     });

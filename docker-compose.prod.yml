@@ -12,7 +12,7 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     ports:
-      - "3001:3001"
+      - '3001:3001'
     environment:
       - DATABASE_URL=postgresql://postgres:finsentinel@postgres:5432/finsentinel
       - REDIS_URL=redis://redis:6379/0
@@ -39,7 +39,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/health || exit 1"]
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/api/health || exit 1']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,7 +50,7 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       - INTERNAL_API_ORIGIN=http://api:3001
       - NODE_ENV=production
@@ -68,9 +68,9 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - '5432:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -80,9 +80,9 @@ services:
     volumes:
       - redisdata:/data
     ports:
-      - "6379:6379"
+      - '6379:6379'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -90,7 +90,7 @@ services:
   prometheus:
     image: prom/prometheus:v2.54.1
     ports:
-      - "9090:9090"
+      - '9090:9090'
     depends_on:
       api:
         condition: service_healthy
@@ -101,7 +101,7 @@ services:
   grafana:
     image: grafana/grafana:11.2.0
     ports:
-      - "3002:3000"
+      - '3002:3000'
     depends_on:
       prometheus:
         condition: service_started

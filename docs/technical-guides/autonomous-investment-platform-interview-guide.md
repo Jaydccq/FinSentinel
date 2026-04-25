@@ -65,21 +65,21 @@ FinSentinel 是一个 AI-assisted investment research and risk platform。它把
 
 ### 技术栈分层
 
-| 层级 | 使用技术 | 在项目中的作用 |
-|---|---|---|
-| Monorepo / Tooling | TypeScript, Node.js 22+, pnpm 10, Turbo | 统一管理 API、Web、shared schema、db package、AI runtime package；统一 build/typecheck/test |
-| Frontend | Next.js 16, React 19, Tailwind CSS 4, Recharts, lightweight-charts, framer-motion | 实现 chat、research workspace、portfolio/dashboard、图表和交互界面 |
-| Backend API | NestJS 11, RxJS, `@nestjs/config`, `@nestjs/schedule` | 模块化后端；controller 保持薄，业务逻辑放 service；guard/pipe/filter 负责入口治理 |
-| AI Runtime | `@finsentinel/ai-runtime`, `@mariozechner/pi-ai`, `@mariozechner/pi-agent-core` | 封装模型构造、typed tool adapter、streaming text runtime、embedding client，避免业务层直接耦合外部 SDK |
-| Contracts | Zod, `packages/shared` | API 请求/响应 schema、tool input schema、structured output boundary、前后端共享类型 |
-| Database | PostgreSQL 17, pgvector, Drizzle ORM, `postgres` client | 存 durable state、analysis runs、documents、RAG chunks、vector embeddings、event log |
-| Retrieval | pgvector, PostgreSQL full-text search, RRF, reranker sidecar, context packing, query traces | 支持 query-class-aware dense+sparse hybrid retrieval、metadata routing、rank fusion、rerank fallback 和 prompt context 控制 |
-| Queue / Cache / Runtime State | Redis 7, ioredis, BullMQ 5 | BullMQ job queue、rate limit counter、trading staging/pending state、Lua atomic transition |
-| Trading | Broker abstraction, Paper broker, live broker adapters, Redis `GETDEL`, order draft validator | broker-agnostic trading lifecycle；先生成草案，再审批，再幂等执行 |
-| Storage | RustFS / S3-compatible storage, AWS SDK S3 client | 保存上传文档和对象存储内容，供 ingestion/RAG pipeline 使用 |
-| Observability | prom-client, Prometheus, Grafana | 暴露 `/api/metrics`，观察 RAG latency、rate limit、请求量、系统健康度 |
-| Testing | Vitest, Nest testing utilities, benchmark-style specs | 覆盖 services、tool registry、RAG、chat compaction、SSE concurrency、rate limiter 等路径 |
-| Local Deployment | Docker Compose, API/Web Dockerfiles | 本地启动 Postgres/pgvector、Redis、RustFS、reranker、API、Web、Prometheus、Grafana |
+| 层级                          | 使用技术                                                                                      | 在项目中的作用                                                                                                              |
+| ----------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Monorepo / Tooling            | TypeScript, Node.js 22+, pnpm 10, Turbo                                                       | 统一管理 API、Web、shared schema、db package、AI runtime package；统一 build/typecheck/test                                 |
+| Frontend                      | Next.js 16, React 19, Tailwind CSS 4, Recharts, lightweight-charts, framer-motion             | 实现 chat、research workspace、portfolio/dashboard、图表和交互界面                                                          |
+| Backend API                   | NestJS 11, RxJS, `@nestjs/config`, `@nestjs/schedule`                                         | 模块化后端；controller 保持薄，业务逻辑放 service；guard/pipe/filter 负责入口治理                                           |
+| AI Runtime                    | `@finsentinel/ai-runtime`, `@mariozechner/pi-ai`, `@mariozechner/pi-agent-core`               | 封装模型构造、typed tool adapter、streaming text runtime、embedding client，避免业务层直接耦合外部 SDK                      |
+| Contracts                     | Zod, `packages/shared`                                                                        | API 请求/响应 schema、tool input schema、structured output boundary、前后端共享类型                                         |
+| Database                      | PostgreSQL 17, pgvector, Drizzle ORM, `postgres` client                                       | 存 durable state、analysis runs、documents、RAG chunks、vector embeddings、event log                                        |
+| Retrieval                     | pgvector, PostgreSQL full-text search, RRF, reranker sidecar, context packing, query traces   | 支持 query-class-aware dense+sparse hybrid retrieval、metadata routing、rank fusion、rerank fallback 和 prompt context 控制 |
+| Queue / Cache / Runtime State | Redis 7, ioredis, BullMQ 5                                                                    | BullMQ job queue、rate limit counter、trading staging/pending state、Lua atomic transition                                  |
+| Trading                       | Broker abstraction, Paper broker, live broker adapters, Redis `GETDEL`, order draft validator | broker-agnostic trading lifecycle；先生成草案，再审批，再幂等执行                                                           |
+| Storage                       | RustFS / S3-compatible storage, AWS SDK S3 client                                             | 保存上传文档和对象存储内容，供 ingestion/RAG pipeline 使用                                                                  |
+| Observability                 | prom-client, Prometheus, Grafana                                                              | 暴露 `/api/metrics`，观察 RAG latency、rate limit、请求量、系统健康度                                                       |
+| Testing                       | Vitest, Nest testing utilities, benchmark-style specs                                         | 覆盖 services、tool registry、RAG、chat compaction、SSE concurrency、rate limiter 等路径                                    |
+| Local Deployment              | Docker Compose, API/Web Dockerfiles                                                           | 本地启动 Postgres/pgvector、Redis、RustFS、reranker、API、Web、Prometheus、Grafana                                          |
 
 ### 为什么这些技术适合这个项目
 
@@ -144,13 +144,13 @@ TypeScript • NestJS • Next.js • internal @finsentinel/ai-runtime • Postg
 
 这些点最容易被面试官深挖，也最需要你提前校准说法。
 
-| 简历说法 | 当前仓库事实 | 更稳的面试说法 |
-|---|---|---|
-| `Vercel AI SDK` | 当前代码已迁移掉 direct `ai` / `@ai-sdk/openai` import，使用内部 `@finsentinel/ai-runtime`。`pnpm check:no-vercel-ai-sdk` 会阻止重新引入。 | "早期实现使用 Vercel AI SDK 风格的 typed tool orchestration；当前版本把这层抽到内部 AI runtime，保留 typed tools、streaming 和 OpenRouter-compatible model 行为。" |
-| `20+ typed tools` | `apps/api/src/agent/tools` 下目前有 76 个 `tool({` 定义；运行时实际暴露哪些取决于服务注入和 role scope。 | "系统有超过 20 个 typed tools，统一由 ToolRegistry 组装，并通过 Zod schema 做参数校验。" |
-| `sub-300ms retrieval latency` | RAG 有 `rag_search_duration_seconds` Prometheus histogram，但本次检查没有找到专门的 RAG latency benchmark。 | "代码路径为低延迟设计，并有 Prometheus 指标。若要说具体 P95，需要带 benchmark 或 Grafana 证据。" |
-| `100+ concurrent streaming sessions` | `sse-concurrency.benchmark.spec.ts` 模拟 150 个并发 ReadableStream。它验证应用内 stream framing，不等于完整生产压测。 | "我用 in-process benchmark 验证了 150 个并发 SSE stream 的应用层路径；生产容量需要看部署环境压测。" |
-| `1k+ requests/min` | `rate-limiter.benchmark.spec.ts` 用 mock Redis 测 2000 次 check，并断言超过 1000 req/min。 | "这个 benchmark 证明 TypeScript guard 热路径开销很低；真实 Redis 和网络容量仍要用环境压测确认。" |
+| 简历说法                             | 当前仓库事实                                                                                                                               | 更稳的面试说法                                                                                                                                                     |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Vercel AI SDK`                      | 当前代码已迁移掉 direct `ai` / `@ai-sdk/openai` import，使用内部 `@finsentinel/ai-runtime`。`pnpm check:no-vercel-ai-sdk` 会阻止重新引入。 | "早期实现使用 Vercel AI SDK 风格的 typed tool orchestration；当前版本把这层抽到内部 AI runtime，保留 typed tools、streaming 和 OpenRouter-compatible model 行为。" |
+| `20+ typed tools`                    | `apps/api/src/agent/tools` 下目前有 76 个 `tool({` 定义；运行时实际暴露哪些取决于服务注入和 role scope。                                   | "系统有超过 20 个 typed tools，统一由 ToolRegistry 组装，并通过 Zod schema 做参数校验。"                                                                           |
+| `sub-300ms retrieval latency`        | RAG 有 `rag_search_duration_seconds` Prometheus histogram，但本次检查没有找到专门的 RAG latency benchmark。                                | "代码路径为低延迟设计，并有 Prometheus 指标。若要说具体 P95，需要带 benchmark 或 Grafana 证据。"                                                                   |
+| `100+ concurrent streaming sessions` | `sse-concurrency.benchmark.spec.ts` 模拟 150 个并发 ReadableStream。它验证应用内 stream framing，不等于完整生产压测。                      | "我用 in-process benchmark 验证了 150 个并发 SSE stream 的应用层路径；生产容量需要看部署环境压测。"                                                                |
+| `1k+ requests/min`                   | `rate-limiter.benchmark.spec.ts` 用 mock Redis 测 2000 次 check，并断言超过 1000 req/min。                                                 | "这个 benchmark 证明 TypeScript guard 热路径开销很低；真实 Redis 和网络容量仍要用环境压测确认。"                                                                   |
 
 ## 系统总览
 
@@ -212,23 +212,23 @@ Prometheus: scrape /api/metrics.
 
 ## 代码地图
 
-| 主题 | 关键文件 |
-|---|---|
-| 仓库优先规范 | `AGENTS.md`, `CLAUDE.md`, `docs/exec-plans/*`, `scripts/check-no-vercel-ai-sdk.mjs` |
-| AI runtime | `packages/ai-runtime/src/tools.ts`, `packages/ai-runtime/src/text-runtime.ts`, `packages/ai-runtime/src/embeddings.ts` |
-| Tool registry | `apps/api/src/agent/tool-registry.ts`, `apps/api/src/agent/tools/*.tool.ts` |
-| Role tool scope | `apps/api/src/analysis/contracts/role-tool-scope.ts`, `apps/api/src/analysis/teams/role-executor.service.ts` |
-| RAG retrieval | `apps/api/src/rag/rag-retrieval.service.ts`, `retrieval-planner.service.ts`, `retrieval-orchestrator.service.ts`, `sparse-search.service.ts`, `retrieval-fusion.service.ts`, `rerank.service.ts` |
-| RAG storage / traces | `apps/api/src/rag/rag-chunk-store.service.ts`, `rag-trace.service.ts`, `packages/db/src/schema/document-chunks.ts`, `packages/db/src/schema/rag-query-logs.ts` |
-| RAG ingestion / enrichment | `apps/api/src/queue/vectorize.producer.ts`, `vectorize.consumer.ts`, `representation-enrich.consumer.ts`, `graph-enrich.consumer.ts`, `apps/api/src/document/*`, `services/parser/*` |
-| Analysis runtime | `apps/api/src/analysis/run-orchestrator.service.ts`, `team-registry.ts`, `teams/*` |
-| Broker execution | `apps/api/src/trading/unified-trading.service.ts`, `broker-registry.service.ts` |
-| Order draft | `packages/shared/src/schemas/order-draft.ts`, `order-draft-validator.service.ts`, `order-draft-mapper.service.ts` |
-| SSE chat | `apps/api/src/chat/chat.controller.ts`, `chat.service.ts`, `apps/api/src/agent/agent.service.ts` |
-| Chat compaction | `apps/api/src/chat/chat-compaction.service.ts`, `chat-compaction.benchmark.spec.ts` |
-| Rate limit | `apps/api/src/common/services/rate-limiter.service.ts`, `rate-limit.guard.ts` |
-| Metrics | `apps/api/src/common/services/metrics.service.ts`, `metrics.controller.ts`, `observability/prometheus/prometheus.yml` |
-| Event log | `apps/api/src/events/agent-event.service.ts`, `packages/db/src/schema/agent-events.ts` |
+| 主题                       | 关键文件                                                                                                                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 仓库优先规范               | `AGENTS.md`, `CLAUDE.md`, `docs/exec-plans/*`, `scripts/check-no-vercel-ai-sdk.mjs`                                                                                                              |
+| AI runtime                 | `packages/ai-runtime/src/tools.ts`, `packages/ai-runtime/src/text-runtime.ts`, `packages/ai-runtime/src/embeddings.ts`                                                                           |
+| Tool registry              | `apps/api/src/agent/tool-registry.ts`, `apps/api/src/agent/tools/*.tool.ts`                                                                                                                      |
+| Role tool scope            | `apps/api/src/analysis/contracts/role-tool-scope.ts`, `apps/api/src/analysis/teams/role-executor.service.ts`                                                                                     |
+| RAG retrieval              | `apps/api/src/rag/rag-retrieval.service.ts`, `retrieval-planner.service.ts`, `retrieval-orchestrator.service.ts`, `sparse-search.service.ts`, `retrieval-fusion.service.ts`, `rerank.service.ts` |
+| RAG storage / traces       | `apps/api/src/rag/rag-chunk-store.service.ts`, `rag-trace.service.ts`, `packages/db/src/schema/document-chunks.ts`, `packages/db/src/schema/rag-query-logs.ts`                                   |
+| RAG ingestion / enrichment | `apps/api/src/queue/vectorize.producer.ts`, `vectorize.consumer.ts`, `representation-enrich.consumer.ts`, `graph-enrich.consumer.ts`, `apps/api/src/document/*`, `services/parser/*`             |
+| Analysis runtime           | `apps/api/src/analysis/run-orchestrator.service.ts`, `team-registry.ts`, `teams/*`                                                                                                               |
+| Broker execution           | `apps/api/src/trading/unified-trading.service.ts`, `broker-registry.service.ts`                                                                                                                  |
+| Order draft                | `packages/shared/src/schemas/order-draft.ts`, `order-draft-validator.service.ts`, `order-draft-mapper.service.ts`                                                                                |
+| SSE chat                   | `apps/api/src/chat/chat.controller.ts`, `chat.service.ts`, `apps/api/src/agent/agent.service.ts`                                                                                                 |
+| Chat compaction            | `apps/api/src/chat/chat-compaction.service.ts`, `chat-compaction.benchmark.spec.ts`                                                                                                              |
+| Rate limit                 | `apps/api/src/common/services/rate-limiter.service.ts`, `rate-limit.guard.ts`                                                                                                                    |
+| Metrics                    | `apps/api/src/common/services/metrics.service.ts`, `metrics.controller.ts`, `observability/prometheus/prometheus.yml`                                                                            |
+| Event log                  | `apps/api/src/events/agent-event.service.ts`, `packages/db/src/schema/agent-events.ts`                                                                                                           |
 
 ## 1. Repository-First Guardrails
 
@@ -959,13 +959,13 @@ INTELLIGENCE
 
 ### Team responsibilities
 
-| Stage | Service | 作用 |
-|---|---|---|
-| `INTELLIGENCE` | `IntelligenceTeamService` | 跑 market/news/fundamentals/sentiment roles，收集证据。 |
-| `THESIS` | `ThesisTeamService` | positive case 和 negative case 并行，然后 thesis lead 收敛。 |
-| `RISK` | `RiskTeamService` | 形成风险、组合决策、risk limits。 |
-| `EXECUTION_PREP` | `ExecutionPrepTeamService` | 生成 broker-neutral order drafts。 |
-| `HUMAN_APPROVAL` | `HumanApprovalGateService` | 把 run 停在审批状态。 |
+| Stage            | Service                    | 作用                                                         |
+| ---------------- | -------------------------- | ------------------------------------------------------------ |
+| `INTELLIGENCE`   | `IntelligenceTeamService`  | 跑 market/news/fundamentals/sentiment roles，收集证据。      |
+| `THESIS`         | `ThesisTeamService`        | positive case 和 negative case 并行，然后 thesis lead 收敛。 |
+| `RISK`           | `RiskTeamService`          | 形成风险、组合决策、risk limits。                            |
+| `EXECUTION_PREP` | `ExecutionPrepTeamService` | 生成 broker-neutral order drafts。                           |
+| `HUMAN_APPROVAL` | `HumanApprovalGateService` | 把 run 停在审批状态。                                        |
 
 ### Checkpoints
 

@@ -52,12 +52,7 @@ import { XInfluencerFetcher } from './fetchers/x-influencer.fetcher';
         crypto: CryptoNewsFetcher,
         xInfluencer: XInfluencerFetcher,
       ) => [polygon, rss, crypto, xInfluencer],
-      inject: [
-        PolygonNewsFetcher,
-        RssNewsFetcher,
-        CryptoNewsFetcher,
-        XInfluencerFetcher,
-      ],
+      inject: [PolygonNewsFetcher, RssNewsFetcher, CryptoNewsFetcher, XInfluencerFetcher],
     },
 
     // ── Services ────────────────────────────────────────────────────

@@ -7,12 +7,7 @@ export const strategyTemplateKeySchema = z.enum([
 ]);
 export type StrategyTemplateKey = z.infer<typeof strategyTemplateKeySchema>;
 
-export const strategySignalSchema = z.enum([
-  'ENTER_LONG',
-  'EXIT_LONG',
-  'HOLD',
-  'BLOCKED',
-]);
+export const strategySignalSchema = z.enum(['ENTER_LONG', 'EXIT_LONG', 'HOLD', 'BLOCKED']);
 export type StrategySignal = z.infer<typeof strategySignalSchema>;
 
 export const strategyRecommendedNextStepSchema = z.enum([
@@ -20,15 +15,9 @@ export const strategyRecommendedNextStepSchema = z.enum([
   'PAPER_ONLY',
   'REVIEW_FOR_BACKTEST',
 ]);
-export type StrategyRecommendedNextStep = z.infer<
-  typeof strategyRecommendedNextStepSchema
->;
+export type StrategyRecommendedNextStep = z.infer<typeof strategyRecommendedNextStepSchema>;
 
-export const strategyArchiveStatusSchema = z.enum([
-  'EVALUATED',
-  'SKIPPED',
-  'DEGRADED',
-]);
+export const strategyArchiveStatusSchema = z.enum(['EVALUATED', 'SKIPPED', 'DEGRADED']);
 export type StrategyArchiveStatus = z.infer<typeof strategyArchiveStatusSchema>;
 
 export const strategyIndicatorSnapshotSchema = z.object({
@@ -40,9 +29,7 @@ export const strategyIndicatorSnapshotSchema = z.object({
   sma50: z.number().nullable(),
   sma200: z.number().nullable(),
 });
-export type StrategyIndicatorSnapshot = z.infer<
-  typeof strategyIndicatorSnapshotSchema
->;
+export type StrategyIndicatorSnapshot = z.infer<typeof strategyIndicatorSnapshotSchema>;
 
 export const strategyCostProfileSchema = z.object({
   makerFeeBps: z.number().nonnegative(),
@@ -65,9 +52,7 @@ export const strategyTemplateEvaluationSchema = z.object({
   indicatorSnapshot: strategyIndicatorSnapshotSchema,
   costProfile: strategyCostProfileSchema,
 });
-export type StrategyTemplateEvaluation = z.infer<
-  typeof strategyTemplateEvaluationSchema
->;
+export type StrategyTemplateEvaluation = z.infer<typeof strategyTemplateEvaluationSchema>;
 
 const strategyArchiveBarsSchema = z.object({
   requestedDays: z.number().int().positive(),

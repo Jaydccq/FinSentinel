@@ -42,8 +42,7 @@ export async function hybridSearch(input: HybridSearchInput): Promise<HybridHit[
 
   const [cloudHits, localHits] = await Promise.all([cloudPromise, localPromise]);
 
-  return [
-    ...cloudHits.map(cloudToHybrid),
-    ...localHits.map(localToHybrid),
-  ].sort((a, b) => b.score - a.score);
+  return [...cloudHits.map(cloudToHybrid), ...localHits.map(localToHybrid)].sort(
+    (a, b) => b.score - a.score,
+  );
 }

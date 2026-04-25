@@ -55,12 +55,7 @@ import { CommonModule } from '../common/common.module';
       inject: ['OKX_API_CLIENT'],
     },
   ],
-  exports: [
-    OkxPriceService,
-    OkxAnalysisService,
-    'OKX_API_CLIENT',
-    'OKX_TRADING_ENGINE',
-  ],
+  exports: [OkxPriceService, OkxAnalysisService, 'OKX_API_CLIENT', 'OKX_TRADING_ENGINE'],
 })
 export class OkxModule implements OnModuleInit {
   private readonly logger = new Logger(OkxModule.name);

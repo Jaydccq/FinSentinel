@@ -24,11 +24,7 @@ export class RuntimeControlService {
     await this.runs.cancel(userId, runId);
   }
 
-  async retryStage(
-    userId: string,
-    runId: string,
-    stageKey: AnalysisStageKey,
-  ): Promise<void> {
+  async retryStage(userId: string, runId: string, stageKey: AnalysisStageKey): Promise<void> {
     await this.runs.retryStage(userId, runId, stageKey);
     await this.producer.enqueueExecuteStage({ userId, runId, stageKey });
   }

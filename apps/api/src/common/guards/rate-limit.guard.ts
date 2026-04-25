@@ -7,10 +7,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request, Response } from 'express';
-import {
-  RATE_LIMIT_KEY,
-  type RateLimitOptions,
-} from '../decorators/rate-limit.decorator';
+import { RATE_LIMIT_KEY, type RateLimitOptions } from '../decorators/rate-limit.decorator';
 import { RateLimiterService } from '../services/rate-limiter.service';
 import { MetricsService } from '../services/metrics.service';
 
@@ -36,10 +33,7 @@ export class RateLimitGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const options = this.reflector.get<RateLimitOptions>(
-      RATE_LIMIT_KEY,
-      context.getHandler(),
-    );
+    const options = this.reflector.get<RateLimitOptions>(RATE_LIMIT_KEY, context.getHandler());
 
     // No @RateLimit decorator on this handler — pass through
     if (!options) return true;

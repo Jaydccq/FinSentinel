@@ -12,7 +12,11 @@ function readProvider(value: string | undefined): AiProvider {
   return value === 'nvidia' ? 'nvidia' : 'openrouter';
 }
 
-function readBaseUrl(provider: AiProvider, openrouterBaseUrl: string | undefined, nvidiaBaseUrl: string | undefined): string {
+function readBaseUrl(
+  provider: AiProvider,
+  openrouterBaseUrl: string | undefined,
+  nvidiaBaseUrl: string | undefined,
+): string {
   if (provider === 'nvidia') {
     return nvidiaBaseUrl || DEFAULT_NVIDIA_BASE_URL;
   }
@@ -20,7 +24,11 @@ function readBaseUrl(provider: AiProvider, openrouterBaseUrl: string | undefined
   return openrouterBaseUrl || DEFAULT_OPENROUTER_BASE_URL;
 }
 
-function readApiKey(provider: AiProvider, openrouterApiKey: string | undefined, nvidiaApiKey: string | undefined): string {
+function readApiKey(
+  provider: AiProvider,
+  openrouterApiKey: string | undefined,
+  nvidiaApiKey: string | undefined,
+): string {
   if (provider === 'nvidia') {
     return nvidiaApiKey || '';
   }
@@ -52,7 +60,8 @@ export const aiConfig = registerAs('ai', () => {
     embeddingProvider,
     embeddingApiKey: readApiKey(embeddingProvider, openrouterApiKey, nvidiaApiKey),
     embeddingBaseUrl: readBaseUrl(embeddingProvider, openrouterBaseUrl, nvidiaBaseUrl),
-    embeddingModel: process.env['AI_EMBEDDING_MODEL'] || readDefaultEmbeddingModel(embeddingProvider),
+    embeddingModel:
+      process.env['AI_EMBEDDING_MODEL'] || readDefaultEmbeddingModel(embeddingProvider),
 
     // Backwards-compatible names for existing tests and call sites.
     openrouterApiKey: openrouterApiKey || '',

@@ -365,6 +365,7 @@ This plan is complete when the repo supports the following end-to-end path:
 Status: CLOSED
 
 Changes shipped under `docs/superpowers/plans/2026-04-17-runtime-v1_1-hardening.md`:
+
 - V12, V13 migrations + hand-written migration runner
 - `parseStructured` tolerant JSON extraction (3-strategy, hardened against bad
   fences and placeholder braces)

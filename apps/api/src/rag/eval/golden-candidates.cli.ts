@@ -44,9 +44,7 @@ function resolveProvider(): AiProvider {
 }
 
 function resolveApiKey(provider: AiProvider): string | undefined {
-  return provider === 'nvidia'
-    ? process.env['NVIDIA_API_KEY']
-    : process.env['OPENROUTER_API_KEY'];
+  return provider === 'nvidia' ? process.env['NVIDIA_API_KEY'] : process.env['OPENROUTER_API_KEY'];
 }
 
 function resolveBaseUrl(provider: AiProvider): string {
@@ -158,8 +156,8 @@ async function main() {
   if (!process.env['DATABASE_URL']) {
     console.error(
       'Error: DATABASE_URL environment variable is not set.\n' +
-      'Set it to your local Postgres connection string, e.g.:\n' +
-      '  DATABASE_URL=postgresql://user:pass@localhost:5432/finsentinel',
+        'Set it to your local Postgres connection string, e.g.:\n' +
+        '  DATABASE_URL=postgresql://user:pass@localhost:5432/finsentinel',
     );
     process.exit(1);
   }
@@ -195,15 +193,13 @@ async function main() {
 
       console.log(
         `[dry-run] LLM not called; placeholder queries emitted.\n` +
-        `[dry-run] Would emit ${candidates.length} candidates:\n` +
-        `  chat_messages:      ${chatCount}\n` +
-        `  agent_events:       ${eventsCount}\n` +
-        `  reverse_from_chunk: ${chunkCount}`,
+          `[dry-run] Would emit ${candidates.length} candidates:\n` +
+          `  chat_messages:      ${chatCount}\n` +
+          `  agent_events:       ${eventsCount}\n` +
+          `  reverse_from_chunk: ${chunkCount}`,
       );
     } else {
-      console.log(
-        `Wrote ${candidates.length} candidates to:\n  ${cliArgs.outputPath}`,
-      );
+      console.log(`Wrote ${candidates.length} candidates to:\n  ${cliArgs.outputPath}`);
     }
   } finally {
     await app.close();

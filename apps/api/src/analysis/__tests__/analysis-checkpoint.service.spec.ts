@@ -7,11 +7,13 @@ import {
   strategyArchivePayloadSchema,
 } from '@finsentinel/shared';
 
-function makeDb(stageRow: Record<string, unknown> | null = {
-  id: 'stage-1',
-  checkpointVersion: 0,
-  status: 'RUNNING',
-}) {
+function makeDb(
+  stageRow: Record<string, unknown> | null = {
+    id: 'stage-1',
+    checkpointVersion: 0,
+    status: 'RUNNING',
+  },
+) {
   const state = {
     lastStageUpdateSet: undefined as Record<string, unknown> | undefined,
     lastArtifactInsert: undefined as Record<string, unknown> | undefined,
@@ -205,7 +207,9 @@ describe('AnalysisCheckpointService.markStageSkipped', () => {
   });
 
   it('sets SKIPPED status with reason and emits STAGE_SKIPPED', async () => {
-    await checkpoints.markStageSkipped(userId, runId, 'EXECUTION_PREP', { reason: 'disabled_by_runtime_config' });
+    await checkpoints.markStageSkipped(userId, runId, 'EXECUTION_PREP', {
+      reason: 'disabled_by_runtime_config',
+    });
 
     expect(db.state.lastInsertValues).toMatchObject({
       runId,

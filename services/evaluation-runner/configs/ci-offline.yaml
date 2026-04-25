@@ -13,7 +13,7 @@
 # Mode: offline corpus retrieval (CorpusRetriever). The evaluator does NOT
 # hit the live API; `apps/api` is intentionally not started in this
 # workflow (see the workflow YAML header for rationale).
-corpus_path: "datasets/corpus.json"
+corpus_path: 'datasets/corpus.json'
 retrieval:
   top_k: 10
 

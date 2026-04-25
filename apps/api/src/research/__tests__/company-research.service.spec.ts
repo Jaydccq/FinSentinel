@@ -1,10 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
-import type {
-  CompanyProfile,
-  FinancialMetrics,
-  AnalystConsensus,
-} from '@finsentinel/shared';
+import type { CompanyProfile, FinancialMetrics, AnalystConsensus } from '@finsentinel/shared';
 import { CompanyResearchService } from '../company-research.service';
 import { ResearchDataProviderRegistry } from '../research-data-provider.registry';
 import type { ResearchDataProvider } from '../interfaces/research-data-provider';
@@ -115,16 +111,12 @@ describe('CompanyResearchService', () => {
   describe('getCompanyProfile', () => {
     it('returns data from provider on cache miss with 4-hour TTL', async () => {
       mockRedis.get.mockResolvedValue(null);
-      (
-        mockProvider.getCompanyProfile as ReturnType<typeof vi.fn>
-      ).mockResolvedValue(sampleProfile);
+      (mockProvider.getCompanyProfile as ReturnType<typeof vi.fn>).mockResolvedValue(sampleProfile);
 
       const result = await service.getCompanyProfile('AAPL');
 
       expect(result).toEqual(sampleProfile);
-      expect(mockRedis.get).toHaveBeenCalledWith(
-        'research:profile:AAPL:mock',
-      );
+      expect(mockRedis.get).toHaveBeenCalledWith('research:profile:AAPL:mock');
       expect(mockProvider.getCompanyProfile).toHaveBeenCalledWith('AAPL');
       // 4-hour TTL = 14400 seconds
       expect(mockRedis.setex).toHaveBeenCalledWith(
@@ -146,23 +138,17 @@ describe('CompanyResearchService', () => {
 
     it('uppercases ticker in cache key', async () => {
       mockRedis.get.mockResolvedValue(null);
-      (
-        mockProvider.getCompanyProfile as ReturnType<typeof vi.fn>
-      ).mockResolvedValue(sampleProfile);
+      (mockProvider.getCompanyProfile as ReturnType<typeof vi.fn>).mockResolvedValue(sampleProfile);
 
       await service.getCompanyProfile('aapl');
 
-      expect(mockRedis.get).toHaveBeenCalledWith(
-        'research:profile:AAPL:mock',
-      );
+      expect(mockRedis.get).toHaveBeenCalledWith('research:profile:AAPL:mock');
       expect(mockProvider.getCompanyProfile).toHaveBeenCalledWith('AAPL');
     });
 
     it('uses named provider when specified', async () => {
       mockRedis.get.mockResolvedValue(null);
-      (
-        mockProvider.getCompanyProfile as ReturnType<typeof vi.fn>
-      ).mockResolvedValue(sampleProfile);
+      (mockProvider.getCompanyProfile as ReturnType<typeof vi.fn>).mockResolvedValue(sampleProfile);
 
       await service.getCompanyProfile('AAPL', 'mock');
 
@@ -173,9 +159,9 @@ describe('CompanyResearchService', () => {
     it('throws when named provider not found', async () => {
       mockRegistry.getProvider.mockReturnValue(undefined);
 
-      await expect(
-        service.getCompanyProfile('AAPL', 'nonexistent'),
-      ).rejects.toThrow(/Research provider 'nonexistent' not found/);
+      await expect(service.getCompanyProfile('AAPL', 'nonexistent')).rejects.toThrow(
+        /Research provider 'nonexistent' not found/,
+      );
     });
   });
 
@@ -184,16 +170,14 @@ describe('CompanyResearchService', () => {
   describe('getFinancialMetrics', () => {
     it('returns data from provider on cache miss with 4-hour TTL', async () => {
       mockRedis.get.mockResolvedValue(null);
-      (
-        mockProvider.getFinancialMetrics as ReturnType<typeof vi.fn>
-      ).mockResolvedValue(sampleMetrics);
+      (mockProvider.getFinancialMetrics as ReturnType<typeof vi.fn>).mockResolvedValue(
+        sampleMetrics,
+      );
 
       const result = await service.getFinancialMetrics('AAPL', 4);
 
       expect(result).toEqual(sampleMetrics);
-      expect(mockRedis.get).toHaveBeenCalledWith(
-        'research:financials:AAPL:mock',
-      );
+      expect(mockRedis.get).toHaveBeenCalledWith('research:financials:AAPL:mock');
       expect(mockProvider.getFinancialMetrics).toHaveBeenCalledWith('AAPL', 4);
       expect(mockRedis.setex).toHaveBeenCalledWith(
         'research:financials:AAPL:mock',
@@ -217,16 +201,14 @@ describe('CompanyResearchService', () => {
   describe('getAnalystConsensus', () => {
     it('returns data from provider on cache miss with 4-hour TTL', async () => {
       mockRedis.get.mockResolvedValue(null);
-      (
-        mockProvider.getAnalystConsensus as ReturnType<typeof vi.fn>
-      ).mockResolvedValue(sampleConsensus);
+      (mockProvider.getAnalystConsensus as ReturnType<typeof vi.fn>).mockResolvedValue(
+        sampleConsensus,
+      );
 
       const result = await service.getAnalystConsensus('AAPL');
 
       expect(result).toEqual(sampleConsensus);
-      expect(mockRedis.get).toHaveBeenCalledWith(
-        'research:consensus:AAPL:mock',
-      );
+      expect(mockRedis.get).toHaveBeenCalledWith('research:consensus:AAPL:mock');
       expect(mockProvider.getAnalystConsensus).toHaveBeenCalledWith('AAPL');
       expect(mockRedis.setex).toHaveBeenCalledWith(
         'research:consensus:AAPL:mock',
@@ -246,9 +228,9 @@ describe('CompanyResearchService', () => {
 
     it('uses named provider when specified', async () => {
       mockRedis.get.mockResolvedValue(null);
-      (
-        mockProvider.getAnalystConsensus as ReturnType<typeof vi.fn>
-      ).mockResolvedValue(sampleConsensus);
+      (mockProvider.getAnalystConsensus as ReturnType<typeof vi.fn>).mockResolvedValue(
+        sampleConsensus,
+      );
 
       await service.getAnalystConsensus('AAPL', 'mock');
 

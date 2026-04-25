@@ -102,9 +102,7 @@ export class AnalysisStreamController {
         eventType: event.eventType,
         payload: event.payloadJson ?? event.payload ?? {},
         createdAt:
-          event.createdAt instanceof Date
-            ? event.createdAt.toISOString()
-            : event.createdAt,
+          event.createdAt instanceof Date ? event.createdAt.toISOString() : event.createdAt,
       },
     };
   }

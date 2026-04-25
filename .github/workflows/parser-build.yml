@@ -6,7 +6,7 @@ on:
       - 'services/parser/**'
       - '.github/workflows/parser-build.yml'
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - 'services/parser/**'
 

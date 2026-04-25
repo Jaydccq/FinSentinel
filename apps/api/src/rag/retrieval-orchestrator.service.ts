@@ -2,7 +2,11 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { RagChunkStoreService } from './rag-chunk-store.service';
 import { RagEmbeddingService } from './rag-embedding.service';
 import { SparseSearchService, type SparseSearchFilters } from './sparse-search.service';
-import { RetrievalFusionService, type RankedCandidate, type FusedCandidate } from './retrieval-fusion.service';
+import {
+  RetrievalFusionService,
+  type RankedCandidate,
+  type FusedCandidate,
+} from './retrieval-fusion.service';
 import { GraphRetrievalService } from './graph-retrieval.service';
 import { MetadataPreFilterService } from './metadata-pre-filter.service';
 import { QueryEntityExtractorService } from './query-entity-extractor.service';
@@ -81,7 +85,12 @@ export class RetrievalOrchestratorService {
     // retrievable; matching rows get a small precision boost. The dense lane
     // still ignores softFilter (its inner RRF has no ranking-boost surface
     // equivalent to ts_rank_cd) — this is intentional.
-    const { candidateDocIds: _unused, appliedMode: _appliedMode, softFilter, hardFilter } = preFilter;
+    const {
+      candidateDocIds: _unused,
+      appliedMode: _appliedMode,
+      softFilter,
+      hardFilter,
+    } = preFilter;
     const effectiveFilters: SparseSearchFilters = softFilter
       ? {
           ...hardFilter,
@@ -96,14 +105,13 @@ export class RetrievalOrchestratorService {
     // The orchestrator owns this check because MetadataPreFilterService cannot
     // distinguish "explicit caller filter" from "entity-extracted hint".
     const hardFilterHadHints =
-      (effectiveFilters.tickers?.length ?? 0) > 0 ||
-      (effectiveFilters.issuerName?.length ?? 0) > 0;
+      (effectiveFilters.tickers?.length ?? 0) > 0 || (effectiveFilters.issuerName?.length ?? 0) > 0;
 
     this.logger.debug(
       `metadata prefilter: appliedMode=${preFilter.appliedMode} ` +
-      `tickers=${JSON.stringify(effectiveFilters.tickers ?? [])} ` +
-      `issuerName=${JSON.stringify(effectiveFilters.issuerName ?? [])} ` +
-      `fallbackFlag=${extracted.fallbackFlag ?? 'none'}`,
+        `tickers=${JSON.stringify(effectiveFilters.tickers ?? [])} ` +
+        `issuerName=${JSON.stringify(effectiveFilters.issuerName ?? [])} ` +
+        `fallbackFlag=${extracted.fallbackFlag ?? 'none'}`,
     );
 
     // Determine variants to run, capped at MAX_VARIANTS.
@@ -145,15 +153,21 @@ export class RetrievalOrchestratorService {
     // the configured threshold for the query class AND a hard filter with ticker/issuer
     // hints was applied, downgrade to a soft (no-hint) re-run to recover recall.
     const totalCandidates = allLaneResults.reduce((sum, lane) => sum + lane.length, 0);
-    if (this.metadataPreFilter.shouldDowngrade(request.queryClass, totalCandidates, hardFilterHadHints)) {
+    if (
+      this.metadataPreFilter.shouldDowngrade(
+        request.queryClass,
+        totalCandidates,
+        hardFilterHadHints,
+      )
+    ) {
       const threshold = request.queryClass
         ? (this.metadataPreFilter.getThreshold(request.queryClass) ?? 0)
         : 0;
       this.logger.warn(
         `metadata prefilter downgraded: class=${request.queryClass} ` +
-        `candidates=${totalCandidates} threshold=${threshold} ` +
-        `tickers=${JSON.stringify(effectiveFilters.tickers ?? [])} ` +
-        `issuerName=${JSON.stringify(effectiveFilters.issuerName ?? [])}`,
+          `candidates=${totalCandidates} threshold=${threshold} ` +
+          `tickers=${JSON.stringify(effectiveFilters.tickers ?? [])} ` +
+          `issuerName=${JSON.stringify(effectiveFilters.issuerName ?? [])}`,
       );
       this.metrics?.incrementCounter(
         'rag_metadata_prefilter_downgrade_total',
@@ -164,7 +178,11 @@ export class RetrievalOrchestratorService {
       // Strip tickers/issuerName and re-run. NOTE: dense lane (searchRepresentations)
       // never consumed these fields (see [RAG-TD-R4-03] in tech-debt-tracker),
       // so the re-run affects only the sparse lane's WHERE clauses.
-      const { tickers: _strippedTickers, issuerName: _strippedIssuer, ...downgradedFilters } = effectiveFilters;
+      const {
+        tickers: _strippedTickers,
+        issuerName: _strippedIssuer,
+        ...downgradedFilters
+      } = effectiveFilters;
 
       const downgradedPromises = variants.map((variant) =>
         this.runVariantLanes(variant, lanes, topKPerLane, downgradedFilters, request.entityNames),
@@ -218,9 +236,7 @@ export class RetrievalOrchestratorService {
       lanePromises.push(
         this.graphRetrieval
           .search(entityNames, variant.query, topKPerLane)
-          .then((candidates) =>
-            candidates.map((c) => ({ ...c, variantKind: variant.kind })),
-          ),
+          .then((candidates) => candidates.map((c) => ({ ...c, variantKind: variant.kind }))),
       );
     }
 
@@ -251,11 +267,7 @@ export class RetrievalOrchestratorService {
   ): Promise<RankedCandidate[]> {
     const queryEmbedding = await this.embeddingService.embedQuery(query);
 
-    const hits = await this.chunkStore.searchRepresentations(
-      queryEmbedding,
-      filters,
-      topK * 4,
-    );
+    const hits = await this.chunkStore.searchRepresentations(queryEmbedding, filters, topK * 4);
 
     // Inner RRF: group by (representationType), rank within each group,
     // then fuse across groups by canonical chunkId.
@@ -274,7 +286,10 @@ export class RetrievalOrchestratorService {
 
     // Fuse across representation groups into one RRF score per chunkId.
     const innerRrfK = 60;
-    const innerMap = new Map<string, { hit: (typeof hits)[0]; rrfScore: number; repTypes: string[] }>();
+    const innerMap = new Map<
+      string,
+      { hit: (typeof hits)[0]; rrfScore: number; repTypes: string[] }
+    >();
 
     for (const [repType, group] of byRepType.entries()) {
       for (let rank = 0; rank < group.length; rank++) {

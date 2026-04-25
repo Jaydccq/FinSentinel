@@ -93,9 +93,9 @@ describe('isObviouslyEphemeralDb', () => {
   it('accepts well-known test DB names', () => {
     expect(isObviouslyEphemeralDb('postgresql://u:p@prod.example.com/finsentinel_test')).toBe(true);
     expect(isObviouslyEphemeralDb('postgresql://u:p@prod.example.com/finsentinel_ci')).toBe(true);
-    expect(
-      isObviouslyEphemeralDb('postgresql://u:p@prod.example.com/finsentinel_ephemeral'),
-    ).toBe(true);
+    expect(isObviouslyEphemeralDb('postgresql://u:p@prod.example.com/finsentinel_ephemeral')).toBe(
+      true,
+    );
   });
 
   it('rejects unknown host + unknown DB name', () => {
@@ -162,10 +162,7 @@ describe('guardProductionAccidents', () => {
 
 // ── reindexByDocType (core loop) ───────────────────────────────────────────────
 
-function makeDocRow(
-  id: string,
-  overrides: Partial<DocRowForReindex> = {},
-): DocRowForReindex {
+function makeDocRow(id: string, overrides: Partial<DocRowForReindex> = {}): DocRowForReindex {
   return {
     id,
     storageKey: `docs/${id}.txt`,
@@ -335,10 +332,7 @@ describe('reindexByDocType', () => {
       originalFileName: 'my-doc.md',
     });
 
-    const fetcher: DocRowFetcher = vi
-      .fn()
-      .mockResolvedValueOnce([docRow])
-      .mockResolvedValue([]);
+    const fetcher: DocRowFetcher = vi.fn().mockResolvedValueOnce([docRow]).mockResolvedValue([]);
 
     const capturedCalls: DocRowForReindex[] = [];
     const reindexer: DocReindexer = vi.fn().mockImplementation(async (row: DocRowForReindex) => {

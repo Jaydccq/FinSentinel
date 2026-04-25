@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 import { REPRESENTATION_ENRICH_QUEUE } from './queue.constants';
-import { ChunkRepresentationService, ChunkNotFoundError } from '../rag/chunk-representation.service';
+import {
+  ChunkRepresentationService,
+  ChunkNotFoundError,
+} from '../rag/chunk-representation.service';
 import type { RepresentationEnrichJobData } from './representation-enrich.producer';
 
 @Injectable()
@@ -43,7 +46,9 @@ export class RepresentationEnrichConsumer implements OnModuleInit, OnModuleDestr
       this.logger.debug(`Representation enrich job ${job.id} completed`);
     });
 
-    this.logger.log(`RepresentationEnrichConsumer worker started (concurrency=${this.concurrency})`);
+    this.logger.log(
+      `RepresentationEnrichConsumer worker started (concurrency=${this.concurrency})`,
+    );
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -65,9 +70,7 @@ export class RepresentationEnrichConsumer implements OnModuleInit, OnModuleDestr
         if (result.reason?.includes('circuit breaker open')) {
           throw new Error(`circuit breaker open: retryable — ${result.reason}`);
         }
-        this.logger.warn(
-          `Representation enrichment failed for chunk ${chunkId}: ${result.reason}`,
-        );
+        this.logger.warn(`Representation enrichment failed for chunk ${chunkId}: ${result.reason}`);
       }
     } catch (err) {
       if (err instanceof ChunkNotFoundError) {

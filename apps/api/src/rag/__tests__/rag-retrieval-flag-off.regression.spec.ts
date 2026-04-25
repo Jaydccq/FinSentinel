@@ -13,12 +13,12 @@ const FIXTURE_CHUNKS = [
   { id: 'chunk-d4', sourceId: 'src-alpha', similarity: 0.79, doc_type: 'SEC_FILING' },
   { id: 'chunk-e5', sourceId: 'src-delta', similarity: 0.76, doc_type: 'NEWS' },
   { id: 'chunk-f6', sourceId: 'src-beta', similarity: 0.73, doc_type: 'SEC_FILING' },
-  { id: 'chunk-g7', sourceId: 'src-gamma', similarity: 0.70, doc_type: 'RESEARCH_REPORT' },
+  { id: 'chunk-g7', sourceId: 'src-gamma', similarity: 0.7, doc_type: 'RESEARCH_REPORT' },
   { id: 'chunk-h8', sourceId: 'src-epsilon', similarity: 0.68, doc_type: 'NEWS' },
   { id: 'chunk-i9', sourceId: 'src-delta', similarity: 0.66, doc_type: 'SEC_FILING' },
   { id: 'chunk-j10', sourceId: 'src-alpha', similarity: 0.64, doc_type: 'NEWS' },
   { id: 'chunk-k11', sourceId: 'src-beta', similarity: 0.55, doc_type: 'RESEARCH_REPORT' },
-  { id: 'chunk-l12', sourceId: 'src-gamma', similarity: 0.40, doc_type: 'SEC_FILING' },
+  { id: 'chunk-l12', sourceId: 'src-gamma', similarity: 0.4, doc_type: 'SEC_FILING' },
 ].map(({ id, sourceId, similarity, doc_type }) => ({
   id,
   sourceType: 'document' as const,
@@ -137,7 +137,9 @@ describe('RagRetrievalService flag-off regression', () => {
 
     expect(results.length).toBeGreaterThan(0);
     expect(results.every((r) => typeof r.chunkId === 'string' && r.chunkId.length > 0)).toBe(true);
-    expect(results.every((r) => typeof r.sourceId === 'string' && r.sourceId.length > 0)).toBe(true);
+    expect(results.every((r) => typeof r.sourceId === 'string' && r.sourceId.length > 0)).toBe(
+      true,
+    );
   });
 
   it('filters out results below RAG_SIMILARITY_THRESHOLD (0.65)', async () => {

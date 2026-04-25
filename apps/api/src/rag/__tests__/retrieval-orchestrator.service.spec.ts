@@ -8,7 +8,10 @@ const makeMetadataPreFilter = () =>
 
 const makeQueryEntityExtractor = () => ({
   extract: vi.fn().mockResolvedValue({
-    tickers: [], issuerNames: [], sectors: [], regions: [],
+    tickers: [],
+    issuerNames: [],
+    sectors: [],
+    regions: [],
   }),
 });
 
@@ -41,13 +44,29 @@ describe('RetrievalOrchestratorService', () => {
 
   it('dispatches dense and sparse lanes in parallel and fuses results', async () => {
     mockChunkStore.searchRepresentations.mockResolvedValueOnce([
-      { chunkId: 'a', sourceId: 's1', content: 'dense-a', metadata: {}, similarity: 0.9, representationType: 'canonical' },
+      {
+        chunkId: 'a',
+        sourceId: 's1',
+        content: 'dense-a',
+        metadata: {},
+        similarity: 0.9,
+        representationType: 'canonical',
+      },
     ]);
     mockSparseSearch.search.mockResolvedValueOnce([
       { chunkId: 'b', sourceId: 's2', content: 'sparse-b', metadata: {}, score: 0.7 },
     ]);
     mockFusion.fuse.mockReturnValueOnce([
-      { chunkId: 'a', sourceId: 's1', content: 'dense-a', metadata: {}, rrfScore: 0.02, lanes: ['dense'], representationTypesSeen: ['canonical'], variantKindsSeen: ['original'] },
+      {
+        chunkId: 'a',
+        sourceId: 's1',
+        content: 'dense-a',
+        metadata: {},
+        rrfScore: 0.02,
+        lanes: ['dense'],
+        representationTypesSeen: ['canonical'],
+        variantKindsSeen: ['original'],
+      },
     ]);
 
     const result = await service.orchestrate({
@@ -100,13 +119,39 @@ describe('RetrievalOrchestratorService', () => {
 
   it('dense lane calls searchRepresentations for all three representation types', async () => {
     mockChunkStore.searchRepresentations.mockResolvedValueOnce([
-      { chunkId: 'c1', sourceId: 's1', content: 'canon', metadata: {}, similarity: 0.9, representationType: 'canonical' },
-      { chunkId: 'c1', sourceId: 's1', content: 'ctx', metadata: {}, similarity: 0.85, representationType: 'contextual_text' },
-      { chunkId: 'c1', sourceId: 's1', content: 'sq', metadata: {}, similarity: 0.8, representationType: 'sample_question' },
+      {
+        chunkId: 'c1',
+        sourceId: 's1',
+        content: 'canon',
+        metadata: {},
+        similarity: 0.9,
+        representationType: 'canonical',
+      },
+      {
+        chunkId: 'c1',
+        sourceId: 's1',
+        content: 'ctx',
+        metadata: {},
+        similarity: 0.85,
+        representationType: 'contextual_text',
+      },
+      {
+        chunkId: 'c1',
+        sourceId: 's1',
+        content: 'sq',
+        metadata: {},
+        similarity: 0.8,
+        representationType: 'sample_question',
+      },
     ]);
     mockFusion.fuse.mockReturnValueOnce([]);
 
-    await service.orchestrate({ rewrittenQuery: 'q', lanes: ['dense'], topKPerLane: 5, filters: {} });
+    await service.orchestrate({
+      rewrittenQuery: 'q',
+      lanes: ['dense'],
+      topKPerLane: 5,
+      filters: {},
+    });
 
     // searchRepresentations called with default types (no explicit types arg restriction in orchestrator)
     expect(mockChunkStore.searchRepresentations).toHaveBeenCalledWith(
@@ -118,13 +163,39 @@ describe('RetrievalOrchestratorService', () => {
 
   it('dense lane fuses multiple representation types per chunkId into one RRF candidate', async () => {
     mockChunkStore.searchRepresentations.mockResolvedValueOnce([
-      { chunkId: 'c1', sourceId: 's1', content: 'canon', metadata: {}, similarity: 0.9, representationType: 'canonical' },
-      { chunkId: 'c1', sourceId: 's1', content: 'ctx', metadata: {}, similarity: 0.85, representationType: 'contextual_text' },
-      { chunkId: 'c2', sourceId: 's2', content: 'other', metadata: {}, similarity: 0.7, representationType: 'canonical' },
+      {
+        chunkId: 'c1',
+        sourceId: 's1',
+        content: 'canon',
+        metadata: {},
+        similarity: 0.9,
+        representationType: 'canonical',
+      },
+      {
+        chunkId: 'c1',
+        sourceId: 's1',
+        content: 'ctx',
+        metadata: {},
+        similarity: 0.85,
+        representationType: 'contextual_text',
+      },
+      {
+        chunkId: 'c2',
+        sourceId: 's2',
+        content: 'other',
+        metadata: {},
+        similarity: 0.7,
+        representationType: 'canonical',
+      },
     ]);
     mockFusion.fuse.mockReturnValueOnce([]);
 
-    await service.orchestrate({ rewrittenQuery: 'q', lanes: ['dense'], topKPerLane: 5, filters: {} });
+    await service.orchestrate({
+      rewrittenQuery: 'q',
+      lanes: ['dense'],
+      topKPerLane: 5,
+      filters: {},
+    });
 
     const fuseCalls = (mockFusion.fuse as Mock).mock.calls[0][0] as any[][];
     const denseLane = fuseCalls[0]!;
@@ -162,11 +233,23 @@ describe('RetrievalOrchestratorService', () => {
   it('empty document_chunk_representations returns canonical-only dense results', async () => {
     // Only canonical hits returned (rep rows empty)
     mockChunkStore.searchRepresentations.mockResolvedValueOnce([
-      { chunkId: 'c1', sourceId: 's1', content: 'canon', metadata: {}, similarity: 0.9, representationType: 'canonical' },
+      {
+        chunkId: 'c1',
+        sourceId: 's1',
+        content: 'canon',
+        metadata: {},
+        similarity: 0.9,
+        representationType: 'canonical',
+      },
     ]);
     mockFusion.fuse.mockReturnValueOnce([]);
 
-    await service.orchestrate({ rewrittenQuery: 'q', lanes: ['dense'], topKPerLane: 5, filters: {} });
+    await service.orchestrate({
+      rewrittenQuery: 'q',
+      lanes: ['dense'],
+      topKPerLane: 5,
+      filters: {},
+    });
 
     const fuseCalls = (mockFusion.fuse as Mock).mock.calls[0][0] as any[][];
     const denseLane = fuseCalls[0]!;
@@ -181,7 +264,12 @@ describe('RetrievalOrchestratorService', () => {
     mockFusion.fuse.mockReturnValueOnce([]);
 
     const filters = { docType: 'SEC_FILING', sector: 'tech' };
-    await service.orchestrate({ rewrittenQuery: 'q', lanes: ['dense', 'sparse'], topKPerLane: 5, filters });
+    await service.orchestrate({
+      rewrittenQuery: 'q',
+      lanes: ['dense', 'sparse'],
+      topKPerLane: 5,
+      filters,
+    });
 
     expect(mockChunkStore.searchRepresentations).toHaveBeenCalledWith(
       expect.any(Array),
@@ -199,14 +287,56 @@ describe('RetrievalOrchestratorService', () => {
     // Each of 2 variants returns 3 dense candidates → total should be 6.
     mockChunkStore.searchRepresentations
       .mockResolvedValueOnce([
-        { chunkId: 'a', sourceId: 's1', content: 'c', metadata: {}, similarity: 0.9, representationType: 'canonical' },
-        { chunkId: 'b', sourceId: 's1', content: 'c', metadata: {}, similarity: 0.8, representationType: 'canonical' },
-        { chunkId: 'c', sourceId: 's1', content: 'c', metadata: {}, similarity: 0.7, representationType: 'canonical' },
+        {
+          chunkId: 'a',
+          sourceId: 's1',
+          content: 'c',
+          metadata: {},
+          similarity: 0.9,
+          representationType: 'canonical',
+        },
+        {
+          chunkId: 'b',
+          sourceId: 's1',
+          content: 'c',
+          metadata: {},
+          similarity: 0.8,
+          representationType: 'canonical',
+        },
+        {
+          chunkId: 'c',
+          sourceId: 's1',
+          content: 'c',
+          metadata: {},
+          similarity: 0.7,
+          representationType: 'canonical',
+        },
       ])
       .mockResolvedValueOnce([
-        { chunkId: 'd', sourceId: 's2', content: 'c', metadata: {}, similarity: 0.9, representationType: 'canonical' },
-        { chunkId: 'e', sourceId: 's2', content: 'c', metadata: {}, similarity: 0.8, representationType: 'canonical' },
-        { chunkId: 'f', sourceId: 's2', content: 'c', metadata: {}, similarity: 0.7, representationType: 'canonical' },
+        {
+          chunkId: 'd',
+          sourceId: 's2',
+          content: 'c',
+          metadata: {},
+          similarity: 0.9,
+          representationType: 'canonical',
+        },
+        {
+          chunkId: 'e',
+          sourceId: 's2',
+          content: 'c',
+          metadata: {},
+          similarity: 0.8,
+          representationType: 'canonical',
+        },
+        {
+          chunkId: 'f',
+          sourceId: 's2',
+          content: 'c',
+          metadata: {},
+          similarity: 0.7,
+          representationType: 'canonical',
+        },
       ]);
     mockFusion.fuse.mockReturnValue([]);
 
@@ -267,7 +397,9 @@ describe('RetrievalOrchestratorService', () => {
     const mockQueryEntityExtractorR45 = {
       extract: vi.fn().mockResolvedValue({
         tickers: [{ value: 'AAPL', confidence: 0.95 }],
-        issuerNames: [], sectors: [], regions: [],
+        issuerNames: [],
+        sectors: [],
+        regions: [],
       }),
     };
 
@@ -285,7 +417,11 @@ describe('RetrievalOrchestratorService', () => {
         // Second call (downgraded, no tickers): 30 results
         return Promise.resolve(
           Array.from({ length: 30 }, (_, i) => ({
-            chunkId: `y${i}`, sourceId: 's2', content: 'c', metadata: {}, score: 0.5,
+            chunkId: `y${i}`,
+            sourceId: 's2',
+            content: 'c',
+            metadata: {},
+            score: 0.5,
           })),
         );
       }),
@@ -307,7 +443,7 @@ describe('RetrievalOrchestratorService', () => {
       mockFusion as any,
       hardPreFilterR45,
       mockQueryEntityExtractorR45 as any,
-      undefined,          // graphRetrieval (Optional)
+      undefined, // graphRetrieval (Optional)
       mockMetricsR45 as any,
     );
 
@@ -336,7 +472,9 @@ describe('RetrievalOrchestratorService', () => {
   it('passes extracted ticker hint into sparse lane filters (R4.3)', async () => {
     mockQueryEntityExtractor.extract.mockResolvedValueOnce({
       tickers: [{ value: 'AAPL', confidence: 0.95 }],
-      issuerNames: [], sectors: [], regions: [],
+      issuerNames: [],
+      sectors: [],
+      regions: [],
     });
     mockSparseSearch.search.mockResolvedValueOnce([]);
     mockFusion.fuse.mockReturnValueOnce([]);

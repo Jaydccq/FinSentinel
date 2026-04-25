@@ -41,7 +41,9 @@ API 进程的「外壳」与「模块装载策略」积累了一些早期决定�
 ### 5.1 Bootstrap 强化
 
 ```ts
-const allowList = env.CORS_ORIGINS.split(',').map(o => o.trim()).filter(Boolean);
+const allowList = env.CORS_ORIGINS.split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
 app.enableCors({ origin: allowList, credentials: true });
 app.use(helmet());
 app.use(compression());

@@ -92,8 +92,14 @@ export class RagRetrievalService {
   ) {
     this.similarityThreshold = configService.get<number>('RAG_SIMILARITY_THRESHOLD', 0.65);
     this.multiStageEnabled = configService.get<boolean>('rag.multiStageEnabled', true) as boolean;
-    this.rolloutMode = configService.get<'off' | 'shadow' | 'canary' | 'on'>('rag.rollout.mode', 'off') as 'off' | 'shadow' | 'canary' | 'on';
-    this.shadowSampleRate = configService.get<number>('rag.rollout.shadowSampleRate', 1.0) as number;
+    this.rolloutMode = configService.get<'off' | 'shadow' | 'canary' | 'on'>(
+      'rag.rollout.mode',
+      'off',
+    ) as 'off' | 'shadow' | 'canary' | 'on';
+    this.shadowSampleRate = configService.get<number>(
+      'rag.rollout.shadowSampleRate',
+      1.0,
+    ) as number;
   }
 
   async search(
@@ -113,11 +119,10 @@ export class RagRetrievalService {
 
     const pipelineChoice = this.choosePipeline(opts);
 
-    this.metrics.incrementCounter(
-      'rag_retrieval_pipeline',
-      'Pipeline selection count',
-      { mode: pipelineChoice, query_class: opts.queryClass ?? 'unknown' },
-    );
+    this.metrics.incrementCounter('rag_retrieval_pipeline', 'Pipeline selection count', {
+      mode: pipelineChoice,
+      query_class: opts.queryClass ?? 'unknown',
+    });
 
     if (pipelineChoice === 'multi_stage' && this.multiStagePossible()) {
       return this.searchMultiStage(opts, safeTopK);
@@ -129,7 +134,11 @@ export class RagRetrievalService {
     const singleLatencyMs = Date.now() - singleStart;
 
     // Fire-and-forget shadow when mode is 'shadow' and multi-stage deps are present
-    if (this.rolloutMode === 'shadow' && this.multiStagePossible() && Math.random() <= this.shadowSampleRate) {
+    if (
+      this.rolloutMode === 'shadow' &&
+      this.multiStagePossible() &&
+      Math.random() <= this.shadowSampleRate
+    ) {
       void this.runShadow(opts, results, singleLatencyMs);
     }
 
@@ -159,13 +168,16 @@ export class RagRetrievalService {
     return !!(this.planner && this.orchestrator && this.reranker && this.contextPacker);
   }
 
-  private async searchSingleStage(opts: RagSearchOptions, safeTopK: number): Promise<RagSearchResult[]> {
+  private async searchSingleStage(
+    opts: RagSearchOptions,
+    safeTopK: number,
+  ): Promise<RagSearchResult[]> {
     const startedAt = Date.now();
 
     this.logger.debug(
       `RAG search: query="${opts.query.substring(0, 50)}..." topK=${safeTopK} ` +
-      `docType=${opts.docType ?? 'any'} sector=${opts.sector ?? 'any'} ` +
-      `region=${opts.regionId ?? 'any'} after=${opts.afterDate ?? 'any'}`,
+        `docType=${opts.docType ?? 'any'} sector=${opts.sector ?? 'any'} ` +
+        `region=${opts.regionId ?? 'any'} after=${opts.afterDate ?? 'any'}`,
     );
 
     try {
@@ -283,11 +295,9 @@ export class RagRetrievalService {
       });
     }
 
-    this.metrics?.incrementCounter?.(
-      'rag_shadow_outcome_total',
-      'Shadow runner outcome counts',
-      { outcome },
-    );
+    this.metrics?.incrementCounter?.('rag_shadow_outcome_total', 'Shadow runner outcome counts', {
+      outcome,
+    });
   }
 
   private async searchMultiStage(
@@ -440,7 +450,11 @@ export class RagRetrievalService {
 
       const totalMs = Date.now() - startedAt;
 
-      this.metrics.incrementCounter('rag_search_requests_total', 'Total RAG search requests by status', { status: 'success' });
+      this.metrics.incrementCounter(
+        'rag_search_requests_total',
+        'Total RAG search requests by status',
+        { status: 'success' },
+      );
       this.metrics.observeHistogram(
         'rag_search_duration_seconds',
         'Duration of RAG search operations in seconds',
@@ -453,7 +467,12 @@ export class RagRetrievalService {
         query: opts.query,
         queryClass: planQueryClass,
         variants: planVariants,
-        filters: { docType: opts.docType ?? null, sector: opts.sector ?? null, regionId: opts.regionId ?? null, afterDate: opts.afterDate ?? null },
+        filters: {
+          docType: opts.docType ?? null,
+          sector: opts.sector ?? null,
+          regionId: opts.regionId ?? null,
+          afterDate: opts.afterDate ?? null,
+        },
         lanes: planLanes,
         resultChunkIds,
         laneCounts,
@@ -468,7 +487,11 @@ export class RagRetrievalService {
     } catch (error) {
       this.logger.warn(`Multi-stage search failed, falling back to dense: ${error}`);
       const totalMs = Date.now() - startedAt;
-      this.metrics.incrementCounter('rag_search_requests_total', 'Total RAG search requests by status', { status: 'error' });
+      this.metrics.incrementCounter(
+        'rag_search_requests_total',
+        'Total RAG search requests by status',
+        { status: 'error' },
+      );
       this.metrics.observeHistogram(
         'rag_search_duration_seconds',
         'Duration of RAG search operations in seconds',
@@ -481,7 +504,12 @@ export class RagRetrievalService {
         query: opts.query,
         queryClass: planQueryClass,
         variants: planVariants,
-        filters: { docType: opts.docType ?? null, sector: opts.sector ?? null, regionId: opts.regionId ?? null, afterDate: opts.afterDate ?? null },
+        filters: {
+          docType: opts.docType ?? null,
+          sector: opts.sector ?? null,
+          regionId: opts.regionId ?? null,
+          afterDate: opts.afterDate ?? null,
+        },
         lanes: planLanes,
         resultChunkIds,
         laneCounts: {},
@@ -503,7 +531,10 @@ export class RagRetrievalService {
     });
   }
 
-  private async searchDenseFallback(opts: RagSearchOptions, safeTopK: number): Promise<RagSearchResult[]> {
+  private async searchDenseFallback(
+    opts: RagSearchOptions,
+    safeTopK: number,
+  ): Promise<RagSearchResult[]> {
     const queryEmbedding = await this.embeddingService.embedQuery(opts.query);
     const ranked = await this.chunkStore.search(queryEmbedding, {
       docType: opts.docType,

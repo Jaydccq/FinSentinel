@@ -16,10 +16,7 @@ import { AnalysisCheckpointService } from '../analysis-checkpoint.service';
 import { ContextFabricService } from '../context-fabric.service';
 import { RoleExecutorService } from './role-executor.service';
 import type { TeamService, TeamExecutionArgs } from '../contracts/team-contract';
-import {
-  RISK_REVIEWER_PROMPT,
-  PORTFOLIO_MANAGER_PROMPT,
-} from '../contracts/prompts';
+import { RISK_REVIEWER_PROMPT, PORTFOLIO_MANAGER_PROMPT } from '../contracts/prompts';
 
 function parseStrategyArchivePayload(value: unknown): StrategyArchivePayload | undefined {
   const parsed = strategyArchivePayloadSchema.safeParse(value);
@@ -96,8 +93,20 @@ export class RiskTeamService implements TeamService {
     const pmArchive = parseStrategyArchivePayload(pmExt.strategyArchivePayload);
 
     const roleSummaries: RoleSummary[] = [
-      { roleKey: 'RISK_REVIEWER',     status: 'COMPLETED', durationMs: reviewer.durationMs, toolCallCount: reviewer.toolCallCount, summary: reviewer.structured.summary },
-      { roleKey: 'PORTFOLIO_MANAGER', status: 'COMPLETED', durationMs: pm.durationMs,       toolCallCount: pm.toolCallCount,       summary: pm.structured.summary },
+      {
+        roleKey: 'RISK_REVIEWER',
+        status: 'COMPLETED',
+        durationMs: reviewer.durationMs,
+        toolCallCount: reviewer.toolCallCount,
+        summary: reviewer.structured.summary,
+      },
+      {
+        roleKey: 'PORTFOLIO_MANAGER',
+        status: 'COMPLETED',
+        durationMs: pm.durationMs,
+        toolCallCount: pm.toolCallCount,
+        summary: pm.structured.summary,
+      },
     ];
 
     const teamOutput: StageStructuredOutput = {
@@ -109,13 +118,11 @@ export class RiskTeamService implements TeamService {
       confidence: pm.structured.confidence,
       strategyArchivePayload: pmArchive ?? intelligenceArchive ?? { snapshot: {} },
       portfolioDecision: (pmExt.portfolioDecision as string | undefined) ?? 'HOLD',
-      allocationGuidance:
-        (pmExt.allocationGuidance as unknown) ?? { notes: '', targets: [] },
-      riskLimits:
-        (pmExt.riskLimits as unknown) ?? {
-          maxDrawdownPct: 10,
-          stopLossTriggers: [],
-        },
+      allocationGuidance: (pmExt.allocationGuidance as unknown) ?? { notes: '', targets: [] },
+      riskLimits: (pmExt.riskLimits as unknown) ?? {
+        maxDrawdownPct: 10,
+        stopLossTriggers: [],
+      },
       alertTriggers: (pmExt.alertTriggers as unknown) ?? [],
       roleSummaries,
     };

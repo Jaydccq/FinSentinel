@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Param,
-  Query,
-  Sse,
-  UseGuards,
-  Logger,
-} from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Sse, UseGuards, Logger } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { newsItems, desc, asc, eq, and, sql, gte, gt } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
@@ -65,11 +56,19 @@ export class NewsController {
     }
 
     const countResult = whereClause
-      ? await this.db.select({ count: sql<number>`count(*)` }).from(newsItems).where(whereClause)
+      ? await this.db
+          .select({ count: sql<number>`count(*)` })
+          .from(newsItems)
+          .where(whereClause)
       : await this.db.select({ count: sql<number>`count(*)` }).from(newsItems);
 
     const totalElements = Number(countResult[0]?.count ?? 0);
-    return { content: rows, totalPages: Math.ceil(totalElements / size), totalElements, number: page };
+    return {
+      content: rows,
+      totalPages: Math.ceil(totalElements / size),
+      totalElements,
+      number: page,
+    };
   }
 
   /**
@@ -101,7 +100,7 @@ export class NewsController {
       totalCount: Number(totalResult[0]?.count ?? 0),
       todayCount: Number(todayResult[0]?.count ?? 0),
       countBySource: Object.fromEntries(
-        bySourceResult.map((r: { source: string; count: number }) => [r.source, Number(r.count)])
+        bySourceResult.map((r: { source: string; count: number }) => [r.source, Number(r.count)]),
       ),
     };
   }
@@ -110,10 +109,7 @@ export class NewsController {
   @Post('reindex-missing')
   @RateLimit({ limit: 2, windowSecs: 300 })
   @UseGuards(RateLimitGuard)
-  async reindexMissing(
-    @Query('limit') limitParam?: string,
-    @Query('force') forceParam?: string,
-  ) {
+  async reindexMissing(@Query('limit') limitParam?: string, @Query('force') forceParam?: string) {
     const limit = parseIntParam(limitParam, 100, 1, 500);
     const force = forceParam === 'true';
     return this.ragReindexService.reindexMissingNews(limit, force);
@@ -170,7 +166,12 @@ export class NewsController {
       .where(tickerWhere);
 
     const totalElements = Number(countResult[0]?.count ?? 0);
-    return { content: rows, totalPages: Math.ceil(totalElements / size), totalElements, number: page };
+    return {
+      content: rows,
+      totalPages: Math.ceil(totalElements / size),
+      totalElements,
+      number: page,
+    };
   }
 
   /**
@@ -181,9 +182,7 @@ export class NewsController {
   @Get('summary/:ticker')
   @RateLimit({ limit: 5, windowSecs: 300 })
   @UseGuards(RateLimitGuard)
-  async getSummary(
-    @Param('ticker') ticker: string,
-  ) {
+  async getSummary(@Param('ticker') ticker: string) {
     const upperTicker = ticker.toUpperCase();
     const countResult = await this.db
       .select({ count: sql<number>`count(*)` })
@@ -193,9 +192,10 @@ export class NewsController {
     const articleCount = Number(countResult[0]?.count ?? 0);
     return {
       ticker: upperTicker,
-      summary: articleCount > 0
-        ? `Found ${articleCount} recent articles for ${upperTicker}.`
-        : `No recent news found for ${upperTicker}.`,
+      summary:
+        articleCount > 0
+          ? `Found ${articleCount} recent articles for ${upperTicker}.`
+          : `No recent news found for ${upperTicker}.`,
       articleCount,
       generatedAt: new Date().toISOString(),
     };
@@ -264,11 +264,24 @@ export class NewsController {
     return Date.now() - publishedAtMs >= NEWS_FEED_STALE_MS;
   }
 
-  private queryNewsRows(whereClause: ReturnType<typeof and> | undefined, size: number, offset: number) {
+  private queryNewsRows(
+    whereClause: ReturnType<typeof and> | undefined,
+    size: number,
+    offset: number,
+  ) {
     return whereClause
-      ? this.db.select().from(newsItems).where(whereClause)
-          .orderBy(desc(newsItems.publishedAt)).limit(size).offset(offset)
-      : this.db.select().from(newsItems)
-          .orderBy(desc(newsItems.publishedAt)).limit(size).offset(offset);
+      ? this.db
+          .select()
+          .from(newsItems)
+          .where(whereClause)
+          .orderBy(desc(newsItems.publishedAt))
+          .limit(size)
+          .offset(offset)
+      : this.db
+          .select()
+          .from(newsItems)
+          .orderBy(desc(newsItems.publishedAt))
+          .limit(size)
+          .offset(offset);
   }
 }

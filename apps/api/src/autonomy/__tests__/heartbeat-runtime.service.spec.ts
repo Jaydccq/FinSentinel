@@ -17,12 +17,9 @@ describe('HeartbeatRuntimeService.tick', () => {
     };
     trigger = { trigger: vi.fn().mockResolvedValue({ runId: 'run-hb' }) };
     events = { append: vi.fn().mockResolvedValue({}) };
-    svc = new HeartbeatRuntimeService(
-      hb as never,
-      trigger as never,
-      events as never,
-      { enabled: true },
-    );
+    svc = new HeartbeatRuntimeService(hb as never, trigger as never, events as never, {
+      enabled: true,
+    });
   });
 
   it('triggers a HEARTBEAT run for each due user and updates lastBeatAt', async () => {
@@ -38,13 +35,12 @@ describe('HeartbeatRuntimeService.tick', () => {
   });
 
   it('is a no-op when disabled', async () => {
-    svc = new HeartbeatRuntimeService(
-      hb as never,
-      trigger as never,
-      events as never,
-      { enabled: false },
-    );
-    hb.listDueHeartbeats.mockResolvedValue([{ userId: 'u1', intervalSeconds: 600, drawdownAlertPct: '10.00' }]);
+    svc = new HeartbeatRuntimeService(hb as never, trigger as never, events as never, {
+      enabled: false,
+    });
+    hb.listDueHeartbeats.mockResolvedValue([
+      { userId: 'u1', intervalSeconds: 600, drawdownAlertPct: '10.00' },
+    ]);
     await svc.tick();
     expect(trigger.trigger).not.toHaveBeenCalled();
   });

@@ -7,24 +7,13 @@
       "id": "gs-001",
       "query": "how much money did Apple make last year?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-001"
-      ],
+      "expected_chunk_ids": ["chunk-001"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple reported total revenue of $391.0 billion for fiscal year 2025, up 5.2% from $371.8 billion in fiscal year 2024.",
-      "expected_entities": [
-        "Apple Inc."
-      ],
+      "expected_entities": ["Apple Inc."],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ],
+      "tags": ["exact_lookup", "Technology", "SEC_FILING", "Apple Inc."],
       "provenance_original_query": "AAPL FY2025 total revenue",
       "provenance_label": "natural_phrasing"
     },
@@ -32,72 +21,37 @@
       "id": "gs-002",
       "query": "AAPL FY2025 Services revenue",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-001",
-        "chunk-002"
-      ],
+      "expected_chunk_ids": ["chunk-001", "chunk-002"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple Services revenue reached $96.2 billion in FY2025, growing from $84.3 billion in FY2024, a 14.1% year-over-year increase.",
-      "expected_entities": [
-        "Apple Inc.",
-        "Services"
-      ],
+      "expected_entities": ["Apple Inc.", "Services"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ]
+      "tags": ["exact_lookup", "Technology", "SEC_FILING", "Apple Inc."]
     },
     {
       "id": "gs-003",
       "query": "AAPL Q3 FY2025 revenue quarter ended June 2025",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-008"
-      ],
+      "expected_chunk_ids": ["chunk-008"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-Q3-2025-earnings.pdf"
-      ],
+      "expected_source_docs": ["AAPL-Q3-2025-earnings.pdf"],
       "expected_answer": "Apple reported Q3 FY2025 revenue of $94.8 billion for the quarter ended June 2025, up 4.9% year-over-year.",
-      "expected_entities": [
-        "Apple Inc."
-      ],
+      "expected_entities": ["Apple Inc."],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ]
+      "tags": ["exact_lookup", "Technology", "SEC_FILING", "Apple Inc."]
     },
     {
       "id": "gs-004",
       "query": "how much cash did Apple generate from operations last year?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-005"
-      ],
+      "expected_chunk_ids": ["chunk-005"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple reported operating cash flow of $118.3 billion for FY2025.",
-      "expected_entities": [
-        "Apple Inc."
-      ],
+      "expected_entities": ["Apple Inc."],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ],
+      "tags": ["exact_lookup", "Technology", "SEC_FILING", "Apple Inc."],
       "provenance_original_query": "AAPL FY2025 operating cash flow",
       "provenance_label": "natural_phrasing"
     },
@@ -105,24 +59,13 @@
       "id": "gs-005",
       "query": "what were NVIDIA's total sales for fiscal 2025?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-009"
-      ],
+      "expected_chunk_ids": ["chunk-009"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf"],
       "expected_answer": "NVIDIA reported record revenue of $130.5 billion for fiscal year 2025, an increase of 114% year-over-year.",
-      "expected_entities": [
-        "NVIDIA Corporation"
-      ],
+      "expected_entities": ["NVIDIA Corporation"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Semiconductor",
-        "SEC_FILING",
-        "NVIDIA Corporation"
-      ],
+      "tags": ["exact_lookup", "Semiconductor", "SEC_FILING", "NVIDIA Corporation"],
       "provenance_original_query": "NVDA FY2025 total revenue",
       "provenance_label": "natural_phrasing"
     },
@@ -130,49 +73,25 @@
       "id": "gs-006",
       "query": "NVDA FY2025 Data Center revenue",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-009",
-        "chunk-011"
-      ],
+      "expected_chunk_ids": ["chunk-009", "chunk-011"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf"],
       "expected_answer": "NVIDIA Data Center revenue was $115.2 billion in FY2025, representing 88.3% of total revenue.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "Data Center"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "Data Center"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Semiconductor",
-        "SEC_FILING",
-        "NVIDIA Corporation"
-      ]
+      "tags": ["exact_lookup", "Semiconductor", "SEC_FILING", "NVIDIA Corporation"]
     },
     {
       "id": "gs-007",
       "query": "what was NVIDIA's gross margin in fiscal 2025?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-013"
-      ],
+      "expected_chunk_ids": ["chunk-013"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf"],
       "expected_answer": "NVIDIA's gross margin was 73.8% for FY2025, compared with 72.7% in FY2024.",
-      "expected_entities": [
-        "NVIDIA Corporation"
-      ],
+      "expected_entities": ["NVIDIA Corporation"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Semiconductor",
-        "SEC_FILING",
-        "NVIDIA Corporation"
-      ],
+      "tags": ["exact_lookup", "Semiconductor", "SEC_FILING", "NVIDIA Corporation"],
       "provenance_original_query": "NVDA FY2025 gross margin",
       "provenance_label": "natural_phrasing"
     },
@@ -180,118 +99,61 @@
       "id": "gs-008",
       "query": "TSLA FY2025 total revenue",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-015"
-      ],
+      "expected_chunk_ids": ["chunk-015"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "TSLA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["TSLA-10K-2025.pdf"],
       "expected_answer": "Tesla reported total revenue of $97.7 billion for fiscal year 2025, a 12% increase year-over-year.",
-      "expected_entities": [
-        "Tesla Inc."
-      ],
+      "expected_entities": ["Tesla Inc."],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Technology",
-        "SEC_FILING",
-        "Tesla Inc."
-      ]
+      "tags": ["exact_lookup", "Technology", "SEC_FILING", "Tesla Inc."]
     },
     {
       "id": "gs-009",
       "query": "TSLA FY2025 vehicle deliveries",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-015"
-      ],
+      "expected_chunk_ids": ["chunk-015"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "TSLA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["TSLA-10K-2025.pdf"],
       "expected_answer": "Tesla delivered 1.95 million vehicles globally in FY2025.",
-      "expected_entities": [
-        "Tesla Inc."
-      ],
+      "expected_entities": ["Tesla Inc."],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Technology",
-        "SEC_FILING",
-        "Tesla Inc."
-      ]
+      "tags": ["exact_lookup", "Technology", "SEC_FILING", "Tesla Inc."]
     },
     {
       "id": "gs-010",
       "query": "MSFT FY2025 total revenue",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-020"
-      ],
+      "expected_chunk_ids": ["chunk-020"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "MSFT-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["MSFT-10K-2025.pdf"],
       "expected_answer": "Microsoft reported total revenue of $264.2 billion for fiscal year 2025, up 16% year-over-year.",
-      "expected_entities": [
-        "Microsoft Corporation"
-      ],
+      "expected_entities": ["Microsoft Corporation"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Technology",
-        "SEC_FILING",
-        "Microsoft Corporation"
-      ]
+      "tags": ["exact_lookup", "Technology", "SEC_FILING", "Microsoft Corporation"]
     },
     {
       "id": "gs-011",
       "query": "MSFT FY2025 Azure growth",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-020"
-      ],
+      "expected_chunk_ids": ["chunk-020"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "MSFT-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["MSFT-10K-2025.pdf"],
       "expected_answer": "Azure and other cloud services revenue grew 29% year-over-year in FY2025.",
-      "expected_entities": [
-        "Microsoft Corporation",
-        "Azure"
-      ],
+      "expected_entities": ["Microsoft Corporation", "Azure"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Technology",
-        "SEC_FILING",
-        "Microsoft Corporation"
-      ]
+      "tags": ["exact_lookup", "Technology", "SEC_FILING", "Microsoft Corporation"]
     },
     {
       "id": "gs-012",
       "query": "what's the current Fed funds rate after the June 2025 meeting?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-024"
-      ],
+      "expected_chunk_ids": ["chunk-024"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "fed-fomc-minutes-2025-06.pdf"
-      ],
+      "expected_source_docs": ["fed-fomc-minutes-2025-06.pdf"],
       "expected_answer": "At the June 2025 meeting, the FOMC maintained the federal funds rate target range at 4.25-4.50%.",
-      "expected_entities": [
-        "Federal Open Market Committee",
-        "Federal Reserve"
-      ],
+      "expected_entities": ["Federal Open Market Committee", "Federal Reserve"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Finance",
-        "REGULATION",
-        "FOMC"
-      ],
+      "tags": ["exact_lookup", "Finance", "REGULATION", "FOMC"],
       "provenance_original_query": "FOMC June 2025 federal funds target range",
       "provenance_label": "natural_phrasing"
     },
@@ -299,146 +161,73 @@
       "id": "gs-013",
       "query": "Core PCE May 2025 or June FOMC 2025",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-024",
-        "chunk-027"
-      ],
+      "expected_chunk_ids": ["chunk-024", "chunk-027"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "fed-fomc-minutes-2025-06.pdf",
-        "macro-inflation-outlook-Q2-2025.pdf"
-      ],
+      "expected_source_docs": ["fed-fomc-minutes-2025-06.pdf", "macro-inflation-outlook-Q2-2025.pdf"],
       "expected_answer": "Core PCE stood at 2.8% year-over-year, according to both the June 2025 FOMC minutes and the Q2 2025 inflation outlook.",
-      "expected_entities": [
-        "Core PCE",
-        "Federal Reserve"
-      ],
+      "expected_entities": ["Core PCE", "Federal Reserve"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Finance",
-        "REGULATION",
-        "inflation"
-      ]
+      "tags": ["exact_lookup", "Finance", "REGULATION", "inflation"]
     },
     {
       "id": "gs-014",
       "query": "JPM FY2025 net income",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-039"
-      ],
+      "expected_chunk_ids": ["chunk-039"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JPM-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["JPM-10K-2025.pdf"],
       "expected_answer": "JPMorgan Chase reported record net income of $54.2 billion for fiscal year 2025.",
-      "expected_entities": [
-        "JPMorgan Chase & Co."
-      ],
+      "expected_entities": ["JPMorgan Chase & Co."],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Finance",
-        "SEC_FILING",
-        "JPMorgan Chase"
-      ]
+      "tags": ["exact_lookup", "Finance", "SEC_FILING", "JPMorgan Chase"]
     },
     {
       "id": "gs-015",
       "query": "JPM FY2025 CET1 capital ratio",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-039"
-      ],
+      "expected_chunk_ids": ["chunk-039"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JPM-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["JPM-10K-2025.pdf"],
       "expected_answer": "JPMorgan Chase's CET1 capital ratio was 15.3%, well above the regulatory minimum of 11.4%.",
-      "expected_entities": [
-        "JPMorgan Chase & Co.",
-        "CET1"
-      ],
+      "expected_entities": ["JPMorgan Chase & Co.", "CET1"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Finance",
-        "SEC_FILING",
-        "JPMorgan Chase"
-      ]
+      "tags": ["exact_lookup", "Finance", "SEC_FILING", "JPMorgan Chase"]
     },
     {
       "id": "gs-016",
       "query": "JNJ FY2025 total revenue",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-033"
-      ],
+      "expected_chunk_ids": ["chunk-033"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JNJ-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["JNJ-10K-2025.pdf"],
       "expected_answer": "Johnson & Johnson reported total revenue of $88.7 billion for fiscal year 2025 after completing the Kenvue consumer health spinoff.",
-      "expected_entities": [
-        "Johnson & Johnson",
-        "Kenvue"
-      ],
+      "expected_entities": ["Johnson & Johnson", "Kenvue"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Healthcare",
-        "SEC_FILING",
-        "Johnson & Johnson"
-      ]
+      "tags": ["exact_lookup", "Healthcare", "SEC_FILING", "Johnson & Johnson"]
     },
     {
       "id": "gs-017",
       "query": "XOM FY2025 total revenue",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-036"
-      ],
+      "expected_chunk_ids": ["chunk-036"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "XOM-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["XOM-10K-2025.pdf"],
       "expected_answer": "Exxon Mobil reported total revenue of $334.5 billion for fiscal year 2025.",
-      "expected_entities": [
-        "Exxon Mobil Corporation"
-      ],
+      "expected_entities": ["Exxon Mobil Corporation"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Energy",
-        "SEC_FILING",
-        "Exxon Mobil"
-      ]
+      "tags": ["exact_lookup", "Energy", "SEC_FILING", "Exxon Mobil"]
     },
     {
       "id": "gs-018",
       "query": "what was the average oil price in 2025?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-036",
-        "chunk-037"
-      ],
+      "expected_chunk_ids": ["chunk-036", "chunk-037"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "XOM-10K-2025.pdf",
-        "oil-market-outlook-2025.pdf"
-      ],
+      "expected_source_docs": ["XOM-10K-2025.pdf", "oil-market-outlook-2025.pdf"],
       "expected_answer": "Brent crude averaged $78 per barrel in 2025.",
-      "expected_entities": [
-        "Brent crude"
-      ],
+      "expected_entities": ["Brent crude"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Energy",
-        "RESEARCH_REPORT",
-        "oil"
-      ],
+      "tags": ["exact_lookup", "Energy", "RESEARCH_REPORT", "oil"],
       "provenance_original_query": "Brent crude average price 2025",
       "provenance_label": "natural_phrasing"
     },
@@ -446,93 +235,49 @@
       "id": "gs-019",
       "query": "TSMC 2025 revenue",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-029"
-      ],
+      "expected_chunk_ids": ["chunk-029"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "tsmc-geopolitical-risk-2025.pdf"
-      ],
+      "expected_source_docs": ["tsmc-geopolitical-risk-2025.pdf"],
       "expected_answer": "TSMC revenue reached $95.2 billion in 2025, growing 30% year-over-year.",
-      "expected_entities": [
-        "TSMC"
-      ],
+      "expected_entities": ["TSMC"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Semiconductor",
-        "RESEARCH_REPORT",
-        "TSMC"
-      ]
+      "tags": ["exact_lookup", "Semiconductor", "RESEARCH_REPORT", "TSMC"]
     },
     {
       "id": "gs-020",
       "query": "Global semiconductor industry revenue 2025",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-030"
-      ],
+      "expected_chunk_ids": ["chunk-030"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "semiconductor-supply-chain-2025.pdf"
-      ],
+      "expected_source_docs": ["semiconductor-supply-chain-2025.pdf"],
       "expected_answer": "Global semiconductor industry revenue reached $680 billion in 2025, growing 18% year-over-year.",
-      "expected_entities": [
-        "semiconductor industry"
-      ],
+      "expected_entities": ["semiconductor industry"],
       "difficulty": "easy",
-      "tags": [
-        "exact_lookup",
-        "Semiconductor",
-        "RESEARCH_REPORT"
-      ]
+      "tags": ["exact_lookup", "Semiconductor", "RESEARCH_REPORT"]
     },
     {
       "id": "gs-021",
       "query": "What share of Apple's FY2025 revenue came from iPhone?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-001"
-      ],
+      "expected_chunk_ids": ["chunk-001"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "iPhone revenue was $200.6 billion, accounting for 51.3% of Apple's total FY2025 revenue.",
-      "expected_entities": [
-        "Apple Inc.",
-        "iPhone"
-      ],
+      "expected_entities": ["Apple Inc.", "iPhone"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ]
+      "tags": ["factoid", "Technology", "SEC_FILING", "Apple Inc."]
     },
     {
       "id": "gs-022",
       "query": "how many Apple devices are there in the world now?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-002"
-      ],
+      "expected_chunk_ids": ["chunk-002"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple's installed base of active devices surpassed 2.3 billion globally.",
-      "expected_entities": [
-        "Apple Inc."
-      ],
+      "expected_entities": ["Apple Inc."],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ],
+      "tags": ["factoid", "Technology", "SEC_FILING", "Apple Inc."],
       "provenance_original_query": "How many active Apple devices were installed globally in FY2025?",
       "provenance_label": "natural_phrasing"
     },
@@ -540,76 +285,37 @@
       "id": "gs-023",
       "query": "What percentage of global iPhone production came from India?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-004"
-      ],
+      "expected_chunk_ids": ["chunk-004"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "India accounted for approximately 14% of global iPhone production, up from 7% in the prior year.",
-      "expected_entities": [
-        "Apple Inc.",
-        "India",
-        "iPhone"
-      ],
+      "expected_entities": ["Apple Inc.", "India", "iPhone"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ]
+      "tags": ["factoid", "Technology", "SEC_FILING", "Apple Inc."]
     },
     {
       "id": "gs-024",
       "query": "What was Apple's Greater China revenue trend in FY2025?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-006"
-      ],
+      "expected_chunk_ids": ["chunk-006"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple's Greater China revenue was $67.4 billion in FY2025, declining 2.8% year-over-year amid competition and regulatory headwinds.",
-      "expected_entities": [
-        "Apple Inc.",
-        "Greater China",
-        "Huawei",
-        "Xiaomi"
-      ],
+      "expected_entities": ["Apple Inc.", "Greater China", "Huawei", "Xiaomi"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ]
+      "tags": ["factoid", "Technology", "SEC_FILING", "Apple Inc."]
     },
     {
       "id": "gs-025",
       "query": "what percent of the AI GPU market does NVIDIA own?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-010"
-      ],
+      "expected_chunk_ids": ["chunk-010"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf"],
       "expected_answer": "NVIDIA held an estimated 80-85% market share in AI training GPUs globally.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "AI training GPUs"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "AI training GPUs"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Semiconductor",
-        "SEC_FILING",
-        "NVIDIA Corporation"
-      ],
+      "tags": ["factoid", "Semiconductor", "SEC_FILING", "NVIDIA Corporation"],
       "provenance_original_query": "What is NVIDIA's estimated AI training GPU market share?",
       "provenance_label": "natural_phrasing"
     },
@@ -617,123 +323,61 @@
       "id": "gs-026",
       "query": "How much revenue did Blackwell generate in its first two quarters?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-011"
-      ],
+      "expected_chunk_ids": ["chunk-011"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf"],
       "expected_answer": "NVIDIA's Blackwell architecture generated $18 billion in revenue within its first two quarters of availability.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "Blackwell"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "Blackwell"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Semiconductor",
-        "SEC_FILING",
-        "NVIDIA Corporation"
-      ]
+      "tags": ["factoid", "Semiconductor", "SEC_FILING", "NVIDIA Corporation"]
     },
     {
       "id": "gs-027",
       "query": "How much did US export controls reduce NVIDIA China-region revenue in FY2025?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-013"
-      ],
+      "expected_chunk_ids": ["chunk-013"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf"],
       "expected_answer": "US export controls reduced NVIDIA's China-region revenue by an estimated $12 billion in FY2025.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "China",
-        "US export controls"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "China", "US export controls"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Semiconductor",
-        "SEC_FILING",
-        "NVIDIA Corporation"
-      ]
+      "tags": ["factoid", "Semiconductor", "SEC_FILING", "NVIDIA Corporation"]
     },
     {
       "id": "gs-028",
       "query": "How much revenue did Tesla's energy storage business generate?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-015"
-      ],
+      "expected_chunk_ids": ["chunk-015"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "TSLA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["TSLA-10K-2025.pdf"],
       "expected_answer": "Tesla's Energy Generation and Storage revenue was $12.1 billion in FY2025, up 67%.",
-      "expected_entities": [
-        "Tesla Inc.",
-        "Energy Generation and Storage"
-      ],
+      "expected_entities": ["Tesla Inc.", "Energy Generation and Storage"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Technology",
-        "SEC_FILING",
-        "Tesla Inc."
-      ]
+      "tags": ["factoid", "Technology", "SEC_FILING", "Tesla Inc."]
     },
     {
       "id": "gs-029",
       "query": "Where did Tesla begin limited unsupervised robotaxi deployment in 2025?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-017"
-      ],
+      "expected_chunk_ids": ["chunk-017"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "TSLA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["TSLA-10K-2025.pdf"],
       "expected_answer": "Tesla began limited deployment of unsupervised robotaxi services in Austin, Texas and Phoenix, Arizona in late 2025.",
-      "expected_entities": [
-        "Tesla Inc.",
-        "Austin",
-        "Phoenix"
-      ],
+      "expected_entities": ["Tesla Inc.", "Austin", "Phoenix"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Technology",
-        "SEC_FILING",
-        "Tesla Inc."
-      ]
+      "tags": ["factoid", "Technology", "SEC_FILING", "Tesla Inc."]
     },
     {
       "id": "gs-030",
       "query": "are Tesla Energy's margins good yet?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-018"
-      ],
+      "expected_chunk_ids": ["chunk-018"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "TSLA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["TSLA-10K-2025.pdf"],
       "expected_answer": "Tesla Energy's gross margin reached 28.5%, significantly higher than the automotive segment.",
-      "expected_entities": [
-        "Tesla Inc.",
-        "Tesla Energy"
-      ],
+      "expected_entities": ["Tesla Inc.", "Tesla Energy"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Technology",
-        "SEC_FILING",
-        "Tesla Inc."
-      ],
+      "tags": ["factoid", "Technology", "SEC_FILING", "Tesla Inc."],
       "provenance_original_query": "What was Tesla Energy's gross margin in FY2025?",
       "provenance_label": "natural_phrasing"
     },
@@ -741,24 +385,13 @@
       "id": "gs-031",
       "query": "does Microsoft Azure still grow as fast as AWS?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-020"
-      ],
+      "expected_chunk_ids": ["chunk-020"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "MSFT-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["MSFT-10K-2025.pdf"],
       "expected_answer": "Microsoft's operating income was $118.5 billion, with an operating margin of 44.8%.",
-      "expected_entities": [
-        "Microsoft Corporation"
-      ],
+      "expected_entities": ["Microsoft Corporation"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Technology",
-        "SEC_FILING",
-        "Microsoft Corporation"
-      ],
+      "tags": ["factoid", "Technology", "SEC_FILING", "Microsoft Corporation"],
       "provenance_original_query": "What was Microsoft's FY2025 operating margin?",
       "provenance_label": "natural_phrasing"
     },
@@ -766,107 +399,55 @@
       "id": "gs-032",
       "query": "How many monthly active users did Copilot for Microsoft 365 reach?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-021"
-      ],
+      "expected_chunk_ids": ["chunk-021"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "MSFT-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["MSFT-10K-2025.pdf"],
       "expected_answer": "Copilot for Microsoft 365 reached 50 million monthly active users.",
-      "expected_entities": [
-        "Microsoft Corporation",
-        "Copilot for Microsoft 365"
-      ],
+      "expected_entities": ["Microsoft Corporation", "Copilot for Microsoft 365"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Technology",
-        "SEC_FILING",
-        "Microsoft Corporation"
-      ]
+      "tags": ["factoid", "Technology", "SEC_FILING", "Microsoft Corporation"]
     },
     {
       "id": "gs-033",
       "query": "What was the June 2025 FOMC unemployment rate cited in the minutes?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-024"
-      ],
+      "expected_chunk_ids": ["chunk-024"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "fed-fomc-minutes-2025-06.pdf"
-      ],
+      "expected_source_docs": ["fed-fomc-minutes-2025-06.pdf"],
       "expected_answer": "The FOMC minutes cited unemployment at 4.2% and noted that labor market conditions had softened modestly.",
-      "expected_entities": [
-        "FOMC",
-        "unemployment"
-      ],
+      "expected_entities": ["FOMC", "unemployment"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Finance",
-        "REGULATION",
-        "FOMC"
-      ]
+      "tags": ["factoid", "Finance", "REGULATION", "FOMC"]
     },
     {
       "id": "gs-034",
       "query": "What was the obesity drug market size in 2025?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-034"
-      ],
+      "expected_chunk_ids": ["chunk-034"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "pharma-trends-2025.pdf"
-      ],
+      "expected_source_docs": ["pharma-trends-2025.pdf"],
       "expected_answer": "The obesity drug market reached $50 billion in annual sales in 2025.",
-      "expected_entities": [
-        "GLP-1 receptor agonists",
-        "obesity drug market"
-      ],
+      "expected_entities": ["GLP-1 receptor agonists", "obesity drug market"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Healthcare",
-        "RESEARCH_REPORT",
-        "pharma"
-      ]
+      "tags": ["factoid", "Healthcare", "RESEARCH_REPORT", "pharma"]
     },
     {
       "id": "gs-035",
       "query": "What was office vacancy nationally in the 2025 banking outlook?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-041"
-      ],
+      "expected_chunk_ids": ["chunk-041"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "banking-sector-outlook-2025.pdf"
-      ],
+      "expected_source_docs": ["banking-sector-outlook-2025.pdf"],
       "expected_answer": "Office vacancy rates were 19.5% nationally, contributing to concern over commercial real estate exposure.",
-      "expected_entities": [
-        "US banking sector",
-        "commercial real estate"
-      ],
+      "expected_entities": ["US banking sector", "commercial real estate"],
       "difficulty": "easy",
-      "tags": [
-        "factoid",
-        "Finance",
-        "RESEARCH_REPORT",
-        "banking"
-      ]
+      "tags": ["factoid", "Finance", "RESEARCH_REPORT", "banking"]
     },
     {
       "id": "gs-036",
       "query": "How is TSMC connected to NVIDIA's supply chain risk?",
       "query_class": "relational",
-      "expected_chunk_ids": [
-        "chunk-012",
-        "chunk-029",
-        "chunk-031"
-      ],
+      "expected_chunk_ids": ["chunk-012", "chunk-029", "chunk-031"],
       "acceptable_chunk_ids": [],
       "expected_source_docs": [
         "NVDA-10K-2025.pdf",
@@ -874,30 +455,15 @@
         "semiconductor-supply-chain-2025.pdf"
       ],
       "expected_answer": "NVIDIA depends on TSMC for Hopper and Blackwell GPUs on advanced 4nm and 3nm nodes. TSMC produces over 90% of the world's sub-5nm chips, and there is no viable alternative for the most advanced chips used by companies including NVIDIA.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "TSMC",
-        "Hopper",
-        "Blackwell"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "TSMC", "Hopper", "Blackwell"],
       "difficulty": "medium",
-      "tags": [
-        "relational",
-        "Semiconductor",
-        "supply_chain",
-        "NVIDIA Corporation",
-        "TSMC"
-      ]
+      "tags": ["relational", "Semiconductor", "supply_chain", "NVIDIA Corporation", "TSMC"]
     },
     {
       "id": "gs-037",
       "query": "How are Apple and TSMC linked in advanced silicon manufacturing?",
       "query_class": "relational",
-      "expected_chunk_ids": [
-        "chunk-004",
-        "chunk-029",
-        "chunk-031"
-      ],
+      "expected_chunk_ids": ["chunk-004", "chunk-029", "chunk-031"],
       "acceptable_chunk_ids": [],
       "expected_source_docs": [
         "AAPL-10K-2025.pdf",
@@ -905,217 +471,93 @@
         "semiconductor-supply-chain-2025.pdf"
       ],
       "expected_answer": "Apple sources advanced A-series and M-series chips exclusively from TSMC's leading-edge 3nm and 2nm nodes. This links Apple to the broader Taiwan concentration risk because TSMC produces over 90% of sub-5nm chips and remains irreplaceable for advanced chips.",
-      "expected_entities": [
-        "Apple Inc.",
-        "TSMC",
-        "A-series chips",
-        "M-series chips"
-      ],
+      "expected_entities": ["Apple Inc.", "TSMC", "A-series chips", "M-series chips"],
       "difficulty": "medium",
-      "tags": [
-        "relational",
-        "Technology",
-        "Semiconductor",
-        "Apple Inc.",
-        "TSMC"
-      ]
+      "tags": ["relational", "Technology", "Semiconductor", "Apple Inc.", "TSMC"]
     },
     {
       "id": "gs-038",
       "query": "How do Microsoft and NVIDIA relate in AI infrastructure spending?",
       "query_class": "relational",
-      "expected_chunk_ids": [
-        "chunk-022",
-        "chunk-011"
-      ],
+      "expected_chunk_ids": ["chunk-022", "chunk-011"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "MSFT-10K-2025.pdf",
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["MSFT-10K-2025.pdf", "NVDA-10K-2025.pdf"],
       "expected_answer": "Microsoft's FY2025 capex focused on data centers, including GPU procurement primarily from NVIDIA H100 and Blackwell GPUs. NVIDIA's data center revenue was supported by hyperscale cloud providers including Microsoft Azure.",
-      "expected_entities": [
-        "Microsoft Corporation",
-        "NVIDIA Corporation",
-        "Azure",
-        "H100",
-        "Blackwell"
-      ],
+      "expected_entities": ["Microsoft Corporation", "NVIDIA Corporation", "Azure", "H100", "Blackwell"],
       "difficulty": "medium",
-      "tags": [
-        "relational",
-        "Technology",
-        "Semiconductor",
-        "Microsoft Corporation",
-        "NVIDIA Corporation"
-      ]
+      "tags": ["relational", "Technology", "Semiconductor", "Microsoft Corporation", "NVIDIA Corporation"]
     },
     {
       "id": "gs-039",
       "query": "How did Federal Reserve policy affect technology valuations in 2025?",
       "query_class": "relational",
-      "expected_chunk_ids": [
-        "chunk-024",
-        "chunk-025"
-      ],
+      "expected_chunk_ids": ["chunk-024", "chunk-025"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "fed-fomc-minutes-2025-06.pdf",
-        "fed-rate-impact-analysis-2025.pdf"
-      ],
+      "expected_source_docs": ["fed-fomc-minutes-2025-06.pdf", "fed-rate-impact-analysis-2025.pdf"],
       "expected_answer": "The Fed kept rates at 4.25-4.50% in June 2025 because inflation remained above target. The higher-for-longer rate environment pressured growth stock valuations and caused multiple compression in DCF-sensitive tech stocks, although AI-related names outperformed.",
-      "expected_entities": [
-        "Federal Reserve",
-        "technology sector",
-        "NASDAQ Composite"
-      ],
+      "expected_entities": ["Federal Reserve", "technology sector", "NASDAQ Composite"],
       "difficulty": "medium",
-      "tags": [
-        "relational",
-        "Finance",
-        "Technology",
-        "Federal Reserve"
-      ]
+      "tags": ["relational", "Finance", "Technology", "Federal Reserve"]
     },
     {
       "id": "gs-040",
       "query": "How are Tesla and BYD related in the 2025 EV market?",
       "query_class": "relational",
-      "expected_chunk_ids": [
-        "chunk-016",
-        "chunk-019"
-      ],
+      "expected_chunk_ids": ["chunk-016", "chunk-019"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "TSLA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["TSLA-10K-2025.pdf"],
       "expected_answer": "BYD surpassed Tesla in total EV sales volume in 2025 with 3.2 million units, while Tesla delivered 1.95 million vehicles and saw its global BEV share decline from 19.5% to 15.8%. China was the largest EV market with 10.2 million units.",
-      "expected_entities": [
-        "Tesla Inc.",
-        "BYD",
-        "China",
-        "EV market"
-      ],
+      "expected_entities": ["Tesla Inc.", "BYD", "China", "EV market"],
       "difficulty": "medium",
-      "tags": [
-        "relational",
-        "Technology",
-        "SEC_FILING",
-        "Tesla Inc.",
-        "BYD"
-      ]
+      "tags": ["relational", "Technology", "SEC_FILING", "Tesla Inc.", "BYD"]
     },
     {
       "id": "gs-041",
       "query": "How do Apple and Huawei connect in Apple's China risk?",
       "query_class": "relational",
-      "expected_chunk_ids": [
-        "chunk-006"
-      ],
+      "expected_chunk_ids": ["chunk-006"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple's Greater China revenue declined 2.8% year-over-year to $67.4 billion amid intensifying competition from Huawei and Xiaomi, plus regulatory headwinds and delayed Apple Intelligence approval.",
-      "expected_entities": [
-        "Apple Inc.",
-        "Huawei",
-        "Xiaomi",
-        "Greater China"
-      ],
+      "expected_entities": ["Apple Inc.", "Huawei", "Xiaomi", "Greater China"],
       "difficulty": "easy",
-      "tags": [
-        "relational",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc.",
-        "Huawei"
-      ]
+      "tags": ["relational", "Technology", "SEC_FILING", "Apple Inc.", "Huawei"]
     },
     {
       "id": "gs-042",
       "query": "How do US export controls connect to China's domestic chip development?",
       "query_class": "relational",
-      "expected_chunk_ids": [
-        "chunk-032",
-        "chunk-013"
-      ],
+      "expected_chunk_ids": ["chunk-032", "chunk-013"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "semiconductor-export-controls-2025.pdf",
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["semiconductor-export-controls-2025.pdf", "NVDA-10K-2025.pdf"],
       "expected_answer": "Tighter US export controls required licenses for AI accelerator shipments to China and reduced China-bound semiconductor exports by about $15 billion annually. China responded by accelerating domestic chip development through Huawei Ascend accelerators and SMIC's 7nm process, while NVIDIA developed lower-margin H20 products for China.",
-      "expected_entities": [
-        "US export controls",
-        "China",
-        "NVIDIA Corporation",
-        "Huawei",
-        "SMIC"
-      ],
+      "expected_entities": ["US export controls", "China", "NVIDIA Corporation", "Huawei", "SMIC"],
       "difficulty": "medium",
-      "tags": [
-        "relational",
-        "Semiconductor",
-        "REGULATION",
-        "China"
-      ]
+      "tags": ["relational", "Semiconductor", "REGULATION", "China"]
     },
     {
       "id": "gs-043",
       "query": "How does commercial real estate risk relate to JPMorgan's 2025 credit trends?",
       "query_class": "relational",
-      "expected_chunk_ids": [
-        "chunk-040",
-        "chunk-041"
-      ],
+      "expected_chunk_ids": ["chunk-040", "chunk-041"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JPM-10K-2025.pdf",
-        "banking-sector-outlook-2025.pdf"
-      ],
+      "expected_source_docs": ["JPM-10K-2025.pdf", "banking-sector-outlook-2025.pdf"],
       "expected_answer": "JPMorgan's commercial banking net charge-offs rose to $2.1 billion from $1.4 billion as higher rates pressured commercial real estate borrowers. The broader banking outlook also flagged CRE exposure as a concern, with national office vacancy at 19.5%.",
-      "expected_entities": [
-        "JPMorgan Chase & Co.",
-        "commercial real estate",
-        "US banking sector"
-      ],
+      "expected_entities": ["JPMorgan Chase & Co.", "commercial real estate", "US banking sector"],
       "difficulty": "medium",
-      "tags": [
-        "relational",
-        "Finance",
-        "banking",
-        "JPMorgan Chase"
-      ]
+      "tags": ["relational", "Finance", "banking", "JPMorgan Chase"]
     },
     {
       "id": "gs-044",
       "query": "what's TSM's advanced-node market share these days?",
       "query_class": "relational",
-      "expected_chunk_ids": [
-        "chunk-034",
-        "chunk-035"
-      ],
+      "expected_chunk_ids": ["chunk-034", "chunk-035"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "pharma-trends-2025.pdf",
-        "healthcare-outlook-2025.pdf"
-      ],
+      "expected_source_docs": ["pharma-trends-2025.pdf", "healthcare-outlook-2025.pdf"],
       "expected_answer": "GLP-1 receptor agonists such as Ozempic, Mounjaro, and Wegovy dominated pharma trends, with the obesity drug market reaching $50 billion. The broader healthcare sector outperformed the S&P 500 and large-cap pharma names including Eli Lilly were among top performers.",
-      "expected_entities": [
-        "GLP-1 receptor agonists",
-        "Ozempic",
-        "Mounjaro",
-        "Wegovy",
-        "Eli Lilly"
-      ],
+      "expected_entities": ["GLP-1 receptor agonists", "Ozempic", "Mounjaro", "Wegovy", "Eli Lilly"],
       "difficulty": "medium",
-      "tags": [
-        "relational",
-        "Healthcare",
-        "pharma",
-        "GLP-1"
-      ],
+      "tags": ["relational", "Healthcare", "pharma", "GLP-1"],
       "provenance_original_query": "How do GLP-1 drugs relate to the 2025 pharmaceutical outlook?",
       "provenance_label": "natural_phrasing"
     },
@@ -1123,194 +565,85 @@
       "id": "gs-045",
       "query": "How are Exxon earnings related to Brent crude prices in 2025?",
       "query_class": "relational",
-      "expected_chunk_ids": [
-        "chunk-036",
-        "chunk-037"
-      ],
+      "expected_chunk_ids": ["chunk-036", "chunk-037"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "XOM-10K-2025.pdf",
-        "oil-market-outlook-2025.pdf"
-      ],
+      "expected_source_docs": ["XOM-10K-2025.pdf", "oil-market-outlook-2025.pdf"],
       "expected_answer": "Exxon's upstream earnings were $26.3 billion and benefited from strong production volumes after the Pioneer acquisition. Brent crude averaged $78 per barrel in 2025, with the oil market outlook citing a $68-$88 range.",
-      "expected_entities": [
-        "Exxon Mobil Corporation",
-        "Brent crude",
-        "Pioneer Natural Resources"
-      ],
+      "expected_entities": ["Exxon Mobil Corporation", "Brent crude", "Pioneer Natural Resources"],
       "difficulty": "medium",
-      "tags": [
-        "relational",
-        "Energy",
-        "oil",
-        "Exxon Mobil"
-      ]
+      "tags": ["relational", "Energy", "oil", "Exxon Mobil"]
     },
     {
       "id": "gs-046",
       "query": "How does Microsoft Azure compare with AWS in cloud market share?",
       "query_class": "relational",
-      "expected_chunk_ids": [
-        "chunk-021"
-      ],
+      "expected_chunk_ids": ["chunk-021"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "MSFT-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["MSFT-10K-2025.pdf"],
       "expected_answer": "Microsoft Azure was the second-largest cloud infrastructure provider with an estimated 24% market share, behind AWS at 31%.",
-      "expected_entities": [
-        "Microsoft Azure",
-        "AWS"
-      ],
+      "expected_entities": ["Microsoft Azure", "AWS"],
       "difficulty": "easy",
-      "tags": [
-        "relational",
-        "Technology",
-        "cloud",
-        "Microsoft Corporation",
-        "AWS"
-      ]
+      "tags": ["relational", "Technology", "cloud", "Microsoft Corporation", "AWS"]
     },
     {
       "id": "gs-047",
       "query": "How do advanced packaging bottlenecks affect NVIDIA Blackwell shipments?",
       "query_class": "relational",
-      "expected_chunk_ids": [
-        "chunk-030",
-        "chunk-011"
-      ],
+      "expected_chunk_ids": ["chunk-030", "chunk-011"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "semiconductor-supply-chain-2025.pdf",
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["semiconductor-supply-chain-2025.pdf", "NVDA-10K-2025.pdf"],
       "expected_answer": "Advanced packaging such as CoWoS became a critical bottleneck, with TSMC CoWoS capacity limiting NVIDIA Blackwell GPU shipments in the first half of 2025. Even so, Blackwell generated $18 billion in its first two quarters.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "Blackwell",
-        "TSMC",
-        "CoWoS"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "Blackwell", "TSMC", "CoWoS"],
       "difficulty": "medium",
-      "tags": [
-        "relational",
-        "Semiconductor",
-        "supply_chain",
-        "NVIDIA Corporation"
-      ]
+      "tags": ["relational", "Semiconductor", "supply_chain", "NVIDIA Corporation"]
     },
     {
       "id": "gs-048",
       "query": "What are Apple's main FY2025 growth drivers and risks?",
       "query_class": "analytical",
-      "expected_chunk_ids": [
-        "chunk-001",
-        "chunk-002",
-        "chunk-003"
-      ],
+      "expected_chunk_ids": ["chunk-001", "chunk-002", "chunk-003"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple's FY2025 growth was driven by total revenue rising to $391.0 billion, Services growing 14.1% to $96.2 billion, and a services platform with 1.1 billion paid subscriptions. Key risks included iPhone concentration at 51.3% of revenue, dependence on TSMC and East Asian supply chains, and EU Digital Markets Act scrutiny of App Store practices.",
-      "expected_entities": [
-        "Apple Inc.",
-        "Services",
-        "iPhone",
-        "TSMC",
-        "Digital Markets Act"
-      ],
+      "expected_entities": ["Apple Inc.", "Services", "iPhone", "TSMC", "Digital Markets Act"],
       "difficulty": "medium",
-      "tags": [
-        "analytical",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ]
+      "tags": ["analytical", "Technology", "SEC_FILING", "Apple Inc."]
     },
     {
       "id": "gs-049",
       "query": "Analyze NVIDIA's FY2025 AI moat and key vulnerabilities.",
       "query_class": "analytical",
-      "expected_chunk_ids": [
-        "chunk-009",
-        "chunk-010",
-        "chunk-012",
-        "chunk-013"
-      ],
+      "expected_chunk_ids": ["chunk-009", "chunk-010", "chunk-012", "chunk-013"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf"],
       "expected_answer": "NVIDIA's moat came from $115.2 billion of Data Center revenue, 80-85% AI training GPU share, CUDA's 5 million developers, and full-stack hardware-networking-software capabilities. Its vulnerabilities were dependence on TSMC for advanced GPU fabrication and US export controls that reduced China-region revenue by an estimated $12 billion.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "CUDA",
-        "TSMC",
-        "China"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "CUDA", "TSMC", "China"],
       "difficulty": "hard",
-      "tags": [
-        "analytical",
-        "Semiconductor",
-        "SEC_FILING",
-        "NVIDIA Corporation"
-      ]
+      "tags": ["analytical", "Semiconductor", "SEC_FILING", "NVIDIA Corporation"]
     },
     {
       "id": "gs-050",
       "query": "What explains Tesla's mixed FY2025 performance across automotive and energy?",
       "query_class": "analytical",
-      "expected_chunk_ids": [
-        "chunk-015",
-        "chunk-016",
-        "chunk-018"
-      ],
+      "expected_chunk_ids": ["chunk-015", "chunk-016", "chunk-018"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "TSLA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["TSLA-10K-2025.pdf"],
       "expected_answer": "Tesla grew total revenue 12% to $97.7 billion and delivered 1.95 million vehicles, but automotive gross margin was pressured to 18.2% by price reductions and competition as global BEV share fell to 15.8%. Energy was stronger: storage revenue grew 67%, deployments rose to 32 GWh, and Tesla Energy gross margin reached 28.5%.",
-      "expected_entities": [
-        "Tesla Inc.",
-        "BYD",
-        "Tesla Energy"
-      ],
+      "expected_entities": ["Tesla Inc.", "BYD", "Tesla Energy"],
       "difficulty": "medium",
-      "tags": [
-        "analytical",
-        "Technology",
-        "SEC_FILING",
-        "Tesla Inc."
-      ]
+      "tags": ["analytical", "Technology", "SEC_FILING", "Tesla Inc."]
     },
     {
       "id": "gs-051",
       "query": "table: Apple FY2025 — revenue, iPhone, services, cash",
       "query_class": "analytical",
-      "expected_chunk_ids": [
-        "chunk-020",
-        "chunk-021",
-        "chunk-022"
-      ],
+      "expected_chunk_ids": ["chunk-020", "chunk-021", "chunk-022"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "MSFT-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["MSFT-10K-2025.pdf"],
       "expected_answer": "Microsoft's AI case was supported by 16% total revenue growth, Azure growing 29%, Azure AI services contributing about $15 billion annualized, and Copilot reaching 50 million monthly active users. The concern was capex: Microsoft spent $56.8 billion, up 78%, mainly for data centers, GPUs, and custom AI silicon, raising questions about returns.",
-      "expected_entities": [
-        "Microsoft Corporation",
-        "Azure",
-        "Copilot",
-        "NVIDIA"
-      ],
+      "expected_entities": ["Microsoft Corporation", "Azure", "Copilot", "NVIDIA"],
       "difficulty": "hard",
-      "tags": [
-        "analytical",
-        "Technology",
-        "SEC_FILING",
-        "Microsoft Corporation"
-      ],
+      "tags": ["analytical", "Technology", "SEC_FILING", "Microsoft Corporation"],
       "provenance_original_query": "What are the investor concerns and supports around Microsoft's AI investments?",
       "provenance_label": "natural_phrasing"
     },
@@ -1318,11 +651,7 @@
       "id": "gs-052",
       "query": "how did the Fed rate pressure play out for tech vs banks in 2025?",
       "query_class": "analytical",
-      "expected_chunk_ids": [
-        "chunk-024",
-        "chunk-025",
-        "chunk-041"
-      ],
+      "expected_chunk_ids": ["chunk-024", "chunk-025", "chunk-041"],
       "acceptable_chunk_ids": [],
       "expected_source_docs": [
         "fed-fomc-minutes-2025-06.pdf",
@@ -1330,19 +659,9 @@
         "banking-sector-outlook-2025.pdf"
       ],
       "expected_answer": "The Fed held rates at 4.25-4.50%, which pressured long-duration growth stock valuations and led to multiple compression for DCF-sensitive tech. Banks benefited from higher net interest margins, and the KBW Bank Index returned 14.2% in the first half of 2025, though commercial real estate remained a concern.",
-      "expected_entities": [
-        "Federal Reserve",
-        "technology sector",
-        "US banking sector",
-        "KBW Bank Index"
-      ],
+      "expected_entities": ["Federal Reserve", "technology sector", "US banking sector", "KBW Bank Index"],
       "difficulty": "hard",
-      "tags": [
-        "analytical",
-        "Finance",
-        "Technology",
-        "macro"
-      ],
+      "tags": ["analytical", "Finance", "Technology", "macro"],
       "provenance_original_query": "How did the 2025 macro rate environment shape tech and bank performance?",
       "provenance_label": "natural_phrasing"
     },
@@ -1350,32 +669,13 @@
       "id": "gs-053",
       "query": "give me the key Tesla numbers: revenue, deliveries, margins",
       "query_class": "analytical",
-      "expected_chunk_ids": [
-        "chunk-029",
-        "chunk-030",
-        "chunk-031"
-      ],
+      "expected_chunk_ids": ["chunk-029", "chunk-030", "chunk-031"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "tsmc-geopolitical-risk-2025.pdf",
-        "semiconductor-supply-chain-2025.pdf"
-      ],
+      "expected_source_docs": ["tsmc-geopolitical-risk-2025.pdf", "semiconductor-supply-chain-2025.pdf"],
       "expected_answer": "The semiconductor supply chain remained highly concentrated because TSMC produced over 90% of sub-5nm chips and companies such as Apple, NVIDIA, AMD, and Qualcomm lacked viable alternatives for their most advanced chips. CoWoS packaging constrained Blackwell shipments, while Taiwan geopolitical risk could disrupt an estimated $500 billion in annual technology product revenue.",
-      "expected_entities": [
-        "TSMC",
-        "Apple Inc.",
-        "NVIDIA Corporation",
-        "AMD",
-        "Qualcomm",
-        "CoWoS"
-      ],
+      "expected_entities": ["TSMC", "Apple Inc.", "NVIDIA Corporation", "AMD", "Qualcomm", "CoWoS"],
       "difficulty": "hard",
-      "tags": [
-        "analytical",
-        "Semiconductor",
-        "supply_chain",
-        "TSMC"
-      ],
+      "tags": ["analytical", "Semiconductor", "supply_chain", "TSMC"],
       "provenance_original_query": "Analyze semiconductor supply chain concentration risk in 2025.",
       "provenance_label": "natural_phrasing"
     },
@@ -1383,30 +683,13 @@
       "id": "gs-054",
       "query": "MSFT FY2025 by segment please",
       "query_class": "analytical",
-      "expected_chunk_ids": [
-        "chunk-033",
-        "chunk-034",
-        "chunk-035"
-      ],
+      "expected_chunk_ids": ["chunk-033", "chunk-034", "chunk-035"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JNJ-10K-2025.pdf",
-        "pharma-trends-2025.pdf",
-        "healthcare-outlook-2025.pdf"
-      ],
+      "expected_source_docs": ["JNJ-10K-2025.pdf", "pharma-trends-2025.pdf", "healthcare-outlook-2025.pdf"],
       "expected_answer": "Healthcare was defensive in 2025, with the S&P 500 Health Care index returning 12.3% versus 10.5% for the S&P 500. Pharma themes included GLP-1 obesity drugs reaching $50 billion in sales and a $120 billion patent cliff through 2030. Johnson & Johnson generated $88.7 billion of revenue after Kenvue, with pharma revenue of $58.4 billion and 50 Phase 2-or-later pipeline programs.",
-      "expected_entities": [
-        "Johnson & Johnson",
-        "GLP-1",
-        "S&P 500 Health Care index"
-      ],
+      "expected_entities": ["Johnson & Johnson", "GLP-1", "S&P 500 Health Care index"],
       "difficulty": "hard",
-      "tags": [
-        "analytical",
-        "Healthcare",
-        "pharma",
-        "Johnson & Johnson"
-      ],
+      "tags": ["analytical", "Healthcare", "pharma", "Johnson & Johnson"],
       "provenance_original_query": "What is the 2025 healthcare investment backdrop?",
       "provenance_label": "natural_phrasing"
     },
@@ -1414,30 +697,13 @@
       "id": "gs-055",
       "query": "why is everyone worried about TSMC for NVIDIA?",
       "query_class": "analytical",
-      "expected_chunk_ids": [
-        "chunk-036",
-        "chunk-037",
-        "chunk-038"
-      ],
+      "expected_chunk_ids": ["chunk-036", "chunk-037", "chunk-038"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "XOM-10K-2025.pdf",
-        "oil-market-outlook-2025.pdf",
-        "energy-sector-analysis-2025.pdf"
-      ],
+      "expected_source_docs": ["XOM-10K-2025.pdf", "oil-market-outlook-2025.pdf", "energy-sector-analysis-2025.pdf"],
       "expected_answer": "Integrated oil majors benefited from cash generation and discounted valuations: Exxon generated $52.1 billion in operating cash flow, Brent averaged $78, and majors traded at 11.2x forward P/E with 8.5% average free cash flow yields. Risks included long-term energy transition headwinds even though fossil fuels still represented 80% of primary energy consumption.",
-      "expected_entities": [
-        "Exxon Mobil Corporation",
-        "Brent crude",
-        "integrated oil companies"
-      ],
+      "expected_entities": ["Exxon Mobil Corporation", "Brent crude", "integrated oil companies"],
       "difficulty": "hard",
-      "tags": [
-        "analytical",
-        "Energy",
-        "oil",
-        "Exxon Mobil"
-      ],
+      "tags": ["analytical", "Energy", "oil", "Exxon Mobil"],
       "provenance_original_query": "Analyze the 2025 energy sector setup for integrated oil majors.",
       "provenance_label": "natural_phrasing"
     },
@@ -1445,40 +711,19 @@
       "id": "gs-056",
       "query": "What were the main 2025 banking sector strengths and risks?",
       "query_class": "analytical",
-      "expected_chunk_ids": [
-        "chunk-039",
-        "chunk-040",
-        "chunk-041"
-      ],
+      "expected_chunk_ids": ["chunk-039", "chunk-040", "chunk-041"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JPM-10K-2025.pdf",
-        "banking-sector-outlook-2025.pdf"
-      ],
+      "expected_source_docs": ["JPM-10K-2025.pdf", "banking-sector-outlook-2025.pdf"],
       "expected_answer": "Banks benefited from high rates and stronger net interest income: JPMorgan earned record net income of $54.2 billion and $92.8 billion in net interest income, while large money-center banks reported strong earnings. Risks included CRE pressure, JPMorgan charge-offs rising to $2.1 billion, office vacancy of 19.5%, deposit competition, and regional bank CRE concentration.",
-      "expected_entities": [
-        "JPMorgan Chase & Co.",
-        "US banking sector",
-        "commercial real estate"
-      ],
+      "expected_entities": ["JPMorgan Chase & Co.", "US banking sector", "commercial real estate"],
       "difficulty": "hard",
-      "tags": [
-        "analytical",
-        "Finance",
-        "banking",
-        "JPMorgan Chase"
-      ]
+      "tags": ["analytical", "Finance", "banking", "JPMorgan Chase"]
     },
     {
       "id": "gs-057",
       "query": "is TSLA losing ground to BYD in China?",
       "query_class": "analytical",
-      "expected_chunk_ids": [
-        "chunk-025",
-        "chunk-028",
-        "chunk-009",
-        "chunk-020"
-      ],
+      "expected_chunk_ids": ["chunk-025", "chunk-028", "chunk-009", "chunk-020"],
       "acceptable_chunk_ids": [],
       "expected_source_docs": [
         "fed-rate-impact-analysis-2025.pdf",
@@ -1487,19 +732,9 @@
         "MSFT-10K-2025.pdf"
       ],
       "expected_answer": "Higher rates pressured growth valuations, but AI-related stocks outperformed because near-term revenue growth exceeded discount-rate pressure. Evidence includes NVIDIA revenue rising 114% to $130.5 billion, Microsoft Azure growing 29%, and hyperscaler capex exceeding $200 billion as cloud infrastructure spending stayed resilient due to AI demand.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "Microsoft Corporation",
-        "Azure",
-        "NASDAQ Composite"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "Microsoft Corporation", "Azure", "NASDAQ Composite"],
       "difficulty": "hard",
-      "tags": [
-        "analytical",
-        "Technology",
-        "Finance",
-        "AI"
-      ],
+      "tags": ["analytical", "Technology", "Finance", "AI"],
       "provenance_original_query": "What evidence shows AI demand overcame higher-rate pressure in 2025?",
       "provenance_label": "natural_phrasing"
     },
@@ -1507,103 +742,49 @@
       "id": "gs-058",
       "query": "What was Apple's FY2025 free cash flow AND how much did it return to shareholders?",
       "query_class": "multi_part",
-      "expected_chunk_ids": [
-        "chunk-005"
-      ],
+      "expected_chunk_ids": ["chunk-005"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple generated $107.2 billion in free cash flow and returned $95.0 billion to shareholders, consisting of $15.6 billion in dividends and $79.4 billion in share repurchases.",
-      "expected_entities": [
-        "Apple Inc.",
-        "free cash flow",
-        "share repurchases",
-        "dividends"
-      ],
+      "expected_entities": ["Apple Inc.", "free cash flow", "share repurchases", "dividends"],
       "difficulty": "easy",
-      "tags": [
-        "multi_part",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ]
+      "tags": ["multi_part", "Technology", "SEC_FILING", "Apple Inc."]
     },
     {
       "id": "gs-059",
       "query": "What were NVIDIA's FY2025 Data Center revenue AND Gaming revenue?",
       "query_class": "multi_part",
-      "expected_chunk_ids": [
-        "chunk-009"
-      ],
+      "expected_chunk_ids": ["chunk-009"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf"],
       "expected_answer": "NVIDIA Data Center revenue was $115.2 billion, and Gaming revenue was $10.6 billion in FY2025.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "Data Center",
-        "Gaming"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "Data Center", "Gaming"],
       "difficulty": "easy",
-      "tags": [
-        "multi_part",
-        "Semiconductor",
-        "SEC_FILING",
-        "NVIDIA Corporation"
-      ]
+      "tags": ["multi_part", "Semiconductor", "SEC_FILING", "NVIDIA Corporation"]
     },
     {
       "id": "gs-060",
       "query": "What were Tesla's automotive revenue AND energy storage revenue in FY2025?",
       "query_class": "multi_part",
-      "expected_chunk_ids": [
-        "chunk-015"
-      ],
+      "expected_chunk_ids": ["chunk-015"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "TSLA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["TSLA-10K-2025.pdf"],
       "expected_answer": "Tesla automotive revenue was $78.5 billion, and Energy Generation and Storage revenue was $12.1 billion in FY2025.",
-      "expected_entities": [
-        "Tesla Inc.",
-        "Automotive",
-        "Energy Generation and Storage"
-      ],
+      "expected_entities": ["Tesla Inc.", "Automotive", "Energy Generation and Storage"],
       "difficulty": "easy",
-      "tags": [
-        "multi_part",
-        "Technology",
-        "SEC_FILING",
-        "Tesla Inc."
-      ]
+      "tags": ["multi_part", "Technology", "SEC_FILING", "Tesla Inc."]
     },
     {
       "id": "gs-061",
       "query": "break down Apple's services growth story for FY2025",
       "query_class": "multi_part",
-      "expected_chunk_ids": [
-        "chunk-023"
-      ],
+      "expected_chunk_ids": ["chunk-023"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "MSFT-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["MSFT-10K-2025.pdf"],
       "expected_answer": "Microsoft reported $89.4 billion in operating cash flow and returned $52.3 billion to shareholders through $23.4 billion of dividends and $28.9 billion of share repurchases.",
-      "expected_entities": [
-        "Microsoft Corporation",
-        "operating cash flow",
-        "dividends",
-        "share repurchases"
-      ],
+      "expected_entities": ["Microsoft Corporation", "operating cash flow", "dividends", "share repurchases"],
       "difficulty": "easy",
-      "tags": [
-        "multi_part",
-        "Technology",
-        "SEC_FILING",
-        "Microsoft Corporation"
-      ],
+      "tags": ["multi_part", "Technology", "SEC_FILING", "Microsoft Corporation"],
       "provenance_original_query": "What was Microsoft's FY2025 operating cash flow AND how much did it return to shareholders?",
       "provenance_label": "natural_phrasing"
     },
@@ -1611,76 +792,37 @@
       "id": "gs-062",
       "query": "What rate cuts did the June 2025 dot plot show AND what was the 2025 GDP growth projection?",
       "query_class": "multi_part",
-      "expected_chunk_ids": [
-        "chunk-026"
-      ],
+      "expected_chunk_ids": ["chunk-026"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "fed-fomc-minutes-2025-06.pdf"
-      ],
+      "expected_source_docs": ["fed-fomc-minutes-2025-06.pdf"],
       "expected_answer": "The dot plot showed a median expectation of two 25-basis-point rate cuts by the end of 2025, and GDP growth was projected at 2.1% for 2025.",
-      "expected_entities": [
-        "FOMC",
-        "Federal Reserve",
-        "GDP"
-      ],
+      "expected_entities": ["FOMC", "Federal Reserve", "GDP"],
       "difficulty": "easy",
-      "tags": [
-        "multi_part",
-        "Finance",
-        "REGULATION",
-        "FOMC"
-      ]
+      "tags": ["multi_part", "Finance", "REGULATION", "FOMC"]
     },
     {
       "id": "gs-063",
       "query": "What were JNJ's Innovative Medicine revenue AND MedTech revenue?",
       "query_class": "multi_part",
-      "expected_chunk_ids": [
-        "chunk-033"
-      ],
+      "expected_chunk_ids": ["chunk-033"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JNJ-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["JNJ-10K-2025.pdf"],
       "expected_answer": "Johnson & Johnson's Innovative Medicine revenue was $58.4 billion, and MedTech revenue was $30.3 billion in FY2025.",
-      "expected_entities": [
-        "Johnson & Johnson",
-        "Innovative Medicine",
-        "MedTech"
-      ],
+      "expected_entities": ["Johnson & Johnson", "Innovative Medicine", "MedTech"],
       "difficulty": "easy",
-      "tags": [
-        "multi_part",
-        "Healthcare",
-        "SEC_FILING",
-        "Johnson & Johnson"
-      ]
+      "tags": ["multi_part", "Healthcare", "SEC_FILING", "Johnson & Johnson"]
     },
     {
       "id": "gs-064",
       "query": "summarise NVIDIA's competitive moat argument",
       "query_class": "multi_part",
-      "expected_chunk_ids": [
-        "chunk-036"
-      ],
+      "expected_chunk_ids": ["chunk-036"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "XOM-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["XOM-10K-2025.pdf"],
       "expected_answer": "Exxon's upstream earnings were $26.3 billion, and downstream earnings were $5.8 billion in FY2025.",
-      "expected_entities": [
-        "Exxon Mobil Corporation",
-        "upstream",
-        "downstream"
-      ],
+      "expected_entities": ["Exxon Mobil Corporation", "upstream", "downstream"],
       "difficulty": "easy",
-      "tags": [
-        "multi_part",
-        "Energy",
-        "SEC_FILING",
-        "Exxon Mobil"
-      ],
+      "tags": ["multi_part", "Energy", "SEC_FILING", "Exxon Mobil"],
       "provenance_original_query": "What were Exxon's upstream earnings AND downstream earnings in FY2025?",
       "provenance_label": "natural_phrasing"
     },
@@ -1688,26 +830,13 @@
       "id": "gs-065",
       "query": "walk me through the MSFT AI capex concern vs. revenue proof",
       "query_class": "multi_part",
-      "expected_chunk_ids": [
-        "chunk-039"
-      ],
+      "expected_chunk_ids": ["chunk-039"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JPM-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["JPM-10K-2025.pdf"],
       "expected_answer": "JPMorgan's net interest income was $92.8 billion, and its CET1 capital ratio was 15.3%.",
-      "expected_entities": [
-        "JPMorgan Chase & Co.",
-        "net interest income",
-        "CET1"
-      ],
+      "expected_entities": ["JPMorgan Chase & Co.", "net interest income", "CET1"],
       "difficulty": "easy",
-      "tags": [
-        "multi_part",
-        "Finance",
-        "SEC_FILING",
-        "JPMorgan Chase"
-      ],
+      "tags": ["multi_part", "Finance", "SEC_FILING", "JPMorgan Chase"],
       "provenance_original_query": "What was JPMorgan's net interest income AND CET1 ratio in FY2025?",
       "provenance_label": "natural_phrasing"
     },
@@ -1715,183 +844,73 @@
       "id": "gs-066",
       "query": "Summarize Apple's FY2025 10-K performance across revenue, services, risks, and cash returns.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-001",
-        "chunk-002",
-        "chunk-003",
-        "chunk-005"
-      ],
+      "expected_chunk_ids": ["chunk-001", "chunk-002", "chunk-003", "chunk-005"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple grew FY2025 revenue 5.2% to $391.0 billion, with iPhone at $200.6 billion and Services at $96.2 billion. Services benefited from 1.1 billion paid subscriptions and Apple Pay volume above $1.8 trillion. Risks included TSMC dependency, East Asia supply concentration, iPhone revenue concentration, and EU App Store scrutiny. Apple generated $107.2 billion of free cash flow and returned $95.0 billion to shareholders.",
-      "expected_entities": [
-        "Apple Inc.",
-        "Services",
-        "iPhone",
-        "TSMC",
-        "Apple Pay"
-      ],
+      "expected_entities": ["Apple Inc.", "Services", "iPhone", "TSMC", "Apple Pay"],
       "difficulty": "hard",
-      "tags": [
-        "long_doc",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ]
+      "tags": ["long_doc", "Technology", "SEC_FILING", "Apple Inc."]
     },
     {
       "id": "gs-067",
       "query": "Summarize Apple's FY2025 supply chain and China risks from the 10-K.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-003",
-        "chunk-004",
-        "chunk-006"
-      ],
+      "expected_chunk_ids": ["chunk-003", "chunk-004", "chunk-006"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple's risks included dependence on TSMC for advanced chips, concentration of supply chains in Taiwan and China, and reliance on Foxconn and Pegatron as primary iPhone assemblers. Apple was diversifying to India and Vietnam, with India at 14% of global iPhone production. Greater China revenue declined 2.8% to $67.4 billion amid competition from Huawei and Xiaomi, government iPhone restrictions, and delayed Apple Intelligence approval.",
-      "expected_entities": [
-        "Apple Inc.",
-        "TSMC",
-        "Foxconn",
-        "Pegatron",
-        "Greater China",
-        "Huawei",
-        "Xiaomi"
-      ],
+      "expected_entities": ["Apple Inc.", "TSMC", "Foxconn", "Pegatron", "Greater China", "Huawei", "Xiaomi"],
       "difficulty": "hard",
-      "tags": [
-        "long_doc",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ]
+      "tags": ["long_doc", "Technology", "SEC_FILING", "Apple Inc."]
     },
     {
       "id": "gs-068",
       "query": "Summarize NVIDIA's FY2025 10-K AI business and competitive position.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-009",
-        "chunk-010",
-        "chunk-011",
-        "chunk-014"
-      ],
+      "expected_chunk_ids": ["chunk-009", "chunk-010", "chunk-011", "chunk-014"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf"],
       "expected_answer": "NVIDIA reported $130.5 billion in FY2025 revenue, driven by $115.2 billion in Data Center revenue. It held 80-85% global AI training GPU share, supported by CUDA, NVLink, NVSwitch, and a full-stack AI platform. Hyperscalers represented about 45% of data center revenue, Blackwell generated $18 billion in its first two quarters, networking revenue grew 120% to $15.8 billion, and AI Enterprise ARR reached $1.5 billion.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "CUDA",
-        "Blackwell",
-        "NVLink",
-        "NVSwitch",
-        "AI Enterprise"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "CUDA", "Blackwell", "NVLink", "NVSwitch", "AI Enterprise"],
       "difficulty": "hard",
-      "tags": [
-        "long_doc",
-        "Semiconductor",
-        "SEC_FILING",
-        "NVIDIA Corporation"
-      ]
+      "tags": ["long_doc", "Semiconductor", "SEC_FILING", "NVIDIA Corporation"]
     },
     {
       "id": "gs-069",
       "query": "Summarize NVIDIA's 2025 manufacturing and regulatory risks from the 10-K.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-012",
-        "chunk-013"
-      ],
+      "expected_chunk_ids": ["chunk-012", "chunk-013"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf"],
       "expected_answer": "NVIDIA depends on TSMC for all Hopper and Blackwell GPU fabrication on advanced 4nm and 3nm nodes, exposing it to Taiwan geopolitical risk, capacity allocation risk, and export controls. US restrictions reduced China-region revenue by an estimated $12 billion, and compliant H20 products for China carried lower margins.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "TSMC",
-        "Hopper",
-        "Blackwell",
-        "H20",
-        "China"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "TSMC", "Hopper", "Blackwell", "H20", "China"],
       "difficulty": "medium",
-      "tags": [
-        "long_doc",
-        "Semiconductor",
-        "SEC_FILING",
-        "NVIDIA Corporation"
-      ]
+      "tags": ["long_doc", "Semiconductor", "SEC_FILING", "NVIDIA Corporation"]
     },
     {
       "id": "gs-070",
       "query": "Summarize Tesla's FY2025 10-K across auto, competition, autonomy, and energy storage.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-015",
-        "chunk-016",
-        "chunk-017",
-        "chunk-018"
-      ],
+      "expected_chunk_ids": ["chunk-015", "chunk-016", "chunk-017", "chunk-018"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "TSLA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["TSLA-10K-2025.pdf"],
       "expected_answer": "Tesla reported $97.7 billion in FY2025 revenue and delivered 1.95 million vehicles, but automotive gross margin was 18.2% due to price reductions and competition. BYD surpassed Tesla with 3.2 million EV sales, and Tesla BEV share fell to 15.8%. FSD generated $3.2 billion and limited unsupervised robotaxis began in Austin and Phoenix. Energy storage deployed 32 GWh and Tesla Energy gross margin reached 28.5%.",
-      "expected_entities": [
-        "Tesla Inc.",
-        "BYD",
-        "FSD",
-        "Tesla Energy",
-        "Austin",
-        "Phoenix"
-      ],
+      "expected_entities": ["Tesla Inc.", "BYD", "FSD", "Tesla Energy", "Austin", "Phoenix"],
       "difficulty": "hard",
-      "tags": [
-        "long_doc",
-        "Technology",
-        "SEC_FILING",
-        "Tesla Inc."
-      ]
+      "tags": ["long_doc", "Technology", "SEC_FILING", "Tesla Inc."]
     },
     {
       "id": "gs-071",
       "query": "what did Apple make this year AND how much did they pay shareholders?",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-020",
-        "chunk-021",
-        "chunk-022",
-        "chunk-023"
-      ],
+      "expected_chunk_ids": ["chunk-020", "chunk-021", "chunk-022", "chunk-023"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "MSFT-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["MSFT-10K-2025.pdf"],
       "expected_answer": "Microsoft FY2025 revenue rose 16% to $264.2 billion, with Intelligent Cloud at $110.4 billion and Azure growing 29%. Azure AI services contributed about $15 billion annualized, and Copilot for Microsoft 365 reached 50 million MAUs. Capex rose 78% to $56.8 billion for AI data centers, GPUs, and custom silicon. Microsoft generated $89.4 billion in operating cash flow and returned $52.3 billion to shareholders.",
-      "expected_entities": [
-        "Microsoft Corporation",
-        "Azure",
-        "Copilot",
-        "NVIDIA",
-        "Maia"
-      ],
+      "expected_entities": ["Microsoft Corporation", "Azure", "Copilot", "NVIDIA", "Maia"],
       "difficulty": "hard",
-      "tags": [
-        "long_doc",
-        "Technology",
-        "SEC_FILING",
-        "Microsoft Corporation"
-      ],
+      "tags": ["long_doc", "Technology", "SEC_FILING", "Microsoft Corporation"],
       "provenance_original_query": "Summarize Microsoft's FY2025 10-K across revenue, cloud AI, capex, and cash returns.",
       "provenance_label": "natural_phrasing"
     },
@@ -1899,84 +918,37 @@
       "id": "gs-072",
       "query": "Summarize the June 2025 FOMC minutes on rates, inflation, cuts, and growth.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-024",
-        "chunk-026"
-      ],
+      "expected_chunk_ids": ["chunk-024", "chunk-026"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "fed-fomc-minutes-2025-06.pdf"
-      ],
+      "expected_source_docs": ["fed-fomc-minutes-2025-06.pdf"],
       "expected_answer": "The FOMC held the federal funds rate at 4.25-4.50% in June 2025 because inflation remained above target, with core PCE at 2.8% and unemployment at 4.2%. The updated dot plot projected two 25-bp cuts by year-end, down from three in March, and GDP growth was revised down to 2.1% from 2.4%. The committee emphasized data dependence and trade policy risks.",
-      "expected_entities": [
-        "FOMC",
-        "Federal Reserve",
-        "Core PCE",
-        "GDP"
-      ],
+      "expected_entities": ["FOMC", "Federal Reserve", "Core PCE", "GDP"],
       "difficulty": "medium",
-      "tags": [
-        "long_doc",
-        "Finance",
-        "REGULATION",
-        "FOMC"
-      ]
+      "tags": ["long_doc", "Finance", "REGULATION", "FOMC"]
     },
     {
       "id": "gs-073",
       "query": "Summarize the semiconductor supply-chain report on 2025 industry growth and vulnerabilities.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-030",
-        "chunk-031"
-      ],
+      "expected_chunk_ids": ["chunk-030", "chunk-031"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "semiconductor-supply-chain-2025.pdf"
-      ],
+      "expected_source_docs": ["semiconductor-supply-chain-2025.pdf"],
       "expected_answer": "The semiconductor industry reached $680 billion in 2025, up 18%, while the AI accelerator market grew 85% to $95 billion. Key vulnerabilities included TSMC's CoWoS capacity limiting Blackwell shipments, geographic concentration of advanced manufacturing in Taiwan, ASML EUV dependency, and neon gas exposure. A Taiwan disruption could affect an estimated $500 billion in annual technology product revenue.",
-      "expected_entities": [
-        "semiconductor industry",
-        "AI accelerator market",
-        "TSMC",
-        "CoWoS",
-        "ASML",
-        "Taiwan"
-      ],
+      "expected_entities": ["semiconductor industry", "AI accelerator market", "TSMC", "CoWoS", "ASML", "Taiwan"],
       "difficulty": "hard",
-      "tags": [
-        "long_doc",
-        "Semiconductor",
-        "RESEARCH_REPORT",
-        "supply_chain"
-      ]
+      "tags": ["long_doc", "Semiconductor", "RESEARCH_REPORT", "supply_chain"]
     },
     {
       "id": "gs-074",
       "query": "is Tesla still the EV leader? and where's most of their energy storage revenue coming from?",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-039",
-        "chunk-040"
-      ],
+      "expected_chunk_ids": ["chunk-039", "chunk-040"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JPM-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["JPM-10K-2025.pdf"],
       "expected_answer": "JPMorgan reported record FY2025 net income of $54.2 billion on $172.3 billion revenue, with $92.8 billion of net interest income and a 15.3% CET1 ratio. Commercial banking net charge-offs rose to $2.1 billion as higher rates pressured CRE borrowers, and allowance for credit losses was $22.3 billion. The firm invested $17.1 billion in technology, including AI fraud detection and an internal LLM platform.",
-      "expected_entities": [
-        "JPMorgan Chase & Co.",
-        "CET1",
-        "commercial real estate",
-        "AI"
-      ],
+      "expected_entities": ["JPMorgan Chase & Co.", "CET1", "commercial real estate", "AI"],
       "difficulty": "medium",
-      "tags": [
-        "long_doc",
-        "Finance",
-        "SEC_FILING",
-        "JPMorgan Chase"
-      ],
+      "tags": ["long_doc", "Finance", "SEC_FILING", "JPMorgan Chase"],
       "provenance_original_query": "Summarize JPMorgan's FY2025 10-K across earnings, capital, credit risk, and technology investment.",
       "provenance_label": "natural_phrasing"
     },
@@ -1984,156 +956,67 @@
       "id": "gs-075",
       "query": "Summarize the 2025 oil market outlook and energy sector valuation setup.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-037",
-        "chunk-038"
-      ],
+      "expected_chunk_ids": ["chunk-037", "chunk-038"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "oil-market-outlook-2025.pdf",
-        "energy-sector-analysis-2025.pdf"
-      ],
+      "expected_source_docs": ["oil-market-outlook-2025.pdf", "energy-sector-analysis-2025.pdf"],
       "expected_answer": "Brent averaged $78 per barrel in 2025, OPEC+ maintained 2.2 million bpd of voluntary cuts, and US shale reached 13.5 million bpd. Demand growth came from India and Southeast Asia while China slowed. Integrated oil majors traded at 11.2x forward P/E with 8.5% average free cash flow yields and 3.5-4.5% dividend yields, but faced long-term energy transition headwinds.",
-      "expected_entities": [
-        "Brent crude",
-        "OPEC+",
-        "US shale",
-        "integrated oil companies"
-      ],
+      "expected_entities": ["Brent crude", "OPEC+", "US shale", "integrated oil companies"],
       "difficulty": "hard",
-      "tags": [
-        "cross_document",
-        "Energy",
-        "RESEARCH_REPORT",
-        "oil"
-      ]
+      "tags": ["cross_document", "Energy", "RESEARCH_REPORT", "oil"]
     },
     {
       "id": "gs-076",
       "query": "Compare Apple and Microsoft FY2025 cash generation and shareholder returns.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-005",
-        "chunk-023"
-      ],
+      "expected_chunk_ids": ["chunk-005", "chunk-023"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf",
-        "MSFT-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf", "MSFT-10K-2025.pdf"],
       "expected_answer": "Apple generated $118.3 billion in operating cash flow and $107.2 billion in free cash flow, returning $95.0 billion through dividends and buybacks. Microsoft generated $89.4 billion in operating cash flow and returned $52.3 billion through dividends and buybacks.",
-      "expected_entities": [
-        "Apple Inc.",
-        "Microsoft Corporation"
-      ],
+      "expected_entities": ["Apple Inc.", "Microsoft Corporation"],
       "difficulty": "medium",
-      "tags": [
-        "cross_document",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc.",
-        "Microsoft Corporation"
-      ]
+      "tags": ["cross_document", "Technology", "SEC_FILING", "Apple Inc.", "Microsoft Corporation"]
     },
     {
       "id": "gs-077",
       "query": "Compare NVIDIA and Microsoft exposure to AI infrastructure demand in FY2025.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-009",
-        "chunk-011",
-        "chunk-021",
-        "chunk-022"
-      ],
+      "expected_chunk_ids": ["chunk-009", "chunk-011", "chunk-021", "chunk-022"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf",
-        "MSFT-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf", "MSFT-10K-2025.pdf"],
       "expected_answer": "NVIDIA monetized AI infrastructure through $115.2 billion of Data Center revenue, with hyperscalers including Microsoft Azure contributing about 45% of that segment. Microsoft monetized AI through Azure growth of 29%, Azure AI services at about $15 billion annualized revenue, and Copilot revenue near $5 billion, while spending $56.8 billion in capex for AI data centers and GPUs.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "Microsoft Corporation",
-        "Azure",
-        "Copilot"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "Microsoft Corporation", "Azure", "Copilot"],
       "difficulty": "hard",
-      "tags": [
-        "cross_document",
-        "Technology",
-        "Semiconductor",
-        "AI"
-      ]
+      "tags": ["cross_document", "Technology", "Semiconductor", "AI"]
     },
     {
       "id": "gs-078",
       "query": "Which companies in the corpus depend on TSMC for advanced chips, and why is that risky?",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-004",
-        "chunk-012",
-        "chunk-031"
-      ],
+      "expected_chunk_ids": ["chunk-004", "chunk-012", "chunk-031"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf",
-        "NVDA-10K-2025.pdf",
-        "semiconductor-supply-chain-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf", "NVDA-10K-2025.pdf", "semiconductor-supply-chain-2025.pdf"],
       "expected_answer": "Apple sources advanced A-series and M-series chips exclusively from TSMC, and NVIDIA depends on TSMC for Hopper and Blackwell GPUs. The risk is that TSMC produces over 90% of sub-5nm chips, Taiwan is geographically concentrated, and companies including Apple and NVIDIA have no viable alternative for their most advanced chips.",
-      "expected_entities": [
-        "Apple Inc.",
-        "NVIDIA Corporation",
-        "TSMC",
-        "Hopper",
-        "Blackwell"
-      ],
+      "expected_entities": ["Apple Inc.", "NVIDIA Corporation", "TSMC", "Hopper", "Blackwell"],
       "difficulty": "hard",
-      "tags": [
-        "cross_document",
-        "Semiconductor",
-        "Technology",
-        "supply_chain"
-      ]
+      "tags": ["cross_document", "Semiconductor", "Technology", "supply_chain"]
     },
     {
       "id": "gs-079",
       "query": "Compare Tesla and the global EV market in 2025.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-015",
-        "chunk-016",
-        "chunk-019"
-      ],
+      "expected_chunk_ids": ["chunk-015", "chunk-016", "chunk-019"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "TSLA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["TSLA-10K-2025.pdf"],
       "expected_answer": "Tesla delivered 1.95 million vehicles and generated $78.5 billion of automotive revenue, but its global BEV share declined from 19.5% to 15.8% as BYD reached 3.2 million EV sales. The broader global BEV market reached 18.5 million units, or about 22% of total vehicle sales, led by China with 10.2 million units.",
-      "expected_entities": [
-        "Tesla Inc.",
-        "BYD",
-        "global EV market",
-        "China"
-      ],
+      "expected_entities": ["Tesla Inc.", "BYD", "global EV market", "China"],
       "difficulty": "medium",
-      "tags": [
-        "long_doc",
-        "Technology",
-        "EV",
-        "Tesla Inc."
-      ]
+      "tags": ["long_doc", "Technology", "EV", "Tesla Inc."]
     },
     {
       "id": "gs-080",
       "query": "How do Fed rates connect to both tech valuation pressure and bank earnings strength?",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-024",
-        "chunk-025",
-        "chunk-039",
-        "chunk-041"
-      ],
+      "expected_chunk_ids": ["chunk-024", "chunk-025", "chunk-039", "chunk-041"],
       "acceptable_chunk_ids": [],
       "expected_source_docs": [
         "fed-fomc-minutes-2025-06.pdf",
@@ -2142,47 +1025,21 @@
         "banking-sector-outlook-2025.pdf"
       ],
       "expected_answer": "The Fed kept rates at 4.25-4.50%, which pressured DCF-sensitive technology valuations and limited NASDAQ first-half gains to 8.2%. The same elevated rates benefited banks through higher net interest margins; JPMorgan reported $92.8 billion in net interest income, and large money-center banks saw strong earnings.",
-      "expected_entities": [
-        "Federal Reserve",
-        "technology sector",
-        "JPMorgan Chase & Co.",
-        "US banking sector"
-      ],
+      "expected_entities": ["Federal Reserve", "technology sector", "JPMorgan Chase & Co.", "US banking sector"],
       "difficulty": "hard",
-      "tags": [
-        "cross_document",
-        "Finance",
-        "Technology",
-        "macro"
-      ]
+      "tags": ["cross_document", "Finance", "Technology", "macro"]
     },
     {
       "id": "gs-081",
       "query": "summarise Apple's FY2025 10-K — revenue, margin, risks",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-035",
-        "chunk-038"
-      ],
+      "expected_chunk_ids": ["chunk-035", "chunk-038"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "healthcare-outlook-2025.pdf",
-        "energy-sector-analysis-2025.pdf"
-      ],
+      "expected_source_docs": ["healthcare-outlook-2025.pdf", "energy-sector-analysis-2025.pdf"],
       "expected_answer": "Healthcare showed defensive characteristics, returning 12.3% versus 10.5% for the S&P 500. Energy offered value and income characteristics, with integrated oil majors trading at 11.2x forward P/E, average free cash flow yields of 8.5%, and dividend yields of 3.5-4.5%, though facing secular transition headwinds.",
-      "expected_entities": [
-        "healthcare sector",
-        "energy sector",
-        "S&P 500",
-        "integrated oil companies"
-      ],
+      "expected_entities": ["healthcare sector", "energy sector", "S&P 500", "integrated oil companies"],
       "difficulty": "medium",
-      "tags": [
-        "cross_document",
-        "Healthcare",
-        "Energy",
-        "sector_comparison"
-      ],
+      "tags": ["cross_document", "Healthcare", "Energy", "sector_comparison"],
       "provenance_original_query": "Compare healthcare and energy sector defensive or value characteristics in 2025.",
       "provenance_label": "natural_phrasing"
     },
@@ -2190,56 +1047,25 @@
       "id": "gs-082",
       "query": "Compare JPMorgan's CRE credit risk with the broader banking sector's CRE concern.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-040",
-        "chunk-041"
-      ],
+      "expected_chunk_ids": ["chunk-040", "chunk-041"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JPM-10K-2025.pdf",
-        "banking-sector-outlook-2025.pdf"
-      ],
+      "expected_source_docs": ["JPM-10K-2025.pdf", "banking-sector-outlook-2025.pdf"],
       "expected_answer": "JPMorgan's commercial banking charge-offs increased to $2.1 billion from $1.4 billion as higher rates pressured CRE borrowers. The broader banking outlook similarly flagged commercial real estate exposure, national office vacancy at 19.5%, regional bank CRE concentration, and deposit competition.",
-      "expected_entities": [
-        "JPMorgan Chase & Co.",
-        "commercial real estate",
-        "regional banks"
-      ],
+      "expected_entities": ["JPMorgan Chase & Co.", "commercial real estate", "regional banks"],
       "difficulty": "medium",
-      "tags": [
-        "cross_document",
-        "Finance",
-        "banking",
-        "commercial_real_estate"
-      ]
+      "tags": ["cross_document", "Finance", "banking", "commercial_real_estate"]
     },
     {
       "id": "gs-083",
       "query": "give me the NVIDIA 10-K highlights",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-007",
-        "chunk-014"
-      ],
+      "expected_chunk_ids": ["chunk-007", "chunk-014"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf",
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf", "NVDA-10K-2025.pdf"],
       "expected_answer": "Apple spent $31.4 billion on R&D, up 9.2%, driven by Apple Intelligence, Vision Pro, and next-generation silicon. NVIDIA spent $12.8 billion on R&D focused on next-generation GPU architectures, AI software frameworks, and autonomous vehicle platforms, while AI Enterprise ARR reached $1.5 billion.",
-      "expected_entities": [
-        "Apple Inc.",
-        "NVIDIA Corporation",
-        "Apple Intelligence",
-        "AI Enterprise"
-      ],
+      "expected_entities": ["Apple Inc.", "NVIDIA Corporation", "Apple Intelligence", "AI Enterprise"],
       "difficulty": "medium",
-      "tags": [
-        "cross_document",
-        "Technology",
-        "Semiconductor",
-        "R&D"
-      ],
+      "tags": ["cross_document", "Technology", "Semiconductor", "R&D"],
       "provenance_original_query": "Compare Apple and NVIDIA R&D spending and AI focus in FY2025.",
       "provenance_label": "natural_phrasing"
     },
@@ -2247,30 +1073,13 @@
       "id": "gs-084",
       "query": "walk me through Tesla's 10-K — autonomy, energy, margins",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-024",
-        "chunk-027",
-        "chunk-026"
-      ],
+      "expected_chunk_ids": ["chunk-024", "chunk-027", "chunk-026"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "fed-fomc-minutes-2025-06.pdf",
-        "macro-inflation-outlook-Q2-2025.pdf"
-      ],
+      "expected_source_docs": ["fed-fomc-minutes-2025-06.pdf", "macro-inflation-outlook-Q2-2025.pdf"],
       "expected_answer": "The June FOMC minutes noted concern that tariff policies could be inflationary while keeping rates at 4.25-4.50%. The inflation outlook estimated tariffs on Chinese imports added 0.3-0.5 percentage points to goods inflation. The Fed reduced expected 2025 cuts to two and emphasized data dependence and trade policy uncertainty.",
-      "expected_entities": [
-        "Federal Reserve",
-        "tariffs",
-        "Core PCE",
-        "China"
-      ],
+      "expected_entities": ["Federal Reserve", "tariffs", "Core PCE", "China"],
       "difficulty": "hard",
-      "tags": [
-        "cross_document",
-        "Finance",
-        "REGULATION",
-        "inflation"
-      ],
+      "tags": ["cross_document", "Finance", "REGULATION", "inflation"],
       "provenance_original_query": "How do tariff-driven inflation and Fed policy appear across the macro documents?",
       "provenance_label": "natural_phrasing"
     },
@@ -2278,146 +1087,69 @@
       "id": "gs-085",
       "query": "Compare Exxon's 2025 cash returns with the energy sector's valuation and dividend profile.",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-036",
-        "chunk-038"
-      ],
+      "expected_chunk_ids": ["chunk-036", "chunk-038"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "XOM-10K-2025.pdf",
-        "energy-sector-analysis-2025.pdf"
-      ],
+      "expected_source_docs": ["XOM-10K-2025.pdf", "energy-sector-analysis-2025.pdf"],
       "expected_answer": "Exxon generated $52.1 billion in operating cash flow and returned $32.4 billion to shareholders. The broader integrated oil sector traded at an average 11.2x forward P/E, with 8.5% average free cash flow yields and 3.5-4.5% dividend yields.",
-      "expected_entities": [
-        "Exxon Mobil Corporation",
-        "integrated oil companies"
-      ],
+      "expected_entities": ["Exxon Mobil Corporation", "integrated oil companies"],
       "difficulty": "medium",
-      "tags": [
-        "cross_document",
-        "Energy",
-        "valuation",
-        "Exxon Mobil"
-      ]
+      "tags": ["cross_document", "Energy", "valuation", "Exxon Mobil"]
     },
     {
       "id": "gs-086",
       "query": "Create a numeric row for Apple FY2025 revenue, iPhone revenue, Services revenue, and free cash flow.",
       "query_class": "numeric",
-      "expected_chunk_ids": [
-        "chunk-001",
-        "chunk-005"
-      ],
+      "expected_chunk_ids": ["chunk-001", "chunk-005"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple FY2025: total revenue $391.0 billion; iPhone revenue $200.6 billion; Services revenue $96.2 billion; free cash flow $107.2 billion.",
-      "expected_entities": [
-        "Apple Inc.",
-        "iPhone",
-        "Services"
-      ],
+      "expected_entities": ["Apple Inc.", "iPhone", "Services"],
       "difficulty": "easy",
-      "tags": [
-        "table_numeric",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ]
+      "tags": ["table_numeric", "Technology", "SEC_FILING", "Apple Inc."]
     },
     {
       "id": "gs-087",
       "query": "List Apple's FY2025 product revenue breakdown for iPhone, Services, Mac, iPad, and Wearables.",
       "query_class": "numeric",
-      "expected_chunk_ids": [
-        "chunk-001"
-      ],
+      "expected_chunk_ids": ["chunk-001"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple FY2025 revenue by category: iPhone $200.6 billion; Services $96.2 billion; Mac $29.4 billion; iPad $28.3 billion; Wearables, Home and Accessories $36.5 billion.",
-      "expected_entities": [
-        "Apple Inc.",
-        "iPhone",
-        "Services",
-        "Mac",
-        "iPad",
-        "Wearables"
-      ],
+      "expected_entities": ["Apple Inc.", "iPhone", "Services", "Mac", "iPad", "Wearables"],
       "difficulty": "easy",
-      "tags": [
-        "table_numeric",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ]
+      "tags": ["table_numeric", "Technology", "SEC_FILING", "Apple Inc."]
     },
     {
       "id": "gs-088",
       "query": "Create a numeric row for NVIDIA FY2025 revenue by segment.",
       "query_class": "numeric",
-      "expected_chunk_ids": [
-        "chunk-009"
-      ],
+      "expected_chunk_ids": ["chunk-009"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf"],
       "expected_answer": "NVIDIA FY2025 segment revenue: Data Center $115.2 billion; Gaming $10.6 billion; Professional Visualization $2.0 billion; Automotive $2.7 billion; total revenue $130.5 billion.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "Data Center",
-        "Gaming",
-        "Professional Visualization",
-        "Automotive"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "Data Center", "Gaming", "Professional Visualization", "Automotive"],
       "difficulty": "easy",
-      "tags": [
-        "table_numeric",
-        "Semiconductor",
-        "SEC_FILING",
-        "NVIDIA Corporation"
-      ]
+      "tags": ["table_numeric", "Semiconductor", "SEC_FILING", "NVIDIA Corporation"]
     },
     {
       "id": "gs-089",
       "query": "Create a numeric row for Tesla FY2025 revenue by business line and automotive gross margin.",
       "query_class": "numeric",
-      "expected_chunk_ids": [
-        "chunk-015"
-      ],
+      "expected_chunk_ids": ["chunk-015"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "TSLA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["TSLA-10K-2025.pdf"],
       "expected_answer": "Tesla FY2025: total revenue $97.7 billion; Automotive revenue $78.5 billion; Energy Generation and Storage revenue $12.1 billion; Services revenue $7.1 billion; automotive gross margin 18.2%.",
-      "expected_entities": [
-        "Tesla Inc.",
-        "Automotive",
-        "Energy Generation and Storage",
-        "Services"
-      ],
+      "expected_entities": ["Tesla Inc.", "Automotive", "Energy Generation and Storage", "Services"],
       "difficulty": "easy",
-      "tags": [
-        "table_numeric",
-        "Technology",
-        "SEC_FILING",
-        "Tesla Inc."
-      ]
+      "tags": ["table_numeric", "Technology", "SEC_FILING", "Tesla Inc."]
     },
     {
       "id": "gs-090",
       "query": "Create a numeric row for Microsoft FY2025 segment revenue and operating margin.",
       "query_class": "numeric",
-      "expected_chunk_ids": [
-        "chunk-020"
-      ],
+      "expected_chunk_ids": ["chunk-020"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "MSFT-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["MSFT-10K-2025.pdf"],
       "expected_answer": "Microsoft FY2025: total revenue $264.2 billion; Intelligent Cloud $110.4 billion; Productivity and Business Processes $85.7 billion; More Personal Computing $68.1 billion; operating income $118.5 billion; operating margin 44.8%.",
       "expected_entities": [
         "Microsoft Corporation",
@@ -2426,37 +1158,19 @@
         "More Personal Computing"
       ],
       "difficulty": "easy",
-      "tags": [
-        "table_numeric",
-        "Technology",
-        "SEC_FILING",
-        "Microsoft Corporation"
-      ]
+      "tags": ["table_numeric", "Technology", "SEC_FILING", "Microsoft Corporation"]
     },
     {
       "id": "gs-091",
       "query": "how's the semi supply chain looking across TSMC + NVIDIA?",
       "query_class": "numeric",
-      "expected_chunk_ids": [
-        "chunk-023"
-      ],
+      "expected_chunk_ids": ["chunk-023"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "MSFT-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["MSFT-10K-2025.pdf"],
       "expected_answer": "Microsoft FY2025: operating cash flow $89.4 billion; shareholder returns $52.3 billion; dividends $23.4 billion; repurchases $28.9 billion; cash and short-term investments $75.8 billion; LinkedIn revenue $18.2 billion; gaming revenue $24.6 billion.",
-      "expected_entities": [
-        "Microsoft Corporation",
-        "LinkedIn",
-        "Activision Blizzard"
-      ],
+      "expected_entities": ["Microsoft Corporation", "LinkedIn", "Activision Blizzard"],
       "difficulty": "medium",
-      "tags": [
-        "table_numeric",
-        "Technology",
-        "SEC_FILING",
-        "Microsoft Corporation"
-      ],
+      "tags": ["table_numeric", "Technology", "SEC_FILING", "Microsoft Corporation"],
       "provenance_original_query": "Create a numeric row for Microsoft FY2025 cash, shareholder returns, LinkedIn revenue, and gaming revenue.",
       "provenance_label": "natural_phrasing"
     },
@@ -2464,28 +1178,13 @@
       "id": "gs-092",
       "query": "compare NVDA vs AMD on AI accelerators in 2025",
       "query_class": "numeric",
-      "expected_chunk_ids": [
-        "chunk-024",
-        "chunk-026"
-      ],
+      "expected_chunk_ids": ["chunk-024", "chunk-026"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "fed-fomc-minutes-2025-06.pdf"
-      ],
+      "expected_source_docs": ["fed-fomc-minutes-2025-06.pdf"],
       "expected_answer": "June 2025 Fed numbers: federal funds target range 4.25-4.50%; core PCE 2.8%; unemployment 4.2%; median projected cuts two 25-bp cuts by year-end; 2025 GDP growth projection 2.1%; 10-year Treasury yield 4.45%.",
-      "expected_entities": [
-        "Federal Reserve",
-        "FOMC",
-        "Core PCE",
-        "10-year Treasury"
-      ],
+      "expected_entities": ["Federal Reserve", "FOMC", "Core PCE", "10-year Treasury"],
       "difficulty": "medium",
-      "tags": [
-        "table_numeric",
-        "Finance",
-        "REGULATION",
-        "FOMC"
-      ],
+      "tags": ["table_numeric", "Finance", "REGULATION", "FOMC"],
       "provenance_original_query": "List the June 2025 Fed macro numbers: funds range, core PCE, unemployment, projected cuts, GDP projection, and 10-year yield.",
       "provenance_label": "natural_phrasing"
     },
@@ -2493,52 +1192,25 @@
       "id": "gs-093",
       "query": "Create a numeric row for Johnson & Johnson FY2025 revenue and key drug sales.",
       "query_class": "numeric",
-      "expected_chunk_ids": [
-        "chunk-033"
-      ],
+      "expected_chunk_ids": ["chunk-033"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JNJ-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["JNJ-10K-2025.pdf"],
       "expected_answer": "Johnson & Johnson FY2025: total revenue $88.7 billion; Innovative Medicine $58.4 billion; MedTech $30.3 billion; Darzalex $12.1 billion, up 15%; Tremfya $4.8 billion, up 28%; 50 pipeline programs in Phase 2 or later.",
-      "expected_entities": [
-        "Johnson & Johnson",
-        "Darzalex",
-        "Tremfya",
-        "Nipocalimab"
-      ],
+      "expected_entities": ["Johnson & Johnson", "Darzalex", "Tremfya", "Nipocalimab"],
       "difficulty": "easy",
-      "tags": [
-        "table_numeric",
-        "Healthcare",
-        "SEC_FILING",
-        "Johnson & Johnson"
-      ]
+      "tags": ["table_numeric", "Healthcare", "SEC_FILING", "Johnson & Johnson"]
     },
     {
       "id": "gs-094",
       "query": "how does AAPL's services business stack up against MSFT's cloud?",
       "query_class": "numeric",
-      "expected_chunk_ids": [
-        "chunk-036"
-      ],
+      "expected_chunk_ids": ["chunk-036"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "XOM-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["XOM-10K-2025.pdf"],
       "expected_answer": "Exxon FY2025: total revenue $334.5 billion; upstream earnings $26.3 billion; downstream earnings $5.8 billion; chemical earnings $3.2 billion; production 4.2 million BOE/day; Brent average $78/barrel; operating cash flow $52.1 billion; shareholder returns $32.4 billion.",
-      "expected_entities": [
-        "Exxon Mobil Corporation",
-        "Brent crude",
-        "Pioneer Natural Resources"
-      ],
+      "expected_entities": ["Exxon Mobil Corporation", "Brent crude", "Pioneer Natural Resources"],
       "difficulty": "medium",
-      "tags": [
-        "table_numeric",
-        "Energy",
-        "SEC_FILING",
-        "Exxon Mobil"
-      ],
+      "tags": ["table_numeric", "Energy", "SEC_FILING", "Exxon Mobil"],
       "provenance_original_query": "Create a numeric row for Exxon FY2025 revenue, earnings, production, oil price, cash flow, and shareholder returns.",
       "provenance_label": "natural_phrasing"
     },
@@ -2546,14 +1218,9 @@
       "id": "gs-095",
       "query": "Create a numeric row for JPMorgan FY2025 revenue, net income, net interest income, CET1, charge-offs, and credit allowance.",
       "query_class": "numeric",
-      "expected_chunk_ids": [
-        "chunk-039",
-        "chunk-040"
-      ],
+      "expected_chunk_ids": ["chunk-039", "chunk-040"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JPM-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["JPM-10K-2025.pdf"],
       "expected_answer": "JPMorgan FY2025: total revenue $172.3 billion; net income $54.2 billion; net interest income $92.8 billion; Consumer & Community Banking revenue $64.1 billion; Corporate & Investment Banking revenue $55.8 billion; CET1 ratio 15.3%; net charge-offs $2.1 billion; allowance for credit losses $22.3 billion.",
       "expected_entities": [
         "JPMorgan Chase & Co.",
@@ -2562,85 +1229,43 @@
         "Corporate & Investment Banking"
       ],
       "difficulty": "medium",
-      "tags": [
-        "table_numeric",
-        "Finance",
-        "SEC_FILING",
-        "JPMorgan Chase"
-      ]
+      "tags": ["table_numeric", "Finance", "SEC_FILING", "JPMorgan Chase"]
     },
     {
       "id": "gs-096",
       "query": "how much cash does apple have right now in the 2025 filing?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-005"
-      ],
+      "expected_chunk_ids": ["chunk-005"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "AAPL-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["AAPL-10K-2025.pdf"],
       "expected_answer": "Apple held $51.2 billion in cash and marketable securities in FY2025.",
-      "expected_entities": [
-        "Apple Inc."
-      ],
+      "expected_entities": ["Apple Inc."],
       "difficulty": "easy",
-      "tags": [
-        "colloquial",
-        "Technology",
-        "SEC_FILING",
-        "Apple Inc."
-      ]
+      "tags": ["colloquial", "Technology", "SEC_FILING", "Apple Inc."]
     },
     {
       "id": "gs-097",
       "query": "is nvidia basically all data center now?",
       "query_class": "factoid",
-      "expected_chunk_ids": [
-        "chunk-009"
-      ],
+      "expected_chunk_ids": ["chunk-009"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "NVDA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["NVDA-10K-2025.pdf"],
       "expected_answer": "Yes. NVIDIA's Data Center revenue was $115.2 billion in FY2025, representing 88.3% of total revenue.",
-      "expected_entities": [
-        "NVIDIA Corporation",
-        "Data Center"
-      ],
+      "expected_entities": ["NVIDIA Corporation", "Data Center"],
       "difficulty": "easy",
-      "tags": [
-        "colloquial",
-        "Semiconductor",
-        "SEC_FILING",
-        "NVIDIA Corporation"
-      ]
+      "tags": ["colloquial", "Semiconductor", "SEC_FILING", "NVIDIA Corporation"]
     },
     {
       "id": "gs-098",
       "query": "JPM doing well or not?",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-018",
-        "chunk-015"
-      ],
+      "expected_chunk_ids": ["chunk-018", "chunk-015"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "TSLA-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["TSLA-10K-2025.pdf"],
       "expected_answer": "Tesla's energy storage business grew strongly: Energy Generation and Storage revenue was $12.1 billion, up 67%, battery storage deployments reached 32 GWh versus 14.7 GWh in FY2024, and Tesla Energy gross margin reached 28.5%.",
-      "expected_entities": [
-        "Tesla Inc.",
-        "Tesla Energy",
-        "Megapack"
-      ],
+      "expected_entities": ["Tesla Inc.", "Tesla Energy", "Megapack"],
       "difficulty": "easy",
-      "tags": [
-        "colloquial",
-        "Technology",
-        "SEC_FILING",
-        "Tesla Inc."
-      ],
+      "tags": ["colloquial", "Technology", "SEC_FILING", "Tesla Inc."],
       "provenance_original_query": "what's tesla's battery storage business looking like?",
       "provenance_label": "natural_phrasing"
     },
@@ -2648,52 +1273,25 @@
       "id": "gs-099",
       "query": "are rates still high according to the fed docs?",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-024",
-        "chunk-026"
-      ],
+      "expected_chunk_ids": ["chunk-024", "chunk-026"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "fed-fomc-minutes-2025-06.pdf"
-      ],
+      "expected_source_docs": ["fed-fomc-minutes-2025-06.pdf"],
       "expected_answer": "Yes. The FOMC maintained the federal funds target range at 4.25-4.50% in June 2025, and the 10-year Treasury yield remained elevated at 4.45%. The dot plot still expected two 25-bp cuts by year-end, but the Fed emphasized data dependence.",
-      "expected_entities": [
-        "Federal Reserve",
-        "FOMC",
-        "10-year Treasury"
-      ],
+      "expected_entities": ["Federal Reserve", "FOMC", "10-year Treasury"],
       "difficulty": "easy",
-      "tags": [
-        "colloquial",
-        "Finance",
-        "REGULATION",
-        "FOMC"
-      ]
+      "tags": ["colloquial", "Finance", "REGULATION", "FOMC"]
     },
     {
       "id": "gs-100",
       "query": "is JPM doing well or are credit losses getting worse?",
       "query_class": "summary",
-      "expected_chunk_ids": [
-        "chunk-039",
-        "chunk-040"
-      ],
+      "expected_chunk_ids": ["chunk-039", "chunk-040"],
       "acceptable_chunk_ids": [],
-      "expected_source_docs": [
-        "JPM-10K-2025.pdf"
-      ],
+      "expected_source_docs": ["JPM-10K-2025.pdf"],
       "expected_answer": "Both are true. JPMorgan reported record net income of $54.2 billion and total revenue of $172.3 billion, helped by $92.8 billion of net interest income. But credit losses worsened in commercial banking: net charge-offs rose to $2.1 billion from $1.4 billion as higher rates pressured commercial real estate borrowers.",
-      "expected_entities": [
-        "JPMorgan Chase & Co.",
-        "commercial real estate"
-      ],
+      "expected_entities": ["JPMorgan Chase & Co.", "commercial real estate"],
       "difficulty": "medium",
-      "tags": [
-        "colloquial",
-        "Finance",
-        "SEC_FILING",
-        "JPMorgan Chase"
-      ],
+      "tags": ["colloquial", "Finance", "SEC_FILING", "JPMorgan Chase"],
       "provenance_original_query": "is jpm doing well or are credit losses getting worse?",
       "provenance_label": "natural_phrasing"
     }

@@ -21,19 +21,11 @@ export function createThinkingTools() {
       inputSchema: z.object({
         observations: z
           .string()
-          .describe(
-            'What you observe from market data, financials, and indicators',
-          ),
+          .describe('What you observe from market data, financials, and indicators'),
         analysis: z
           .string()
-          .describe(
-            'Your analysis — what do these observations mean for investment risk?',
-          ),
-        keyFactors: z
-          .string()
-          .describe(
-            'Comma-separated key factors influencing your assessment',
-          ),
+          .describe('Your analysis — what do these observations mean for investment risk?'),
+        keyFactors: z.string().describe('Comma-separated key factors influencing your assessment'),
       }),
       execute: async ({ observations, analysis, keyFactors }) => {
         try {
@@ -55,21 +47,9 @@ export function createThinkingTools() {
         'and outline the specific steps you will take. ' +
         'This improves decision quality by forcing structured deliberation before action.',
       inputSchema: z.object({
-        options: z
-          .string()
-          .describe(
-            'Numbered list of possible actions (at least 2 options)',
-          ),
-        decision: z
-          .string()
-          .describe(
-            'Which option you choose and WHY — explain your reasoning',
-          ),
-        steps: z
-          .string()
-          .describe(
-            'Specific steps you will execute to implement the decision',
-          ),
+        options: z.string().describe('Numbered list of possible actions (at least 2 options)'),
+        decision: z.string().describe('Which option you choose and WHY — explain your reasoning'),
+        steps: z.string().describe('Specific steps you will execute to implement the decision'),
       }),
       execute: async ({ options, decision, steps }) => {
         try {
@@ -123,9 +103,7 @@ export function createThinkingTools() {
         severity: z
           .enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'])
           .describe('Severity: LOW, MEDIUM, HIGH, CRITICAL'),
-        details: z
-          .string()
-          .describe('Additional context or recommended action'),
+        details: z.string().describe('Additional context or recommended action'),
       }),
       execute: async ({ message, severity, details }) => {
         try {
@@ -145,9 +123,7 @@ export function createThinkingTools() {
 // ── Safe recursive-descent expression parser ────────────────────────────────
 // Expression parser supporting numbers, +, -, *, /, (), and unary -
 
-type Token =
-  | { type: 'NUMBER'; value: number }
-  | { type: '+' | '-' | '*' | '/' | '(' | ')' };
+type Token = { type: 'NUMBER'; value: number } | { type: '+' | '-' | '*' | '/' | '(' | ')' };
 
 function tokenize(input: string): Token[] {
   const tokens: Token[] = [];

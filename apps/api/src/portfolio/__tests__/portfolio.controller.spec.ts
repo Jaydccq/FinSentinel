@@ -134,10 +134,10 @@ describe('PortfolioController', () => {
         .expect(201);
 
       expect(res.body).toEqual(PORTFOLIO_RESPONSE);
-      expect(mockPortfolioService.createPortfolio).toHaveBeenCalledWith(
-        USER_ID,
-        { name: 'Tech Growth', description: 'Tech portfolio' },
-      );
+      expect(mockPortfolioService.createPortfolio).toHaveBeenCalledWith(USER_ID, {
+        name: 'Tech Growth',
+        description: 'Tech portfolio',
+      });
     });
 
     it('returns 400 for invalid body (missing name)', async () => {
@@ -154,9 +154,7 @@ describe('PortfolioController', () => {
     it('returns list of portfolios', async () => {
       mockPortfolioService.getPortfolios.mockResolvedValueOnce([PORTFOLIO_RESPONSE]);
 
-      const res = await request(app.getHttpServer())
-        .get('/api/portfolios')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/api/portfolios').expect(200);
 
       expect(res.body).toEqual([PORTFOLIO_RESPONSE]);
       expect(mockPortfolioService.getPortfolios).toHaveBeenCalledWith(USER_ID);
@@ -181,9 +179,7 @@ describe('PortfolioController', () => {
         new NotFoundException('Portfolio not found'),
       );
 
-      await request(app.getHttpServer())
-        .get(`/api/portfolios/${PORTFOLIO_ID}`)
-        .expect(404);
+      await request(app.getHttpServer()).get(`/api/portfolios/${PORTFOLIO_ID}`).expect(404);
     });
 
     it('returns 403 when not owned by user', async () => {
@@ -191,9 +187,7 @@ describe('PortfolioController', () => {
         new ForbiddenException('Not authorized'),
       );
 
-      await request(app.getHttpServer())
-        .get(`/api/portfolios/${PORTFOLIO_ID}`)
-        .expect(403);
+      await request(app.getHttpServer()).get(`/api/portfolios/${PORTFOLIO_ID}`).expect(403);
     });
   });
 
@@ -219,9 +213,7 @@ describe('PortfolioController', () => {
     it('returns 204', async () => {
       mockPortfolioService.deletePortfolio.mockResolvedValueOnce(undefined);
 
-      await request(app.getHttpServer())
-        .delete(`/api/portfolios/${PORTFOLIO_ID}`)
-        .expect(204);
+      await request(app.getHttpServer()).delete(`/api/portfolios/${PORTFOLIO_ID}`).expect(204);
     });
   });
 

@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import SettingsPage from '@/views/SettingsPage'
+import SettingsPage from '@/views/SettingsPage';
 
 export default function Page() {
-  return <SettingsPage />
+  return <SettingsPage />;
 }

@@ -81,7 +81,7 @@ variables, without breaking the existing OpenRouter default.
   runtime exports that were still only in the local working tree. Re-verified
   the full dirty tree with `pnpm typecheck`, `pnpm build`, `git diff --check`,
   `pnpm --filter @finsentinel/ai-runtime typecheck`, `pnpm --filter
-  @finsentinel/ai-runtime test`, `pnpm --filter @finsentinel/ai-runtime build`,
+@finsentinel/ai-runtime test`, `pnpm --filter @finsentinel/ai-runtime build`,
   and targeted API Vitest specs. All passed before committing the provider
   runtime and API changes together.
 - 2026-04-20: Selected `nvidia/nemotron-3-super-120b-a12b` for text generation

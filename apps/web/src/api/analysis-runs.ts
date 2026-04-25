@@ -68,9 +68,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-export function isStrategyArchivePayload(
-  value: unknown,
-): value is StrategyArchivePayload {
+export function isStrategyArchivePayload(value: unknown): value is StrategyArchivePayload {
   return strategyArchivePayloadSchema.safeParse(value).success;
 }
 
@@ -283,17 +281,12 @@ export const analysisRunsApi = {
     }),
   list: () => json<AnalysisRunResponse[]>('/analysis/runs'),
   getOne: (id: string) => json<AnalysisRunResponse>(`/analysis/runs/${id}`),
-  listStages: (id: string) =>
-    json<AnalysisStageResponse[]>(`/analysis/runs/${id}/stages`),
-  listArtifacts: (id: string) =>
-    json<AnalysisArtifactResponse[]>(`/analysis/runs/${id}/artifacts`),
-  listApprovals: (id: string) =>
-    json<AnalysisApprovalResponse[]>(`/analysis/runs/${id}/approvals`),
+  listStages: (id: string) => json<AnalysisStageResponse[]>(`/analysis/runs/${id}/stages`),
+  listArtifacts: (id: string) => json<AnalysisArtifactResponse[]>(`/analysis/runs/${id}/artifacts`),
+  listApprovals: (id: string) => json<AnalysisApprovalResponse[]>(`/analysis/runs/${id}/approvals`),
   pause: (id: string) => json<{ ok: true }>(`/analysis/runs/${id}/pause`, { method: 'POST' }),
-  resume: (id: string) =>
-    json<{ ok: true }>(`/analysis/runs/${id}/resume`, { method: 'POST' }),
-  cancel: (id: string) =>
-    json<{ ok: true }>(`/analysis/runs/${id}/cancel`, { method: 'POST' }),
+  resume: (id: string) => json<{ ok: true }>(`/analysis/runs/${id}/resume`, { method: 'POST' }),
+  cancel: (id: string) => json<{ ok: true }>(`/analysis/runs/${id}/cancel`, { method: 'POST' }),
   retryStage: (id: string, stageKey: AnalysisStageKey) =>
     json<{ ok: true }>(`/analysis/runs/${id}/stages/${stageKey}/retry`, {
       method: 'POST',

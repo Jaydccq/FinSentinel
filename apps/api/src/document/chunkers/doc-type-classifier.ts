@@ -6,12 +6,15 @@ const QUESTION_LINE_RE = /(^|\n)(?:Q\s*[:.]?|Question\s*[:.]?)\s*/i;
 
 export function classifyDocType(doc: StructuredDocument): ClassifiedDocType {
   const total = doc.chunks.length || 1;
-  const tables = doc.chunks.filter(c => c.modality === 'table').length;
+  const tables = doc.chunks.filter((c) => c.modality === 'table').length;
   if (tables / total >= 0.4) return 'table_heavy';
 
-  const textBlob = doc.chunks.filter(c => c.modality === 'text').map(c => c.text).join('\n');
-  const lines = textBlob.split(/\n+/).filter(l => l.trim().length > 0);
-  const questions = lines.filter(l => QUESTION_LINE_RE.test(l)).length;
+  const textBlob = doc.chunks
+    .filter((c) => c.modality === 'text')
+    .map((c) => c.text)
+    .join('\n');
+  const lines = textBlob.split(/\n+/).filter((l) => l.trim().length > 0);
+  const questions = lines.filter((l) => QUESTION_LINE_RE.test(l)).length;
   if (lines.length > 0 && questions / lines.length >= 0.2) return 'qa';
 
   const distinctSections = new Set<string>();

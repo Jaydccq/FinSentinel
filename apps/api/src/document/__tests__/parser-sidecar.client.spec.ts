@@ -44,17 +44,13 @@ describe('ParserSidecarResponse schema', () => {
   });
 
   it('rejects empty markdown', () => {
-    expect(() =>
-      ParserSidecarResponse.parse({ ...wellFormedPayload(), markdown: '' }),
-    ).toThrow();
+    expect(() => ParserSidecarResponse.parse({ ...wellFormedPayload(), markdown: '' })).toThrow();
   });
 
   it('rejects missing parserVersion', () => {
     const payload = wellFormedPayload();
     const { parserVersion: _omit, ...metaWithout } = payload.metadata;
-    expect(() =>
-      ParserSidecarResponse.parse({ ...payload, metadata: metaWithout }),
-    ).toThrow();
+    expect(() => ParserSidecarResponse.parse({ ...payload, metadata: metaWithout })).toThrow();
   });
 });
 
@@ -102,9 +98,9 @@ describe('ParserSidecarClient behaviour', () => {
     const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
     fetchMock.mockClear();
 
-    await expect(
-      client.parse(Buffer.from('data'), 'application/pdf', 'test4.pdf'),
-    ).rejects.toThrow('PARSER_CIRCUIT_OPEN');
+    await expect(client.parse(Buffer.from('data'), 'application/pdf', 'test4.pdf')).rejects.toThrow(
+      'PARSER_CIRCUIT_OPEN',
+    );
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -123,14 +119,18 @@ describe('ParserSidecarClient behaviour', () => {
 
     const client = makeClient({ timeoutMs: 200, minMarkdownChars: 50 });
 
-    await expect(
-      client.parse(Buffer.from('data'), 'application/pdf', 'test.pdf'),
-    ).rejects.toThrow('PARSER_EMPTY_OUTPUT');
+    await expect(client.parse(Buffer.from('data'), 'application/pdf', 'test.pdf')).rejects.toThrow(
+      'PARSER_EMPTY_OUTPUT',
+    );
   });
 
   it('after cooldown, a single probe failure does NOT immediately re-open the circuit', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('500'));
-    const client = new ParserSidecarClient({ url: 'http://x', timeoutMs: 1000, minMarkdownChars: 10 });
+    const client = new ParserSidecarClient({
+      url: 'http://x',
+      timeoutMs: 1000,
+      minMarkdownChars: 10,
+    });
 
     for (let i = 0; i < 3; i++) {
       await expect(client.parse(Buffer.from('x'), 'application/pdf', 'x.pdf')).rejects.toThrow();
@@ -160,11 +160,7 @@ describe('ParserSidecarClient behaviour', () => {
 
     const client = makeClient({ timeoutMs: 200, minMarkdownChars: 5 });
 
-    const result = await client.parse(
-      Buffer.from('data'),
-      'application/pdf',
-      'test.pdf',
-    );
+    const result = await client.parse(Buffer.from('data'), 'application/pdf', 'test.pdf');
 
     expect(result.markdown).toBe(payload.markdown);
     expect(result.metadata.parserVersion).toBe('1.0.0');

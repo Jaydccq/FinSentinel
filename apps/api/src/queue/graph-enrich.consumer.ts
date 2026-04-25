@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable, Inject, Logger, OnModuleInit, OnModuleDestroy, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+  Optional,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { MetricsService } from '../common/services/metrics.service';
 import { Worker, Job } from 'bullmq';
@@ -95,10 +102,7 @@ export class GraphEnrichConsumer implements OnModuleInit, OnModuleDestroy {
     @Optional() private readonly metrics?: MetricsService,
   ) {
     this.sidecarUrl = configService.get<string>('RERANKER_URL', 'http://localhost:8100');
-    this.minRelationConfidence = configService.get<number>(
-      'rag.graph.minRelationConfidence',
-      0.5,
-    );
+    this.minRelationConfidence = configService.get<number>('rag.graph.minRelationConfidence', 0.5);
   }
 
   onModuleInit(): void {
@@ -134,10 +138,7 @@ export class GraphEnrichConsumer implements OnModuleInit, OnModuleDestroy {
     const chunks = await this.db
       .select({ id: documentChunks.id, content: documentChunks.content })
       .from(documentChunks)
-      .where(and(
-        eq(documentChunks.sourceType, sourceType),
-        eq(documentChunks.sourceId, sourceId),
-      ));
+      .where(and(eq(documentChunks.sourceType, sourceType), eq(documentChunks.sourceId, sourceId)));
 
     if (chunks.length === 0) {
       this.logger.warn(`No chunks found for ${sourceType}/${sourceId}`);
@@ -145,7 +146,7 @@ export class GraphEnrichConsumer implements OnModuleInit, OnModuleDestroy {
     }
 
     // 2. Call sidecar /extract-entities with extract_relations: true
-    const texts = chunks.map(c => c.content);
+    const texts = chunks.map((c) => c.content);
     let sidecarEntities: Array<{
       name: string;
       type: string;
@@ -224,13 +225,16 @@ export class GraphEnrichConsumer implements OnModuleInit, OnModuleDestroy {
           const entityId = entityIdMap.get(entity.name);
           if (!entityId) continue;
 
-          await this.db.insert(chunkEntityLinks).values({
-            id: randomUUID(),
-            entityId,
-            chunkId: chunk.id,
-            mentionText: entity.mention_text,
-            confidence: entity.confidence,
-          }).onConflictDoNothing();
+          await this.db
+            .insert(chunkEntityLinks)
+            .values({
+              id: randomUUID(),
+              entityId,
+              chunkId: chunk.id,
+              mentionText: entity.mention_text,
+              confidence: entity.confidence,
+            })
+            .onConflictDoNothing();
         }
       }
     }
@@ -239,21 +243,27 @@ export class GraphEnrichConsumer implements OnModuleInit, OnModuleDestroy {
     let relationsInserted = 0;
     if (sidecarRelations.length > 0) {
       // Build a dedup set from existing relations for this source's chunks
-      const chunkIds = chunks.map(c => c.id);
+      const chunkIds = chunks.map((c) => c.id);
       const existingRelations = await this.db.execute(sql`
         SELECT source_entity_id, target_entity_id, relation_type, source_chunk_id
         FROM knowledge_relations
-        WHERE source_chunk_id = ANY(ARRAY[${sql.join(chunkIds.map(id => sql`${id}::uuid`), sql`, `)}])
+        WHERE source_chunk_id = ANY(ARRAY[${sql.join(
+          chunkIds.map((id) => sql`${id}::uuid`),
+          sql`, `,
+        )}])
       `);
       // Dedup key: source_entity_id|target_entity_id|relation_type|source_chunk_id
       const existingSet = new Set<string>(
-        (existingRelations as unknown as Array<{
-          source_entity_id: string;
-          target_entity_id: string;
-          relation_type: string;
-          source_chunk_id: string;
-        }>).map(
-          (r) => `${r.source_entity_id}|${r.target_entity_id}|${r.relation_type}|${r.source_chunk_id}`,
+        (
+          existingRelations as unknown as Array<{
+            source_entity_id: string;
+            target_entity_id: string;
+            relation_type: string;
+            source_chunk_id: string;
+          }>
+        ).map(
+          (r) =>
+            `${r.source_entity_id}|${r.target_entity_id}|${r.relation_type}|${r.source_chunk_id}`,
         ),
       );
 
@@ -302,16 +312,19 @@ export class GraphEnrichConsumer implements OnModuleInit, OnModuleDestroy {
 
         // Every-column INSERT per CLAUDE.md
         const now = new Date();
-        await this.db.insert(knowledgeRelations).values({
-          id: randomUUID(),
-          sourceEntityId,
-          targetEntityId,
-          relationType: rel.relation_type,
-          confidence: rel.confidence,
-          evidence: rel.evidence ?? null,
-          sourceChunkId,
-          createdAt: now,
-        }).onConflictDoNothing();
+        await this.db
+          .insert(knowledgeRelations)
+          .values({
+            id: randomUUID(),
+            sourceEntityId,
+            targetEntityId,
+            relationType: rel.relation_type,
+            confidence: rel.confidence,
+            evidence: rel.evidence ?? null,
+            sourceChunkId,
+            createdAt: now,
+          })
+          .onConflictDoNothing();
 
         this.metrics?.incrementCounter(
           'rag_graph_relations_inserted_total',
@@ -323,7 +336,7 @@ export class GraphEnrichConsumer implements OnModuleInit, OnModuleDestroy {
     }
 
     // 6. Update meta_entities and rebuild search_vector
-    const entityNames = [...new Set(sidecarEntities.map(e => e.name))].join(' ');
+    const entityNames = [...new Set(sidecarEntities.map((e) => e.name))].join(' ');
     await this.db.execute(sql`
       UPDATE document_chunks
       SET
@@ -338,8 +351,8 @@ export class GraphEnrichConsumer implements OnModuleInit, OnModuleDestroy {
 
     this.logger.log(
       `Graph enrichment complete for ${sourceType}/${sourceId}: ` +
-      `${sidecarEntities.length} entities, ${chunks.length} chunks linked, ` +
-      `${relationsInserted} relations inserted`,
+        `${sidecarEntities.length} entities, ${chunks.length} chunks linked, ` +
+        `${relationsInserted} relations inserted`,
     );
   }
 }

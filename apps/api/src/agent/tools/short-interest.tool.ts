@@ -20,9 +20,7 @@ export function createShortInterestTools(service: ShortInterestServiceStub) {
         'and short ratio. High short interest (>20%) may indicate bearish sentiment or ' +
         'potential short squeeze. Data is bi-weekly with ~2 week delay.',
       inputSchema: z.object({
-        ticker: z
-          .string()
-          .describe('Stock ticker symbol, e.g. GME'),
+        ticker: z.string().describe('Stock ticker symbol, e.g. GME'),
       }),
       execute: async ({ ticker }) => {
         try {
@@ -39,9 +37,7 @@ export function createShortInterestTools(service: ShortInterestServiceStub) {
         'High FTD counts may indicate settlement issues or naked shorting pressure. ' +
         'Data is monthly with ~1 month delay.',
       inputSchema: z.object({
-        ticker: z
-          .string()
-          .describe('Stock ticker symbol, e.g. AMC'),
+        ticker: z.string().describe('Stock ticker symbol, e.g. AMC'),
       }),
       execute: async ({ ticker }) => {
         try {

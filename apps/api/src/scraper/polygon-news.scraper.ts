@@ -30,8 +30,7 @@ export class PolygonNewsScraper {
   private readonly logger = new Logger(PolygonNewsScraper.name);
   private readonly apiKey: string;
 
-  private static readonly BASE_URL =
-    'https://api.polygon.io/v2/reference/news';
+  private static readonly BASE_URL = 'https://api.polygon.io/v2/reference/news';
 
   constructor(
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
@@ -78,9 +77,7 @@ export class PolygonNewsScraper {
     const data = (await response.json()) as PolygonNewsResponse;
     const articles = data.results ?? [];
 
-    this.logger.log(
-      `Polygon found ${articles.length} news articles for ${ticker}`,
-    );
+    this.logger.log(`Polygon found ${articles.length} news articles for ${ticker}`);
 
     let savedCount = 0;
 
@@ -105,9 +102,7 @@ export class PolygonNewsScraper {
       try {
         const markdown = await this.firecrawl.scrape(article.article_url);
         if (!markdown) {
-          this.logger.warn(
-            `No content scraped for article ${article.id}`,
-          );
+          this.logger.warn(`No content scraped for article ${article.id}`);
           continue;
         }
 

@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Inject,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { portfolios, holdings, riskReports, eq, and, inArray, desc } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import type {
@@ -17,16 +12,11 @@ import type {
 
 @Injectable()
 export class PortfolioService {
-  constructor(
-    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
-  ) {}
+  constructor(@Inject('DRIZZLE_DB') private readonly db: DrizzleDB) {}
 
   // ── Portfolio CRUD ─────────────────────────────────────────────────────
 
-  async createPortfolio(
-    userId: string,
-    request: PortfolioRequest,
-  ): Promise<PortfolioResponse> {
+  async createPortfolio(userId: string, request: PortfolioRequest): Promise<PortfolioResponse> {
     const [created] = await this.db
       .insert(portfolios)
       .values({
@@ -41,10 +31,7 @@ export class PortfolioService {
   }
 
   async getPortfolios(userId: string): Promise<PortfolioResponse[]> {
-    const rows = await this.db
-      .select()
-      .from(portfolios)
-      .where(eq(portfolios.userId, userId));
+    const rows = await this.db.select().from(portfolios).where(eq(portfolios.userId, userId));
 
     if (rows.length === 0) return [];
 
@@ -65,15 +52,10 @@ export class PortfolioService {
       holdingsByPortfolio.get(pid)!.push(h);
     }
 
-    return rows.map((row) =>
-      this.toPortfolioResponse(row, holdingsByPortfolio.get(row.id) ?? []),
-    );
+    return rows.map((row) => this.toPortfolioResponse(row, holdingsByPortfolio.get(row.id) ?? []));
   }
 
-  async getPortfolio(
-    userId: string,
-    portfolioId: string,
-  ): Promise<PortfolioResponse> {
+  async getPortfolio(userId: string, portfolioId: string): Promise<PortfolioResponse> {
     const [row] = await this.db
       .select()
       .from(portfolios)
@@ -127,17 +109,11 @@ export class PortfolioService {
     await this.getPortfolio(userId, portfolioId);
 
     // Delete cascade: holdings, risk reports, then portfolio
-    await this.db
-      .delete(holdings)
-      .where(eq(holdings.portfolioId, portfolioId));
+    await this.db.delete(holdings).where(eq(holdings.portfolioId, portfolioId));
 
-    await this.db
-      .delete(riskReports)
-      .where(eq(riskReports.portfolioId, portfolioId));
+    await this.db.delete(riskReports).where(eq(riskReports.portfolioId, portfolioId));
 
-    await this.db
-      .delete(portfolios)
-      .where(eq(portfolios.id, portfolioId));
+    await this.db.delete(portfolios).where(eq(portfolios.id, portfolioId));
   }
 
   // ── Holding CRUD ───────────────────────────────────────────────────────
@@ -166,17 +142,11 @@ export class PortfolioService {
     return this.toHoldingResponse(created!);
   }
 
-  async getHoldings(
-    userId: string,
-    portfolioId: string,
-  ): Promise<HoldingResponse[]> {
+  async getHoldings(userId: string, portfolioId: string): Promise<HoldingResponse[]> {
     // Verify ownership
     await this.getPortfolio(userId, portfolioId);
 
-    const rows = await this.db
-      .select()
-      .from(holdings)
-      .where(eq(holdings.portfolioId, portfolioId));
+    const rows = await this.db.select().from(holdings).where(eq(holdings.portfolioId, portfolioId));
 
     return rows.map((row) => this.toHoldingResponse(row));
   }
@@ -194,9 +164,7 @@ export class PortfolioService {
     const [existing] = await this.db
       .select()
       .from(holdings)
-      .where(
-        and(eq(holdings.id, holdingId), eq(holdings.portfolioId, portfolioId)),
-      )
+      .where(and(eq(holdings.id, holdingId), eq(holdings.portfolioId, portfolioId)))
       .limit(1);
 
     if (!existing) {
@@ -219,11 +187,7 @@ export class PortfolioService {
     return this.toHoldingResponse(updated!);
   }
 
-  async deleteHolding(
-    userId: string,
-    portfolioId: string,
-    holdingId: string,
-  ): Promise<void> {
+  async deleteHolding(userId: string, portfolioId: string, holdingId: string): Promise<void> {
     // Verify portfolio ownership
     await this.getPortfolio(userId, portfolioId);
 
@@ -231,9 +195,7 @@ export class PortfolioService {
     const [existing] = await this.db
       .select()
       .from(holdings)
-      .where(
-        and(eq(holdings.id, holdingId), eq(holdings.portfolioId, portfolioId)),
-      )
+      .where(and(eq(holdings.id, holdingId), eq(holdings.portfolioId, portfolioId)))
       .limit(1);
 
     if (!existing) {
@@ -264,23 +226,22 @@ export class PortfolioService {
 
     // Calculate market values and total
     const holdingCalcs = holdingRows.map((h) => {
-        const qty = parseFloat(h.quantity ?? '0');
-        const price = parseFloat(h.currentPrice ?? h.averageCost ?? '0');
-        const cost = parseFloat(h.averageCost ?? '0');
-        const marketValue = qty * price;
-        const costBasis = qty * cost;
-        const unrealizedPnl = marketValue - costBasis;
-        const pnlPercent = costBasis > 0 ? (unrealizedPnl / costBasis) * 100 : 0;
+      const qty = parseFloat(h.quantity ?? '0');
+      const price = parseFloat(h.currentPrice ?? h.averageCost ?? '0');
+      const cost = parseFloat(h.averageCost ?? '0');
+      const marketValue = qty * price;
+      const costBasis = qty * cost;
+      const unrealizedPnl = marketValue - costBasis;
+      const pnlPercent = costBasis > 0 ? (unrealizedPnl / costBasis) * 100 : 0;
 
-        return {
-          ...h,
-          marketValue,
-          costBasis,
-          unrealizedPnl,
-          pnlPercent,
-        };
-      },
-    );
+      return {
+        ...h,
+        marketValue,
+        costBasis,
+        unrealizedPnl,
+        pnlPercent,
+      };
+    });
 
     const totalMarketValue = holdingCalcs.reduce(
       (sum: number, h: { marketValue: number }) => sum + h.marketValue,
@@ -297,8 +258,7 @@ export class PortfolioService {
         unrealizedPnl: number;
         pnlPercent: number;
       }) => {
-        const weightPercent =
-          totalMarketValue > 0 ? (h.marketValue / totalMarketValue) * 100 : 0;
+        const weightPercent = totalMarketValue > 0 ? (h.marketValue / totalMarketValue) * 100 : 0;
         return {
           symbol: h.symbol,
           companyName: h.companyName ?? '',
@@ -349,9 +309,7 @@ export class PortfolioService {
       }
     }
     if (hhiRounded >= 2500) {
-      concentrationWarnings.push(
-        `Portfolio is highly concentrated (HHI: ${hhiRounded})`,
-      );
+      concentrationWarnings.push(`Portfolio is highly concentrated (HHI: ${hhiRounded})`);
     }
 
     return {
@@ -364,10 +322,7 @@ export class PortfolioService {
     };
   }
 
-  async analyzePortfolio(
-    userId: string,
-    portfolioId: string,
-  ): Promise<string> {
+  async analyzePortfolio(userId: string, portfolioId: string): Promise<string> {
     const analytics = await this.getPortfolioAnalytics(userId, portfolioId);
     return JSON.stringify(analytics, null, 2);
   }
@@ -411,9 +366,8 @@ export class PortfolioService {
       description: row.description ?? '',
       totalValue: row.totalValue ?? '0',
       holdings: holdingRows.map((h) => this.toHoldingResponse(h)),
-      createdAt: row.createdAt instanceof Date
-        ? row.createdAt.toISOString()
-        : String(row.createdAt),
+      createdAt:
+        row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
     };
   }
 

@@ -17,9 +17,7 @@ function makeConfigService(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makeCandidate(
-  partial: Partial<FusedCandidate> & { chunkId: string },
-): FusedCandidate {
+function makeCandidate(partial: Partial<FusedCandidate> & { chunkId: string }): FusedCandidate {
   return {
     sourceId: 's1',
     content: 'chunk content',
@@ -107,7 +105,10 @@ describe('RerankService — token budget', () => {
   it('drops preamble and increments counter when preamble+chunk exceeds budget', async () => {
     const metrics = makeMetrics();
     // Budget: 10 tokens = 40 chars
-    const service = new RerankService(makeConfigService({ RAG_RERANK_MAX_TOKENS: 10 }) as any, metrics as any);
+    const service = new RerankService(
+      makeConfigService({ RAG_RERANK_MAX_TOKENS: 10 }) as any,
+      metrics as any,
+    );
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -136,7 +137,10 @@ describe('RerankService — token budget', () => {
   it('truncates chunk from end with "..." when chunk alone exceeds budget', async () => {
     const metrics = makeMetrics();
     // Budget: 5 tokens = 20 chars
-    const service = new RerankService(makeConfigService({ RAG_RERANK_MAX_TOKENS: 5 }) as any, metrics as any);
+    const service = new RerankService(
+      makeConfigService({ RAG_RERANK_MAX_TOKENS: 5 }) as any,
+      metrics as any,
+    );
 
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -211,7 +215,9 @@ describe('RerankService — response validation', () => {
   it('triggers RRF fallback and rerank_unavailable flag on 200 OK with invalid JSON', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => { throw new SyntaxError('bad json'); },
+      json: async () => {
+        throw new SyntaxError('bad json');
+      },
     });
 
     const candidate = makeCandidate({ chunkId: 'c1', rrfScore: 0.03 });

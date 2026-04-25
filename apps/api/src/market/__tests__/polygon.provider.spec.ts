@@ -45,7 +45,7 @@ describe('PolygonMarketDataProvider', () => {
           { o: 142.0, h: 146.0, l: 141.0, c: 143.5, v: 42000000, t: 1699986400000 },
           { o: 143.5, h: 148.0, l: 143.0, c: 147.0, v: 45000000, t: 1700072800000 },
           { o: 147.0, h: 149.0, l: 146.0, c: 148.0, v: 38000000, t: 1700159200000 },
-          { o: 148.0, h: 155.0, l: 147.5, c: 153.50, v: 50000000, t: 1700245600000 },
+          { o: 148.0, h: 155.0, l: 147.5, c: 153.5, v: 50000000, t: 1700245600000 },
         ],
       };
 
@@ -81,9 +81,7 @@ describe('PolygonMarketDataProvider', () => {
         statusText: 'Forbidden',
       });
 
-      await expect(provider.getQuote('AAPL')).rejects.toThrow(
-        /Polygon API error/,
-      );
+      await expect(provider.getQuote('AAPL')).rejects.toThrow(/Polygon API error/);
     });
 
     it('throws when no results returned', async () => {
@@ -92,17 +90,13 @@ describe('PolygonMarketDataProvider', () => {
         json: vi.fn().mockResolvedValue({ resultsCount: 0, results: [] }),
       });
 
-      await expect(provider.getQuote('AAPL')).rejects.toThrow(
-        /No data/,
-      );
+      await expect(provider.getQuote('AAPL')).rejects.toThrow(/No data/);
     });
 
     it('maps crypto spot tickers to Polygon native symbols', async () => {
       const polygonResponse = {
         resultsCount: 1,
-        results: [
-          { o: 65000.0, h: 66000.0, l: 64000.0, c: 65500.0, v: 1200, t: 1700245600000 },
-        ],
+        results: [{ o: 65000.0, h: 66000.0, l: 64000.0, c: 65500.0, v: 1200, t: 1700245600000 }],
       };
 
       fetchMock.mockResolvedValue({
@@ -180,9 +174,7 @@ describe('PolygonMarketDataProvider', () => {
         statusText: 'Internal Server Error',
       });
 
-      await expect(provider.getHistoricalBars('AAPL', 30)).rejects.toThrow(
-        /Polygon API error/,
-      );
+      await expect(provider.getHistoricalBars('AAPL', 30)).rejects.toThrow(/Polygon API error/);
     });
   });
 

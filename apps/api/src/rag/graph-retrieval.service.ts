@@ -26,7 +26,10 @@ export class GraphRetrievalService {
     // Step 1: Resolve entity names to IDs (fuzzy match)
     const entities = await this.db.execute(sql`
       SELECT id, name FROM knowledge_entities
-      WHERE name ILIKE ANY(ARRAY[${sql.join(entityNames.map(n => sql`${'%' + n + '%'}`), sql`, `)}])
+      WHERE name ILIKE ANY(ARRAY[${sql.join(
+        entityNames.map((n) => sql`${'%' + n + '%'}`),
+        sql`, `,
+      )}])
       LIMIT 20
     `);
 
@@ -46,7 +49,10 @@ export class GraphRetrievalService {
           kr.confidence AS relation_confidence,
           1 AS hop_distance
         FROM knowledge_relations kr
-        WHERE kr.source_entity_id = ANY(ARRAY[${sql.join(entityIds.map(id => sql`${id}::uuid`), sql`, `)}])
+        WHERE kr.source_entity_id = ANY(ARRAY[${sql.join(
+          entityIds.map((id) => sql`${id}::uuid`),
+          sql`, `,
+        )}])
 
         UNION ALL
 
@@ -104,7 +110,9 @@ export class GraphRetrievalService {
 
   private cosineSimilarity(a: number[], b: number[]): number {
     if (a.length === 0 || b.length === 0 || a.length !== b.length) return 0;
-    let dot = 0, normA = 0, normB = 0;
+    let dot = 0,
+      normA = 0,
+      normB = 0;
     for (let i = 0; i < a.length; i++) {
       dot += a[i]! * b[i]!;
       normA += a[i]! * a[i]!;

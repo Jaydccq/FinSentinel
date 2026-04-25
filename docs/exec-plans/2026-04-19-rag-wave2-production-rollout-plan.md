@@ -152,7 +152,7 @@ Each phase ships as its own PR. Each PR must run `pnpm typecheck` (narrow filter
   bucket_minimum_metrics:
     exact_lookup:
       strict.recall@5: 0.80
-      strict.mrr@10:   0.70
+      strict.mrr@10: 0.70
     colloquial:
       lenient.recall@10: 0.85
     cross_document:
@@ -160,7 +160,7 @@ Each phase ships as its own PR. Each PR must run `pnpm typecheck` (narrow filter
     long_doc:
       lenient.recall@10: 0.70
     table_numeric:
-      strict.recall@5:   0.65
+      strict.recall@5: 0.65
   ```
 
   Write failing test first:
@@ -253,10 +253,13 @@ Each phase ships as its own PR. Each PR must run `pnpm typecheck` (narrow filter
 
     await svc.enrich(chunk.id);
 
-    const rows = await db.select().from(documentChunkRepresentations).where(eq(documentChunkRepresentations.chunkId, chunk.id));
+    const rows = await db
+      .select()
+      .from(documentChunkRepresentations)
+      .where(eq(documentChunkRepresentations.chunkId, chunk.id));
     for (const r of rows) {
       expect(r.searchVector).not.toBeNull();
-      expect(r.searchVector).toContain('apple');  // lexeme-normalised
+      expect(r.searchVector).toContain('apple'); // lexeme-normalised
     }
   });
   ```
@@ -267,7 +270,7 @@ Each phase ships as its own PR. Each PR must run `pnpm typecheck` (narrow filter
 
   **Text-search config must match existing sparse search.** `SparseSearchService` (`apps/api/src/rag/sparse-search.service.ts:35,76`) queries with `websearch_to_tsquery('simple', query)`. Any `to_tsvector` written on insert must use the same `'simple'` config, otherwise query tokens produced by `simple` will not match lexemes indexed under `english` (stemmer mismatch). Using `'english'` here would silently reduce sparse recall (this was the #5 Codex finding).
 
-  In `chunk-representation.service.ts`, replace `searchVector: null` in each of the four insert sites with a **parameterised** Drizzle `sql\`\`` fragment — **never** `sql.raw()` with user content, which opens an injection vector on any quote/backslash/`$$` in chunk text. Pattern:
+  In `chunk-representation.service.ts`, replace `searchVector: null` in each of the four insert sites with a **parameterised** Drizzle `sql\`\``fragment — **never**`sql.raw()` with user content, which opens an injection vector on any quote/backslash/`$$` in chunk text. Pattern:
 
   ```ts
   searchVector: sql`setweight(to_tsvector('simple', coalesce(${title}, '')), 'A') ||
@@ -280,16 +283,16 @@ Each phase ships as its own PR. Each PR must run `pnpm typecheck` (narrow filter
 
   Field weighting:
 
-  | Representation type | `setweight` layout |
-  |---|---|
-  | `contextual_text` | A = title + section_path; B = contextual prose; C = chunk text tail |
-  | `sample_question` | A = sample questions (joined); B = chunk content snippet |
-  | `summary` | A = summary; C = title |
-  | `keyword_entity` | A = entities; B = tickers; C = keywords |
+  | Representation type | `setweight` layout                                                  |
+  | ------------------- | ------------------------------------------------------------------- |
+  | `contextual_text`   | A = title + section_path; B = contextual prose; C = chunk text tail |
+  | `sample_question`   | A = sample questions (joined); B = chunk content snippet            |
+  | `summary`           | A = summary; C = title                                              |
+  | `keyword_entity`    | A = entities; B = tickers; C = keywords                             |
 
   Use a helper `buildRepresentationTsvector(type, content, metadata)` that returns a `SQL` fragment. Test the helper in isolation.
 
-  Because of the Drizzle mixed-default insert bug (`CLAUDE.md`), every column must still be set explicitly; the change is **only** to the `searchVector` field. Prefer `this.db.execute(sql\`INSERT ... \`)` if the `.values()` form becomes awkward with `setweight` composition.
+  Because of the Drizzle mixed-default insert bug (`CLAUDE.md`), every column must still be set explicitly; the change is **only** to the `searchVector` field. Prefer `this.db.execute(sql\`INSERT ... \`)`if the`.values()`form becomes awkward with`setweight` composition.
 
   Verify: R2.1 test PASSES; existing `rag-chunk-store` tests still pass.
 
@@ -389,9 +392,8 @@ Each phase ships as its own PR. Each PR must run `pnpm typecheck` (narrow filter
   In `retrieval-planner.service.ts`:
 
   ```ts
-  const shouldRewrite = this.rewriteEnabled
-    && plan.queryClass !== 'exact_lookup'
-    && query.trim().length > 0;
+  const shouldRewrite =
+    this.rewriteEnabled && plan.queryClass !== 'exact_lookup' && query.trim().length > 0;
   ```
 
   Variant generation: if `exact_lookup`, emit only the original variant. HyDE and decomposition are already flag-gated; add an explicit skip for `exact_lookup` so they cannot be turned on for this class via env var.
@@ -404,8 +406,8 @@ Each phase ships as its own PR. Each PR must run `pnpm typecheck` (narrow filter
   export interface RetrievalPlan {
     queryClass: QueryClass;
     variants: QueryVariant[];
-    rewrittenQuery: string;      // kept for backward compatibility with T5.A
-    rerankQuery: string;          // NEW: the query text the reranker should score against
+    rewrittenQuery: string; // kept for backward compatibility with T5.A
+    rerankQuery: string; // NEW: the query text the reranker should score against
     filters: Record<string, unknown>;
     enabledLanes: Lane[];
     fallbackFlags: string[];
@@ -432,10 +434,10 @@ Each phase ships as its own PR. Each PR must run `pnpm typecheck` (narrow filter
     sourceId: string;
     content: string;
     metadata: Record<string, unknown>;
-    similarity: number;          // REQUIRED. Single-stage: cosine. Multi-stage: best available score normalised to [0, 1]. Always monotonic.
-    rankScore?: number;          // Multi-stage only, when reranker succeeded. Raw reranker score.
-    fusionScore?: number;        // Multi-stage only, when reranker fell back to RRF. Raw RRF score.
-    scoreSource?: 'cosine' | 'rerank' | 'rrf';  // Provenance, for traces.
+    similarity: number; // REQUIRED. Single-stage: cosine. Multi-stage: best available score normalised to [0, 1]. Always monotonic.
+    rankScore?: number; // Multi-stage only, when reranker succeeded. Raw reranker score.
+    fusionScore?: number; // Multi-stage only, when reranker fell back to RRF. Raw RRF score.
+    scoreSource?: 'cosine' | 'rerank' | 'rrf'; // Provenance, for traces.
   }
   ```
 
@@ -488,7 +490,6 @@ Each phase ships as its own PR. Each PR must run `pnpm typecheck` (narrow filter
   Because R4 runs on every query in the hot path, the LLM fallback must carry the same guardrails the representation enrichment uses in T2.B: concurrency cap (`RAG_METADATA_LLM_CONCURRENCY`, default 4), 429 circuit breaker (halt after 3 consecutive 429s, exponential backoff), per-request timeout (`RAG_METADATA_LLM_TIMEOUT_MS`, default 1500), and an explicit `RAG_METADATA_LLM_FALLBACK_ENABLED` master flag (default `false` — turn on only after cost is validated in staging).
 
   Regex path is always enabled. LLM fallback is opt-in per deploy.
-
 
   Extract fields: `ticker[]`, `issuerName[]`, `docType` (10-K | 10-Q | 8-K | news | research | filing | other), `timeRange` ({ after?: Date, before?: Date }), `sector[]`, `region[]`. Each field carries a `confidence` in [0, 1].
 
@@ -567,11 +568,13 @@ Each phase ships as its own PR. Each PR must run `pnpm typecheck` (narrow filter
     markdown: z.string().min(1),
     metadata: z.object({
       pageCount: z.number().int().nonnegative(),
-      headings: z.array(z.object({
-        level: z.number().int().min(1).max(6),
-        text: z.string(),
-        pageStart: z.number().int().nullable(),
-      })),
+      headings: z.array(
+        z.object({
+          level: z.number().int().min(1).max(6),
+          text: z.string(),
+          pageStart: z.number().int().nullable(),
+        }),
+      ),
       tableCount: z.number().int().nonnegative(),
       parserVersion: z.string(),
       sourceMimeType: z.string(),
@@ -713,7 +716,6 @@ Each phase ships as its own PR. Each PR must run `pnpm typecheck` (narrow filter
   Test: end-to-end reindex on a 10-doc fixture → verify all new representations exist before the CLI exits with success.
 
 - [ ] **R6.7 — Eval bucket verification.**
-
   - `table_numeric` bucket: `strict.recall@5` should improve materially.
   - `long_doc` bucket: `lenient.recall@10` should improve.
   - `exact_lookup` bucket: unchanged or improved.
@@ -805,13 +807,13 @@ Each phase ships as its own PR. Each PR must run `pnpm typecheck` (narrow filter
 
   The runbook specifies the ramp cadence:
 
-  | Step | Duration | Action | Rollback trigger |
-  |------|----------|--------|------------------|
-  | 1 | 7 days | Shadow all traffic | Shadow timeout rate >5% |
-  | 2 | 3 days | Canary: exact_lookup 100%, others 10% | Error rate regression |
-  | 3 | 3 days | Canary: 50% across all classes | P95 latency +30% |
-  | 4 | 3 days | Canary: 100% across all classes | Eval gate regression |
-  | 5 | — | Flip default `RAG_MULTI_STAGE_ENABLED=true` and remove single-stage code after one clean week | — |
+  | Step | Duration | Action                                                                                        | Rollback trigger        |
+  | ---- | -------- | --------------------------------------------------------------------------------------------- | ----------------------- |
+  | 1    | 7 days   | Shadow all traffic                                                                            | Shadow timeout rate >5% |
+  | 2    | 3 days   | Canary: exact_lookup 100%, others 10%                                                         | Error rate regression   |
+  | 3    | 3 days   | Canary: 50% across all classes                                                                | P95 latency +30%        |
+  | 4    | 3 days   | Canary: 100% across all classes                                                               | Eval gate regression    |
+  | 5    | —        | Flip default `RAG_MULTI_STAGE_ENABLED=true` and remove single-stage code after one clean week | —                       |
 
 - [ ] **R7.6 — Flip the default.**
 
@@ -923,7 +925,7 @@ _(Fill in as phases execute.)_
   4. R2.2 tsvector config aligned with existing `simple` (not `english`) to match `SparseSearchService`.
   5. R2.5 backfill re-scoped to JOIN `document_chunks` for title / section_path / keywords / entities.
   6. R4 split: added R4.0 (ingestion metadata backfill for issuer/ticker) as a prerequisite.
-  Plus R3.5 redesigned for backward compatibility (`similarity` stays required, `rankScore`/`fusionScore` added as optional provenance fields), R5 exit criteria scoped honestly to "plumbing validated with stub", R7.1 backpressure/pool/queue-depth guardrails, R7.6 flag logic bug fixed (JS `Boolean("false")` trap), R7 contradiction resolved (30-day window authoritative), R6.6 drain+wait checkpoint added.
+     Plus R3.5 redesigned for backward compatibility (`similarity` stays required, `rankScore`/`fusionScore` added as optional provenance fields), R5 exit criteria scoped honestly to "plumbing validated with stub", R7.1 backpressure/pool/queue-depth guardrails, R7.6 flag logic bug fixed (JS `Boolean("false")` trap), R7 contradiction resolved (30-day window authoritative), R6.6 drain+wait checkpoint added.
 - **2026-04-20 R4 landed on `feat/rag-wave2-r4`:** 10 tasks, 22 commits on top of `c51e8bd` (plan-doc commit). All tasks shipped via `superpowers:subagent-driven-development` (implementer + spec reviewer + code-quality reviewer + targeted fix-up per task). 1357/1357 api tests pass; `@finsentinel/api` + `@finsentinel/db` typecheck clean. Flag-off regression snapshot unchanged. Offline eval gate (`configs/ci-offline.yaml`) green: `strict.recall@5 = 0.9867`, `strict.recall@10 = 1.0000`, `strict.mrr@10 = 0.8967` — identical to the R1 offline baseline, no regression. R4 highlights:
   - **R4.0** ingestion metadata extension (issuer/ticker) + `rag:backfill:chunk-issuer-tickers` CLI + sentinel `__originalFileName` threaded through the 3 ingestion call sites (VectorizeConsumer, DocumentUploadService sync fallback, news-enrich consumer — news path uses `title` in lieu of a filename).
   - **R4.1** `QueryEntityExtractorService` with regex-first path (ticker whitelist, docType, FY/Q/Year), LLM fallback with duck-typed `LlmClientLike`, Promise.race timeout, half-open circuit breaker (3 consecutive failures → 30s open + counter reset for fresh recovery), zod-validated response.
@@ -969,6 +971,7 @@ _(Fill in as phases execute.)_
 Wave 2 complete: all seven phases (R1 evaluation gate, R2 representation sparse lane, R3 intent-aware planner, R4 metadata soft routing, R5 PDF/Word sidecar, R6 doc-type-aware chunking, R7 shadow/canary/default rollout) are landed on `main`. `RAG_MULTI_STAGE_ENABLED` now defaults to on in code.
 
 Carry-over work tracked in `docs/exec-plans/tech-debt-tracker.md`:
+
 - `[RAG-TD-01]` / `[RAG-TD-02]` — representation tsvector weighting + english-vs-simple asymmetry.
 - `[RAG-TD-R4-01..08]` — metadata routing gaps (sectors/regions, colloquial type, dense-lane filter, camelCase issuerName key, GIN index, docType/timeRange routing, softFilter consumer, LLM invocation counter).
 - `[RAG-TD-R5-01]` — real parser sidecar replacing the R5 stub.
@@ -1021,14 +1024,14 @@ R7 (shadow/canary/default) merges all three lanes.
 
 **Dependency table (module-level):**
 
-| Step | Modules touched | Depends on |
-|------|-----------------|------------|
-| R1   | `services/evaluation-runner/`, `.github/workflows/` | — |
-| R2   | `apps/api/src/rag/chunk-representation.service`, `apps/api/src/rag/sparse-search.service`, `apps/api/scripts/` | R1 |
-| R3   | `apps/api/src/rag/retrieval-planner.service`, `apps/api/src/rag/retrieval-orchestrator.service`, `apps/api/src/rag/rag-retrieval.service`, `packages/shared/src/enums/` | R1 |
-| R4   | `apps/api/src/rag/metadata-pre-filter.service`, `apps/api/src/rag/query-entity-extractor.service`, `apps/api/src/rag/retrieval-orchestrator.service`, `apps/api/src/config/` | R1, R3 |
-| R5   | `apps/api/src/document/`, `services/parser/` (new), `docker-compose.yml`, `.github/workflows/` | R1 |
-| R6   | `apps/api/src/document/document-chunking.service`, `apps/api/src/document/chunkers/`, `apps/api/src/config/` | R1, R5 |
+| Step | Modules touched                                                                                                                                                                  | Depends on             |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| R1   | `services/evaluation-runner/`, `.github/workflows/`                                                                                                                              | —                      |
+| R2   | `apps/api/src/rag/chunk-representation.service`, `apps/api/src/rag/sparse-search.service`, `apps/api/scripts/`                                                                   | R1                     |
+| R3   | `apps/api/src/rag/retrieval-planner.service`, `apps/api/src/rag/retrieval-orchestrator.service`, `apps/api/src/rag/rag-retrieval.service`, `packages/shared/src/enums/`          | R1                     |
+| R4   | `apps/api/src/rag/metadata-pre-filter.service`, `apps/api/src/rag/query-entity-extractor.service`, `apps/api/src/rag/retrieval-orchestrator.service`, `apps/api/src/config/`     | R1, R3                 |
+| R5   | `apps/api/src/document/`, `services/parser/` (new), `docker-compose.yml`, `.github/workflows/`                                                                                   | R1                     |
+| R6   | `apps/api/src/document/document-chunking.service`, `apps/api/src/document/chunkers/`, `apps/api/src/config/`                                                                     | R1, R5                 |
 | R7   | `apps/api/src/rag/rag-retrieval.service`, `apps/api/src/rag/rollout-gate.service`, `packages/db/migrations/V18__*`, `apps/api/src/config/`, `apps/api/src/rag/rag-trace.service` | R1, R2, R3, R4, R5, R6 |
 
 **Conflict flags:**
@@ -1056,7 +1059,7 @@ R7 (shadow/canary/default) merges all three lanes.
 
 **Code quality review (5 findings, 4 addressed inline):**
 
-1. **[P1] R2.2 SQL injection risk** — fixed: parameterised `sql\`\`` pattern, never `sql.raw()` with user content.
+1. **[P1] R2.2 SQL injection risk** — fixed: parameterised `sql\`\``pattern, never`sql.raw()` with user content.
 2. **[P1] R3.1 ticker false positives** — fixed: whitelist required, explicit fallback if no whitelist exists.
 3. **[P2] R6.1 chunking unit decision** — fixed: benchmark script required before decision.
 4. **[P3] R4.5 per-class min threshold** — fixed: `RAG_METADATA_MIN_CANDIDATES_BY_CLASS`.
@@ -1089,13 +1092,13 @@ R7 (shadow/canary/default) merges all three lanes.
 
 ## GSTACK REVIEW REPORT
 
-| Review | Trigger | Why | Runs | Status | Findings |
-|--------|---------|-----|------|--------|----------|
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
-| Codex Review | `/codex review` | Independent 2nd opinion | 1 | ISSUES_FIXED | 15 findings; 6 critical (plan would not execute) + 9 HIGH/MED; all addressed inline; 2076158 tokens, session 019da7d9 |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | ISSUES_FIXED | 14 issues found across scope/arch/code/tests/perf; all P1+P2 addressed inline; 0 unresolved |
-| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | — |
-| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+| Review        | Trigger               | Why                             | Runs | Status       | Findings                                                                                                              |
+| ------------- | --------------------- | ------------------------------- | ---- | ------------ | --------------------------------------------------------------------------------------------------------------------- |
+| CEO Review    | `/plan-ceo-review`    | Scope & strategy                | 0    | —            | —                                                                                                                     |
+| Codex Review  | `/codex review`       | Independent 2nd opinion         | 1    | ISSUES_FIXED | 15 findings; 6 critical (plan would not execute) + 9 HIGH/MED; all addressed inline; 2076158 tokens, session 019da7d9 |
+| Eng Review    | `/plan-eng-review`    | Architecture & tests (required) | 1    | ISSUES_FIXED | 14 issues found across scope/arch/code/tests/perf; all P1+P2 addressed inline; 0 unresolved                           |
+| Design Review | `/plan-design-review` | UI/UX gaps                      | 0    | —            | —                                                                                                                     |
+| DX Review     | `/plan-devex-review`  | Developer experience gaps       | 0    | —            | —                                                                                                                     |
 
 **CODEX:** verified baseline facts (null searchVector, passthrough prefilter, char chunking, hardcoded similarity=1.0, etc.); forced 6 critical re-designs (parser target path, CLI flags, CI seed, tsvector config, rep backfill JOIN, R4 metadata prerequisite) before plan is implementation-ready.
 
@@ -1104,4 +1107,3 @@ R7 (shadow/canary/default) merges all three lanes.
 **UNRESOLVED:** 0 hard blockers. Two deliberately deferred decisions (tokenizer vs char for R6, ticker whitelist source for R4.0) are scoped to phase-execution time with stated decision criteria.
 
 **VERDICT:** ENG + CODEX CLEARED after inline fixes — ready to implement R1 (eval gate). No scope reduction needed; CRIT findings required plan redesign but did not invalidate the direction.
-

@@ -10,13 +10,7 @@ export const portfolioIntentSchema = z.enum([
 ]);
 export type PortfolioIntent = z.infer<typeof portfolioIntentSchema>;
 
-export const orderDraftAssetTypeSchema = z.enum([
-  'EQUITY',
-  'ETF',
-  'CRYPTO',
-  'OPTION',
-  'FUTURE',
-]);
+export const orderDraftAssetTypeSchema = z.enum(['EQUITY', 'ETF', 'CRYPTO', 'OPTION', 'FUTURE']);
 export type OrderDraftAssetType = z.infer<typeof orderDraftAssetTypeSchema>;
 
 export const orderDraftSideSchema = z.enum(['BUY', 'SELL']);
@@ -28,12 +22,7 @@ export const orderDraftQuantitySchema = z.object({
 });
 export type OrderDraftQuantity = z.infer<typeof orderDraftQuantitySchema>;
 
-export const orderDraftOrderTypeSchema = z.enum([
-  'MARKET',
-  'LIMIT',
-  'STOP',
-  'STOP_LIMIT',
-]);
+export const orderDraftOrderTypeSchema = z.enum(['MARKET', 'LIMIT', 'STOP', 'STOP_LIMIT']);
 
 export const orderDraftTimeInForceSchema = z.enum(['DAY', 'GTC', 'IOC', 'FOK']);
 

@@ -119,10 +119,7 @@ describe('ApiKeyService', () => {
       const result = await service.get(TEST_USER_ID, 'POLYGON');
 
       expect(result).toBe('decrypted-plain-value');
-      expect(mockEncryption.decrypt).toHaveBeenCalledWith(
-        'encrypted-value-base64',
-        'iv-base64',
-      );
+      expect(mockEncryption.decrypt).toHaveBeenCalledWith('encrypted-value-base64', 'iv-base64');
     });
 
     it('returns null when key does not exist', async () => {

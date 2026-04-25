@@ -56,11 +56,7 @@ export class ChatCompactionService {
    * @returns The original message (if below threshold or disabled),
    *          or `[Previous context summary: ...]\n\n{userMessage}`.
    */
-  async augmentPrompt(
-    userId: string,
-    sessionId: string,
-    userMessage: string,
-  ): Promise<string> {
+  async augmentPrompt(userId: string, sessionId: string, userMessage: string): Promise<string> {
     if (!this.enabled) {
       return userMessage;
     }
@@ -121,7 +117,7 @@ export class ChatCompactionService {
 
     this.logger.log(
       `Compacted ${oldMessages.length} messages into summary (${summary.length} chars) ` +
-      `for session ${sessionId}`,
+        `for session ${sessionId}`,
     );
 
     // 5. Prepend summary to user message
@@ -133,12 +129,7 @@ export class ChatCompactionService {
     const [row] = await this.db
       .select({ count: sql<number>`count(*)` })
       .from(chatMessages)
-      .where(
-        and(
-          eq(chatMessages.userId, userId),
-          eq(chatMessages.sessionId, sessionId),
-        ),
-      );
+      .where(and(eq(chatMessages.userId, userId), eq(chatMessages.sessionId, sessionId)));
 
     return Number(row?.count ?? 0);
   }
@@ -152,12 +143,7 @@ export class ChatCompactionService {
     return this.db
       .select({ role: chatMessages.role, content: chatMessages.content })
       .from(chatMessages)
-      .where(
-        and(
-          eq(chatMessages.userId, userId),
-          eq(chatMessages.sessionId, sessionId),
-        ),
-      )
+      .where(and(eq(chatMessages.userId, userId), eq(chatMessages.sessionId, sessionId)))
       .orderBy(asc(chatMessages.createdAt))
       .limit(limit);
   }
@@ -167,12 +153,8 @@ export class ChatCompactionService {
    *
    * Falls back to truncation if the LLM call fails.
    */
-  async generateSummary(
-    messages: Array<{ role: string; content: string }>,
-  ): Promise<string> {
-    const conversationText = messages
-      .map((m) => `${m.role}: ${m.content}`)
-      .join('\n');
+  async generateSummary(messages: Array<{ role: string; content: string }>): Promise<string> {
+    const conversationText = messages.map((m) => `${m.role}: ${m.content}`).join('\n');
 
     try {
       const text = await generateAgentText({

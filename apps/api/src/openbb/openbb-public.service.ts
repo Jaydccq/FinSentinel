@@ -31,9 +31,7 @@ export class OpenbbPublicDataService {
     params?: Record<string, string>,
   ): Promise<unknown> {
     if (!this.config.enabled) {
-      throw new Error(
-        'OpenBB integration is disabled. Set OPENBB_ENABLED=true first.',
-      );
+      throw new Error('OpenBB integration is disabled. Set OPENBB_ENABLED=true first.');
     }
 
     const normalizedPath = this.normalizePath(path);
@@ -72,9 +70,7 @@ export class OpenbbPublicDataService {
         `OpenBB request error for path=${normalizedPath} provider=${normalizedProvider}`,
         err instanceof Error ? err.stack : String(err),
       );
-      throw new Error(
-        `Failed to call OpenBB: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      throw new Error(`Failed to call OpenBB: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
@@ -124,9 +120,7 @@ export class OpenbbPublicDataService {
     }
 
     if (normalized.includes('?')) {
-      throw new Error(
-        'Path must not include query string. Pass query params separately.',
-      );
+      throw new Error('Path must not include query string. Pass query params separately.');
     }
 
     if (normalized.startsWith('http://') || normalized.startsWith('https://')) {

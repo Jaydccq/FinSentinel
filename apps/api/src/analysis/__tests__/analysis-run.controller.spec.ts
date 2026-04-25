@@ -73,10 +73,7 @@ describe('AnalysisRunController', () => {
   });
 
   it('POST /analysis/runs creates a run and enqueues preflight', async () => {
-    const res = await ctrl.create(
-      { prompt: 'Analyze AAPL', sourceMode: 'WORKSPACE' },
-      user,
-    );
+    const res = await ctrl.create({ prompt: 'Analyze AAPL', sourceMode: 'WORKSPACE' }, user);
     expect(runs.createQueued).toHaveBeenCalledWith('u1', expect.any(Object));
     expect(producer.enqueuePreflight).toHaveBeenCalledWith({ runId: 'r1', userId: 'u1' });
     expect(res.id).toBe('r1');

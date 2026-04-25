@@ -1,29 +1,29 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import type { AnalysisArtifactResponse } from '../../api/analysis-runs'
-import { ArtifactRenderer } from './ArtifactRenderer'
+import { useState } from 'react';
+import type { AnalysisArtifactResponse } from '../../api/analysis-runs';
+import { ArtifactRenderer } from './ArtifactRenderer';
 
 export interface ArtifactsPanelProps {
-  artifacts: AnalysisArtifactResponse[]
+  artifacts: AnalysisArtifactResponse[];
 }
 
 export function ArtifactsPanel({ artifacts }: ArtifactsPanelProps) {
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   if (artifacts.length === 0) {
     return (
       <section className="surface-panel rounded p-4">
         <h2 className="text-base font-semibold">Artifacts</h2>
         <p className="text-sm text-slate-400 mt-2">No artifacts yet.</p>
       </section>
-    )
+    );
   }
   return (
     <section className="surface-panel rounded p-4 space-y-2">
       <h2 className="text-base font-semibold">Artifacts</h2>
       <ul className="space-y-2">
         {artifacts.map((a) => {
-          const isOpen = a.id === expandedId
+          const isOpen = a.id === expandedId;
           return (
             <li key={a.id} className="rounded border border-slate-700 bg-slate-900/40">
               <button
@@ -44,9 +44,9 @@ export function ArtifactsPanel({ artifacts }: ArtifactsPanelProps) {
                 </div>
               )}
             </li>
-          )
+          );
         })}
       </ul>
     </section>
-  )
+  );
 }

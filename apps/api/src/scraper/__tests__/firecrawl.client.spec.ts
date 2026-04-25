@@ -39,8 +39,7 @@ describe('FirecrawlClient', () => {
           useValue: {
             get: vi.fn((key: string) => {
               if (key === 'firecrawl.apiKey') return 'test-api-key';
-              if (key === 'firecrawl.baseUrl')
-                return 'https://api.firecrawl.dev/v2';
+              if (key === 'firecrawl.baseUrl') return 'https://api.firecrawl.dev/v2';
               return undefined;
             }),
           },
@@ -58,9 +57,7 @@ describe('FirecrawlClient', () => {
   // ── Test: successful scrape ─────────────────────────────────────────────
 
   it('scrape returns markdown on success', async () => {
-    mockFetch.mockResolvedValueOnce(
-      successResponse('# AAPL 10-K Filing\n\nContent here...'),
-    );
+    mockFetch.mockResolvedValueOnce(successResponse('# AAPL 10-K Filing\n\nContent here...'));
 
     const result = await client.scrape('https://example.com/filing');
 

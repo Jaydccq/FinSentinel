@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, vi, type MockedFunction } from 'vitest';
-import {
-  knowledgeRelations,
-  knowledgeEntities,
-  chunkEntityLinks,
-} from '@finsentinel/db';
+import { knowledgeRelations, knowledgeEntities, chunkEntityLinks } from '@finsentinel/db';
 import { GraphEnrichConsumer } from '../graph-enrich.consumer';
 import type { Job } from 'bullmq';
 import type { GraphEnrichJobData } from '../graph-enrich.producer';
@@ -19,21 +15,19 @@ function isRelationTable(table: unknown): boolean {
   return (table as any)?.[DRIZZLE_TABLE_NAME] === 'knowledge_relations';
 }
 
-function makeDb(opts: {
-  chunks?: Array<{ id: string; content: string }>;
-  existingEntities?: Array<{ id: string }>;
-  existingRelations?: Array<{
-    source_entity_id: string;
-    target_entity_id: string;
-    relation_type: string;
-    source_chunk_id: string;
-  }>;
-} = {}) {
-  const {
-    chunks = [CHUNK_A, CHUNK_B],
-    existingEntities = [],
-    existingRelations = [],
-  } = opts;
+function makeDb(
+  opts: {
+    chunks?: Array<{ id: string; content: string }>;
+    existingEntities?: Array<{ id: string }>;
+    existingRelations?: Array<{
+      source_entity_id: string;
+      target_entity_id: string;
+      relation_type: string;
+      source_chunk_id: string;
+    }>;
+  } = {},
+) {
+  const { chunks = [CHUNK_A, CHUNK_B], existingEntities = [], existingRelations = [] } = opts;
 
   // select().from().where() chain
   // First call: chunk load; subsequent calls: entity lookup with .limit()
@@ -106,16 +100,19 @@ function buildConsumer(
 // ── Sidecar fetch mock helpers ─────────────────────────────────────────────────
 
 function mockFetch(response: object) {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-    ok: true,
-    json: () => Promise.resolve(response),
-  }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(response),
+    }),
+  );
 }
 
 // Count how many times db.insert was called with the knowledge_relations table
 function countRelationInserts(db: ReturnType<typeof makeDb>): number {
-  return (db._insertMock as MockedFunction<any>).mock.calls.filter(
-    ([table]: [unknown]) => isRelationTable(table),
+  return (db._insertMock as MockedFunction<any>).mock.calls.filter(([table]: [unknown]) =>
+    isRelationTable(table),
   ).length;
 }
 
@@ -155,7 +152,14 @@ describe('GraphEnrichConsumer.process', () => {
         { name: 'TSMC', type: 'TICKER', confidence: 0.85, mention_text: 'TSMC' },
       ],
       relations: [
-        { source: 'Apple Inc.', target: 'TSMC', relation_type: 'INVALID_TYPE_XYZ', confidence: 0.9, evidence: 'bad row', source_chunk_index: 0 },
+        {
+          source: 'Apple Inc.',
+          target: 'TSMC',
+          relation_type: 'INVALID_TYPE_XYZ',
+          confidence: 0.9,
+          evidence: 'bad row',
+          source_chunk_index: 0,
+        },
       ],
       latency_ms: 10,
     });
@@ -179,8 +183,22 @@ describe('GraphEnrichConsumer.process', () => {
         { name: 'Samsung', type: 'COMPANY', confidence: 0.8, mention_text: 'Samsung' },
       ],
       relations: [
-        { source: 'Apple Inc.', target: 'TSMC', relation_type: 'SUPPLIES_TO', confidence: 0.87, evidence: 'Apple supplies TSMC', source_chunk_index: 0 },
-        { source: 'Apple Inc.', target: 'Samsung', relation_type: 'COMPETES_WITH', confidence: 0.75, evidence: 'Apple competes with Samsung', source_chunk_index: 0 },
+        {
+          source: 'Apple Inc.',
+          target: 'TSMC',
+          relation_type: 'SUPPLIES_TO',
+          confidence: 0.87,
+          evidence: 'Apple supplies TSMC',
+          source_chunk_index: 0,
+        },
+        {
+          source: 'Apple Inc.',
+          target: 'Samsung',
+          relation_type: 'COMPETES_WITH',
+          confidence: 0.75,
+          evidence: 'Apple competes with Samsung',
+          source_chunk_index: 0,
+        },
       ],
       latency_ms: 10,
     });
@@ -202,7 +220,14 @@ describe('GraphEnrichConsumer.process', () => {
         // "Apple Inc." is NOT in the entity list
       ],
       relations: [
-        { source: 'Apple Inc.', target: 'TSMC', relation_type: 'SUPPLIES_TO', confidence: 0.87, evidence: 'Apple supplies TSMC', source_chunk_index: 0 },
+        {
+          source: 'Apple Inc.',
+          target: 'TSMC',
+          relation_type: 'SUPPLIES_TO',
+          confidence: 0.87,
+          evidence: 'Apple supplies TSMC',
+          source_chunk_index: 0,
+        },
       ],
       latency_ms: 5,
     });
@@ -223,7 +248,14 @@ describe('GraphEnrichConsumer.process', () => {
         { name: 'TSMC', type: 'TICKER', confidence: 0.85, mention_text: 'TSMC' },
       ],
       relations: [
-        { source: 'Apple Inc.', target: 'TSMC', relation_type: 'SUPPLIES_TO', confidence: 0.5, evidence: 'low confidence', source_chunk_index: 0 },
+        {
+          source: 'Apple Inc.',
+          target: 'TSMC',
+          relation_type: 'SUPPLIES_TO',
+          confidence: 0.5,
+          evidence: 'low confidence',
+          source_chunk_index: 0,
+        },
       ],
       latency_ms: 5,
     });
@@ -243,8 +275,22 @@ describe('GraphEnrichConsumer.process', () => {
         { name: 'TSMC', type: 'TICKER', confidence: 0.85, mention_text: 'TSMC' },
       ],
       relations: [
-        { source: 'Apple Inc.', target: 'TSMC', relation_type: 'SUPPLIES_TO', confidence: 0.87, evidence: 'first', source_chunk_index: 0 },
-        { source: 'Apple Inc.', target: 'TSMC', relation_type: 'SUPPLIES_TO', confidence: 0.88, evidence: 'duplicate', source_chunk_index: 0 },
+        {
+          source: 'Apple Inc.',
+          target: 'TSMC',
+          relation_type: 'SUPPLIES_TO',
+          confidence: 0.87,
+          evidence: 'first',
+          source_chunk_index: 0,
+        },
+        {
+          source: 'Apple Inc.',
+          target: 'TSMC',
+          relation_type: 'SUPPLIES_TO',
+          confidence: 0.88,
+          evidence: 'duplicate',
+          source_chunk_index: 0,
+        },
       ],
       latency_ms: 5,
     });
@@ -264,7 +310,14 @@ describe('GraphEnrichConsumer.process', () => {
         { name: 'TSMC', type: 'TICKER', confidence: 0.85, mention_text: 'TSMC' },
       ],
       relations: [
-        { source: 'Apple Inc.', target: 'TSMC', relation_type: 'SUPPLIES_TO', confidence: 0.87, evidence: 'Apple supplies TSMC', source_chunk_index: 0 },
+        {
+          source: 'Apple Inc.',
+          target: 'TSMC',
+          relation_type: 'SUPPLIES_TO',
+          confidence: 0.87,
+          evidence: 'Apple supplies TSMC',
+          source_chunk_index: 0,
+        },
       ],
       latency_ms: 5,
     });
@@ -276,8 +329,8 @@ describe('GraphEnrichConsumer.process', () => {
     // The values() call after the relation insert() captures the row object
     const valuesCallArgs = (db._insertValues as MockedFunction<any>).mock.calls;
     // Find the call that has relation columns (sourceEntityId present)
-    const relationValueCalls = valuesCallArgs.filter(([row]: [any]) =>
-      'sourceEntityId' in row && 'targetEntityId' in row && 'relationType' in row,
+    const relationValueCalls = valuesCallArgs.filter(
+      ([row]: [any]) => 'sourceEntityId' in row && 'targetEntityId' in row && 'relationType' in row,
     );
     expect(relationValueCalls.length).toBeGreaterThanOrEqual(1);
     const row = relationValueCalls[0]![0];
@@ -304,7 +357,14 @@ describe('GraphEnrichConsumer.process', () => {
       ],
       relations: [
         // chunk index 5 doesn't exist (only chunk at index 0)
-        { source: 'Apple Inc.', target: 'TSMC', relation_type: 'SUPPLIES_TO', confidence: 0.87, evidence: 'oob', source_chunk_index: 5 },
+        {
+          source: 'Apple Inc.',
+          target: 'TSMC',
+          relation_type: 'SUPPLIES_TO',
+          confidence: 0.87,
+          evidence: 'oob',
+          source_chunk_index: 5,
+        },
       ],
       latency_ms: 5,
     });
@@ -339,8 +399,22 @@ describe('GraphEnrichConsumer.process', () => {
         { name: 'Samsung', type: 'COMPANY', confidence: 0.8, mention_text: 'Samsung' },
       ],
       relations: [
-        { source: 'Apple Inc.', target: 'TSMC', relation_type: 'SUPPLIES_TO', confidence: 0.87, evidence: 'Apple supplies TSMC', source_chunk_index: 0 },
-        { source: 'Apple Inc.', target: 'Samsung', relation_type: 'COMPETES_WITH', confidence: 0.75, evidence: 'Apple competes with Samsung', source_chunk_index: 0 },
+        {
+          source: 'Apple Inc.',
+          target: 'TSMC',
+          relation_type: 'SUPPLIES_TO',
+          confidence: 0.87,
+          evidence: 'Apple supplies TSMC',
+          source_chunk_index: 0,
+        },
+        {
+          source: 'Apple Inc.',
+          target: 'Samsung',
+          relation_type: 'COMPETES_WITH',
+          confidence: 0.75,
+          evidence: 'Apple competes with Samsung',
+          source_chunk_index: 0,
+        },
       ],
       latency_ms: 10,
     });

@@ -14,19 +14,25 @@ import { aiConfig } from '../../config/ai.config';
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const VALID_LLM_RESPONSE = JSON.stringify({
-  contextual: 'This is contextual text about the document section providing 40-80 words of context to the chunk.',
-  sample_questions: ['What is the revenue growth rate for Q3?', 'How did operating margins change year over year?'],
+  contextual:
+    'This is contextual text about the document section providing 40-80 words of context to the chunk.',
+  sample_questions: [
+    'What is the revenue growth rate for Q3?',
+    'How did operating margins change year over year?',
+  ],
   summary: 'Revenue grew 15% year over year driven by software segment expansion.',
   keywords: ['revenue', 'Q3', 'operating margins', 'software', 'growth'],
 });
 
-function makeChunkRow(overrides: Partial<{
-  id: string;
-  content: string;
-  enrichmentStatus: string;
-  metaTitle: string | null;
-  sectionPath: string | null;
-}> = {}) {
+function makeChunkRow(
+  overrides: Partial<{
+    id: string;
+    content: string;
+    enrichmentStatus: string;
+    metaTitle: string | null;
+    sectionPath: string | null;
+  }> = {},
+) {
   return {
     id: 'chunk-uuid-1',
     content: 'Revenue for Q3 grew 15% year over year.',
@@ -49,7 +55,7 @@ function makeChunkRow(overrides: Partial<{
 function createMockDb(
   selectCallResults: Array<unknown[]> = [
     [makeChunkRow()], // call 1: chunk load
-    [],               // call 2: idempotency check → empty = not yet enriched
+    [], // call 2: idempotency check → empty = not yet enriched
   ],
 ) {
   let selectCallCount = 0;
@@ -112,7 +118,9 @@ function createMockEmbeddingService() {
     embedQuery: vi.fn().mockImplementation(async (text: string) =>
       // 2048-dim matches the canonical NVIDIA nvidia/llama-nemotron-embed-1b-v2
       // provider (see seed-fixture.cli.ts STUB_EMBEDDING_DIM).
-      Array(2048).fill(0).map((_, i) => i / 2048 + text.length * 0.0001),
+      Array(2048)
+        .fill(0)
+        .map((_, i) => i / 2048 + text.length * 0.0001),
     ),
     embedChunks: vi.fn().mockResolvedValue([]),
   };
@@ -257,8 +265,8 @@ describe('ChunkRepresentationService', () => {
 
   it('skips enrichment if rows already exist at current version', async () => {
     const freshDb = createMockDb([
-      [makeChunkRow()],           // chunk load
-      [{ id: 'existing-row' }],   // idempotency check returns a hit
+      [makeChunkRow()], // chunk load
+      [{ id: 'existing-row' }], // idempotency check returns a hit
     ]);
     const freshService = await buildService(freshDb, llm, embedding, metrics);
 
@@ -307,11 +315,15 @@ describe('ChunkRepresentationService', () => {
   // ── Chunk not found ───────────────────────────────────────────────────────
 
   it('throws ChunkNotFoundError when chunk is not found in DB', async () => {
-    const notFoundDb = createMockDb([[]]);  // select returns empty → chunk not found
+    const notFoundDb = createMockDb([[]]); // select returns empty → chunk not found
     const notFoundService = await buildService(notFoundDb, llm, embedding, metrics);
 
-    await expect(notFoundService.enrichChunk('nonexistent-chunk')).rejects.toThrow(ChunkNotFoundError);
-    await expect(notFoundService.enrichChunk('nonexistent-chunk')).rejects.toThrow('chunk not found: nonexistent-chunk');
+    await expect(notFoundService.enrichChunk('nonexistent-chunk')).rejects.toThrow(
+      ChunkNotFoundError,
+    );
+    await expect(notFoundService.enrichChunk('nonexistent-chunk')).rejects.toThrow(
+      'chunk not found: nonexistent-chunk',
+    );
   });
 
   // ── Circuit breaker ───────────────────────────────────────────────────────
@@ -323,8 +335,8 @@ describe('ChunkRepresentationService', () => {
     // Provide enough select results: each enrichChunk call needs chunk + idempotency
     const manyResults: Array<unknown[]> = [];
     for (let i = 0; i < 20; i++) {
-      manyResults.push([makeChunkRow()]);  // odd calls: chunk load
-      manyResults.push([]);                // even calls: idempotency check
+      manyResults.push([makeChunkRow()]); // odd calls: chunk load
+      manyResults.push([]); // even calls: idempotency check
     }
     const cbDb = createMockDb(manyResults);
     const freshService = await buildService(cbDb, llm, embedding, metrics);
@@ -352,24 +364,30 @@ describe('ChunkRepresentationService', () => {
     // Both retry attempts of first call fail with 429 → 2 errors recorded
     // Second call succeeds → counter resets
     llm.generate
-      .mockRejectedValueOnce(error429)  // attempt 0 of call 1
-      .mockRejectedValueOnce(error429)  // attempt 1 of call 1
-      .mockResolvedValue(VALID_LLM_RESPONSE);  // call 2 succeeds
+      .mockRejectedValueOnce(error429) // attempt 0 of call 1
+      .mockRejectedValueOnce(error429) // attempt 1 of call 1
+      .mockResolvedValue(VALID_LLM_RESPONSE); // call 2 succeeds
 
-    const cbDb = createMockDb([
-      [makeChunkRow()], [],  // call 1: chunk + idempotency
-      [makeChunkRow()], [],  // call 2: chunk + idempotency
-    ].flat().reduce<Array<unknown[]>>((acc, item, i) => {
-      if (i % 2 === 0) acc.push([item as ReturnType<typeof makeChunkRow>]);
-      else acc.push([]);
-      return acc;
-    }, []));
+    const cbDb = createMockDb(
+      [
+        [makeChunkRow()],
+        [], // call 1: chunk + idempotency
+        [makeChunkRow()],
+        [], // call 2: chunk + idempotency
+      ]
+        .flat()
+        .reduce<Array<unknown[]>>((acc, item, i) => {
+          if (i % 2 === 0) acc.push([item as ReturnType<typeof makeChunkRow>]);
+          else acc.push([]);
+          return acc;
+        }, []),
+    );
     // Simpler: just build the right array directly
     const simpleDb = createMockDb([
       [makeChunkRow()], // call 1 chunk
-      [],               // call 1 idempotency
+      [], // call 1 idempotency
       [makeChunkRow()], // call 2 chunk
-      [],               // call 2 idempotency
+      [], // call 2 idempotency
     ]);
     const freshService = await buildService(simpleDb, llm, embedding, metrics);
 

@@ -10,4 +10,5 @@ export const AgentEventAggregateType = {
   ANALYSIS_APPROVAL: 'ANALYSIS_APPROVAL',
 } as const;
 
-export type AgentEventAggregateType = (typeof AgentEventAggregateType)[keyof typeof AgentEventAggregateType];
+export type AgentEventAggregateType =
+  (typeof AgentEventAggregateType)[keyof typeof AgentEventAggregateType];

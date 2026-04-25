@@ -4,15 +4,33 @@ import { PortfolioService } from '../portfolio.service';
 import { NewsAnalysisService } from '../../agent/news-analysis.service';
 import type { PortfolioAnalyticsResponse } from '@finsentinel/shared';
 
-function makeAnalytics(overrides: Partial<PortfolioAnalyticsResponse> = {}): PortfolioAnalyticsResponse {
+function makeAnalytics(
+  overrides: Partial<PortfolioAnalyticsResponse> = {},
+): PortfolioAnalyticsResponse {
   return {
     totalMarketValue: '100000.00',
     sectorAllocation: { Technology: '60000.00', Healthcare: '40000.00' },
     hhiIndex: 2000,
     hhiClassification: 'Moderately Concentrated',
     holdingWeights: [
-      { symbol: 'AAPL', companyName: 'Apple', sector: 'Technology', marketValue: '60000.00', weightPercent: '60.00', unrealizedPnl: '5000.00', pnlPercent: '9.09' },
-      { symbol: 'JNJ', companyName: 'J&J', sector: 'Healthcare', marketValue: '40000.00', weightPercent: '40.00', unrealizedPnl: '2000.00', pnlPercent: '5.26' },
+      {
+        symbol: 'AAPL',
+        companyName: 'Apple',
+        sector: 'Technology',
+        marketValue: '60000.00',
+        weightPercent: '60.00',
+        unrealizedPnl: '5000.00',
+        pnlPercent: '9.09',
+      },
+      {
+        symbol: 'JNJ',
+        companyName: 'J&J',
+        sector: 'Healthcare',
+        marketValue: '40000.00',
+        weightPercent: '40.00',
+        unrealizedPnl: '2000.00',
+        pnlPercent: '5.26',
+      },
     ],
     concentrationWarnings: [
       'AAPL represents 60.00% of portfolio (>25% threshold)',
@@ -32,7 +50,11 @@ describe('PortfolioInsightsService', () => {
       getPortfolioAnalytics: vi.fn().mockResolvedValue(makeAnalytics()),
     };
     newsService = {
-      getRecentNews: vi.fn().mockResolvedValue('1. [Reuters] Apple Q2 beats\nPublished: 2026-04-05T18:00:00.000Z\nSummary: Revenue up 12%'),
+      getRecentNews: vi
+        .fn()
+        .mockResolvedValue(
+          '1. [Reuters] Apple Q2 beats\nPublished: 2026-04-05T18:00:00.000Z\nSummary: Revenue up 12%',
+        ),
     };
     service = new PortfolioInsightsService(
       portfolioService as unknown as PortfolioService,
@@ -77,9 +99,7 @@ describe('PortfolioInsightsService', () => {
     expect(insight.holdingCount).toBe(0);
     expect(insight.topHoldingSymbol).toBeNull();
     expect(insight.relevantEvents).toEqual([]);
-    expect(insight.priorityActions).toContainEqual(
-      expect.stringContaining('Add holdings'),
-    );
+    expect(insight.priorityActions).toContainEqual(expect.stringContaining('Add holdings'));
   });
 
   it('returns degraded insight when news fetch fails', async () => {

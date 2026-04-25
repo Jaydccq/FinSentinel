@@ -39,12 +39,7 @@ export const ROLE_TOOL_SCOPE: Record<RoleKey, readonly string[]> = {
     'getShortInterest',
     'getFailsToDeliver',
   ],
-  SENTIMENT_ANALYST: [
-    'getRecentNews',
-    'searchTweets',
-    'getKolFollowers',
-    'searchKnowledgeBase',
-  ],
+  SENTIMENT_ANALYST: ['getRecentNews', 'searchTweets', 'getKolFollowers', 'searchKnowledgeBase'],
   POSITIVE_CASE: [],
   NEGATIVE_CASE: [],
   THESIS_LEAD: [],

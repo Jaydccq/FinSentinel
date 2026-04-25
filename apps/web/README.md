@@ -18,6 +18,7 @@ pnpm --filter @finsentinel/web lint
 The app proxies `/api/*` through `next.config.ts`.
 
 Defaults:
+
 - local development: `http://localhost:3001`
 - containerized runtime: set `INTERNAL_API_ORIGIN=http://api:3001`
 

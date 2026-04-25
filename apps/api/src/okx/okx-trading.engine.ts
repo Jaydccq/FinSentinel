@@ -31,9 +31,7 @@ export class OkxTradingEngine implements TradingEngine {
         side: request.side,
         ordType: this.mapOrderType(request.type),
         sz: request.qty ?? '0',
-        px: request.type === 'limit' || request.type === 'stop_limit'
-          ? request.price
-          : undefined,
+        px: request.type === 'limit' || request.type === 'stop_limit' ? request.price : undefined,
         reduceOnly: request.reduceOnly,
       });
 
@@ -56,8 +54,7 @@ export class OkxTradingEngine implements TradingEngine {
           : new Date().toISOString(),
       };
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : String(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return this.errorResult(errorMessage);
     }
   }
@@ -94,9 +91,7 @@ export class OkxTradingEngine implements TradingEngine {
         filledQty: ord.fillSz || '0',
         avgPrice: ord.avgPx || '0',
         errorMessage: null,
-        timestamp: ord.cTime
-          ? new Date(Number(ord.cTime)).toISOString()
-          : new Date().toISOString(),
+        timestamp: ord.cTime ? new Date(Number(ord.cTime)).toISOString() : new Date().toISOString(),
       }));
     } catch (err: unknown) {
       return [];

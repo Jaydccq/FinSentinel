@@ -26,9 +26,7 @@ describe('MarketCalendarService', () => {
   describe('getEarningsCalendar', () => {
     it('delegates to OpenBB with correct path', async () => {
       const mockResult = { results: [{ symbol: 'AAPL', date: '2026-04-01' }] };
-      (openbb.queryPublicData as ReturnType<typeof vi.fn>).mockResolvedValue(
-        mockResult,
-      );
+      (openbb.queryPublicData as ReturnType<typeof vi.fn>).mockResolvedValue(mockResult);
 
       const result = await service.getEarningsCalendar();
 
@@ -43,21 +41,18 @@ describe('MarketCalendarService', () => {
     it('passes date range params when provided', async () => {
       await service.getEarningsCalendar('2026-04-01', '2026-04-30');
 
-      expect(openbb.queryPublicData).toHaveBeenCalledWith(
-        'equity/calendar/earnings',
-        undefined,
-        { start_date: '2026-04-01', end_date: '2026-04-30' },
-      );
+      expect(openbb.queryPublicData).toHaveBeenCalledWith('equity/calendar/earnings', undefined, {
+        start_date: '2026-04-01',
+        end_date: '2026-04-30',
+      });
     });
 
     it('passes only startDate when endDate is omitted', async () => {
       await service.getEarningsCalendar('2026-04-01');
 
-      expect(openbb.queryPublicData).toHaveBeenCalledWith(
-        'equity/calendar/earnings',
-        undefined,
-        { start_date: '2026-04-01' },
-      );
+      expect(openbb.queryPublicData).toHaveBeenCalledWith('equity/calendar/earnings', undefined, {
+        start_date: '2026-04-01',
+      });
     });
 
     it('propagates OpenBB errors', async () => {
@@ -65,9 +60,7 @@ describe('MarketCalendarService', () => {
         new Error('OpenBB request failed (HTTP 500). Check the path and provider, then try again.'),
       );
 
-      await expect(service.getEarningsCalendar()).rejects.toThrow(
-        /OpenBB request failed/,
-      );
+      await expect(service.getEarningsCalendar()).rejects.toThrow(/OpenBB request failed/);
     });
   });
 
@@ -87,11 +80,10 @@ describe('MarketCalendarService', () => {
     it('passes date range params', async () => {
       await service.getDividendCalendar('2026-01-01', '2026-06-30');
 
-      expect(openbb.queryPublicData).toHaveBeenCalledWith(
-        'equity/calendar/dividend',
-        undefined,
-        { start_date: '2026-01-01', end_date: '2026-06-30' },
-      );
+      expect(openbb.queryPublicData).toHaveBeenCalledWith('equity/calendar/dividend', undefined, {
+        start_date: '2026-01-01',
+        end_date: '2026-06-30',
+      });
     });
   });
 
@@ -101,21 +93,16 @@ describe('MarketCalendarService', () => {
     it('delegates to OpenBB with correct path', async () => {
       await service.getSplitsCalendar();
 
-      expect(openbb.queryPublicData).toHaveBeenCalledWith(
-        'equity/calendar/splits',
-        undefined,
-        {},
-      );
+      expect(openbb.queryPublicData).toHaveBeenCalledWith('equity/calendar/splits', undefined, {});
     });
 
     it('passes date range params', async () => {
       await service.getSplitsCalendar('2026-03-01', '2026-03-31');
 
-      expect(openbb.queryPublicData).toHaveBeenCalledWith(
-        'equity/calendar/splits',
-        undefined,
-        { start_date: '2026-03-01', end_date: '2026-03-31' },
-      );
+      expect(openbb.queryPublicData).toHaveBeenCalledWith('equity/calendar/splits', undefined, {
+        start_date: '2026-03-01',
+        end_date: '2026-03-31',
+      });
     });
   });
 });
@@ -136,9 +123,7 @@ describe('OwnershipDataService', () => {
   describe('getInstitutionalHolders', () => {
     it('delegates to OpenBB with correct path and uppercase ticker', async () => {
       const mockResult = { results: [{ holder: 'Vanguard', shares: 1000000 }] };
-      (openbb.queryPublicData as ReturnType<typeof vi.fn>).mockResolvedValue(
-        mockResult,
-      );
+      (openbb.queryPublicData as ReturnType<typeof vi.fn>).mockResolvedValue(mockResult);
 
       const result = await service.getInstitutionalHolders('aapl');
 
@@ -166,9 +151,7 @@ describe('OwnershipDataService', () => {
   describe('getInsiderTransactions', () => {
     it('delegates to OpenBB with correct path and uppercase ticker', async () => {
       const mockResult = { results: [{ insider: 'Tim Cook', type: 'Sale' }] };
-      (openbb.queryPublicData as ReturnType<typeof vi.fn>).mockResolvedValue(
-        mockResult,
-      );
+      (openbb.queryPublicData as ReturnType<typeof vi.fn>).mockResolvedValue(mockResult);
 
       const result = await service.getInsiderTransactions('msft');
 
@@ -185,9 +168,7 @@ describe('OwnershipDataService', () => {
         new Error('Failed to call OpenBB: ECONNREFUSED'),
       );
 
-      await expect(service.getInsiderTransactions('AAPL')).rejects.toThrow(
-        /Failed to call OpenBB/,
-      );
+      await expect(service.getInsiderTransactions('AAPL')).rejects.toThrow(/Failed to call OpenBB/);
     });
   });
 });

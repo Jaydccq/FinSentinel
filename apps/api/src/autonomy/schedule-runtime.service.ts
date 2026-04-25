@@ -1,10 +1,7 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import parser from 'cron-parser';
-import {
-  AgentEventAggregateType,
-  AgentEventType,
-} from '@finsentinel/shared';
+import { AgentEventAggregateType, AgentEventType } from '@finsentinel/shared';
 import { AgentEventService } from '../events/agent-event.service';
 import { ScheduleService } from './schedule.service';
 import { AnalysisRuntimeTriggerService } from './analysis-runtime-trigger.service';

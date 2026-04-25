@@ -22,16 +22,13 @@ export function parseMigrationFilename(filename: string): MigrationFile {
 
 export function listAllMigrations(dir: string = MIGRATIONS_DIR): MigrationFile[] {
   return readdirSync(dir)
-    .filter(f => f.endsWith('.sql'))
+    .filter((f) => f.endsWith('.sql'))
     .map(parseMigrationFilename)
     .sort((a, b) => a.version - b.version);
 }
 
-export function listPendingMigrations(
-  all: MigrationFile[],
-  applied: Set<number>,
-): MigrationFile[] {
-  return all.filter(m => !applied.has(m.version));
+export function listPendingMigrations(all: MigrationFile[], applied: Set<number>): MigrationFile[] {
+  return all.filter((m) => !applied.has(m.version));
 }
 
 function checksum(sql: string): string {
@@ -50,7 +47,7 @@ async function ensureSchemaVersionsTable(sql: postgres.Sql): Promise<boolean> {
 
 async function fetchAppliedVersions(sql: postgres.Sql): Promise<Set<number>> {
   const rows = await sql<{ version: number }[]>`SELECT version FROM schema_versions`;
-  return new Set(rows.map(r => r.version));
+  return new Set(rows.map((r) => r.version));
 }
 
 async function applyOne(sql: postgres.Sql, mig: MigrationFile): Promise<void> {
@@ -58,7 +55,7 @@ async function applyOne(sql: postgres.Sql, mig: MigrationFile): Promise<void> {
   const body = readFileSync(path, 'utf8');
   const sum = checksum(body);
   console.log(`[migrate] applying ${mig.filename} (sha256=${sum.slice(0, 12)}...)`);
-  await sql.begin(async trx => {
+  await sql.begin(async (trx) => {
     await trx.unsafe(body);
     await trx`
       INSERT INTO schema_versions (version, filename, checksum)
@@ -77,7 +74,7 @@ export async function runMigrations(opts: { bootstrapFrom?: number } = {}): Prom
     const hasTable = await ensureSchemaVersionsTable(sql);
 
     if (!hasTable) {
-      const v13 = all.find(m => m.version === 13);
+      const v13 = all.find((m) => m.version === 13);
       if (!v13) throw new Error('V13 migration (schema_versions) not found');
       console.log('[migrate] schema_versions missing — bootstrapping with V13');
       const v13Body = readFileSync(join(MIGRATIONS_DIR, v13.filename), 'utf8');
@@ -92,7 +89,7 @@ export async function runMigrations(opts: { bootstrapFrom?: number } = {}): Prom
 
     if (opts.bootstrapFrom !== undefined) {
       console.log(`[migrate] bootstrap: marking V1..V${opts.bootstrapFrom} as applied`);
-      for (const m of all.filter(x => x.version <= opts.bootstrapFrom!)) {
+      for (const m of all.filter((x) => x.version <= opts.bootstrapFrom!)) {
         const body = readFileSync(join(MIGRATIONS_DIR, m.filename), 'utf8');
         await sql`
           INSERT INTO schema_versions (version, filename, checksum)
@@ -138,19 +135,21 @@ export async function printStatus(): Promise<void> {
 
 if (require.main === module) {
   const arg = process.argv[2];
-  const bootstrapArg = process.argv.find(a => a.startsWith('--bootstrap-from='));
+  const bootstrapArg = process.argv.find((a) => a.startsWith('--bootstrap-from='));
   let bootstrapFrom: number | undefined;
   if (bootstrapArg !== undefined) {
     const raw = bootstrapArg.split('=')[1];
     const n = Number(raw);
     if (!Number.isInteger(n) || n < 1) {
-      console.error(`[migrate] --bootstrap-from requires a positive integer; got: ${JSON.stringify(raw)}`);
+      console.error(
+        `[migrate] --bootstrap-from requires a positive integer; got: ${JSON.stringify(raw)}`,
+      );
       process.exit(1);
     }
     bootstrapFrom = n;
   }
   const cmd = arg === 'status' ? printStatus() : runMigrations({ bootstrapFrom });
-  cmd.catch(err => {
+  cmd.catch((err) => {
     console.error('[migrate] FAILED:', err);
     process.exit(1);
   });

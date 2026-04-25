@@ -8,18 +8,19 @@
 **Approach:** Add an optional `searchTickers` method to the `MarketDataProvider` interface; move the existing Yahoo search call into the YahooFinance provider; have the registry expose `getSearchProvider()` (default first, then Yahoo fallback); rewrite `MarketDataService.searchTickers` to delegate through the registry with a normalized cache key.
 
 ## Out of scope
+
 - Adding new search providers (Polygon, Alpaca search). Provider interface gets the optional method; only Yahoo implements it for now.
 - New search response shape — keep `TickerSearchResult` unchanged.
 
 ## File Map
 
-| Path | Role |
-|------|------|
-| `apps/api/src/market/interfaces/market-data-provider.ts` | MODIFY — add optional `searchTickers`. |
-| `apps/api/src/market/providers/yahoo.provider.ts` | MODIFY — implement `searchTickers` (move from MarketDataService). |
-| `apps/api/src/market/market-data-provider.registry.ts` | MODIFY — add `getSearchProvider()`. |
-| `apps/api/src/market/market-data.service.ts` | MODIFY — delegate through registry; normalize cache key (`v2`). |
-| `apps/api/src/market/__tests__/market-data.service.spec.ts` | MODIFY — adjust + add tests for new path. |
+| Path                                                        | Role                                                              |
+| ----------------------------------------------------------- | ----------------------------------------------------------------- |
+| `apps/api/src/market/interfaces/market-data-provider.ts`    | MODIFY — add optional `searchTickers`.                            |
+| `apps/api/src/market/providers/yahoo.provider.ts`           | MODIFY — implement `searchTickers` (move from MarketDataService). |
+| `apps/api/src/market/market-data-provider.registry.ts`      | MODIFY — add `getSearchProvider()`.                               |
+| `apps/api/src/market/market-data.service.ts`                | MODIFY — delegate through registry; normalize cache key (`v2`).   |
+| `apps/api/src/market/__tests__/market-data.service.spec.ts` | MODIFY — adjust + add tests for new path.                         |
 
 ## Tasks
 

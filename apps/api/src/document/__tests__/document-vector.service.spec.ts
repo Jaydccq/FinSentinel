@@ -131,11 +131,7 @@ describe('DocumentVectorService', () => {
       date: '2026-04-02',
     });
 
-    expect(mockChunkStore.replaceChunks).toHaveBeenCalledWith(
-      'news',
-      'news-1',
-      expect.any(Array),
-    );
+    expect(mockChunkStore.replaceChunks).toHaveBeenCalledWith('news', 'news-1', expect.any(Array));
   });
 
   it('returns 0 and skips embedding for empty text', async () => {
@@ -245,23 +241,34 @@ describe('DocumentVectorService', () => {
     // Override the markdown-structure mock for THIS test so the extractor
     // sees recognisable issuer text in the sample.
     const recognisableChunks: StructuredChunk[] = [
-      { text: 'Apple Inc. reported revenue of $383B. AAPL remains our top pick.',
-        title: null, sectionPath: [], parentId: null, modality: 'text',
-        pageStart: null, pageEnd: null },
+      {
+        text: 'Apple Inc. reported revenue of $383B. AAPL remains our top pick.',
+        title: null,
+        sectionPath: [],
+        parentId: null,
+        modality: 'text',
+        pageStart: null,
+        pageEnd: null,
+      },
     ];
     mockMarkdownStructure.parse.mockReturnValueOnce({
-      sourceFormat: 'plain', chunks: recognisableChunks,
+      sourceFormat: 'plain',
+      chunks: recognisableChunks,
     });
     mockChunking.chunkStructured.mockReturnValueOnce(recognisableChunks);
     mockEmbeddingService.embedChunks.mockResolvedValueOnce([[1, 0, 0]]);
 
-    await service.vectorize('doc-id-1', 'Apple Inc. reported revenue of $383B. AAPL remains our top pick.', {
-      doc_type: 'RESEARCH',
-      sector: 'Technology',
-      region_id: 'US',
-      source: 'AAPL_research.md',
-      date: '2026-01-01',
-    });
+    await service.vectorize(
+      'doc-id-1',
+      'Apple Inc. reported revenue of $383B. AAPL remains our top pick.',
+      {
+        doc_type: 'RESEARCH',
+        sector: 'Technology',
+        region_id: 'US',
+        source: 'AAPL_research.md',
+        date: '2026-01-01',
+      },
+    );
 
     const call = mockChunkStore.replaceChunks.mock.calls[0];
     const persistedChunks = call[2];
@@ -327,7 +334,11 @@ describe('DocumentVectorService', () => {
     });
 
     const call = (mockChunkStore.replaceChunks as Mock).mock.calls.at(-1);
-    const rows = call?.[2] as Array<{ metadata: Record<string, unknown>; sectionPath: unknown; title: unknown }>;
+    const rows = call?.[2] as Array<{
+      metadata: Record<string, unknown>;
+      sectionPath: unknown;
+      title: unknown;
+    }>;
     expect(rows).toBeDefined();
     expect(rows[0]!.sectionPath).toBe('Risk Section');
     expect(rows[0]!.title).toBe('Risk Section');

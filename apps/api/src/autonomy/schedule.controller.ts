@@ -70,28 +70,19 @@ export class ScheduleController {
 
   @Post(':id/pause')
   @HttpCode(HttpStatus.OK)
-  async pause(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async pause(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     return this.scheduleService.pause(user.userId, id);
   }
 
   @Post(':id/resume')
   @HttpCode(HttpStatus.OK)
-  async resume(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async resume(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     return this.scheduleService.resume(user.userId, id);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('id') id: string,
-  ) {
+  async delete(@CurrentUser() user: CurrentUserPayload, @Param('id') id: string) {
     await this.scheduleService.delete(user.userId, id);
   }
 }

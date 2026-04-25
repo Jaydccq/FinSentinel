@@ -88,9 +88,7 @@ describe('Auth Flow (integration)', () => {
     expect(Array.isArray(protectedRes.body)).toBe(true);
 
     // ── Step 4: Access protected route WITHOUT token → 401 ───────────────
-    await request(app.getHttpServer())
-      .get('/api/portfolios')
-      .expect(401);
+    await request(app.getHttpServer()).get('/api/portfolios').expect(401);
   });
 
   it('register with duplicate username returns 409', async () => {
@@ -101,10 +99,7 @@ describe('Auth Flow (integration)', () => {
     };
 
     // First registration succeeds
-    await request(app.getHttpServer())
-      .post('/api/auth/register')
-      .send(credentials)
-      .expect(201);
+    await request(app.getHttpServer()).post('/api/auth/register').send(credentials).expect(201);
 
     // Second registration with same username fails
     await request(app.getHttpServer())
@@ -124,10 +119,7 @@ describe('Auth Flow (integration)', () => {
     };
 
     // Register
-    await request(app.getHttpServer())
-      .post('/api/auth/register')
-      .send(credentials)
-      .expect(201);
+    await request(app.getHttpServer()).post('/api/auth/register').send(credentials).expect(201);
 
     // Login with wrong password
     await request(app.getHttpServer())
@@ -172,9 +164,7 @@ describe('Auth Flow (integration)', () => {
   });
 
   it('logout clears the FS_AUTH cookie', async () => {
-    const res = await request(app.getHttpServer())
-      .post('/api/auth/logout')
-      .expect(204);
+    const res = await request(app.getHttpServer()).post('/api/auth/logout').expect(204);
 
     const cookies = res.headers['set-cookie'];
     expect(cookies).toBeDefined();

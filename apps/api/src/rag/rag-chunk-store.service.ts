@@ -40,9 +40,7 @@ export interface RepresentationHit {
 
 @Injectable()
 export class RagChunkStoreService {
-  constructor(
-    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
-  ) {}
+  constructor(@Inject('DRIZZLE_DB') private readonly db: DrizzleDB) {}
 
   async replaceChunks(
     sourceType: 'document' | 'news',
@@ -60,12 +58,7 @@ export class RagChunkStoreService {
     // CASCADE on document_chunk_representations.chunk_id removes representation rows automatically
     await this.db
       .delete(documentChunks)
-      .where(
-        and(
-          eq(documentChunks.sourceType, sourceType),
-          eq(documentChunks.sourceId, sourceId),
-        ),
-      );
+      .where(and(eq(documentChunks.sourceType, sourceType), eq(documentChunks.sourceId, sourceId)));
 
     if (chunks.length === 0) {
       return;
@@ -80,7 +73,7 @@ export class RagChunkStoreService {
         content: chunk.content,
         embedding: chunk.embedding,
         metadata: chunk.metadata,
-        metaTitle: (chunk.title ?? (chunk.metadata['title'] as string)) ?? null,
+        metaTitle: chunk.title ?? (chunk.metadata['title'] as string) ?? null,
         metaSource: (chunk.metadata['source'] as string) ?? null,
         metaEntities: null, // populated later by GraphEnrichmentConsumer
         parentId: null,
@@ -121,9 +114,7 @@ export class RagChunkStoreService {
       clauses.push(sql`${documentChunks.metadata}->>'date' >= ${filters.afterDate}`);
     }
 
-    const whereClause = clauses.length > 0
-      ? sql`WHERE ${sql.join(clauses, sql` AND `)}`
-      : sql``;
+    const whereClause = clauses.length > 0 ? sql`WHERE ${sql.join(clauses, sql` AND `)}` : sql``;
 
     const rows = await this.db.execute(sql`
       SELECT
@@ -190,9 +181,7 @@ export class RagChunkStoreService {
     }
 
     const metaWhere =
-      metaFilterClauses.length > 0
-        ? sql`AND ${sql.join(metaFilterClauses, sql` AND `)}`
-        : sql``;
+      metaFilterClauses.length > 0 ? sql`AND ${sql.join(metaFilterClauses, sql` AND `)}` : sql``;
 
     const subQueries: Promise<RepresentationHit[]>[] = [];
 
@@ -218,9 +207,7 @@ export class RagChunkStoreService {
         canonicalFilter.push(sql`metadata->>'issuerName' = ANY(${filters.issuerName}::text[])`);
       }
       const canonicalWhere =
-        canonicalFilter.length > 0
-          ? sql`WHERE ${sql.join(canonicalFilter, sql` AND `)}`
-          : sql``;
+        canonicalFilter.length > 0 ? sql`WHERE ${sql.join(canonicalFilter, sql` AND `)}` : sql``;
 
       subQueries.push(
         this.db

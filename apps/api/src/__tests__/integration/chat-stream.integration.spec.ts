@@ -62,9 +62,7 @@ describe('Chat Stream (integration)', () => {
       .send({ message: 'Analyze AAPL' })
       .expect(401);
 
-    await request(app.getHttpServer())
-      .get('/api/chat/sessions')
-      .expect(401);
+    await request(app.getHttpServer()).get('/api/chat/sessions').expect(401);
   });
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -157,8 +155,7 @@ describe('Chat Stream (integration)', () => {
     // The response body should contain SSE events
     const body = res.body as string;
     // It should end with either a done event or an error event (both are valid SSE)
-    const hasValidEnding =
-      body.includes('event: done') || body.includes('event: error');
+    const hasValidEnding = body.includes('event: done') || body.includes('event: error');
     expect(hasValidEnding).toBe(true);
   });
 });

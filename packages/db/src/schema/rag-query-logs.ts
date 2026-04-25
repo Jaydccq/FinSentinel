@@ -18,7 +18,10 @@ export const ragQueryLogs = pgTable('rag_query_logs', {
   queryHash: varchar('query_hash', { length: 64 }).notNull(),
   queryPreview: text('query_preview'),
   queryClass: varchar('query_class', { length: 32 }),
-  variants: jsonb('variants').$type<Array<{ kind: string; query_hash: string }>>().notNull().default([]),
+  variants: jsonb('variants')
+    .$type<Array<{ kind: string; query_hash: string }>>()
+    .notNull()
+    .default([]),
   filters: jsonb('filters').$type<Record<string, unknown>>().notNull().default({}),
   lanes: varchar('lanes', { length: 32 }).array().notNull().default([]),
   resultChunkIds: uuid('result_chunk_ids').array().notNull().default([]),

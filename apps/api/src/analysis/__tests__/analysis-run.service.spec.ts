@@ -143,9 +143,15 @@ function makeFakeDb() {
     __lastInsert: undefined as unknown,
     __lastUpdate: { set: undefined as unknown },
     __lastWhereDescriptor: undefined as unknown,
-    __selectReturns(rows: unknown[]) { selectQueue = rows; },
-    __insertReturns(rows: unknown[]) { insertQueue = rows; },
-    __updateReturns(rows: unknown[]) { updateQueue = rows; },
+    __selectReturns(rows: unknown[]) {
+      selectQueue = rows;
+    },
+    __insertReturns(rows: unknown[]) {
+      insertQueue = rows;
+    },
+    __updateReturns(rows: unknown[]) {
+      updateQueue = rows;
+    },
     select: () => ({
       from: () => ({
         where: (expr: unknown) => ({

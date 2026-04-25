@@ -2,7 +2,7 @@ import type { StructuredChunk, StructuredDocument } from '../structured-document
 
 export interface ReportChunkerConfig {
   chunkSize: number;
-  chunkOverlap: number;      // ignored today; kept for API parity with other chunkers
+  chunkOverlap: number; // ignored today; kept for API parity with other chunkers
   minChunkSizeChars: number;
   maxNumChunks: number;
 }

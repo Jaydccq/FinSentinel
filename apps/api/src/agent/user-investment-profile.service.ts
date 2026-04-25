@@ -25,9 +25,7 @@ interface ProfileHistoryEntry {
 
 @Injectable()
 export class UserInvestmentProfileService {
-  constructor(
-    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
-  ) {}
+  constructor(@Inject('DRIZZLE_DB') private readonly db: DrizzleDB) {}
 
   async getProfileSummary(userId: string): Promise<string> {
     const profile = await this.getOrCreateProfile(userId);
@@ -41,11 +39,7 @@ export class UserInvestmentProfileService {
     ].join('\n');
   }
 
-  async updateSentiment(
-    userId: string,
-    sentiment: string,
-    reason: string,
-  ): Promise<string> {
+  async updateSentiment(userId: string, sentiment: string, reason: string): Promise<string> {
     const profile = await this.getOrCreateProfile(userId);
     const stateHistory = this.prependHistory(profile.stateHistory, {
       timestamp: new Date().toISOString(),
@@ -87,10 +81,7 @@ export class UserInvestmentProfileService {
     return 'Working memory updated successfully.';
   }
 
-  async updatePreferences(
-    userId: string,
-    preferencesJson: string,
-  ): Promise<string> {
+  async updatePreferences(userId: string, preferencesJson: string): Promise<string> {
     const profile = await this.getOrCreateProfile(userId);
     const preferences = JSON.parse(preferencesJson) as Record<string, unknown>;
     const stateHistory = this.prependHistory(profile.stateHistory, {
@@ -111,9 +102,7 @@ export class UserInvestmentProfileService {
     return 'User preferences updated successfully.';
   }
 
-  private async getOrCreateProfile(
-    userId: string,
-  ): Promise<UserInvestmentProfileRow> {
+  private async getOrCreateProfile(userId: string): Promise<UserInvestmentProfileRow> {
     const [existing] = await this.db
       .select()
       .from(userInvestmentProfiles)
@@ -137,10 +126,7 @@ export class UserInvestmentProfileService {
     return created as UserInvestmentProfileRow;
   }
 
-  private prependHistory(
-    history: unknown[],
-    entry: ProfileHistoryEntry,
-  ): ProfileHistoryEntry[] {
+  private prependHistory(history: unknown[], entry: ProfileHistoryEntry): ProfileHistoryEntry[] {
     return [entry, ...this.asHistory(history)].slice(0, 100);
   }
 

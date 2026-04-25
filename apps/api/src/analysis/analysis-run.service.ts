@@ -1,11 +1,11 @@
-import {
-  Injectable,
-  Inject,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { analysisRuns, analysisStages, analysisArtifacts, analysisApprovals } from '@finsentinel/db';
+import {
+  analysisRuns,
+  analysisStages,
+  analysisArtifacts,
+  analysisApprovals,
+} from '@finsentinel/db';
 import { eq, and, desc, asc } from 'drizzle-orm';
 import type { DrizzleDB } from '@finsentinel/db';
 import {
@@ -151,11 +151,7 @@ export class AnalysisRunService {
     );
   }
 
-  async retryStage(
-    userId: string,
-    runId: string,
-    stageKey: AnalysisStageKey,
-  ): Promise<void> {
+  async retryStage(userId: string, runId: string, stageKey: AnalysisStageKey): Promise<void> {
     const row = await this.requireRun(userId, runId);
     if (!['FAILED', 'PAUSED', 'WAITING_APPROVAL'].includes(row.status)) {
       throw new BadRequestException(`Cannot retry run in status ${row.status}`);
@@ -245,11 +241,7 @@ export class AnalysisRunService {
     );
   }
 
-  async setCurrentStage(
-    userId: string,
-    runId: string,
-    stageKey: string,
-  ): Promise<void> {
+  async setCurrentStage(userId: string, runId: string, stageKey: string): Promise<void> {
     await this.db
       .update(analysisRuns)
       .set({ currentStageKey: stageKey as never, updatedAt: new Date() })

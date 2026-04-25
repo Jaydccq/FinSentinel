@@ -52,9 +52,7 @@ describe('PolygonResearchProvider', () => {
       // Verify the fetch URL
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const url = fetchMock.mock.calls[0]![0] as string;
-      expect(url).toContain(
-        'https://api.polygon.io/v3/reference/tickers/AAPL',
-      );
+      expect(url).toContain('https://api.polygon.io/v3/reference/tickers/AAPL');
       expect(url).toContain(`apiKey=${API_KEY}`);
 
       expect(profile).toEqual({
@@ -78,9 +76,7 @@ describe('PolygonResearchProvider', () => {
         statusText: 'Forbidden',
       });
 
-      await expect(provider.getCompanyProfile('AAPL')).rejects.toThrow(
-        /Polygon API error/,
-      );
+      await expect(provider.getCompanyProfile('AAPL')).rejects.toThrow(/Polygon API error/);
     });
 
     it('handles missing optional fields gracefully', async () => {
@@ -161,9 +157,7 @@ describe('PolygonResearchProvider', () => {
       // Verify the fetch URL
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const url = fetchMock.mock.calls[0]![0] as string;
-      expect(url).toContain(
-        'https://api.polygon.io/vX/reference/financials',
-      );
+      expect(url).toContain('https://api.polygon.io/vX/reference/financials');
       expect(url).toContain('ticker=AAPL');
       expect(url).toContain('limit=4');
       expect(url).toContain(`apiKey=${API_KEY}`);
@@ -204,9 +198,7 @@ describe('PolygonResearchProvider', () => {
         statusText: 'Internal Server Error',
       });
 
-      await expect(provider.getFinancialMetrics('AAPL')).rejects.toThrow(
-        /Polygon API error/,
-      );
+      await expect(provider.getFinancialMetrics('AAPL')).rejects.toThrow(/Polygon API error/);
     });
 
     it('defaults periods to 4', async () => {

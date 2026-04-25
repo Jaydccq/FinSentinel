@@ -16,14 +16,14 @@
 
 ## File Map
 
-| Path | Role |
-|------|------|
-| `apps/web/src/api/client.ts` | MODIFY — add and use `resolveBase()`; remove `BASE = '/api'` literal. |
-| `apps/web/src/api/__tests__/client.test.ts` | NEW — unit tests for `resolveBase()` + a fetch-mocked apiFetch test. |
-| `apps/web/src/lib/auth/local-login.ts` | MODIFY — `performLogin` builds login URL via the same shared helper. |
-| `apps/web/src/lib/auth/__tests__/local-login.test.ts` | NEW — unit test asserting `performLogin` hits `<base>/api/auth/login`. |
-| `apps/web/src/providers.tsx` | MODIFY — `ensureLocalToken(getApiBaseUrl())`. |
-| (no new exports) | The shared helper lives in `client.ts` and is also imported by `local-login.ts`. |
+| Path                                                  | Role                                                                             |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `apps/web/src/api/client.ts`                          | MODIFY — add and use `resolveBase()`; remove `BASE = '/api'` literal.            |
+| `apps/web/src/api/__tests__/client.test.ts`           | NEW — unit tests for `resolveBase()` + a fetch-mocked apiFetch test.             |
+| `apps/web/src/lib/auth/local-login.ts`                | MODIFY — `performLogin` builds login URL via the same shared helper.             |
+| `apps/web/src/lib/auth/__tests__/local-login.test.ts` | NEW — unit test asserting `performLogin` hits `<base>/api/auth/login`.           |
+| `apps/web/src/providers.tsx`                          | MODIFY — `ensureLocalToken(getApiBaseUrl())`.                                    |
+| (no new exports)                                      | The shared helper lives in `client.ts` and is also imported by `local-login.ts`. |
 
 ## Tasks
 
@@ -32,6 +32,7 @@
 ### Task 1: `resolveBase()` helper + tests
 
 **Files:**
+
 - Modify: `apps/web/src/api/client.ts`
 - Create: `apps/web/src/api/__tests__/client.test.ts`
 
@@ -72,6 +73,7 @@ describe('resolveBase', () => {
 ```
 pnpm --filter @finsentinel/web test -- client.test
 ```
+
 Expected: FAIL — `resolveBase` is not exported from `../client`.
 
 - [ ] **Step 1.3 — Implement `resolveBase` and remove the literal**
@@ -79,7 +81,7 @@ Expected: FAIL — `resolveBase` is not exported from `../client`.
 Replace the `const BASE = '/api'` line and the `BASE` re-export at the bottom of `apps/web/src/api/client.ts` with:
 
 ```ts
-import { getApiBaseUrl } from '@/lib/api-base-url'
+import { getApiBaseUrl } from '@/lib/api-base-url';
 
 /**
  * Resolve the API URL prefix at call time.
@@ -113,6 +115,7 @@ grep -rn "from '@/api/client'" apps/web/src --include="*.ts" --include="*.tsx" |
 ```
 pnpm --filter @finsentinel/web test -- client.test
 ```
+
 Expected: 3 tests PASS.
 
 - [ ] **Step 1.5 — Commit**
@@ -127,6 +130,7 @@ git commit -m "feat(web): resolveBase() unifies fetch base across browser + Taur
 ### Task 2: Fetch path uses `resolveBase()` end-to-end
 
 **Files:**
+
 - Modify: `apps/web/src/api/__tests__/client.test.ts` (extend with apiFetch test)
 
 - [ ] **Step 2.1 — Add failing apiFetch test**
@@ -160,14 +164,14 @@ describe('apiFetch', () => {
     delete process.env.NEXT_PUBLIC_API_BASE_URL;
     await apiFetch('/health');
     expect(fetchSpy).toHaveBeenCalled();
-    const url = (fetchSpy.mock.calls[0]![0]) as string;
+    const url = fetchSpy.mock.calls[0]![0] as string;
     expect(url).toBe('/api/health');
   });
 
   it('hits the full origin under Tauri build (env set)', async () => {
     process.env.NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080';
     await apiFetch('/health');
-    const url = (fetchSpy.mock.calls[0]![0]) as string;
+    const url = fetchSpy.mock.calls[0]![0] as string;
     expect(url).toBe('http://127.0.0.1:8080/api/health');
   });
 });
@@ -202,6 +206,7 @@ git commit -m "test(web): apiFetch URL composition for browser vs Tauri base"
 ### Task 3: `performLogin` uses the same base resolver
 
 **Files:**
+
 - Modify: `apps/web/src/lib/auth/local-login.ts`
 - Create: `apps/web/src/lib/auth/__tests__/local-login.test.ts`
 
@@ -240,7 +245,7 @@ describe('local-login performLogin URL composition', () => {
     const mod = await import('../local-login');
     mod.clearCachedToken();
     await mod.ensureLocalToken();
-    const url = (fetchSpy.mock.calls[0]![0]) as string;
+    const url = fetchSpy.mock.calls[0]![0] as string;
     expect(url).toBe('/api/auth/login');
   });
 
@@ -249,7 +254,7 @@ describe('local-login performLogin URL composition', () => {
     const mod = await import('../local-login');
     mod.clearCachedToken();
     await mod.ensureLocalToken();
-    const url = (fetchSpy.mock.calls[0]![0]) as string;
+    const url = fetchSpy.mock.calls[0]![0] as string;
     expect(url).toBe('http://127.0.0.1:8080/api/auth/login');
   });
 });
@@ -260,6 +265,7 @@ describe('local-login performLogin URL composition', () => {
 ```
 pnpm --filter @finsentinel/web test -- local-login.test
 ```
+
 Expected: 2nd test fails — current `ensureLocalToken()` defaults `apiBase` to `''`, so the URL resolves to `'/api/auth/login'` even when the env is set, because providers (not local-login itself) is responsible for passing the base in. We will fix that contract by making `local-login` resolve its own base from the env.
 
 - [ ] **Step 3.3 — Refactor `local-login.ts`**
@@ -269,50 +275,50 @@ Two edits in `apps/web/src/lib/auth/local-login.ts`:
 (a) Import the resolver:
 
 ```ts
-import { getApiBaseUrl } from '../api-base-url'
+import { getApiBaseUrl } from '../api-base-url';
 ```
 
 (b) Replace the `performLogin` and `ensureLocalToken` signatures so the helper resolves its own base when none is passed:
 
 ```ts
 async function performLogin(apiBase: string): Promise<string | null> {
-  const username = process.env.NEXT_PUBLIC_LOCAL_USER_USERNAME
-  const password = process.env.NEXT_PUBLIC_LOCAL_USER_PASSWORD
-  if (!username || !password) return null
+  const username = process.env.NEXT_PUBLIC_LOCAL_USER_USERNAME;
+  const password = process.env.NEXT_PUBLIC_LOCAL_USER_PASSWORD;
+  if (!username || !password) return null;
 
-  const base = apiBase || getApiBaseUrl()
-  const url = base ? `${base}/api/auth/login` : '/api/auth/login'
+  const base = apiBase || getApiBaseUrl();
+  const url = base ? `${base}/api/auth/login` : '/api/auth/login';
 
   const res = await fetch(url, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
-  })
-  if (!res.ok) return null
+  });
+  if (!res.ok) return null;
 
-  const body = (await res.json()) as { token?: string }
-  if (!body.token) return null
+  const body = (await res.json()) as { token?: string };
+  if (!body.token) return null;
 
   if (typeof window !== 'undefined') {
-    window.localStorage.setItem(TOKEN_KEY, body.token)
+    window.localStorage.setItem(TOKEN_KEY, body.token);
   }
-  return body.token
+  return body.token;
 }
 
 export function ensureLocalToken(apiBase?: string): Promise<string | null> {
-  if (!isLocalLoginEnabled()) return Promise.resolve(null)
+  if (!isLocalLoginEnabled()) return Promise.resolve(null);
 
-  const cached = getCachedToken()
-  if (cached) return Promise.resolve(cached)
+  const cached = getCachedToken();
+  if (cached) return Promise.resolve(cached);
 
-  const base = apiBase ?? getApiBaseUrl()
+  const base = apiBase ?? getApiBaseUrl();
   if (!pendingLogin) {
     pendingLogin = performLogin(base).finally(() => {
-      pendingLogin = null
-    })
+      pendingLogin = null;
+    });
   }
-  return pendingLogin
+  return pendingLogin;
 }
 ```
 
@@ -321,6 +327,7 @@ export function ensureLocalToken(apiBase?: string): Promise<string | null> {
 ```
 pnpm --filter @finsentinel/web test -- local-login.test
 ```
+
 Expected: both tests PASS.
 
 - [ ] **Step 3.5 — Commit**
@@ -336,24 +343,25 @@ git commit -m "feat(web): performLogin resolves API base via getApiBaseUrl()"
 ### Task 4: `providers.tsx` passes resolved base explicitly
 
 **Files:**
+
 - Modify: `apps/web/src/providers.tsx`
 
 - [ ] **Step 4.1 — Edit**
 
 ```tsx
-'use client'
+'use client';
 
-import { useEffect } from 'react'
-import { AuthProvider } from '@/context/AuthContext'
-import { I18nProvider } from '@/context/I18nProvider'
-import { ensureLocalToken } from '@/lib/auth/local-login'
-import { getApiBaseUrl } from '@/lib/api-base-url'
-import Toast from '@/components/Toast'
+import { useEffect } from 'react';
+import { AuthProvider } from '@/context/AuthContext';
+import { I18nProvider } from '@/context/I18nProvider';
+import { ensureLocalToken } from '@/lib/auth/local-login';
+import { getApiBaseUrl } from '@/lib/api-base-url';
+import Toast from '@/components/Toast';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    void ensureLocalToken(getApiBaseUrl())
-  }, [])
+    void ensureLocalToken(getApiBaseUrl());
+  }, []);
 
   return (
     <I18nProvider>
@@ -362,7 +370,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         {children}
       </AuthProvider>
     </I18nProvider>
-  )
+  );
 }
 ```
 
@@ -373,6 +381,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 ```
 pnpm --filter @finsentinel/web typecheck
 ```
+
 Expected: clean.
 
 - [ ] **Step 4.3 — Commit**
@@ -393,11 +402,13 @@ git commit -m "feat(web): providers passes resolved API base into ensureLocalTok
 ```
 grep -rn "BASE = '/api'\|const BASE = \"/api\"" apps/web/src --include="*.ts" --include="*.tsx"
 ```
+
 Expected: no matches.
 
 ```
 grep -rn "fetch(.*'/api/" apps/web/src --include="*.ts" --include="*.tsx"
 ```
+
 Expected: no matches outside test files (tests verifying the resolved URL are fine).
 
 If any match shows up outside `__tests__`, route it through `resolveBase()` before continuing. Don't silently allow a single rogue caller — that's the bug we just fixed.
@@ -414,6 +425,7 @@ If any match shows up outside `__tests__`, route it through `resolveBase()` befo
 pnpm --filter @finsentinel/web typecheck
 pnpm --filter @finsentinel/web test
 ```
+
 Expected: green for both. If `vitest` flags a regression in any unrelated test, investigate before continuing — the URL change is small but it touches the auto-login critical path.
 
 - [ ] **Step 6.2 — Confirm browser dev still works**

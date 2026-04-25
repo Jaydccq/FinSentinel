@@ -1,30 +1,30 @@
-import { apiFetch } from './client'
+import { apiFetch } from './client';
 
 export interface TradeOperation {
-  action: string
-  ticker: string
-  shares?: number
-  amount?: number
-  price?: number
+  action: string;
+  ticker: string;
+  shares?: number;
+  amount?: number;
+  price?: number;
 }
 
 export interface WalletStatus {
-  cashBalance: string
-  initialCapital: string
-  totalValue: string
-  returnPercent: string
-  tradingMode: string
-  positions: Array<Record<string, unknown>>
+  cashBalance: string;
+  initialCapital: string;
+  totalValue: string;
+  returnPercent: string;
+  tradingMode: string;
+  positions: Array<Record<string, unknown>>;
 }
 
 export interface TradeCommit {
-  message: string
+  message: string;
 }
 
-export type StagedOrders = TradeOperation[]
+export type StagedOrders = TradeOperation[];
 
 export interface TradeHistoryResponse {
-  history: string
+  history: string;
 }
 
 export const tradingApi = {
@@ -34,93 +34,93 @@ export const tradingApi = {
   commit: (message: string) =>
     apiFetch<TradeCommit>('/trading/commit', { method: 'POST', body: JSON.stringify({ message }) }),
 
-  execute: () =>
-    apiFetch<TradeCommit>('/trading/execute', { method: 'POST' }),
+  execute: () => apiFetch<TradeCommit>('/trading/execute', { method: 'POST' }),
 
-  wallet: () =>
-    apiFetch<WalletStatus>('/trading/wallet'),
+  wallet: () => apiFetch<WalletStatus>('/trading/wallet'),
 
-  history: (limit = 10) =>
-    apiFetch<TradeHistoryResponse>(`/trading/history?limit=${limit}`),
+  history: (limit = 10) => apiFetch<TradeHistoryResponse>(`/trading/history?limit=${limit}`),
 
-  staged: () =>
-    apiFetch<StagedOrders>('/trading/staged'),
+  staged: () => apiFetch<StagedOrders>('/trading/staged'),
 
   switchMode: (mode: string) =>
     apiFetch<void>('/trading/mode', { method: 'PUT', body: JSON.stringify({ mode }) }),
-}
+};
 
 /* ─── V2 Unified Trading Account (UTA) API ─── */
 
 export interface V2TradeOperation {
-  action: string
-  symbol: string
-  qty?: string
-  amount?: string
-  price?: string
+  action: string;
+  symbol: string;
+  qty?: string;
+  amount?: string;
+  price?: string;
 }
 
 export interface V2WalletPosition {
-  symbol: string
-  qty: number
-  avgCost: number
-  currentPrice: number
-  marketValue: number
-  unrealizedPnl: number
-  pnlPercent: number
-  securityType?: string
+  symbol: string;
+  qty: number;
+  avgCost: number;
+  currentPrice: number;
+  marketValue: number;
+  unrealizedPnl: number;
+  pnlPercent: number;
+  securityType?: string;
 }
 
 export interface V2WalletStatus {
-  cashBalance: number
-  initialCapital: number
-  totalValue: number
-  returnPercent: number
-  tradingMode: string
-  positions: V2WalletPosition[]
+  cashBalance: number;
+  initialCapital: number;
+  totalValue: number;
+  returnPercent: number;
+  tradingMode: string;
+  positions: V2WalletPosition[];
 }
 
 export interface V2TradeCommit {
-  hash: string
-  parentHash?: string
-  message: string
-  timestamp: string
-  operations: V2TradeOperation[]
-  results: Record<string, unknown>[]
-  metadata?: { ledgerId?: string; runId?: string }
+  hash: string;
+  parentHash?: string;
+  message: string;
+  timestamp: string;
+  operations: V2TradeOperation[];
+  results: Record<string, unknown>[];
+  metadata?: { ledgerId?: string; runId?: string };
 }
 
 export interface V2StagedOrders {
-  operations: V2TradeOperation[]
-  count: number
+  operations: V2TradeOperation[];
+  count: number;
 }
 
 export interface AssetSearchResult {
-  symbol: string
-  name?: string
-  securityType?: string
-  exchange?: string
+  symbol: string;
+  name?: string;
+  securityType?: string;
+  exchange?: string;
 }
 
 export const tradingApiV2 = {
-  stage: (data: { action: string; symbol: string; qty?: string; amount?: string; price?: string }) =>
-    apiFetch<void>('/trading/v2/stage', { method: 'POST', body: JSON.stringify(data) }),
+  stage: (data: {
+    action: string;
+    symbol: string;
+    qty?: string;
+    amount?: string;
+    price?: string;
+  }) => apiFetch<void>('/trading/v2/stage', { method: 'POST', body: JSON.stringify(data) }),
 
   commit: (message: string) =>
-    apiFetch<V2TradeCommit>('/trading/v2/commit', { method: 'POST', body: JSON.stringify({ message }) }),
+    apiFetch<V2TradeCommit>('/trading/v2/commit', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
 
-  execute: () =>
-    apiFetch<V2TradeCommit>('/trading/v2/execute', { method: 'POST' }),
+  execute: () => apiFetch<V2TradeCommit>('/trading/v2/execute', { method: 'POST' }),
 
-  wallet: () =>
-    apiFetch<V2WalletStatus>('/trading/v2/wallet'),
+  wallet: () => apiFetch<V2WalletStatus>('/trading/v2/wallet'),
 
-  history: (limit = 10) =>
-    apiFetch<V2TradeCommit[]>(`/trading/v2/history?limit=${limit}`),
+  history: (limit = 10) => apiFetch<V2TradeCommit[]>(`/trading/v2/history?limit=${limit}`),
 
-  staged: () =>
-    apiFetch<V2StagedOrders>('/trading/v2/staged'),
+  staged: () => apiFetch<V2StagedOrders>('/trading/v2/staged'),
 
   search: (query: string) =>
     apiFetch<AssetSearchResult[]>(`/trading/v2/search?query=${encodeURIComponent(query)}`),
-}
+};

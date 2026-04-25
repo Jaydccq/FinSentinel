@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt.guard';
 import { CompanyResearchService } from './company-research.service';
 import { parseIntParam } from '../common/utils/parse-int-param';
@@ -19,10 +13,7 @@ export class ResearchController {
 
   /** GET /research/profile/:ticker — company profile. */
   @Get('profile/:ticker')
-  async getProfile(
-    @Param('ticker') ticker: string,
-    @Query('provider') provider?: string,
-  ) {
+  async getProfile(@Param('ticker') ticker: string, @Query('provider') provider?: string) {
     return this.researchService.getCompanyProfile(ticker, provider);
   }
 

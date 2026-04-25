@@ -8,12 +8,7 @@
  * read path so the regression cannot recur.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  Controller,
-  Get,
-  UseGuards,
-  type ExecutionContext,
-} from '@nestjs/common';
+import { Controller, Get, UseGuards, type ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import type { INestApplication } from '@nestjs/common';
@@ -27,8 +22,7 @@ const VALID_TOKEN = 'valid.jwt.token';
 const VALID_PAYLOAD = { username: 'alice', userId: 'u-1' };
 
 const stubJwtService = {
-  validateToken: async (token: string) =>
-    token === VALID_TOKEN ? VALID_PAYLOAD : null,
+  validateToken: async (token: string) => (token === VALID_TOKEN ? VALID_PAYLOAD : null),
 } as unknown as JwtService;
 
 function makeAuthConfig(name = 'FS_AUTH'): AuthRuntimeConfig {
@@ -45,10 +39,12 @@ function configServiceFor(authConfig: AuthRuntimeConfig): ConfigService {
   } as ConfigService;
 }
 
-function makeContext(req: Partial<{
-  headers: Record<string, string>;
-  cookies: Record<string, string>;
-}>): ExecutionContext {
+function makeContext(
+  req: Partial<{
+    headers: Record<string, string>;
+    cookies: Record<string, string>;
+  }>,
+): ExecutionContext {
   return {
     switchToHttp: () => ({
       getRequest: () => ({

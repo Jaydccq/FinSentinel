@@ -32,7 +32,9 @@ function fallingBars(count = 80): TestBar[] {
 
 function meanReversionBars(): TestBar[] {
   const bars = Array.from({ length: 220 }, (_, index) => makeBar(100 + index * 2, index));
-  const pullback = Array.from({ length: 20 }, (_, index) => makeBar(538 - index * 2.5, 220 + index));
+  const pullback = Array.from({ length: 20 }, (_, index) =>
+    makeBar(538 - index * 2.5, 220 + index),
+  );
 
   return [...bars, ...pullback];
 }
@@ -113,7 +115,9 @@ describe('StrategyTemplateService', () => {
     });
 
     expect(result.costProfile.feeDragWarning).toBe(true);
-    expect(result.warnings).toContain('Expected annual trades exceed 200; fee drag can erase thin edges.');
+    expect(result.warnings).toContain(
+      'Expected annual trades exceed 200; fee drag can erase thin edges.',
+    );
   });
 
   it('rejects malformed OHLCV input', () => {

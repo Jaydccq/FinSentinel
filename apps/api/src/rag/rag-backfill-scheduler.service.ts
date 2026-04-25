@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { RagReindexService, type ReindexResult } from './rag-reindex.service';
 import { MetricsService } from '../common/services/metrics.service';
@@ -17,9 +12,7 @@ export interface RagBackfillRunResult {
 const EMPTY_REINDEX_RESULT: ReindexResult = { queued: 0, ids: [] };
 
 @Injectable()
-export class RagBackfillSchedulerService
-  implements OnModuleInit, OnModuleDestroy
-{
+export class RagBackfillSchedulerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RagBackfillSchedulerService.name);
   private readonly enabled: boolean;
   private readonly intervalMs: number;
@@ -38,25 +31,11 @@ export class RagBackfillSchedulerService
     configService: ConfigService,
   ) {
     const nodeEnv = configService.get<string>('NODE_ENV', 'development');
-    this.enabled =
-      configService.get<boolean>('rag.backfill.enabled', true) &&
-      nodeEnv !== 'test';
-    this.intervalMs = configService.get<number>(
-      'rag.backfill.intervalMs',
-      900000,
-    );
-    this.startupDelayMs = configService.get<number>(
-      'rag.backfill.startupDelayMs',
-      30000,
-    );
-    this.documentBatchSize = configService.get<number>(
-      'rag.backfill.documentBatchSize',
-      25,
-    );
-    this.newsBatchSize = configService.get<number>(
-      'rag.backfill.newsBatchSize',
-      25,
-    );
+    this.enabled = configService.get<boolean>('rag.backfill.enabled', true) && nodeEnv !== 'test';
+    this.intervalMs = configService.get<number>('rag.backfill.intervalMs', 900000);
+    this.startupDelayMs = configService.get<number>('rag.backfill.startupDelayMs', 30000);
+    this.documentBatchSize = configService.get<number>('rag.backfill.documentBatchSize', 25);
+    this.newsBatchSize = configService.get<number>('rag.backfill.newsBatchSize', 25);
     this.force = configService.get<boolean>('rag.backfill.force', false);
   }
 
@@ -116,9 +95,7 @@ export class RagBackfillSchedulerService
     }
 
     if (this.running) {
-      this.logger.warn(
-        `Skipping overlapping RAG backfill cycle triggered by ${trigger}`,
-      );
+      this.logger.warn(`Skipping overlapping RAG backfill cycle triggered by ${trigger}`);
       this.recordSkip(trigger, 'overlap');
       return {
         skipped: true,
@@ -138,14 +115,8 @@ export class RagBackfillSchedulerService
 
     try {
       const [documents, news] = await Promise.all([
-        this.ragReindexService.reindexMissingDocuments(
-          this.documentBatchSize,
-          this.force,
-        ),
-        this.ragReindexService.reindexMissingNews(
-          this.newsBatchSize,
-          this.force,
-        ),
+        this.ragReindexService.reindexMissingDocuments(this.documentBatchSize, this.force),
+        this.ragReindexService.reindexMissingNews(this.newsBatchSize, this.force),
       ]);
 
       if (documents.queued > 0 || news.queued > 0) {
@@ -190,10 +161,7 @@ export class RagBackfillSchedulerService
     }
   }
 
-  private recordSkip(
-    trigger: 'startup' | 'interval',
-    reason: 'disabled' | 'overlap',
-  ): void {
+  private recordSkip(trigger: 'startup' | 'interval', reason: 'disabled' | 'overlap'): void {
     this.metrics.incrementCounter(
       'rag_backfill_cycles_total',
       'Total automatic RAG backfill cycles by trigger and status',

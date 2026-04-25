@@ -115,8 +115,18 @@ describe('ThesisTeamService.execute', () => {
 
   it('writes roleSummaries for positive/negative/lead into structuredOutput', async () => {
     await svc.execute({ runId: 'r1', userId: 'u1' });
-    const committedCall = (checkpoints.commitStage as unknown as { mock: { calls: Array<[{ structuredOutput: { roleSummaries?: Array<{ roleKey: string }> } }]> } }).mock.calls.at(-1);
+    const committedCall = (
+      checkpoints.commitStage as unknown as {
+        mock: {
+          calls: Array<[{ structuredOutput: { roleSummaries?: Array<{ roleKey: string }> } }]>;
+        };
+      }
+    ).mock.calls.at(-1);
     const summaries = committedCall?.[0]?.structuredOutput?.roleSummaries;
-    expect(summaries?.map((s) => s.roleKey)).toEqual(['POSITIVE_CASE', 'NEGATIVE_CASE', 'THESIS_LEAD']);
+    expect(summaries?.map((s) => s.roleKey)).toEqual([
+      'POSITIVE_CASE',
+      'NEGATIVE_CASE',
+      'THESIS_LEAD',
+    ]);
   });
 });

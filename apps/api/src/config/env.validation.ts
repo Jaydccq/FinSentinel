@@ -12,12 +12,10 @@ import {
  * `z.coerce.boolean()` treats any non-empty string (including "false") as true,
  * so we need explicit string→boolean mapping.
  */
-const envBoolean = z
-  .union([z.boolean(), z.string()])
-  .transform((val) => {
-    if (typeof val === 'boolean') return val;
-    return val === 'true' || val === '1';
-  });
+const envBoolean = z.union([z.boolean(), z.string()]).transform((val) => {
+  if (typeof val === 'boolean') return val;
+  return val === 'true' || val === '1';
+});
 
 const aiProvider = z.enum(AI_PROVIDERS);
 const optionalEnvString = z.preprocess(
@@ -77,9 +75,7 @@ const baseEnvSchema = z.object({
   POLYGON_API_KEY: z.string().min(1),
 
   // ── Trading ──────────────────────────────────────────────────────
-  APP_TRADING_DEFAULT_MODE: z
-    .enum(['PAPER', 'LIVE'])
-    .default('PAPER'),
+  APP_TRADING_DEFAULT_MODE: z.enum(['PAPER', 'LIVE']).default('PAPER'),
 
   // Alpaca (optional — US equities broker)
   ALPACA_API_KEY: z.string().optional(),
@@ -88,9 +84,7 @@ const baseEnvSchema = z.object({
   ALPACA_ENABLED: envBoolean.default(false),
 
   // ── Persona ──────────────────────────────────────────────────────
-  APP_AGENT_PERSONA: z
-    .enum(['default', 'conservative', 'aggressive'])
-    .default('default'),
+  APP_AGENT_PERSONA: z.enum(['default', 'conservative', 'aggressive']).default('default'),
 
   // ── Optional: 6551.io Crypto News ─────────────────────────────────
   APP_CRYPTO_NEWS_ENABLED: envBoolean.default(false),
@@ -115,9 +109,7 @@ const baseEnvSchema = z.object({
   OKX_RATE_LIMIT_PER_SECOND: z.coerce.number().default(10),
 
   // ── Storage ──────────────────────────────────────────────────────
-  STORAGE_PROVIDER: z
-    .enum(['rustfs', 'google-drive', 'hybrid'])
-    .default('rustfs'),
+  STORAGE_PROVIDER: z.enum(['rustfs', 'google-drive', 'hybrid']).default('rustfs'),
   STORAGE_ENDPOINT: z.string().optional(),
   STORAGE_ACCESS_KEY: z.string().optional(),
   STORAGE_SECRET_KEY: z.string().optional(),
@@ -222,9 +214,7 @@ const baseEnvSchema = z.object({
 
   // ── Server ────────────────────────────────────────────────────────
   PORT: z.coerce.number().default(3001),
-  NODE_ENV: z
-    .enum(['development', 'production', 'test'])
-    .default('development'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 });
 
 /**

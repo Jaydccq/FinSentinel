@@ -107,5 +107,5 @@ hashInput = sha256('${idempotencyKey ?? autoKey}|${stableStringify(ops)}|${messa
   - Task 8 (real-Redis integration spec — auto-skips when Redis down): commit `3b31c51`.
 - Verification: `pnpm --filter @finsentinel/api test` → 1503 passed, 1 skipped, 0 failed.
   Includes `unified-trading.service.spec` (24), `unified-trading.integration.spec` (3 against live Redis), `trading-flow.integration.spec` (7 supertest E2E), `trading.controller.spec`, all broker specs, etc.
-- Side fix: `apps/api/src/__tests__/integration/test-app.factory.ts` extended `luaEval` mock to recognise the new `LUA_ATOMIC_COMMIT` script (recognised by GET+DEL+`'[]'` literal absence of cjson.*).
+- Side fix: `apps/api/src/__tests__/integration/test-app.factory.ts` extended `luaEval` mock to recognise the new `LUA_ATOMIC_COMMIT` script (recognised by GET+DEL+`'[]'` literal absence of cjson.\*).
 - Open: real `AgentEventService` wiring is still a stub (see PRD §4 out-of-scope); idempotencyKey now flows into the stub payload so the future event service can persist it.

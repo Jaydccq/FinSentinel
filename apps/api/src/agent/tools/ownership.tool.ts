@@ -15,17 +15,11 @@ export function createOwnershipTools(service: OwnershipDataService) {
         'Shows top institutional investors, number of shares held, and portfolio weight. ' +
         'Use to assess institutional confidence and potential large block moves.',
       inputSchema: z.object({
-        ticker: z
-          .string()
-          .describe('Stock ticker symbol, e.g. AAPL'),
+        ticker: z.string().describe('Stock ticker symbol, e.g. AAPL'),
       }),
       execute: async ({ ticker }) => {
         try {
-          return JSON.stringify(
-            await service.getInstitutionalHolders(ticker),
-            null,
-            2,
-          );
+          return JSON.stringify(await service.getInstitutionalHolders(ticker), null, 2);
         } catch (e) {
           return `Error fetching institutional holders for ${ticker}: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -38,17 +32,11 @@ export function createOwnershipTools(service: OwnershipDataService) {
         'Shows recent insider buys/sells with dates, amounts, and insider roles. ' +
         'Use to gauge management sentiment — insider buying is a bullish signal.',
       inputSchema: z.object({
-        ticker: z
-          .string()
-          .describe('Stock ticker symbol, e.g. TSLA'),
+        ticker: z.string().describe('Stock ticker symbol, e.g. TSLA'),
       }),
       execute: async ({ ticker }) => {
         try {
-          return JSON.stringify(
-            await service.getInsiderTransactions(ticker),
-            null,
-            2,
-          );
+          return JSON.stringify(await service.getInsiderTransactions(ticker), null, 2);
         } catch (e) {
           return `Error fetching insider transactions for ${ticker}: ${e instanceof Error ? e.message : 'unknown'}`;
         }

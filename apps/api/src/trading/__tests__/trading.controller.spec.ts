@@ -44,9 +44,7 @@ describe('TradingController', () => {
 
     const module = await Test.createTestingModule({
       controllers: [TradingController],
-      providers: [
-        { provide: UnifiedTradingService, useValue: mockTradingService },
-      ],
+      providers: [{ provide: UnifiedTradingService, useValue: mockTradingService }],
     })
       .overrideGuard(JwtGuard)
       .useValue(fakeJwtGuard)
@@ -103,9 +101,7 @@ describe('TradingController', () => {
       const ops = [{ action: 'BUY', symbol: 'AAPL', qty: '10' }];
       mockTradingService.getStagingArea.mockResolvedValueOnce(ops);
 
-      const res = await request(app.getHttpServer())
-        .get('/api/trading/staged')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/api/trading/staged').expect(200);
 
       expect(res.body).toEqual(ops);
     });
@@ -143,9 +139,7 @@ describe('TradingController', () => {
         results: [],
       });
 
-      const res = await request(app.getHttpServer())
-        .post('/api/trading/execute')
-        .expect(201);
+      const res = await request(app.getHttpServer()).post('/api/trading/execute').expect(201);
 
       expect(res.body.message).toContain('Executed commit');
     });
@@ -155,9 +149,7 @@ describe('TradingController', () => {
         new BadRequestException('No pending commit found.'),
       );
 
-      await request(app.getHttpServer())
-        .post('/api/trading/execute')
-        .expect(400);
+      await request(app.getHttpServer()).post('/api/trading/execute').expect(400);
     });
   });
 
@@ -169,15 +161,11 @@ describe('TradingController', () => {
         initialCapital: '100000.00',
         cashBalance: '95000.00',
         tradingMode: 'PAPER',
-        positions: [
-          { ticker: 'AAPL', shares: 10, avgCost: 175, currentPrice: 180 },
-        ],
+        positions: [{ ticker: 'AAPL', shares: 10, avgCost: 175, currentPrice: 180 }],
         commitHistory: [],
       });
 
-      const res = await request(app.getHttpServer())
-        .get('/api/trading/wallet')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/api/trading/wallet').expect(200);
 
       expect(res.body.cashBalance).toBe('95000.00');
       expect(res.body.tradingMode).toBe('PAPER');
@@ -189,9 +177,7 @@ describe('TradingController', () => {
     it('returns commit log with default limit', async () => {
       mockTradingService.getCommitLog.mockResolvedValueOnce('1. [abcdef12] Buy AAPL');
 
-      const res = await request(app.getHttpServer())
-        .get('/api/trading/history')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/api/trading/history').expect(200);
 
       expect(res.body.history).toBe('1. [abcdef12] Buy AAPL');
       expect(mockTradingService.getCommitLog).toHaveBeenCalledWith(USER_ID, 10);
@@ -200,9 +186,7 @@ describe('TradingController', () => {
     it('respects limit parameter capped at 50', async () => {
       mockTradingService.getCommitLog.mockResolvedValueOnce('log');
 
-      await request(app.getHttpServer())
-        .get('/api/trading/history?limit=100')
-        .expect(200);
+      await request(app.getHttpServer()).get('/api/trading/history?limit=100').expect(200);
 
       expect(mockTradingService.getCommitLog).toHaveBeenCalledWith(USER_ID, 50);
     });
@@ -276,9 +260,7 @@ describe('TradingController', () => {
       };
       mockTradingService.getWalletStatusStructured.mockResolvedValueOnce(walletResponse);
 
-      const res = await request(app.getHttpServer())
-        .get('/api/trading/v2/wallet')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/api/trading/v2/wallet').expect(200);
 
       expect(res.body).toEqual(walletResponse);
     });
@@ -286,19 +268,19 @@ describe('TradingController', () => {
 
   describe('GET /api/trading/v2/history', () => {
     it('returns structured commit history', async () => {
-      const history = [{
-        hash: COMMIT_HASH,
-        parentHash: '',
-        message: 'Buy AAPL',
-        timestamp: '2026-03-30T12:00:00.000Z',
-        operations: [{ action: 'BUY', symbol: 'AAPL', qty: '10', amount: '', price: '' }],
-        results: [],
-      }];
+      const history = [
+        {
+          hash: COMMIT_HASH,
+          parentHash: '',
+          message: 'Buy AAPL',
+          timestamp: '2026-03-30T12:00:00.000Z',
+          operations: [{ action: 'BUY', symbol: 'AAPL', qty: '10', amount: '', price: '' }],
+          results: [],
+        },
+      ];
       mockTradingService.getCommitLogStructured.mockResolvedValueOnce(history);
 
-      const res = await request(app.getHttpServer())
-        .get('/api/trading/v2/history')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/api/trading/v2/history').expect(200);
 
       expect(res.body).toEqual(history);
     });
@@ -309,9 +291,7 @@ describe('TradingController', () => {
       const staged = { operations: [], count: 0 };
       mockTradingService.getStagedStructured.mockResolvedValueOnce(staged);
 
-      const res = await request(app.getHttpServer())
-        .get('/api/trading/v2/staged')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/api/trading/v2/staged').expect(200);
 
       expect(res.body).toEqual(staged);
     });
@@ -333,9 +313,7 @@ describe('TradingController', () => {
     });
 
     it('returns empty array for missing query', async () => {
-      const res = await request(app.getHttpServer())
-        .get('/api/trading/v2/search')
-        .expect(200);
+      const res = await request(app.getHttpServer()).get('/api/trading/v2/search').expect(200);
 
       expect(res.body).toEqual([]);
       expect(mockTradingService.searchAssets).not.toHaveBeenCalled();

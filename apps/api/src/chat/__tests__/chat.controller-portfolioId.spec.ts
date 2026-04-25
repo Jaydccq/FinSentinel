@@ -10,7 +10,11 @@ describe('ChatController', () => {
     chatService = {
       streamChat: vi.fn().mockResolvedValue({
         sessionId: 'sess-1',
-        stream: new ReadableStream({ start(c) { c.close(); } }),
+        stream: new ReadableStream({
+          start(c) {
+            c.close();
+          },
+        }),
       }),
       assess: vi.fn().mockResolvedValue({
         riskScore: 45,
@@ -50,10 +54,7 @@ describe('ChatController', () => {
   });
 
   it('works without portfolioId (undefined)', async () => {
-    await controller.assess(
-      { message: 'test' },
-      { userId: 'u-1', username: 'tester' },
-    );
+    await controller.assess({ message: 'test' }, { userId: 'u-1', username: 'tester' });
 
     expect(chatService.assess).toHaveBeenCalledWith('test', 'u-1', undefined, undefined);
   });

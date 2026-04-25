@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import NewsPage from '@/views/NewsPage'
+import NewsPage from '@/views/NewsPage';
 
 export default function Page() {
-  return <NewsPage />
+  return <NewsPage />;
 }

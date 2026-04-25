@@ -38,7 +38,11 @@ export interface StreamAgentTextOptions extends AgentTextOptions {
   messages: ChatMessageInput[];
 }
 
-function createAssistantMessage(content: string, model: Model<any>, timestamp: number): AgentMessage {
+function createAssistantMessage(
+  content: string,
+  model: Model<any>,
+  timestamp: number,
+): AgentMessage {
   return {
     role: 'assistant',
     content: [{ type: 'text', text: content }],
@@ -69,7 +73,10 @@ function toAgentMessages(messages: ChatMessageInput[], model: Model<any>): Agent
   });
 }
 
-async function createAgent(options: AgentTextOptions, messages?: ChatMessageInput[]): Promise<Agent> {
+async function createAgent(
+  options: AgentTextOptions,
+  messages?: ChatMessageInput[],
+): Promise<Agent> {
   const { Agent } = await import('@mariozechner/pi-agent-core');
   const agent = new Agent({
     initialState: {

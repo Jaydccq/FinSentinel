@@ -42,18 +42,8 @@ describe('MetricsService', () => {
   });
 
   it('records histogram observations with buckets', async () => {
-    service.observeHistogram(
-      'test_duration_seconds',
-      'Test duration',
-      { status: 'success' },
-      0.05,
-    );
-    service.observeHistogram(
-      'test_duration_seconds',
-      'Test duration',
-      { status: 'success' },
-      0.25,
-    );
+    service.observeHistogram('test_duration_seconds', 'Test duration', { status: 'success' }, 0.05);
+    service.observeHistogram('test_duration_seconds', 'Test duration', { status: 'success' }, 0.25);
 
     const output = await service.renderPrometheus();
 
@@ -64,11 +54,7 @@ describe('MetricsService', () => {
   });
 
   it('startHistogramTimer records elapsed duration', async () => {
-    const end = service.startHistogramTimer(
-      'timer_test_seconds',
-      'Timer test',
-      {},
-    );
+    const end = service.startHistogramTimer('timer_test_seconds', 'Timer test', {});
 
     // Simulate small delay
     const elapsed = end();

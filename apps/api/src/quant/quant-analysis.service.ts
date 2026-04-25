@@ -1,9 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import type {
-  ReturnStatistics,
-  ValueAtRisk,
-  VolatilityAnalysis,
-} from '@finsentinel/shared';
+import type { ReturnStatistics, ValueAtRisk, VolatilityAnalysis } from '@finsentinel/shared';
 
 /**
  * Stateless quantitative analytics service.
@@ -47,8 +43,7 @@ export class QuantAnalysisService {
     const meanReturn = this.mean(returns);
     const sd = this.stddev(returns);
 
-    const annualizedReturn =
-      meanReturn * QuantAnalysisService.TRADING_DAYS_PER_YEAR;
+    const annualizedReturn = meanReturn * QuantAnalysisService.TRADING_DAYS_PER_YEAR;
     const annualizedVolatility = sd * QuantAnalysisService.SQRT_252;
 
     const skewness = this.calculateSkewness(returns, meanReturn, sd);
@@ -58,8 +53,7 @@ export class QuantAnalysisService {
     const sharpeRatio =
       annualizedVolatility === 0
         ? 0
-        : (annualizedReturn - QuantAnalysisService.RISK_FREE_RATE) /
-          annualizedVolatility;
+        : (annualizedReturn - QuantAnalysisService.RISK_FREE_RATE) / annualizedVolatility;
 
     return {
       meanReturn,
@@ -120,26 +114,18 @@ export class QuantAnalysisService {
     const returns = this.calculateLogReturns(closePrices);
 
     // Full-period historical volatility
-    const historicalVolatility =
-      this.stddev(returns) * QuantAnalysisService.SQRT_252;
+    const historicalVolatility = this.stddev(returns) * QuantAnalysisService.SQRT_252;
 
     // Current volatility: last 20 returns (or all if fewer)
-    const recentWindow = Math.min(
-      QuantAnalysisService.ROLLING_WINDOW,
-      returns.length,
-    );
+    const recentWindow = Math.min(QuantAnalysisService.ROLLING_WINDOW, returns.length);
     const recentReturns = returns.slice(returns.length - recentWindow);
-    const currentVolatility =
-      this.stddev(recentReturns) * QuantAnalysisService.SQRT_252;
+    const currentVolatility = this.stddev(recentReturns) * QuantAnalysisService.SQRT_252;
 
     // Rolling 20-day volatility series
     const rollingVolatility = this.calculateRollingVolatility(returns);
 
     // Volatility percentile: rank current vol within rolling distribution
-    const volatilityPercentile = this.calculatePercentile(
-      rollingVolatility,
-      currentVolatility,
-    );
+    const volatilityPercentile = this.calculatePercentile(rollingVolatility, currentVolatility);
 
     // Regime classification based on annualized volatility
     const regime = this.classifyVolatilityRegime(currentVolatility);
@@ -174,17 +160,12 @@ export class QuantAnalysisService {
   private stddev(arr: number[]): number {
     if (arr.length <= 1) return 0;
     const m = this.mean(arr);
-    const variance =
-      arr.reduce((sum, v) => sum + (v - m) ** 2, 0) / (arr.length - 1);
+    const variance = arr.reduce((sum, v) => sum + (v - m) ** 2, 0) / (arr.length - 1);
     return Math.sqrt(variance);
   }
 
   /** Sample skewness (third standardized moment, adjusted). */
-  private calculateSkewness(
-    arr: number[],
-    m: number,
-    s: number,
-  ): number {
+  private calculateSkewness(arr: number[], m: number, s: number): number {
     const n = arr.length;
     if (n < 3 || s === 0) return 0;
 
@@ -195,11 +176,7 @@ export class QuantAnalysisService {
   }
 
   /** Excess kurtosis (fourth standardized moment - 3, with bias correction). */
-  private calculateExcessKurtosis(
-    arr: number[],
-    m: number,
-    s: number,
-  ): number {
+  private calculateExcessKurtosis(arr: number[], m: number, s: number): number {
     const n = arr.length;
     if (n < 4 || s === 0) return 0;
 
@@ -252,10 +229,7 @@ export class QuantAnalysisService {
   }
 
   /** Rank current volatility within the rolling distribution (0-100). */
-  private calculatePercentile(
-    rollingVol: number[],
-    currentVol: number,
-  ): number {
+  private calculatePercentile(rollingVol: number[], currentVol: number): number {
     if (rollingVol.length === 0) return 50;
     const countBelow = rollingVol.filter((v) => v <= currentVol).length;
     return (countBelow / rollingVol.length) * 100;
@@ -265,7 +239,7 @@ export class QuantAnalysisService {
   private classifyVolatilityRegime(annualizedVol: number): string {
     if (annualizedVol < 0.15) return 'LOW';
     if (annualizedVol < 0.25) return 'NORMAL';
-    if (annualizedVol < 0.40) return 'HIGH';
+    if (annualizedVol < 0.4) return 'HIGH';
     return 'EXTREME';
   }
 

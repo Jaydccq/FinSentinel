@@ -11,9 +11,7 @@ export interface GraphEnrichJobData {
 export class GraphEnrichProducer {
   private readonly logger = new Logger(GraphEnrichProducer.name);
 
-  constructor(
-    @Inject(GRAPH_ENRICH_QUEUE_TOKEN) private readonly queue: Queue,
-  ) {}
+  constructor(@Inject(GRAPH_ENRICH_QUEUE_TOKEN) private readonly queue: Queue) {}
 
   async enqueue(data: GraphEnrichJobData): Promise<void> {
     await this.queue.add('graph-enrich', data, {

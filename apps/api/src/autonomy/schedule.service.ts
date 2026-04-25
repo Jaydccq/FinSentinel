@@ -29,9 +29,7 @@ function isValidCron(expression: string): boolean {
  */
 @Injectable()
 export class ScheduleService {
-  constructor(
-    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
-  ) {}
+  constructor(@Inject('DRIZZLE_DB') private readonly db: DrizzleDB) {}
 
   private computeNextRunAt(cronExpression: string, from: Date = new Date()): Date {
     const it = parser.parseExpression(cronExpression, { currentDate: from });
@@ -60,7 +58,7 @@ export class ScheduleService {
     if (!isValidCron(cronExpression)) {
       throw new BadRequestException(
         `Invalid cron expression: "${cronExpression}". ` +
-        'Expected 5 or 6 space-separated fields.',
+          'Expected 5 or 6 space-separated fields.',
       );
     }
 
@@ -110,12 +108,7 @@ export class ScheduleService {
     const [existing] = await this.db
       .select()
       .from(agentSchedules)
-      .where(
-        and(
-          eq(agentSchedules.id, scheduleId),
-          eq(agentSchedules.userId, userId),
-        ),
-      )
+      .where(and(eq(agentSchedules.id, scheduleId), eq(agentSchedules.userId, userId)))
       .limit(1);
 
     if (!existing) {
@@ -124,9 +117,7 @@ export class ScheduleService {
 
     // Validate cron if provided
     if (fields.cronExpression && !isValidCron(fields.cronExpression)) {
-      throw new BadRequestException(
-        `Invalid cron expression: "${fields.cronExpression}".`,
-      );
+      throw new BadRequestException(`Invalid cron expression: "${fields.cronExpression}".`);
     }
 
     const updateFields: typeof fields & { nextRunAt?: Date } = { ...fields };
@@ -159,21 +150,14 @@ export class ScheduleService {
     const [existing] = await this.db
       .select()
       .from(agentSchedules)
-      .where(
-        and(
-          eq(agentSchedules.id, scheduleId),
-          eq(agentSchedules.userId, userId),
-        ),
-      )
+      .where(and(eq(agentSchedules.id, scheduleId), eq(agentSchedules.userId, userId)))
       .limit(1);
 
     if (!existing) {
       throw new NotFoundException(`Schedule ${scheduleId} not found.`);
     }
 
-    await this.db
-      .delete(agentSchedules)
-      .where(eq(agentSchedules.id, scheduleId));
+    await this.db.delete(agentSchedules).where(eq(agentSchedules.id, scheduleId));
   }
 
   async createCronTask(
@@ -183,17 +167,8 @@ export class ScheduleService {
     taskType: string,
     payloadJson?: string,
   ): Promise<string> {
-    const payload = payloadJson
-      ? (JSON.parse(payloadJson) as Record<string, unknown>)
-      : {};
-    const created = await this.create(
-      userId,
-      name,
-      cronExpression,
-      taskType,
-      payload,
-      true,
-    );
+    const payload = payloadJson ? (JSON.parse(payloadJson) as Record<string, unknown>) : {};
+    const created = await this.create(userId, name, cronExpression, taskType, payload, true);
     return `Created cron task ${created!.id} (${created!.name}).`;
   }
 
@@ -234,11 +209,7 @@ export class ScheduleService {
       );
   }
 
-  async markScheduleRan(
-    scheduleId: string,
-    lastRunAt: Date,
-    nextRunAt: Date,
-  ): Promise<void> {
+  async markScheduleRan(scheduleId: string, lastRunAt: Date, nextRunAt: Date): Promise<void> {
     await this.db
       .update(agentSchedules)
       .set({ lastRunAt, nextRunAt, updatedAt: new Date() })

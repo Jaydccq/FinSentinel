@@ -24,15 +24,12 @@ export const analysisRuns = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id),
-    sourceMode: varchar('source_mode', { length: 20 })
-      .$type<AnalysisRunSourceMode>()
-      .notNull(),
+    sourceMode: varchar('source_mode', { length: 20 }).$type<AnalysisRunSourceMode>().notNull(),
     status: varchar('status', { length: 24 })
       .$type<AnalysisRunStatus>()
       .notNull()
       .default('QUEUED'),
-    currentStageKey: varchar('current_stage_key', { length: 32 })
-      .$type<AnalysisStageKey>(),
+    currentStageKey: varchar('current_stage_key', { length: 32 }).$type<AnalysisStageKey>(),
     complexityScore: numeric('complexity_score', { precision: 8, scale: 2 }),
     upgradeReason: varchar('upgrade_reason', { length: 255 }),
     parentChatSessionId: uuid('parent_chat_session_id'),

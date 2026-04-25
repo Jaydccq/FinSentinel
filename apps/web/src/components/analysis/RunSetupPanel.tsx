@@ -1,34 +1,41 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { analysisRunsApi, type AnalysisPreset, type AnalysisStageKey } from '../../api/analysis-runs'
+import { useState } from 'react';
+import {
+  analysisRunsApi,
+  type AnalysisPreset,
+  type AnalysisStageKey,
+} from '../../api/analysis-runs';
 
-const ALL_STAGES = ['INTELLIGENCE', 'THESIS', 'RISK', 'EXECUTION_PREP'] as const satisfies readonly AnalysisStageKey[]
+const ALL_STAGES = [
+  'INTELLIGENCE',
+  'THESIS',
+  'RISK',
+  'EXECUTION_PREP',
+] as const satisfies readonly AnalysisStageKey[];
 
 export interface RunSetupPanelProps {
-  portfolios: Array<{ id: string; name: string }>
-  onRunCreated: (runId: string) => void
+  portfolios: Array<{ id: string; name: string }>;
+  onRunCreated: (runId: string) => void;
 }
 
 export function RunSetupPanel({ portfolios, onRunCreated }: RunSetupPanelProps) {
-  const [ticker, setTicker] = useState('AAPL')
-  const [prompt, setPrompt] = useState('Complete analysis of AAPL with decision and order draft')
-  const [portfolioId, setPortfolioId] = useState(portfolios[0]?.id ?? '')
-  const [preset, setPreset] = useState<AnalysisPreset>('STANDARD_ANALYSIS')
-  const [researchDepth, setResearchDepth] = useState<'SHALLOW' | 'STANDARD' | 'DEEP'>('STANDARD')
-  const [enabledTeams, setEnabledTeams] = useState<AnalysisStageKey[]>([...ALL_STAGES])
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
+  const [ticker, setTicker] = useState('AAPL');
+  const [prompt, setPrompt] = useState('Complete analysis of AAPL with decision and order draft');
+  const [portfolioId, setPortfolioId] = useState(portfolios[0]?.id ?? '');
+  const [preset, setPreset] = useState<AnalysisPreset>('STANDARD_ANALYSIS');
+  const [researchDepth, setResearchDepth] = useState<'SHALLOW' | 'STANDARD' | 'DEEP'>('STANDARD');
+  const [enabledTeams, setEnabledTeams] = useState<AnalysisStageKey[]>([...ALL_STAGES]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
   const toggleTeam = (key: AnalysisStageKey) => {
-    setEnabledTeams((cur) =>
-      cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key],
-    )
-  }
+    setEnabledTeams((cur) => (cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key]));
+  };
 
   const startRun = async () => {
-    setSubmitting(true)
-    setError('')
+    setSubmitting(true);
+    setError('');
     try {
       const run = await analysisRunsApi.create({
         prompt,
@@ -38,14 +45,14 @@ export function RunSetupPanel({ portfolios, onRunCreated }: RunSetupPanelProps) 
         preset,
         enabledTeams,
         researchDepth,
-      })
-      onRunCreated(run.id)
+      });
+      onRunCreated(run.id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start run')
+      setError(err instanceof Error ? err.message : 'Failed to start run');
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <section className="surface-panel rounded p-4 space-y-3">
@@ -68,7 +75,9 @@ export function RunSetupPanel({ portfolios, onRunCreated }: RunSetupPanelProps) 
           >
             <option value="">No portfolio</option>
             {portfolios.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
             ))}
           </select>
         </label>
@@ -101,9 +110,7 @@ export function RunSetupPanel({ portfolios, onRunCreated }: RunSetupPanelProps) 
           <select
             className="field-input"
             value={researchDepth}
-            onChange={(e) =>
-              setResearchDepth(e.target.value as 'SHALLOW' | 'STANDARD' | 'DEEP')
-            }
+            onChange={(e) => setResearchDepth(e.target.value as 'SHALLOW' | 'STANDARD' | 'DEEP')}
           >
             <option value="SHALLOW">Shallow</option>
             <option value="STANDARD">Standard</option>
@@ -131,13 +138,9 @@ export function RunSetupPanel({ portfolios, onRunCreated }: RunSetupPanelProps) 
         </div>
       </div>
       {error && <p className="text-sm text-[var(--down)]">{error}</p>}
-      <button
-        onClick={startRun}
-        disabled={submitting}
-        className="btn-primary px-5 py-2 text-sm"
-      >
+      <button onClick={startRun} disabled={submitting} className="btn-primary px-5 py-2 text-sm">
         {submitting ? 'Starting...' : 'Start Analysis Run'}
       </button>
     </section>
-  )
+  );
 }

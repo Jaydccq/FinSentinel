@@ -31,12 +31,11 @@ export class KnowledgeBaseScraperService {
    * @returns counts of new documents from each scraper
    */
   async scrapeAll(tickers: string[] = []): Promise<ScrapeResult> {
-    const [secResult, investResult, polygonResult] =
-      await Promise.allSettled([
-        this.secEdgar.scrape(tickers),
-        this.investopedia.scrape(undefined),
-        this.polygonNews.scrape(tickers),
-      ]);
+    const [secResult, investResult, polygonResult] = await Promise.allSettled([
+      this.secEdgar.scrape(tickers),
+      this.investopedia.scrape(undefined),
+      this.polygonNews.scrape(tickers),
+    ]);
 
     const secEdgar = this.extractCount(secResult, 'SecEdgar');
     const investopedia = this.extractCount(investResult, 'Investopedia');
@@ -49,10 +48,7 @@ export class KnowledgeBaseScraperService {
     return { secEdgar, investopedia, polygonNews };
   }
 
-  private extractCount(
-    result: PromiseSettledResult<number>,
-    label: string,
-  ): number {
+  private extractCount(result: PromiseSettledResult<number>, label: string): number {
     if (result.status === 'fulfilled') {
       return result.value;
     }

@@ -1,61 +1,74 @@
-'use client'
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Upload, FileText, CheckCircle, Clock, AlertCircle, File, BookOpen, Newspaper, BarChart2, FolderOpen, Download, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
-import Pagination from '../components/Pagination'
-import { documentsApi, type DocumentResponse } from '../api/documents'
-import { DocumentListSkeleton } from '../components/Skeleton'
-import EmptyState from '../components/EmptyState'
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  Upload,
+  FileText,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  File,
+  BookOpen,
+  Newspaper,
+  BarChart2,
+  FolderOpen,
+  Download,
+  Trash2,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import Pagination from '../components/Pagination';
+import { documentsApi, type DocumentResponse } from '../api/documents';
+import { DocumentListSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 
-const DOC_TYPES = ['REGULATION', 'RESEARCH', 'NEWS', 'EARNINGS', 'OTHER']
+const DOC_TYPES = ['REGULATION', 'RESEARCH', 'NEWS', 'EARNINGS', 'OTHER'];
 // F-4: PENDING_UPLOAD added — rows in this state are waiting for the
 // browser's direct-upload PUT to finish + /finalize to be called.
-const STATUSES = ['PENDING_UPLOAD', 'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED']
+const STATUSES = ['PENDING_UPLOAD', 'PENDING', 'PROCESSING', 'COMPLETED', 'FAILED'];
 
 const STATUS_STYLE: Record<string, { border: string; badge: string; label: string }> = {
   COMPLETED: {
     border: 'border-l-emerald-500',
-    badge:  'bg-emerald-500/15 text-emerald-400',
-    label:  'Completed',
+    badge: 'bg-emerald-500/15 text-emerald-400',
+    label: 'Completed',
   },
   PROCESSING: {
     border: 'border-l-blue-500',
-    badge:  'bg-blue-500/15 text-blue-400',
-    label:  'Processing',
+    badge: 'bg-blue-500/15 text-blue-400',
+    label: 'Processing',
   },
   PENDING: {
     border: 'border-l-yellow-500',
-    badge:  'bg-yellow-500/15 text-yellow-400',
-    label:  'Pending',
+    badge: 'bg-yellow-500/15 text-yellow-400',
+    label: 'Pending',
   },
   PENDING_UPLOAD: {
     border: 'border-l-sky-500',
-    badge:  'bg-sky-500/15 text-sky-400',
-    label:  'Uploading',
+    badge: 'bg-sky-500/15 text-sky-400',
+    label: 'Uploading',
   },
   FAILED: {
     border: 'border-l-red-500',
-    badge:  'bg-red-500/15 text-red-400',
-    label:  'Failed',
+    badge: 'bg-red-500/15 text-red-400',
+    label: 'Failed',
   },
-}
+};
 
 const DOC_TYPE_ICON: Record<string, { icon: React.ReactNode; color: string }> = {
   REGULATION: { icon: <BookOpen size={16} />, color: 'text-emerald-400' },
-  RESEARCH:   { icon: <BarChart2 size={16} />, color: 'text-blue-400' },
-  NEWS:       { icon: <Newspaper size={16} />, color: 'text-purple-400' },
-  EARNINGS:   { icon: <FileText size={16} />, color: 'text-orange-400' },
-  OTHER:      { icon: <FolderOpen size={16} />, color: 'text-[var(--text-secondary)]' },
-}
+  RESEARCH: { icon: <BarChart2 size={16} />, color: 'text-blue-400' },
+  NEWS: { icon: <Newspaper size={16} />, color: 'text-purple-400' },
+  EARNINGS: { icon: <FileText size={16} />, color: 'text-orange-400' },
+  OTHER: { icon: <FolderOpen size={16} />, color: 'text-[var(--text-secondary)]' },
+};
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === 'COMPLETED')       return <CheckCircle size={13} className="text-emerald-400" />
-  if (status === 'PROCESSING')      return <Clock       size={13} className="text-blue-400" />
-  if (status === 'PENDING')         return <Clock       size={13} className="text-yellow-400" />
-  if (status === 'PENDING_UPLOAD')  return <Upload      size={13} className="text-sky-400" />
-  return                                   <AlertCircle  size={13} className="text-red-400" />
+  if (status === 'COMPLETED') return <CheckCircle size={13} className="text-emerald-400" />;
+  if (status === 'PROCESSING') return <Clock size={13} className="text-blue-400" />;
+  if (status === 'PENDING') return <Clock size={13} className="text-yellow-400" />;
+  if (status === 'PENDING_UPLOAD') return <Upload size={13} className="text-sky-400" />;
+  return <AlertCircle size={13} className="text-red-400" />;
 }
 
 // F-4: keep the existing multipart upload() for small files. Files
@@ -63,12 +76,12 @@ function StatusIcon({ status }: { status: string }) {
 // streams to storage with a presigned URL (bypasses Node memory).
 // 25 MiB chosen so typical filings (~10 MB 10-K) stay on the legacy
 // path while big research datasets get the direct-upload win.
-const DIRECT_UPLOAD_THRESHOLD_BYTES = 25 * 1024 * 1024
+const DIRECT_UPLOAD_THRESHOLD_BYTES = 25 * 1024 * 1024;
 
 function formatSize(bytes: number): string {
-  if (bytes < 1024)           return `${bytes} B`
-  if (bytes < 1024 * 1024)   return `${(bytes / 1024).toFixed(1)} KB`
-  return                             `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function FilterChips({
@@ -77,14 +90,16 @@ function FilterChips({
   selected,
   onSelect,
 }: {
-  label: string
-  options: string[]
-  selected: string
-  onSelect: (v: string) => void
+  label: string;
+  options: string[];
+  selected: string;
+  onSelect: (v: string) => void;
 }) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)] font-medium">{label}</span>
+      <span className="text-xs uppercase tracking-[0.1em] text-[var(--text-muted)] font-medium">
+        {label}
+      </span>
       <button
         onClick={() => onSelect('')}
         className={`status-chip border transition-colors ${
@@ -95,7 +110,7 @@ function FilterChips({
       >
         All
       </button>
-      {options.map(opt => (
+      {options.map((opt) => (
         <button
           key={opt}
           onClick={() => onSelect(opt)}
@@ -109,153 +124,157 @@ function FilterChips({
         </button>
       ))}
     </div>
-  )
+  );
 }
 
 export default function DocumentsPage() {
-  const [docs,          setDocs]          = useState<DocumentResponse[]>([])
-  const [loading,       setLoading]       = useState(true)
-  const [uploading,     setUploading]     = useState(false)
-  const [docType,       setDocType]       = useState('REGULATION')
-  const [sector,        setSector]        = useState('')
-  const [dragOver,      setDragOver]      = useState(false)
-  const [statusFilter,  setStatusFilter]  = useState('')
-  const [typeFilter,    setTypeFilter]    = useState('')
-  const [page,          setPage]          = useState(0)
-  const [pageSize,      setPageSize]      = useState(20)
-  const [totalPages,    setTotalPages]    = useState(0)
-  const [totalElements, setTotalElements] = useState(0)
-  const fileRef    = useRef<HTMLInputElement>(null)
-  const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null)
-  const prevStatusRef = useRef<Record<string, string>>({})
+  const [docs, setDocs] = useState<DocumentResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [docType, setDocType] = useState('REGULATION');
+  const [sector, setSector] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevStatusRef = useRef<Record<string, string>>({});
 
   const refresh = useCallback(() => {
-    return documentsApi.list(page, pageSize, statusFilter || undefined, typeFilter || undefined)
-      .then(result => {
+    return documentsApi
+      .list(page, pageSize, statusFilter || undefined, typeFilter || undefined)
+      .then((result) => {
         // Detect status transitions for toast notifications
         for (const doc of result.content) {
-          const prev = prevStatusRef.current[doc.id]
+          const prev = prevStatusRef.current[doc.id];
           if (prev && prev !== doc.status) {
             if (doc.status === 'COMPLETED') {
-              toast.success(`"${doc.fileName}" processed successfully.`)
+              toast.success(`"${doc.fileName}" processed successfully.`);
             } else if (doc.status === 'FAILED') {
-              toast.error(`"${doc.fileName}" processing failed.`)
+              toast.error(`"${doc.fileName}" processing failed.`);
             }
           }
         }
         // Update previous status map
-        const map: Record<string, string> = {}
-        for (const doc of result.content) map[doc.id] = doc.status
-        prevStatusRef.current = map
+        const map: Record<string, string> = {};
+        for (const doc of result.content) map[doc.id] = doc.status;
+        prevStatusRef.current = map;
 
-        setDocs(result.content)
-        setTotalPages(result.totalPages)
-        setTotalElements(result.totalElements)
-        return result.content
+        setDocs(result.content);
+        setTotalPages(result.totalPages);
+        setTotalElements(result.totalElements);
+        return result.content;
       })
       .catch(() => {
-        toast.error('Failed to load documents.')
-        setDocs([])
-        return [] as DocumentResponse[]
+        toast.error('Failed to load documents.');
+        setDocs([]);
+        return [] as DocumentResponse[];
       })
-      .finally(() => setLoading(false))
-  }, [page, pageSize, statusFilter, typeFilter])
+      .finally(() => setLoading(false));
+  }, [page, pageSize, statusFilter, typeFilter]);
 
   // Initial load + re-fetch when filters change
   useEffect(() => {
-    setLoading(true)
-    refresh()
-  }, [refresh])
+    setLoading(true);
+    refresh();
+  }, [refresh]);
 
   // Polling: check every 3s if any docs are PENDING_UPLOAD / PENDING /
   // PROCESSING. PENDING_UPLOAD rows need the reconciler (or a retried
   // finalize) to settle, so keep polling — but bound it to 10 mins
   // below so we don't poll forever for a dead row.
   useEffect(() => {
-    const hasPending = docs.some(d =>
-      d.status === 'PENDING_UPLOAD' ||
-      d.status === 'PENDING' ||
-      d.status === 'PROCESSING',
-    )
+    const hasPending = docs.some(
+      (d) => d.status === 'PENDING_UPLOAD' || d.status === 'PENDING' || d.status === 'PROCESSING',
+    );
 
     if (hasPending && !pollRef.current) {
-      pollRef.current = setInterval(() => { refresh() }, 3000)
+      pollRef.current = setInterval(() => {
+        refresh();
+      }, 3000);
     } else if (!hasPending && pollRef.current) {
-      clearInterval(pollRef.current)
-      pollRef.current = null
+      clearInterval(pollRef.current);
+      pollRef.current = null;
     }
 
     return () => {
       if (pollRef.current) {
-        clearInterval(pollRef.current)
-        pollRef.current = null
+        clearInterval(pollRef.current);
+        pollRef.current = null;
       }
-    }
-  }, [docs, refresh])
+    };
+  }, [docs, refresh]);
 
   const upload = async (file: File) => {
-    setUploading(true)
+    setUploading(true);
     try {
       if (file.size > DIRECT_UPLOAD_THRESHOLD_BYTES) {
         // F-4: skip the Node-memory round-trip for big files.
-        await documentsApi.uploadDirect(file, docType, sector || undefined)
-        toast.success(`"${file.name}" uploaded (direct to storage).`)
+        await documentsApi.uploadDirect(file, docType, sector || undefined);
+        toast.success(`"${file.name}" uploaded (direct to storage).`);
       } else {
-        await documentsApi.upload(file, docType, sector || undefined)
-        toast.success(`"${file.name}" uploaded successfully.`)
+        await documentsApi.upload(file, docType, sector || undefined);
+        toast.success(`"${file.name}" uploaded successfully.`);
       }
-      refresh()
+      refresh();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Upload failed.'
-      toast.error(msg)
+      const msg = err instanceof Error ? err.message : 'Upload failed.';
+      toast.error(msg);
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-  }
+  };
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
-    if (f) upload(f)
-  }
+    const f = e.target.files?.[0];
+    if (f) upload(f);
+  };
 
   const onDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setDragOver(false)
-    const f = e.dataTransfer.files?.[0]
-    if (f) upload(f)
-  }
+    e.preventDefault();
+    setDragOver(false);
+    const f = e.dataTransfer.files?.[0];
+    if (f) upload(f);
+  };
 
   const downloadDoc = async (id: string) => {
     try {
-      await documentsApi.download(id)
-      toast.success('Download started.')
+      await documentsApi.download(id);
+      toast.success('Download started.');
     } catch {
-      toast.error('Download failed.')
+      toast.error('Download failed.');
     }
-  }
+  };
 
   const deleteDoc = async (id: string) => {
-    if (!confirm('Delete this document? This cannot be undone.')) return
+    if (!confirm('Delete this document? This cannot be undone.')) return;
     try {
-      await documentsApi.delete(id)
-      toast.success('Document deleted.')
-      refresh()
+      await documentsApi.delete(id);
+      toast.success('Document deleted.');
+      refresh();
     } catch {
-      toast.error('Failed to delete document.')
+      toast.error('Failed to delete document.');
     }
-  }
+  };
 
-  const handleStatusFilter = (v: string) => { setStatusFilter(v); setPage(0) }
-  const handleTypeFilter   = (v: string) => { setTypeFilter(v);   setPage(0) }
+  const handleStatusFilter = (v: string) => {
+    setStatusFilter(v);
+    setPage(0);
+  };
+  const handleTypeFilter = (v: string) => {
+    setTypeFilter(v);
+    setPage(0);
+  };
 
   return (
     <div className="p-10 space-y-10">
-
       {/* Page title */}
       <div>
-        <h1 className="text-3xl text-[var(--text-primary)]">
-          Documents
-        </h1>
+        <h1 className="text-3xl text-[var(--text-primary)]">Documents</h1>
         <p className="text-[var(--text-muted)] text-sm mt-2">
           Upload regulatory filings, research reports, and news for RAG analysis
         </p>
@@ -269,7 +288,10 @@ export default function DocumentsPage() {
 
         <div className="flex gap-4 flex-wrap">
           <div>
-            <label htmlFor="doc-type" className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">
+            <label
+              htmlFor="doc-type"
+              className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium"
+            >
               Document Type
             </label>
             <select
@@ -278,14 +300,21 @@ export default function DocumentsPage() {
                          focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)]/40
                          transition-colors cursor-pointer"
               value={docType}
-              onChange={e => setDocType(e.target.value)}
+              onChange={(e) => setDocType(e.target.value)}
             >
-              {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+              {DOC_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </select>
           </div>
 
           <div>
-            <label htmlFor="doc-sector" className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium">
+            <label
+              htmlFor="doc-sector"
+              className="block text-xs text-[var(--text-muted)] mb-1.5 font-medium"
+            >
               Sector <span className="text-[var(--text-muted)] opacity-60">(optional)</span>
             </label>
             <input
@@ -295,7 +324,7 @@ export default function DocumentsPage() {
                          focus:border-[var(--accent)]/40 transition-colors"
               placeholder="e.g. Technology"
               value={sector}
-              onChange={e => setSector(e.target.value)}
+              onChange={(e) => setSector(e.target.value)}
             />
           </div>
         </div>
@@ -305,22 +334,30 @@ export default function DocumentsPage() {
           role="button"
           tabIndex={0}
           aria-label="File upload drop zone. Click or press Enter to browse."
-          onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
           onClick={() => fileRef.current?.click()}
-          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') fileRef.current?.click() }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') fileRef.current?.click();
+          }}
           className={`
             relative border-2 border-dashed rounded p-12 text-center cursor-pointer
             transition-colors duration-200
-            ${dragOver
-              ? 'border-[var(--accent)] bg-[var(--accent)]/5'
-              : 'border-[color:var(--border-subtle)] hover:border-[color:var(--border-strong)] hover:bg-[var(--bg-elevated)]'
+            ${
+              dragOver
+                ? 'border-[var(--accent)] bg-[var(--accent)]/5'
+                : 'border-[color:var(--border-subtle)] hover:border-[color:var(--border-strong)] hover:bg-[var(--bg-elevated)]'
             }
           `}
         >
           <motion.div
-            animate={dragOver ? { scale: [1, 1.1, 1], opacity: [1, 0.7, 1] } : { scale: 1, opacity: 1 }}
+            animate={
+              dragOver ? { scale: [1, 1.1, 1], opacity: [1, 0.7, 1] } : { scale: 1, opacity: 1 }
+            }
             transition={dragOver ? { duration: 0.8, repeat: Infinity, ease: 'easeInOut' } : {}}
             className="inline-block"
           >
@@ -332,14 +369,20 @@ export default function DocumentsPage() {
             />
           </motion.div>
 
-          <p className={`text-sm font-medium transition-colors duration-200 ${
-            dragOver ? 'text-blue-300' : uploading ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)]'
-          }`}>
+          <p
+            className={`text-sm font-medium transition-colors duration-200 ${
+              dragOver
+                ? 'text-blue-300'
+                : uploading
+                  ? 'text-[var(--accent)]'
+                  : 'text-[var(--text-secondary)]'
+            }`}
+          >
             {uploading
               ? 'Uploading...'
               : dragOver
-              ? 'Drop to upload'
-              : 'Drop a file here or click to browse'}
+                ? 'Drop to upload'
+                : 'Drop a file here or click to browse'}
           </p>
           <p className="text-[var(--text-muted)] text-xs mt-1.5">PDF, DOCX, TXT, MD supported</p>
 
@@ -362,15 +405,27 @@ export default function DocumentsPage() {
 
       {/* Filter chips */}
       <div className="space-y-3">
-        <FilterChips label="Status" options={STATUSES} selected={statusFilter} onSelect={handleStatusFilter} />
-        <FilterChips label="Type"   options={DOC_TYPES} selected={typeFilter}   onSelect={handleTypeFilter} />
+        <FilterChips
+          label="Status"
+          options={STATUSES}
+          selected={statusFilter}
+          onSelect={handleStatusFilter}
+        />
+        <FilterChips
+          label="Type"
+          options={DOC_TYPES}
+          selected={typeFilter}
+          onSelect={handleTypeFilter}
+        />
       </div>
 
       {/* Document list */}
       <div>
         <h2 className="text-sm font-semibold text-[var(--text-secondary)] uppercase tracking-wider mb-4">
           Uploaded Documents
-          <span className="ml-2 text-[var(--text-muted)] normal-case font-normal">({totalElements})</span>
+          <span className="ml-2 text-[var(--text-muted)] normal-case font-normal">
+            ({totalElements})
+          </span>
         </h2>
 
         {loading ? (
@@ -384,8 +439,8 @@ export default function DocumentsPage() {
         ) : (
           <div className="space-y-2">
             {docs.map((d, i) => {
-              const statusStyle = STATUS_STYLE[d.status] ?? STATUS_STYLE.FAILED
-              const typeIcon    = DOC_TYPE_ICON[d.docType] ?? DOC_TYPE_ICON.OTHER
+              const statusStyle = STATUS_STYLE[d.status] ?? STATUS_STYLE.FAILED;
+              const typeIcon = DOC_TYPE_ICON[d.docType] ?? DOC_TYPE_ICON.OTHER;
 
               return (
                 <motion.div
@@ -405,10 +460,12 @@ export default function DocumentsPage() {
                   </span>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-[var(--text-primary)] text-sm font-medium truncate">{d.fileName}</p>
+                    <p className="text-[var(--text-primary)] text-sm font-medium truncate">
+                      {d.fileName}
+                    </p>
                     <p className="text-[var(--text-muted)] text-xs mt-0.5 truncate">
                       {d.docType} · {formatSize(d.fileSize)} · {d.regionId}
-                      {d.sector     ? ` · ${d.sector}` : ''}
+                      {d.sector ? ` · ${d.sector}` : ''}
                       {d.chunkCount != null ? ` · ${d.chunkCount} chunks` : ''}
                     </p>
                   </div>
@@ -440,7 +497,7 @@ export default function DocumentsPage() {
                     </button>
                   </div>
                 </motion.div>
-              )
+              );
             })}
           </div>
         )}
@@ -452,10 +509,13 @@ export default function DocumentsPage() {
             totalElements={totalElements}
             pageSize={pageSize}
             onPageChange={setPage}
-            onPageSizeChange={s => { setPageSize(s); setPage(0) }}
+            onPageSizeChange={(s) => {
+              setPageSize(s);
+              setPage(0);
+            }}
           />
         )}
       </div>
     </div>
-  )
+  );
 }

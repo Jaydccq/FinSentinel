@@ -32,10 +32,7 @@ export class RagReindexService {
     return { queued: 1, ids: [documentId] };
   }
 
-  async reindexMissingDocuments(
-    limit = 100,
-    force = false,
-  ): Promise<ReindexResult> {
+  async reindexMissingDocuments(limit = 100, force = false): Promise<ReindexResult> {
     return this.reindexDocuments(limit, force);
   }
 
@@ -95,7 +92,8 @@ export class RagReindexService {
       .limit(Math.max(limit * 3, limit));
 
     const eligible = items.filter(
-      (item: { articleUrl: string | null }) => typeof item.articleUrl === 'string' && item.articleUrl.length > 0,
+      (item: { articleUrl: string | null }) =>
+        typeof item.articleUrl === 'string' && item.articleUrl.length > 0,
     );
 
     const missingIds = force
@@ -124,16 +122,9 @@ export class RagReindexService {
     const chunkRows = await this.db
       .select({ sourceId: documentChunks.sourceId })
       .from(documentChunks)
-      .where(
-        and(
-          eq(documentChunks.sourceType, sourceType),
-          inArray(documentChunks.sourceId, ids),
-        ),
-      );
+      .where(and(eq(documentChunks.sourceType, sourceType), inArray(documentChunks.sourceId, ids)));
 
-    const existing = new Set(
-      chunkRows.map((row: { sourceId: string }) => row.sourceId),
-    );
+    const existing = new Set(chunkRows.map((row: { sourceId: string }) => row.sourceId));
 
     return ids.filter((id) => !existing.has(id));
   }

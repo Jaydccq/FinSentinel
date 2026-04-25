@@ -113,10 +113,7 @@ describe('MarkdownStructureService', () => {
     const result = service.parse(md);
 
     const sectionPaths = result.chunks.map((c) => c.sectionPath);
-    expect(sectionPaths).toEqual([
-      ['Chapter 1', 'Section 1.1'],
-      ['Chapter 2'],
-    ]);
+    expect(sectionPaths).toEqual([['Chapter 1', 'Section 1.1'], ['Chapter 2']]);
   });
 
   // ── Table detection ──────────────────────────────────────────────────────
@@ -222,9 +219,7 @@ describe('MarkdownStructureService', () => {
 
   it('five-section markdown yields five chunks in document order', () => {
     const sections = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon'];
-    const md = sections
-      .map((s, i) => `## ${s}\n\nBody ${i + 1}.`)
-      .join('\n\n');
+    const md = sections.map((s, i) => `## ${s}\n\nBody ${i + 1}.`).join('\n\n');
 
     const result = service.parse(md);
 
@@ -281,9 +276,11 @@ describe('MarkdownStructureService', () => {
     expect(fenceChunk).toBeDefined();
     expect(fenceChunk!.text).toContain('more lines');
     // No separate chunk after the fence since the rest was consumed
-    expect(result.chunks.filter((c) => !c.text.includes('```')).every(
-      (c) => c.text.includes('code without closing fence') || c.title === 'Title',
-    )).toBe(true);
+    expect(
+      result.chunks
+        .filter((c) => !c.text.includes('```'))
+        .every((c) => c.text.includes('code without closing fence') || c.title === 'Title'),
+    ).toBe(true);
   });
 
   // ── Setext edge case: standalone "---" after blank line is not setext ────
@@ -304,7 +301,11 @@ describe('MarkdownStructureService', () => {
 
   it('attaches hint fields to StructuredDocument when provided', () => {
     const md = '# hi\n\nbody';
-    const doc = service.parse(md, { pageCount: 5, parserVersion: 'v1', sourceMimeType: 'application/pdf' });
+    const doc = service.parse(md, {
+      pageCount: 5,
+      parserVersion: 'v1',
+      sourceMimeType: 'application/pdf',
+    });
     expect(doc.pageCount).toBe(5);
     expect(doc.parserVersion).toBe('v1');
     expect(doc.sourceMimeType).toBe('application/pdf');

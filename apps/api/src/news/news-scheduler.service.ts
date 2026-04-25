@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  OnModuleDestroy,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import parser from 'cron-parser';
 import { NewsArchivalService } from './news-archival.service';
@@ -37,21 +32,11 @@ export class NewsSchedulerService implements OnModuleInit, OnModuleDestroy {
 
     this.pollingEnabled =
       runtimeEnabled && configService.get<boolean>('news.polling.enabled', true);
-    this.pollingIntervalMs = configService.get<number>(
-      'news.polling.intervalMs',
-      300000,
-    );
-    this.pollingStartupDelayMs = configService.get<number>(
-      'news.polling.startupDelayMs',
-      10000,
-    );
+    this.pollingIntervalMs = configService.get<number>('news.polling.intervalMs', 300000);
+    this.pollingStartupDelayMs = configService.get<number>('news.polling.startupDelayMs', 10000);
 
-    this.archivalEnabled =
-      runtimeEnabled && configService.get<boolean>('archival.enabled', false);
-    this.archivalCron = configService.get<string>(
-      'archival.cron',
-      '0 0 2 * * *',
-    );
+    this.archivalEnabled = runtimeEnabled && configService.get<boolean>('archival.enabled', false);
+    this.archivalCron = configService.get<string>('archival.cron', '0 0 2 * * *');
   }
 
   onModuleInit(): void {
@@ -76,17 +61,13 @@ export class NewsSchedulerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async runPollingCycle(
-    trigger: PollTrigger = 'interval',
-  ): Promise<number> {
+  async runPollingCycle(trigger: PollTrigger = 'interval'): Promise<number> {
     if (!this.pollingEnabled) {
       return 0;
     }
 
     if (this.pollingRunning) {
-      this.logger.warn(
-        `Skipping overlapping news polling cycle triggered by ${trigger}`,
-      );
+      this.logger.warn(`Skipping overlapping news polling cycle triggered by ${trigger}`);
       return 0;
     }
 
@@ -95,9 +76,7 @@ export class NewsSchedulerService implements OnModuleInit, OnModuleDestroy {
     try {
       const savedCount = await this.newsFetcherService.pollAll();
       if (savedCount > 0) {
-        this.logger.log(
-          `News polling (${trigger}) saved ${savedCount} new item(s)`,
-        );
+        this.logger.log(`News polling (${trigger}) saved ${savedCount} new item(s)`);
       } else {
         this.logger.debug(`News polling (${trigger}) found no new items`);
       }
@@ -112,17 +91,13 @@ export class NewsSchedulerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async runArchivalCycle(
-    trigger: ArchivalTrigger = 'cron',
-  ): Promise<number> {
+  async runArchivalCycle(trigger: ArchivalTrigger = 'cron'): Promise<number> {
     if (!this.archivalEnabled) {
       return 0;
     }
 
     if (this.archivalRunning) {
-      this.logger.warn(
-        `Skipping overlapping archival cycle triggered by ${trigger}`,
-      );
+      this.logger.warn(`Skipping overlapping archival cycle triggered by ${trigger}`);
       return 0;
     }
 
@@ -131,9 +106,7 @@ export class NewsSchedulerService implements OnModuleInit, OnModuleDestroy {
     try {
       const archivedCount = await this.newsArchivalService.archiveOldItems();
       if (archivedCount > 0) {
-        this.logger.log(
-          `News archival (${trigger}) archived ${archivedCount} item(s)`,
-        );
+        this.logger.log(`News archival (${trigger}) archived ${archivedCount} item(s)`);
       } else {
         this.logger.debug(`News archival (${trigger}) found no stale items`);
       }

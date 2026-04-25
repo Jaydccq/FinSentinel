@@ -1,15 +1,15 @@
-import { createContext } from 'react'
+import { createContext } from 'react';
 
 export interface AuthUser {
-  token: string
-  username: string
-  email: string
+  token: string;
+  username: string;
+  email: string;
 }
 
 export interface AuthContextValue {
-  user: AuthUser | null
-  login: (user: AuthUser) => void
-  logout: () => void
+  user: AuthUser | null;
+  login: (user: AuthUser) => void;
+  logout: () => void;
 }
 
-export const AuthContext = createContext<AuthContextValue | null>(null)
+export const AuthContext = createContext<AuthContextValue | null>(null);

@@ -1,13 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  RSI,
-  MACD,
-  BollingerBands,
-  EMA,
-  SMA,
-  ATR,
-  Stochastic,
-} from 'technicalindicators';
+import { RSI, MACD, BollingerBands, EMA, SMA, ATR, Stochastic } from 'technicalindicators';
 
 /** OHLCV bar shape used by the technical-indicators service: {o, h, l, c, v, t}. */
 interface Bar {
@@ -100,11 +92,7 @@ export class TechnicalIndicatorsService {
 
   // ── Bollinger Bands ──────────────────────────────────────────────────────
 
-  calculateBollingerBands(
-    barsJson: string,
-    period: number,
-    stdDev: number,
-  ): string {
+  calculateBollingerBands(barsJson: string, period: number, stdDev: number): string {
     const bars: Bar[] = JSON.parse(barsJson);
     if (bars.length < period) {
       return `Insufficient data: need at least ${period} bars, got ${bars.length}`;
@@ -209,11 +197,7 @@ export class TechnicalIndicatorsService {
 
   // ── Stochastic ───────────────────────────────────────────────────────────
 
-  calculateStochastic(
-    barsJson: string,
-    period: number,
-    signalPeriod: number,
-  ): string {
+  calculateStochastic(barsJson: string, period: number, signalPeriod: number): string {
     const bars: Bar[] = JSON.parse(barsJson);
     if (bars.length < period + signalPeriod) {
       return `Insufficient data: need at least ${period + signalPeriod} bars, got ${bars.length}`;
@@ -303,13 +287,7 @@ export class TechnicalIndicatorsService {
       const bar = bars[i]!;
       const prevBar = bars[i - 1]!;
 
-      tr.push(
-        Math.max(
-          bar.h - bar.l,
-          Math.abs(bar.h - prevBar.c),
-          Math.abs(bar.l - prevBar.c),
-        ),
-      );
+      tr.push(Math.max(bar.h - bar.l, Math.abs(bar.h - prevBar.c), Math.abs(bar.l - prevBar.c)));
 
       const upMove = bar.h - prevBar.h;
       const downMove = prevBar.l - bar.l;
@@ -462,12 +440,8 @@ export class TechnicalIndicatorsService {
   private classifyOBVTrend(obvValues: number[]): string {
     if (obvValues.length < 5) return 'Insufficient data for trend';
     const recent = obvValues.slice(-5);
-    const isRising = recent.every(
-      (v, i) => i === 0 || v >= recent[i - 1]!,
-    );
-    const isFalling = recent.every(
-      (v, i) => i === 0 || v <= recent[i - 1]!,
-    );
+    const isRising = recent.every((v, i) => i === 0 || v >= recent[i - 1]!);
+    const isFalling = recent.every((v, i) => i === 0 || v <= recent[i - 1]!);
     if (isRising) return 'Rising (confirms uptrend)';
     if (isFalling) return 'Falling (confirms downtrend)';
     return 'Mixed';

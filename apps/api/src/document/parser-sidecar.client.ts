@@ -54,11 +54,7 @@ export class ParserSidecarClient {
     private readonly config: ParserSidecarConfig,
   ) {}
 
-  async parse(
-    buffer: Buffer,
-    mimeType: string,
-    fileName: string,
-  ): Promise<ParserSidecarResponse> {
+  async parse(buffer: Buffer, mimeType: string, fileName: string): Promise<ParserSidecarResponse> {
     // Circuit-breaker check
     if (Date.now() < this.circuitOpenUntil) {
       throw new Error('PARSER_CIRCUIT_OPEN');

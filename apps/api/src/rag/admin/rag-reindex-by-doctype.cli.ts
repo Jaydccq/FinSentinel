@@ -126,12 +126,7 @@ export interface GuardEnv {
 const DEFAULT_BATCH = 25;
 const DEFAULT_MAX_WAIT_SECONDS = 1800;
 
-const KNOWN_FLAGS = new Set([
-  '--dry-run',
-  '--batch',
-  '--force',
-  '--max-wait-seconds',
-]);
+const KNOWN_FLAGS = new Set(['--dry-run', '--batch', '--force', '--max-wait-seconds']);
 
 function parsePositiveInt(flag: string, raw: string): number {
   const n = Number(raw);
@@ -162,9 +157,7 @@ export function parseReindexArgs(argv: string[]): ReindexCliArgs {
     } else if (a === '--max-wait-seconds' && argv[i + 1] !== undefined) {
       args.maxWaitSeconds = parsePositiveInt('--max-wait-seconds', argv[++i]!);
     } else if (a.startsWith('--')) {
-      throw new Error(
-        `unrecognized flag: ${a}. Known flags: ${[...KNOWN_FLAGS].join(', ')}`,
-      );
+      throw new Error(`unrecognized flag: ${a}. Known flags: ${[...KNOWN_FLAGS].join(', ')}`);
     } else {
       throw new Error(`unrecognized positional argument: ${a}`);
     }
@@ -199,9 +192,7 @@ export function guardProductionAccidents(env: GuardEnv): void {
 
 // ── Core loop (pure — DI'd fetcher + reindexer + drainWait for testability) ───
 
-export async function reindexByDocType(
-  opts: ReindexRunOptions,
-): Promise<ReindexSummary> {
+export async function reindexByDocType(opts: ReindexRunOptions): Promise<ReindexSummary> {
   const {
     fetchBatch,
     reindexDoc,
@@ -293,10 +284,7 @@ function guessMimeFromKey(key: string): string {
 
 // ── DB wiring (runtime only — not used by unit tests) ─────────────────────────
 
-function buildDbFetcher(
-  db: DrizzleDB,
-  force: boolean,
-): DocRowFetcher {
+function buildDbFetcher(db: DrizzleDB, force: boolean): DocRowFetcher {
   let lastId: string | null = null;
 
   return async (limit: number) => {
@@ -333,15 +321,17 @@ function buildDbFetcher(
       LIMIT ${limit}
     `);
 
-    const arr = Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows ?? [];
-    const mapped = (arr as Array<{
-      id: string;
-      storage_key: string | null;
-      doc_type: string;
-      sector: string | null;
-      original_file_name: string;
-      meta: Record<string, unknown> | null;
-    }>).map((r) => ({
+    const arr = Array.isArray(rows) ? rows : ((rows as { rows?: unknown[] }).rows ?? []);
+    const mapped = (
+      arr as Array<{
+        id: string;
+        storage_key: string | null;
+        doc_type: string;
+        sector: string | null;
+        original_file_name: string;
+        meta: Record<string, unknown> | null;
+      }>
+    ).map((r) => ({
       id: r.id,
       storageKey: r.storage_key,
       docType: r.doc_type,

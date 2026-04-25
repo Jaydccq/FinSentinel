@@ -8,7 +8,7 @@ export interface SparseSearchFilters {
   sector?: string;
   regionId?: string;
   afterDate?: string;
-  tickers?: string[];    // NEW — populated by MetadataPreFilterService; SQL consumption in R4.3
+  tickers?: string[]; // NEW — populated by MetadataPreFilterService; SQL consumption in R4.3
   issuerName?: string[]; // NEW — populated by MetadataPreFilterService; SQL consumption in R4.3
   /**
    * Soft hints from the metadata pre-filter. Non-matching rows stay
@@ -90,9 +90,7 @@ export class SparseSearchService {
      */
     @Optional() configOrWeights?: ConfigService | SparseWeights,
   ) {
-    this.weightsLiteral = formatWeightsLiteral(
-      SparseSearchService.resolveWeights(configOrWeights),
-    );
+    this.weightsLiteral = formatWeightsLiteral(SparseSearchService.resolveWeights(configOrWeights));
   }
 
   private static resolveWeights(
@@ -158,8 +156,8 @@ export class SparseSearchService {
     // collapses to constant 1.0 so the planner sees no change.
     const softTickers = filters.softFilter?.tickers;
     const softIssuers = filters.softFilter?.issuerName;
-    const hasAnySoft = (softTickers && softTickers.length > 0)
-      || (softIssuers && softIssuers.length > 0);
+    const hasAnySoft =
+      (softTickers && softTickers.length > 0) || (softIssuers && softIssuers.length > 0);
 
     // Helper: build the canonical-lane CASE (no table alias on metadata).
     const canonicalCaseArms = [];

@@ -37,10 +37,7 @@ export class CryptoNewsApiClient {
   private readonly token: string;
 
   constructor(configService: ConfigService) {
-    this.baseUrl = configService.get<string>(
-      'CRYPTO_NEWS_6551_BASE_URL',
-      'https://ai.6551.io',
-    );
+    this.baseUrl = configService.get<string>('CRYPTO_NEWS_6551_BASE_URL', 'https://ai.6551.io');
     this.token = configService.get<string>('CRYPTO_NEWS_6551_TOKEN', '');
   }
 
@@ -50,10 +47,7 @@ export class CryptoNewsApiClient {
    * @param query  - Search query (ticker symbols or keywords)
    * @param limit  - Max results (default 20)
    */
-  async searchNews(
-    query: string,
-    limit = 20,
-  ): Promise<CryptoNewsArticle[]> {
+  async searchNews(query: string, limit = 20): Promise<CryptoNewsArticle[]> {
     if (!this.token) {
       this.logger.warn('CRYPTO_NEWS_6551_TOKEN not set — skipping search');
       return [];
@@ -75,9 +69,7 @@ export class CryptoNewsApiClient {
       this.logger.error(
         `6551 crypto news API error: ${response.status} ${response.statusText} — ${text}`,
       );
-      throw new Error(
-        `6551 crypto news API returned ${response.status}: ${text}`,
-      );
+      throw new Error(`6551 crypto news API returned ${response.status}: ${text}`);
     }
 
     const body = (await response.json()) as CryptoNewsSearchResponse;

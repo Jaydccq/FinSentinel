@@ -80,17 +80,10 @@ export class AnalysisCheckpointService {
     const [stage] = await this.db
       .select()
       .from(analysisStages)
-      .where(
-        and(
-          eq(analysisStages.runId, args.runId),
-          eq(analysisStages.stageKey, args.stageKey),
-        ),
-      )
+      .where(and(eq(analysisStages.runId, args.runId), eq(analysisStages.stageKey, args.stageKey)))
       .limit(1);
     if (!stage) {
-      throw new NotFoundException(
-        `Stage ${args.stageKey} not found for run ${args.runId}`,
-      );
+      throw new NotFoundException(`Stage ${args.stageKey} not found for run ${args.runId}`);
     }
     const row = stage as StageRow;
     const nextVersion = row.checkpointVersion + 1;
@@ -148,17 +141,10 @@ export class AnalysisCheckpointService {
     const [stage] = await this.db
       .select()
       .from(analysisStages)
-      .where(
-        and(
-          eq(analysisStages.runId, args.runId),
-          eq(analysisStages.stageKey, args.stageKey),
-        ),
-      )
+      .where(and(eq(analysisStages.runId, args.runId), eq(analysisStages.stageKey, args.stageKey)))
       .limit(1);
     if (!stage) {
-      throw new NotFoundException(
-        `Stage ${args.stageKey} not found for run ${args.runId}`,
-      );
+      throw new NotFoundException(`Stage ${args.stageKey} not found for run ${args.runId}`);
     }
     const row = stage as StageRow;
 
@@ -174,15 +160,16 @@ export class AnalysisCheckpointService {
     });
   }
 
-  async findByStage(runId: string, stageKey: AnalysisStageKey): Promise<{
+  async findByStage(
+    runId: string,
+    stageKey: AnalysisStageKey,
+  ): Promise<{
     structuredOutputJson: Record<string, unknown> | null;
   } | null> {
     const [row] = await this.db
       .select()
       .from(analysisStages)
-      .where(
-        and(eq(analysisStages.runId, runId), eq(analysisStages.stageKey, stageKey)),
-      )
+      .where(and(eq(analysisStages.runId, runId), eq(analysisStages.stageKey, stageKey)))
       .limit(1);
     if (!row) return null;
     return row as { structuredOutputJson: Record<string, unknown> | null };
@@ -237,9 +224,7 @@ export class AnalysisCheckpointService {
     await this.db
       .update(analysisStages)
       .set({ status: 'FAILED', errorJson: error, completedAt: new Date() })
-      .where(
-        and(eq(analysisStages.runId, runId), eq(analysisStages.stageKey, stageKey)),
-      );
+      .where(and(eq(analysisStages.runId, runId), eq(analysisStages.stageKey, stageKey)));
     await this.events.append(
       userId,
       AgentEventAggregateType.ANALYSIS_RUN,

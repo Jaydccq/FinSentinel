@@ -23,14 +23,19 @@ const LlmResponseSchema = z.object({
   sectors: z.array(z.object({ value: z.string(), confidence: z.number().min(0).max(1) })),
   regions: z.array(z.object({ value: z.string(), confidence: z.number().min(0).max(1) })),
   docType: z.object({ value: z.string(), confidence: z.number().min(0).max(1) }).nullable(),
-  timeRange: z.object({
-    after: z.string().nullable().optional(),
-    before: z.string().nullable().optional(),
-    confidence: z.number().min(0).max(1),
-  }).nullable(),
+  timeRange: z
+    .object({
+      after: z.string().nullable().optional(),
+      before: z.string().nullable().optional(),
+      confidence: z.number().min(0).max(1),
+    })
+    .nullable(),
 });
 
-export interface EntityHit<T> { value: T; confidence: number; }
+export interface EntityHit<T> {
+  value: T;
+  confidence: number;
+}
 
 export interface ExtractedEntities {
   tickers: EntityHit<string>[];
@@ -158,8 +163,7 @@ export class QueryEntityExtractorService {
       };
     } catch (err: unknown) {
       clearTimeout(timerId);
-      const isTimeout =
-        err instanceof Error && err.message === '__llm_timeout__';
+      const isTimeout = err instanceof Error && err.message === '__llm_timeout__';
 
       this.consecutiveFailures++;
       if (this.consecutiveFailures >= CIRCUIT_FAILURE_THRESHOLD) {
@@ -207,10 +211,11 @@ export class QueryEntityExtractorService {
     const dt = query.match(DOC_TYPE_RE);
     if (dt?.[1]) {
       const raw = dt[1].toLowerCase();
-      const normalised: '10-K' | '10-Q' | '8-K' =
-        raw.startsWith('annual') ? '10-K'
-        : raw.startsWith('quarterly') ? '10-Q'
-        : (dt[1].toUpperCase() as '10-K' | '10-Q' | '8-K');
+      const normalised: '10-K' | '10-Q' | '8-K' = raw.startsWith('annual')
+        ? '10-K'
+        : raw.startsWith('quarterly')
+          ? '10-Q'
+          : (dt[1].toUpperCase() as '10-K' | '10-Q' | '8-K');
       docType = { value: normalised, confidence: 0.9 };
     }
 

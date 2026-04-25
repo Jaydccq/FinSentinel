@@ -1,11 +1,11 @@
-import { apiFetch } from './client'
+import { apiFetch } from './client';
 
 export interface ApiKeyStatus {
-  name: string
-  label: string
-  configured: boolean
-  maskedPreview: string | null
-  category: string
+  name: string;
+  label: string;
+  configured: boolean;
+  maskedPreview: string | null;
+  category: string;
 }
 
 export const settingsApi = {
@@ -21,4 +21,4 @@ export const settingsApi = {
     apiFetch<{ success: boolean; message: string }>(`/settings/api-keys/${name}/test`, {
       method: 'POST',
     }),
-}
+};

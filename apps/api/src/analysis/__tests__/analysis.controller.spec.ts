@@ -32,10 +32,7 @@ describe('AnalysisController', () => {
       streamAnalysis: vi.fn().mockResolvedValue(makeStream()),
     };
     configService = { get: vi.fn().mockReturnValue(false) };
-    ctrl = new AnalysisController(
-      stockAnalysisService as never,
-      configService as never,
-    );
+    ctrl = new AnalysisController(stockAnalysisService as never, configService as never);
   });
 
   it('rejects invalid ticker format', async () => {
@@ -52,9 +49,7 @@ describe('AnalysisController', () => {
 
   it('throws BadRequestException when ANALYSIS_RUNS_ENABLED=true', async () => {
     configService.get.mockReturnValue(true);
-    await expect(ctrl.streamAnalysis('AAPL', user, mockRes)).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(ctrl.streamAnalysis('AAPL', user, mockRes)).rejects.toThrow(BadRequestException);
     await expect(ctrl.streamAnalysis('AAPL', user, mockRes)).rejects.toThrow(
       /ANALYSIS_RUNS_ENABLED/,
     );

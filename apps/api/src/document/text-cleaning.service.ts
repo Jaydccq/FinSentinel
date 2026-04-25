@@ -30,10 +30,10 @@ export class TextCleaningService {
 
     // 3. Normalize unicode quotation marks to ASCII
     text = text
-      .replace(/[\u2018\u2019\u201A\u201B]/g, "'")  // single quotes
-      .replace(/[\u201C\u201D\u201E\u201F]/g, '"')  // double quotes
-      .replace(/[\u2013\u2014]/g, '-')               // en-dash, em-dash
-      .replace(/\u2026/g, '...');                    // ellipsis
+      .replace(/[\u2018\u2019\u201A\u201B]/g, "'") // single quotes
+      .replace(/[\u201C\u201D\u201E\u201F]/g, '"') // double quotes
+      .replace(/[\u2013\u2014]/g, '-') // en-dash, em-dash
+      .replace(/\u2026/g, '...'); // ellipsis
 
     // 4. Trim leading/trailing whitespace per line
     text = text

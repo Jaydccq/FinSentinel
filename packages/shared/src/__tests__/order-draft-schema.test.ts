@@ -42,8 +42,8 @@ describe('orderDraftSchema', () => {
   });
 
   it('payload wrapper accepts an array of drafts', () => {
-    expect(
-      orderDraftsPayloadSchema.parse({ orderDrafts: [validDraft] }),
-    ).toEqual({ orderDrafts: [validDraft] });
+    expect(orderDraftsPayloadSchema.parse({ orderDrafts: [validDraft] })).toEqual({
+      orderDrafts: [validDraft],
+    });
   });
 });

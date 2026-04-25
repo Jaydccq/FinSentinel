@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { Suspense } from 'react'
-import StockDetailPage from '@/views/StockDetailPage'
+import { Suspense } from 'react';
+import StockDetailPage from '@/views/StockDetailPage';
 
 // Single-segment static route so `output: 'export'` can ship a single
 // /stock/index.html. The ticker arrives as a `?ticker=...` search param
@@ -14,5 +14,5 @@ export default function Page() {
     <Suspense fallback={null}>
       <StockDetailPage />
     </Suspense>
-  )
+  );
 }

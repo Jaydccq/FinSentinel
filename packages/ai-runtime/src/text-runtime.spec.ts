@@ -1,4 +1,9 @@
-import { fauxAssistantMessage, fauxText, fauxToolCall, registerFauxProvider } from '@mariozechner/pi-ai';
+import {
+  fauxAssistantMessage,
+  fauxText,
+  fauxToolCall,
+  registerFauxProvider,
+} from '@mariozechner/pi-ai';
 import { Agent } from '@mariozechner/pi-agent-core';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
@@ -232,9 +237,12 @@ describe('streamAgentTextFromMessages', () => {
 
     try {
       provider.setResponses([
-        fauxAssistantMessage([fauxText('partial response before tool call '), fauxToolCall('echo', { value: 'AAPL' })], {
-          stopReason: 'toolUse',
-        }),
+        fauxAssistantMessage(
+          [fauxText('partial response before tool call '), fauxToolCall('echo', { value: 'AAPL' })],
+          {
+            stopReason: 'toolUse',
+          },
+        ),
         fauxAssistantMessage([fauxText('final answer')]),
       ]);
 

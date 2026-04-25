@@ -87,11 +87,10 @@ describe('TextCleaningService', () => {
   // ── Full pipeline ─────────────────────────────────────────────────────
 
   it('applies all cleaning steps together', () => {
-    const dirty =
-      '  \0Hello\x01 \u201Cworld\u201D   \n\n\n\n  It\u2019s   a   test\u2026  ';
+    const dirty = '  \0Hello\x01 \u201Cworld\u201D   \n\n\n\n  It\u2019s   a   test\u2026  ';
     const cleaned = service.clean(dirty);
 
-    expect(cleaned).toBe("Hello \"world\"\n\nIt's a test...");
+    expect(cleaned).toBe('Hello "world"\n\nIt\'s a test...');
   });
 
   it('handles realistic SEC filing text', () => {

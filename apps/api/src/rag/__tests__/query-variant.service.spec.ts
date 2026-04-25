@@ -75,9 +75,7 @@ describe('QueryVariantService', () => {
   });
 
   it('decompose caps at 3 subqueries even when LLM returns 5', async () => {
-    mockGenerateAgentText.mockResolvedValueOnce(
-      '["Q1?", "Q2?", "Q3?", "Q4?", "Q5?"]',
-    );
+    mockGenerateAgentText.mockResolvedValueOnce('["Q1?", "Q2?", "Q3?", "Q4?", "Q5?"]');
     const result = await service.decompose('Complex multi-part query?');
     expect(result).toHaveLength(3);
     expect(result).toEqual(['Q1?', 'Q2?', 'Q3?']);

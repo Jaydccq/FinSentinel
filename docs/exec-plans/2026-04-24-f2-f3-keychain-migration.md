@@ -14,6 +14,7 @@ same file and F-3 is a three-line add on top of F-2's restructure.
 ## What landed
 
 ### F-2
+
 - `apps/web/src/lib/auth/local-login.ts`:
   - Deleted `isLocalLoginEnabled()` and the env-based creds read inside the
     old `performLogin`.
@@ -28,6 +29,7 @@ same file and F-3 is a three-line add on top of F-2's restructure.
 - `apps/web/src/providers.tsx`: comment refresh — no behavior change.
 
 ### F-3
+
 - `apps/web/src/lib/auth/local-login.ts::migrateLegacyTokenIfAny`:
   - On the first `ensureLocalToken` call under Tauri, if
     `localStorage.fs_local_token` exists, write it into the keychain via
@@ -48,10 +50,10 @@ same file and F-3 is a three-line add on top of F-2's restructure.
 
 ## Verification
 
-| Check | Result |
-|-------|--------|
-| `pnpm --filter @finsentinel/web test` | 83 passed / 0 failed |
-| `pnpm --filter @finsentinel/web typecheck` | clean |
+| Check                                           | Result                                       |
+| ----------------------------------------------- | -------------------------------------------- |
+| `pnpm --filter @finsentinel/web test`           | 83 passed / 0 failed                         |
+| `pnpm --filter @finsentinel/web typecheck`      | clean                                        |
 | `grep -r NEXT_PUBLIC_LOCAL_USER` in active code | only the history comment in `local-login.ts` |
 
 ## Progress log

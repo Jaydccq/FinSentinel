@@ -32,7 +32,10 @@ export class AnalysisRunController {
   ) {}
 
   @Post()
-  async create(@Body() body: CreateRunRequest, @CurrentUser() user: CurrentUserPayload): Promise<unknown> {
+  async create(
+    @Body() body: CreateRunRequest,
+    @CurrentUser() user: CurrentUserPayload,
+  ): Promise<unknown> {
     const req = createRunRequestSchema.parse(body);
     const row = await this.runs.createQueued(user.userId, req);
     await this.producer.enqueuePreflight({ runId: row.id, userId: user.userId });
@@ -152,7 +155,9 @@ export class AnalysisRunController {
 
     const snapshot = await this.contextJournal.getStageInput(user.userId, id, parsedStageKey.data);
     if (!snapshot) {
-      throw new NotFoundException(`Stage input for run ${id} and stage ${parsedStageKey.data} not found`);
+      throw new NotFoundException(
+        `Stage input for run ${id} and stage ${parsedStageKey.data} not found`,
+      );
     }
 
     return snapshot;

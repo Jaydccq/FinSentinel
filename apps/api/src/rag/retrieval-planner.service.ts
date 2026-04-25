@@ -77,8 +77,7 @@ const SECTION_IDENTIFIER = /\b(?:Item\s+\d+[A-Z]?|Section\s+\d+(?:\.\d+)*|Note\s
  * Numeric / structured identifiers: ISIN, CUSIP, and precise financial
  * metric tokens (EPS, P/E). ISIN and CUSIP are case-sensitive by standard.
  */
-const NUMERIC_IDENTIFIER =
-  /\bISIN\s+[A-Z0-9]{12}\b|\bCUSIP\s+[A-Z0-9]{9}\b|\bEPS\b|\bP\/E\b/;
+const NUMERIC_IDENTIFIER = /\bISIN\s+[A-Z0-9]{12}\b|\bCUSIP\s+[A-Z0-9]{9}\b|\bEPS\b|\bP\/E\b/;
 
 /** Double-quoted phrase with at least 3 chars inside. */
 const QUOTED_PHRASE = /"[^"]{3,}"/;
@@ -116,9 +115,15 @@ export class RetrievalPlannerService {
   ) {
     // Graph lane is disabled by default until graph enrichment pipeline is implemented
     this.graphEnabled = configService.get<boolean>('rag.graph.enabled', false) as boolean;
-    this.rewriteEnabled = configService.get<boolean>('rag.retrieval.queryRewriteEnabled', true) as boolean;
+    this.rewriteEnabled = configService.get<boolean>(
+      'rag.retrieval.queryRewriteEnabled',
+      true,
+    ) as boolean;
     this.hydeEnabled = configService.get<boolean>('rag.retrieval.hydeEnabled', false) as boolean;
-    this.decomposeEnabled = configService.get<boolean>('rag.retrieval.queryDecomposeEnabled', false) as boolean;
+    this.decomposeEnabled = configService.get<boolean>(
+      'rag.retrieval.queryDecomposeEnabled',
+      false,
+    ) as boolean;
   }
 
   async plan(query: string, topKPerLane = 20): Promise<RetrievalPlan> {
@@ -190,9 +195,7 @@ export class RetrievalPlannerService {
     // Decompose variant -- multi_part class only, gated by flag
     if (queryClass === 'multi_part' && this.decomposeEnabled) {
       const subqueries = await this.queryVariant.decompose(query);
-      const dedupedSubs = subqueries.filter(
-        (sub) => !variants.some((v) => v.query === sub),
-      );
+      const dedupedSubs = subqueries.filter((sub) => !variants.some((v) => v.query === sub));
       if (dedupedSubs.length > 0) {
         for (const sub of dedupedSubs) {
           variants.push({ kind: 'subquery', query: sub });

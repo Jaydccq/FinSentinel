@@ -7,12 +7,14 @@ Source: [docs/exec-plans/2026-04-24-deferred-followups.md §F-4](./2026-04-24-de
 ## What landed (outbox slice)
 
 ### DB shape
+
 - New `DocumentStatus.PENDING_UPLOAD` enum entry in
   `packages/shared/src/enums/document-status.ts`. The `documents.status`
   column is a plain `varchar(50)` with no CHECK constraint — no
   migration needed.
 
 ### Service flow
+
 `DocumentUploadService.upload` now follows the outbox order:
 
 ```
@@ -24,6 +26,7 @@ update documents.status = PENDING            ← promote, ready for vectorize
 ```
 
 Failure paths:
+
 - **DB insert fails**: storage is never touched → nothing to clean up.
   (Previously: storage had already written; a compensating
   `storage.delete` fired from the catch block — which silently failed
@@ -33,7 +36,9 @@ Failure paths:
   never succeeded.
 
 ### Tests
+
 Updated `apps/api/src/document/__tests__/document-upload.service.spec.ts`:
+
 - Old "compensation delete" test superseded by two new cases:
   - `F-4 outbox: DB insert fails before storage is touched`
   - `F-4 outbox: storage failure marks the row FAILED`
@@ -41,6 +46,7 @@ Updated `apps/api/src/document/__tests__/document-upload.service.spec.ts`:
 ## Updates post-slice
 
 ### DocumentReconcilerService — landed 2026-04-24
+
 See commit `a6dd100` / `b37fa04` merge. Cron @EVERY_10_MINUTES scans
 for PENDING_UPLOAD rows older than 60min, uses the new
 `storage.head(key)` to decide between promote-to-PENDING and delete.
@@ -50,6 +56,7 @@ HeadObjectCommand) + stubbed on Google Drive cold tier.
 ### Presigned URL direct upload — backend + web helper landed 2026-04-24
 
 **Backend (this PR):**
+
 - `StorageService.createPresignedUploadUrl(key, contentType, ttlSeconds)`
   — optional interface method. RustFS impl via
   `@aws-sdk/s3-request-presigner`, 15-min TTL default.
@@ -63,6 +70,7 @@ HeadObjectCommand) + stubbed on Google Drive cold tier.
   `POST /documents/:id/finalize` → `finalizeDirectUpload`
 
 **Web (this PR):**
+
 - `documentsApi.uploadDirect(file, docType, sector, regionId)` in
   `apps/web/src/api/documents.ts` — three-step flow wrapper. Callers
   can drop it in for large files; the old multipart `upload()` stays
@@ -76,10 +84,10 @@ HeadObjectCommand) + stubbed on Google Drive cold tier.
 
 ## Verification
 
-| Check | Result |
-|-------|--------|
-| `pnpm --filter @finsentinel/api build` | 0 TS issues |
-| `pnpm --filter @finsentinel/shared build` | 0 TS issues |
+| Check                                                  | Result      |
+| ------------------------------------------------------ | ----------- |
+| `pnpm --filter @finsentinel/api build`                 | 0 TS issues |
+| `pnpm --filter @finsentinel/shared build`              | 0 TS issues |
 | `pnpm --filter @finsentinel/api test` (document suite) | 1570 passed |
 
 ## Progress log

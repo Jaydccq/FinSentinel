@@ -18,7 +18,12 @@ export class TableChunker {
       const [header, separator, ...rows] = input.text.split(/\n/);
       // If the table doesn't look like a markdown table (missing header or
       // separator row), or fits in the chunk budget, emit it as-is.
-      if (!header || !separator || rows.length === 0 || input.text.length <= this.config.chunkSize) {
+      if (
+        !header ||
+        !separator ||
+        rows.length === 0 ||
+        input.text.length <= this.config.chunkSize
+      ) {
         output.push(input);
         continue;
       }

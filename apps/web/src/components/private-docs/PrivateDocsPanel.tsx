@@ -10,7 +10,10 @@ export function PrivateDocsPanel() {
 
   useEffect(() => {
     if (!available) return;
-    privateDocs.list().then(setDocs).catch((e) => setStatus(`List failed: ${e}`));
+    privateDocs
+      .list()
+      .then(setDocs)
+      .catch((e) => setStatus(`List failed: ${e}`));
   }, [available]);
 
   if (!available) {
@@ -60,9 +63,7 @@ export function PrivateDocsPanel() {
         {docs.map((d) => (
           <li key={d.id} className="flex items-center justify-between">
             <span>{d.file_name}</span>
-            <span className="text-xs text-muted-foreground">
-              {d.page_count ?? '?'} pages
-            </span>
+            <span className="text-xs text-muted-foreground">{d.page_count ?? '?'} pages</span>
           </li>
         ))}
       </ul>

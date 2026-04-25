@@ -41,9 +41,7 @@ export class WatchlistController {
 
   /** GET /watchlist — return all of the current user's categories with items. */
   @Get()
-  async list(
-    @CurrentUser() user: CurrentUserPayload,
-  ): Promise<WatchlistOverviewResponse> {
+  async list(@CurrentUser() user: CurrentUserPayload): Promise<WatchlistOverviewResponse> {
     return this.service.getWatchlist(user.userId);
   }
 

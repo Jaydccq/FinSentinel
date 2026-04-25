@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { executionReviewLedgerSchema, executionReviewLedgerStatusSchema } from '../schemas/execution-ledger';
+import {
+  executionReviewLedgerSchema,
+  executionReviewLedgerStatusSchema,
+} from '../schemas/execution-ledger';
 
 describe('executionReviewLedgerSchema', () => {
   it('parses a staged ledger record', () => {
@@ -20,7 +23,16 @@ describe('executionReviewLedgerSchema', () => {
   });
 
   it('accepts all eight lifecycle statuses', () => {
-    for (const status of ['DRAFTED','STAGED','COMMITTED','APPROVED','DISPATCHED','EXECUTED','REJECTED','FAILED']) {
+    for (const status of [
+      'DRAFTED',
+      'STAGED',
+      'COMMITTED',
+      'APPROVED',
+      'DISPATCHED',
+      'EXECUTED',
+      'REJECTED',
+      'FAILED',
+    ]) {
       expect(executionReviewLedgerStatusSchema.parse(status)).toBe(status);
     }
   });

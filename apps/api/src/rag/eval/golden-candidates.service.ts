@@ -4,12 +4,7 @@ import type { ConfigType } from '@nestjs/config';
 import { randomBytes } from 'node:crypto';
 import { rename, writeFile, access } from 'node:fs/promises';
 import { resolve, basename } from 'node:path';
-import {
-  agentEvents,
-  chatMessages,
-  documentChunks,
-  sql,
-} from '@finsentinel/db';
+import { agentEvents, chatMessages, documentChunks, sql } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import { aiConfig } from '../../config/ai.config';
 
@@ -177,7 +172,7 @@ export class GoldenCandidatesService {
     if (entries.length === 0) {
       this.logger.warn(
         'fromAgentEvents: no entries with payload_json.query found in ' +
-        'CHAT_SESSION/AGENT_BRAIN events — skipping agent_events source',
+          'CHAT_SESSION/AGENT_BRAIN events — skipping agent_events source',
       );
     }
 
@@ -277,11 +272,7 @@ export class GoldenCandidatesService {
       let strataIdx = 0;
       while (allChunks.length < effectiveLimit && anyRemaining) {
         anyRemaining = false;
-        for (
-          let round = 0;
-          round < strataCount && allChunks.length < effectiveLimit;
-          round++
-        ) {
+        for (let round = 0; round < strataCount && allChunks.length < effectiveLimit; round++) {
           const idx = (strataIdx + round) % strataCount;
           const reserve = reservePerStratum[idx]!;
           if (reserve.length > 0) {
@@ -363,8 +354,8 @@ export class GoldenCandidatesService {
 
     this.logger.log(
       `buildDraft: ${chatEntries.length} from chat_messages, ` +
-      `${eventEntries.length} from agent_events, ` +
-      `${chunkEntries.length} from reverse_from_chunk — total ${all.length}`,
+        `${eventEntries.length} from agent_events, ` +
+        `${chunkEntries.length} from reverse_from_chunk — total ${all.length}`,
     );
 
     if (dryRun) {
@@ -391,7 +382,11 @@ export class GoldenCandidatesService {
 
     try {
       const raw = await this.llm.generate(systemPrompt, content.substring(0, 800));
-      const lines = raw.trim().split('\n').map((l) => l.trim()).filter(Boolean);
+      const lines = raw
+        .trim()
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
 
       const question = lines[0] ?? '';
       const rawClass = (lines[1] ?? '').toLowerCase().trim() as QueryClass;

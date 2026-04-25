@@ -54,7 +54,9 @@ function getProviderDefaults(provider: AiProvider) {
   };
 }
 
-export function createOpenAICompatibleModel(options: OpenAICompatibleModelOptions): Model<'openai-completions'> {
+export function createOpenAICompatibleModel(
+  options: OpenAICompatibleModelOptions,
+): Model<'openai-completions'> {
   const provider = options.provider ?? 'openrouter';
   const defaults = getProviderDefaults(provider);
 
@@ -73,7 +75,9 @@ export function createOpenAICompatibleModel(options: OpenAICompatibleModelOption
   };
 }
 
-export function createOpenRouterModel(options: OpenRouterModelOptions): Model<'openai-completions'> {
+export function createOpenRouterModel(
+  options: OpenRouterModelOptions,
+): Model<'openai-completions'> {
   return createOpenAICompatibleModel({ ...options, provider: 'openrouter' });
 }
 

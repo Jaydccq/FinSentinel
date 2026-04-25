@@ -18,9 +18,7 @@ import { OwnershipDataService } from './ownership-data.service';
 import { MarketDataController } from './market-data.controller';
 import type { MarketDataProvider } from './interfaces/market-data-provider';
 
-function isMarketDataProvider(
-  provider: MarketDataProvider | null,
-): provider is MarketDataProvider {
+function isMarketDataProvider(provider: MarketDataProvider | null): provider is MarketDataProvider {
   return provider !== null;
 }
 
@@ -89,11 +87,7 @@ function isMarketDataProvider(
         );
         return providers;
       },
-      inject: [
-        PolygonMarketDataProvider,
-        FmpMarketDataProvider,
-        YahooFinanceMarketDataProvider,
-      ],
+      inject: [PolygonMarketDataProvider, FmpMarketDataProvider, YahooFinanceMarketDataProvider],
     },
 
     MarketDataProviderRegistry,

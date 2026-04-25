@@ -48,17 +48,21 @@ export class PortfolioInsightsService {
     const sectorCount = Object.keys(analytics.sectorAllocation).length;
 
     const concentrationPenalty =
-      analytics.hhiIndex >= 2500 ? 35
-      : analytics.hhiIndex >= 1500 ? 22
-      : analytics.hhiIndex >= 1000 ? 12
-      : 4;
-    const topHoldingPenalty =
-      topWeight >= 40 ? 20 : topWeight >= 25 ? 12 : topWeight >= 15 ? 6 : 0;
+      analytics.hhiIndex >= 2500
+        ? 35
+        : analytics.hhiIndex >= 1500
+          ? 22
+          : analytics.hhiIndex >= 1000
+            ? 12
+            : 4;
+    const topHoldingPenalty = topWeight >= 40 ? 20 : topWeight >= 25 ? 12 : topWeight >= 15 ? 6 : 0;
     const warningPenalty = Math.min(analytics.concentrationWarnings.length * 8, 20);
     const diversificationPenalty = sectorCount <= 2 ? 10 : 0;
     const riskScore = Math.min(
       100,
-      Math.round(20 + concentrationPenalty + topHoldingPenalty + warningPenalty + diversificationPenalty),
+      Math.round(
+        20 + concentrationPenalty + topHoldingPenalty + warningPenalty + diversificationPenalty,
+      ),
     );
 
     // ── Event context (may fail gracefully) ─────────────────────────
@@ -67,11 +71,14 @@ export class PortfolioInsightsService {
     try {
       const topSymbols = sortedByWeight.slice(0, MAX_EVENT_HOLDINGS).map((h) => h.symbol);
       const newsResults = await Promise.allSettled(
-        topSymbols.map((symbol) => this.newsAnalysisService.getRecentNews(symbol, NEWS_LOOKBACK_DAYS)),
+        topSymbols.map((symbol) =>
+          this.newsAnalysisService.getRecentNews(symbol, NEWS_LOOKBACK_DAYS),
+        ),
       );
 
       // If ALL news fetches rejected, mark as degraded
-      const allRejected = newsResults.length > 0 && newsResults.every((r) => r.status === 'rejected');
+      const allRejected =
+        newsResults.length > 0 && newsResults.every((r) => r.status === 'rejected');
       if (allRejected) {
         eventsFailed = true;
       }
@@ -104,7 +111,12 @@ export class PortfolioInsightsService {
 
     // ── Narration (deterministic in Phase 1) ────────────────────────
     const narration = this.buildDeterministicNarration(
-      topHolding, topWeight, sectorCount, analytics.hhiClassification, holdingCount, relevantEvents,
+      topHolding,
+      topWeight,
+      sectorCount,
+      analytics.hhiClassification,
+      holdingCount,
+      relevantEvents,
     );
 
     const freshness = eventsFailed ? 'degraded' : 'full';

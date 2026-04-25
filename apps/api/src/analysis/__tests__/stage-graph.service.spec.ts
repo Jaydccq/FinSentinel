@@ -17,7 +17,11 @@ describe('StageGraphService', () => {
   });
 
   it('honours explicit enabledTeams override', () => {
-    const nodes = graph.build({ preset: 'EXECUTION_READY', researchDepth: 'STANDARD', enabledTeams: ['INTELLIGENCE', 'RISK'] });
+    const nodes = graph.build({
+      preset: 'EXECUTION_READY',
+      researchDepth: 'STANDARD',
+      enabledTeams: ['INTELLIGENCE', 'RISK'],
+    });
     expect(nodes.find((n) => n.stageKey === 'THESIS')?.status).toBe('SKIPPED');
   });
 

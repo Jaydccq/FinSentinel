@@ -30,10 +30,8 @@ interface EdgarSearchResult {
 export class SecEdgarScraper {
   private readonly logger = new Logger(SecEdgarScraper.name);
 
-  private static readonly EDGAR_SEARCH_URL =
-    'https://efts.sec.gov/LATEST/search-index';
-  private static readonly USER_AGENT =
-    'FinSentinel/1.0 (contact@finsentinel.com)';
+  private static readonly EDGAR_SEARCH_URL = 'https://efts.sec.gov/LATEST/search-index';
+  private static readonly USER_AGENT = 'FinSentinel/1.0 (contact@finsentinel.com)';
   private static readonly FORMS = '10-K,10-Q,8-K';
 
   constructor(
@@ -89,9 +87,7 @@ export class SecEdgarScraper {
     const data = (await response.json()) as EdgarSearchResult;
     const hits = data.hits?.hits ?? [];
 
-    this.logger.log(
-      `SEC EDGAR found ${hits.length} filings for ${ticker}`,
-    );
+    this.logger.log(`SEC EDGAR found ${hits.length} filings for ${ticker}`);
 
     let savedCount = 0;
 

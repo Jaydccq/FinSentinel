@@ -18,8 +18,7 @@ import type {
  * Implements the Alpaca-backed trading engine.
  */
 export class AlpacaTradingEngine implements TradingEngine {
-  private static readonly DEFAULT_BASE_URL =
-    'https://paper-api.alpaca.markets';
+  private static readonly DEFAULT_BASE_URL = 'https://paper-api.alpaca.markets';
 
   private readonly baseUrl: string;
 
@@ -47,8 +46,7 @@ export class AlpacaTradingEngine implements TradingEngine {
 
       return this.parseOrderNode(node);
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : String(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return {
         success: false,
         orderId: '',
@@ -96,9 +94,7 @@ export class AlpacaTradingEngine implements TradingEngine {
 
   async syncOrders(): Promise<OrderResult[]> {
     try {
-      const response = await this.sendGet(
-        '/v2/orders?status=open&limit=50',
-      );
+      const response = await this.sendGet('/v2/orders?status=open&limit=50');
       const array = (await response.json()) as Record<string, unknown>[];
 
       return array.map((node) => this.parseOrderNode(node));
@@ -172,17 +168,11 @@ export class AlpacaTradingEngine implements TradingEngine {
   // Order parsing
   // ---------------------------------------------------------------------------
 
-  private parseOrderNode(
-    node: Record<string, unknown>,
-  ): OrderResult {
+  private parseOrderNode(node: Record<string, unknown>): OrderResult {
     const filledAvgPrice =
-      node['filled_avg_price'] != null
-        ? String(node['filled_avg_price'])
-        : '0';
-    const filledQty =
-      node['filled_qty'] != null ? String(node['filled_qty']) : '0';
-    const filledAt =
-      node['filled_at'] != null ? String(node['filled_at']) : undefined;
+      node['filled_avg_price'] != null ? String(node['filled_avg_price']) : '0';
+    const filledQty = node['filled_qty'] != null ? String(node['filled_qty']) : '0';
+    const filledAt = node['filled_at'] != null ? String(node['filled_at']) : undefined;
 
     return {
       success: true,
@@ -218,10 +208,7 @@ export class AlpacaTradingEngine implements TradingEngine {
     return response;
   }
 
-  private async sendPost(
-    path: string,
-    body: Record<string, unknown>,
-  ): Promise<Response> {
+  private async sendPost(path: string, body: Record<string, unknown>): Promise<Response> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: 'POST',
       headers: {
@@ -245,9 +232,7 @@ export class AlpacaTradingEngine implements TradingEngine {
 
   private checkStatus(response: Response): void {
     if (!response.ok) {
-      throw new Error(
-        `Alpaca API error ${response.status}: ${response.statusText}`,
-      );
+      throw new Error(`Alpaca API error ${response.status}: ${response.statusText}`);
     }
   }
 
@@ -258,9 +243,7 @@ export class AlpacaTradingEngine implements TradingEngine {
   /**
    * Builds the JSON body for the Alpaca POST /v2/orders endpoint.
    */
-  private buildOrderBody(
-    req: OrderRequest,
-  ): Record<string, unknown> {
+  private buildOrderBody(req: OrderRequest): Record<string, unknown> {
     const body: Record<string, unknown> = {
       symbol: req.symbol,
       side: req.side,

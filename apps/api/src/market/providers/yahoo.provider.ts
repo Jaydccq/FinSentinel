@@ -160,8 +160,7 @@ export class YahooFinanceMarketDataProvider implements MarketDataProvider {
     interval: string,
   ): Promise<YahooChartResult> {
     const url =
-      `${this.baseUrl}/v8/finance/chart/${ticker}` +
-      `?interval=${interval}&range=${range}`;
+      `${this.baseUrl}/v8/finance/chart/${ticker}` + `?interval=${interval}&range=${range}`;
 
     this.logger.debug(`Yahoo chart request: ${url}`);
 
@@ -172,17 +171,13 @@ export class YahooFinanceMarketDataProvider implements MarketDataProvider {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Yahoo Finance API error: ${response.status} ${response.statusText}`,
-      );
+      throw new Error(`Yahoo Finance API error: ${response.status} ${response.statusText}`);
     }
 
     const data = (await response.json()) as YahooChartResponse;
 
     if (data.chart.error) {
-      throw new Error(
-        `Yahoo Finance error: ${data.chart.error.description}`,
-      );
+      throw new Error(`Yahoo Finance error: ${data.chart.error.description}`);
     }
 
     if (!data.chart.result || data.chart.result.length === 0) {

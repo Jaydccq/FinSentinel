@@ -12,10 +12,9 @@ import { QuantAnalysisService } from '../quant-analysis.service';
  * Prices: start at 100, grow ~0.5% per day with small perturbations.
  */
 const PRICES_40: number[] = [
-  100, 100.5, 101.2, 100.8, 101.5, 102.0, 101.7, 102.5, 103.0, 102.8,
-  103.5, 104.0, 103.6, 104.2, 104.8, 105.5, 105.0, 105.8, 106.3, 106.0,
-  106.8, 107.2, 107.0, 107.5, 108.0, 108.5, 108.2, 109.0, 109.5, 109.2,
-  110.0, 110.5, 110.2, 111.0, 111.5, 112.0, 111.5, 112.5, 113.0, 113.5,
+  100, 100.5, 101.2, 100.8, 101.5, 102.0, 101.7, 102.5, 103.0, 102.8, 103.5, 104.0, 103.6, 104.2,
+  104.8, 105.5, 105.0, 105.8, 106.3, 106.0, 106.8, 107.2, 107.0, 107.5, 108.0, 108.5, 108.2, 109.0,
+  109.5, 109.2, 110.0, 110.5, 110.2, 111.0, 111.5, 112.0, 111.5, 112.5, 113.0, 113.5,
 ];
 
 /** Only 10 prices — below the 30-point minimum. */
@@ -27,10 +26,9 @@ const PRICES_TOO_FEW: number[] = [100, 101, 102, 103, 104, 105, 106, 107, 108, 1
  * Max drawdown = (96 - 120) / 120 = -0.2 (20%).
  */
 const PRICES_WITH_DRAWDOWN: number[] = [
-  100, 102, 104, 106, 108, 110, 112, 114, 116, 118,
-  120, 118, 116, 114, 110, 106, 102, 98,  96,  98,
-  100, 102, 104, 106, 108, 110, 112, 113, 114, 115,
-  115, 114, 113, 112, 113, 114, 115, 114, 115, 115,
+  100, 102, 104, 106, 108, 110, 112, 114, 116, 118, 120, 118, 116, 114, 110, 106, 102, 98, 96, 98,
+  100, 102, 104, 106, 108, 110, 112, 113, 114, 115, 115, 114, 113, 112, 113, 114, 115, 114, 115,
+  115,
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -71,15 +69,11 @@ describe('QuantAnalysisService', () => {
 
   describe('calculateReturnStatistics', () => {
     it('throws BadRequestException when fewer than 30 data points', () => {
-      expect(() => service.calculateReturnStatistics(PRICES_TOO_FEW)).toThrow(
-        BadRequestException,
-      );
+      expect(() => service.calculateReturnStatistics(PRICES_TOO_FEW)).toThrow(BadRequestException);
     });
 
     it('throws BadRequestException for empty array', () => {
-      expect(() => service.calculateReturnStatistics([])).toThrow(
-        BadRequestException,
-      );
+      expect(() => service.calculateReturnStatistics([])).toThrow(BadRequestException);
     });
 
     it('returns correct mean and standard deviation of log returns', () => {
@@ -99,10 +93,7 @@ describe('QuantAnalysisService', () => {
       const expectedStd = stddev(returns);
 
       expect(result.annualizedReturn).toBeCloseTo(expectedMean * 252, 6);
-      expect(result.annualizedVolatility).toBeCloseTo(
-        expectedStd * Math.sqrt(252),
-        6,
-      );
+      expect(result.annualizedVolatility).toBeCloseTo(expectedStd * Math.sqrt(252), 6);
     });
 
     it('returns correct Sharpe ratio', () => {
@@ -150,9 +141,7 @@ describe('QuantAnalysisService', () => {
 
   describe('calculateValueAtRisk', () => {
     it('throws BadRequestException when fewer than 30 data points', () => {
-      expect(() => service.calculateValueAtRisk(PRICES_TOO_FEW)).toThrow(
-        BadRequestException,
-      );
+      expect(() => service.calculateValueAtRisk(PRICES_TOO_FEW)).toThrow(BadRequestException);
     });
 
     it('calculates parametric VaR at 95% and 99% confidence', () => {
@@ -188,9 +177,7 @@ describe('QuantAnalysisService', () => {
 
   describe('calculateVolatilityRegime', () => {
     it('throws BadRequestException when fewer than 30 data points', () => {
-      expect(() =>
-        service.calculateVolatilityRegime(PRICES_TOO_FEW),
-      ).toThrow(BadRequestException);
+      expect(() => service.calculateVolatilityRegime(PRICES_TOO_FEW)).toThrow(BadRequestException);
     });
 
     it('returns current and historical volatility as positive numbers', () => {

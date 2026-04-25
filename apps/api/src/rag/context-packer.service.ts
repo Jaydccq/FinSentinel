@@ -23,15 +23,10 @@ export class ContextPackerService {
   private static readonly DEFAULT_MAX_TOKENS = 4096;
   private static readonly DEFAULT_MAX_CHUNKS_PER_SOURCE = 3;
 
-  pack(
-    candidates: RerankedCandidate[],
-    options: PackingOptions = {},
-  ): PackedContext {
-    const maxTokens =
-      options.maxTokens ?? ContextPackerService.DEFAULT_MAX_TOKENS;
+  pack(candidates: RerankedCandidate[], options: PackingOptions = {}): PackedContext {
+    const maxTokens = options.maxTokens ?? ContextPackerService.DEFAULT_MAX_TOKENS;
     const maxPerSource =
-      options.maxChunksPerSource ??
-      ContextPackerService.DEFAULT_MAX_CHUNKS_PER_SOURCE;
+      options.maxChunksPerSource ?? ContextPackerService.DEFAULT_MAX_CHUNKS_PER_SOURCE;
 
     // Dedup by chunkId
     const seen = new Set<string>();

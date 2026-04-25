@@ -18,10 +18,16 @@ import { RetrievalPlannerService } from './retrieval-planner.service';
 import { QueryVariantService } from './query-variant.service';
 import { GraphRetrievalService } from './graph-retrieval.service';
 import { GoldenCandidatesService, GOLDEN_LLM_CLIENT } from './eval/golden-candidates.service';
-import { ChunkRepresentationService, REPRESENTATION_LLM_CLIENT } from './chunk-representation.service';
+import {
+  ChunkRepresentationService,
+  REPRESENTATION_LLM_CLIENT,
+} from './chunk-representation.service';
 import { RepresentationAdminService } from './admin/representation-admin.service';
 import { MetadataPreFilterService } from './metadata-pre-filter.service';
-import { QueryEntityExtractorService, METADATA_ENTITY_LLM_CLIENT } from './query-entity-extractor.service';
+import {
+  QueryEntityExtractorService,
+  METADATA_ENTITY_LLM_CLIENT,
+} from './query-entity-extractor.service';
 import { ContextExpanderService } from './context-expander.service';
 import { RagTraceService } from './rag-trace.service';
 import { RagTraceRetentionService } from './rag-trace-retention.service';
@@ -122,11 +128,18 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
     },
     {
       provide: MetadataPreFilterService,
-      useFactory: (configService: ConfigService) => new MetadataPreFilterService({
-        mode: configService.get<'off' | 'soft' | 'hard'>('rag.metadataPrefilter.mode', 'soft'),
-        hardMinConfidence: configService.get<number>('rag.metadataPrefilter.hardMinConfidence', 0.85),
-        minCandidatesByClass: configService.get<Record<string, number>>('rag.metadataPrefilter.minCandidatesByClass', {}),
-      }),
+      useFactory: (configService: ConfigService) =>
+        new MetadataPreFilterService({
+          mode: configService.get<'off' | 'soft' | 'hard'>('rag.metadataPrefilter.mode', 'soft'),
+          hardMinConfidence: configService.get<number>(
+            'rag.metadataPrefilter.hardMinConfidence',
+            0.85,
+          ),
+          minCandidatesByClass: configService.get<Record<string, number>>(
+            'rag.metadataPrefilter.minCandidatesByClass',
+            {},
+          ),
+        }),
       inject: [ConfigService],
     },
     {
@@ -156,32 +169,44 @@ import type { LlmTextClient } from './eval/golden-candidates.service';
       useFactory: (
         configService: ConfigService,
         llmClient: { complete: (prompt: string) => Promise<string> },
-      ) => new QueryEntityExtractorService({
-        llmFallbackEnabled: configService.get<boolean>('rag.metadataPrefilter.llmFallbackEnabled', false),
-        llmClient: configService.get<boolean>('rag.metadataPrefilter.llmFallbackEnabled', false)
-          ? llmClient
-          : null,
-        hardMinConfidence: configService.get<number>('rag.metadataPrefilter.hardMinConfidence', 0.85),
-        timeoutMs: configService.get<number>('rag.metadataPrefilter.llmTimeoutMs', 1500),
-        concurrency: configService.get<number>('rag.metadataPrefilter.llmConcurrency', 4),
-      }),
+      ) =>
+        new QueryEntityExtractorService({
+          llmFallbackEnabled: configService.get<boolean>(
+            'rag.metadataPrefilter.llmFallbackEnabled',
+            false,
+          ),
+          llmClient: configService.get<boolean>('rag.metadataPrefilter.llmFallbackEnabled', false)
+            ? llmClient
+            : null,
+          hardMinConfidence: configService.get<number>(
+            'rag.metadataPrefilter.hardMinConfidence',
+            0.85,
+          ),
+          timeoutMs: configService.get<number>('rag.metadataPrefilter.llmTimeoutMs', 1500),
+          concurrency: configService.get<number>('rag.metadataPrefilter.llmConcurrency', 4),
+        }),
       inject: [ConfigService, METADATA_ENTITY_LLM_CLIENT],
     },
     {
       provide: RolloutGateService,
-      useFactory: (configService: ConfigService) => new RolloutGateService({
-        percentByClass: configService.get<Record<string, number>>('rag.rollout.canaryPercentByClass', {}),
-        anonMultiplier: configService.get<number>('rag.rollout.anonMultiplier', 0.5),
-      }),
+      useFactory: (configService: ConfigService) =>
+        new RolloutGateService({
+          percentByClass: configService.get<Record<string, number>>(
+            'rag.rollout.canaryPercentByClass',
+            {},
+          ),
+          anonMultiplier: configService.get<number>('rag.rollout.anonMultiplier', 0.5),
+        }),
       inject: [ConfigService],
     },
     {
       provide: ShadowRunnerService,
-      useFactory: (configService: ConfigService) => new ShadowRunnerService({
-        concurrency: configService.get<number>('rag.rollout.shadowConcurrency', 4),
-        maxQueueDepth: configService.get<number>('rag.rollout.shadowMaxQueueDepth', 200),
-        timeoutMs: configService.get<number>('rag.rollout.shadowTimeoutMs', 2000),
-      }),
+      useFactory: (configService: ConfigService) =>
+        new ShadowRunnerService({
+          concurrency: configService.get<number>('rag.rollout.shadowConcurrency', 4),
+          maxQueueDepth: configService.get<number>('rag.rollout.shadowMaxQueueDepth', 200),
+          timeoutMs: configService.get<number>('rag.rollout.shadowTimeoutMs', 2000),
+        }),
       inject: [ConfigService],
     },
     ContextExpanderService,

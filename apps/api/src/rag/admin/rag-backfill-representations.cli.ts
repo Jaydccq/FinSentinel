@@ -118,8 +118,7 @@ function parseArgs(argv: string[]): BackfillArgs {
       args.sourceId = argv[++i];
     } else if (arg.startsWith('--')) {
       console.error(
-        `Error: unrecognized flag: ${arg}\n` +
-        `Known flags: ${[...KNOWN_FLAGS].join(', ')}`,
+        `Error: unrecognized flag: ${arg}\n` + `Known flags: ${[...KNOWN_FLAGS].join(', ')}`,
       );
       process.exit(1);
     }
@@ -134,8 +133,8 @@ async function main() {
   if (!process.env['DATABASE_URL']) {
     console.error(
       'Error: DATABASE_URL environment variable is not set.\n' +
-      'Set it to your local Postgres connection string, e.g.:\n' +
-      '  DATABASE_URL=postgresql://user:pass@localhost:5432/finsentinel',
+        'Set it to your local Postgres connection string, e.g.:\n' +
+        '  DATABASE_URL=postgresql://user:pass@localhost:5432/finsentinel',
     );
     process.exit(1);
   }
@@ -147,8 +146,8 @@ async function main() {
   if (!enrichmentEnabled && !cliArgs.dryRun) {
     console.error(
       'Error: RAG_ENRICHMENT_ENABLED=false — enrichment is globally disabled.\n' +
-      'Pass --dry-run to preview the plan without enqueueing, or set\n' +
-      'RAG_ENRICHMENT_ENABLED=true to enable actual enrichment.',
+        'Pass --dry-run to preview the plan without enqueueing, or set\n' +
+        'RAG_ENRICHMENT_ENABLED=true to enable actual enrichment.',
     );
     process.exit(1);
   }
@@ -194,10 +193,14 @@ async function main() {
     console.log('rag:backfill:representations');
     console.log('----------------------------');
     console.log(`Chunks to enqueue  : ${totalCount}`);
-    console.log(`Current version    : ${process.env['CURRENT_REPRESENTATION_VERSION'] ?? 'rep-v1.0'}`);
+    console.log(
+      `Current version    : ${process.env['CURRENT_REPRESENTATION_VERSION'] ?? 'rep-v1.0'}`,
+    );
     console.log(`LLM calls          : ${costEstimate.llmCalls}`);
     console.log(`Embedding calls    : ${costEstimate.embeddingCalls}`);
-    console.log(`Estimated cost     : $${costEstimate.estimatedUsd.toFixed(4)} USD (rough estimate; see service header)`);
+    console.log(
+      `Estimated cost     : $${costEstimate.estimatedUsd.toFixed(4)} USD (rough estimate; see service header)`,
+    );
     console.log('');
 
     if (bySource.size > 0 && bySource.size <= 20) {

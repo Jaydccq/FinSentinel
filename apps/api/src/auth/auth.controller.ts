@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  Res,
-  Headers,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Post, Body, Res, Headers, HttpCode, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { registerRequestSchema, loginRequestSchema } from '@finsentinel/shared';

@@ -130,7 +130,12 @@ describe('WatchlistService', () => {
       categoryDescription: '电力',
       categorySummary: '先看核电和独立发电商。',
       items: [
-        { symbol: 'ceg', companyName: 'Constellation Energy', thesis: '核电资产稀缺', priority: 90 },
+        {
+          symbol: 'ceg',
+          companyName: 'Constellation Energy',
+          thesis: '核电资产稀缺',
+          priority: 90,
+        },
         { symbol: 'CEG', notes: '回调关注' },
       ],
     });

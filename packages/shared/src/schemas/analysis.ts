@@ -3,12 +3,7 @@ import { orderDraftsPayloadSchema } from './order-draft';
 import { strategyArchivePayloadSchema } from './strategy';
 
 // ── Enums ────────────────────────────────────────────────────────────────────
-export const analysisRunSourceModeSchema = z.enum([
-  'CHAT',
-  'WORKSPACE',
-  'SCHEDULE',
-  'HEARTBEAT',
-]);
+export const analysisRunSourceModeSchema = z.enum(['CHAT', 'WORKSPACE', 'SCHEDULE', 'HEARTBEAT']);
 export type AnalysisRunSourceMode = z.infer<typeof analysisRunSourceModeSchema>;
 
 export const analysisRunStatusSchema = z.enum([
@@ -31,13 +26,7 @@ export const analysisStageKeySchema = z.enum([
 ]);
 export type AnalysisStageKey = z.infer<typeof analysisStageKeySchema>;
 
-export const stageStatusSchema = z.enum([
-  'PENDING',
-  'RUNNING',
-  'COMPLETED',
-  'FAILED',
-  'SKIPPED',
-]);
+export const stageStatusSchema = z.enum(['PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'SKIPPED']);
 export type StageStatus = z.infer<typeof stageStatusSchema>;
 
 export const artifactKindSchema = z.enum([
@@ -51,12 +40,7 @@ export const artifactKindSchema = z.enum([
 ]);
 export type ArtifactKind = z.infer<typeof artifactKindSchema>;
 
-export const approvalStatusSchema = z.enum([
-  'PENDING',
-  'APPROVED',
-  'REJECTED',
-  'EXPIRED',
-]);
+export const approvalStatusSchema = z.enum(['PENDING', 'APPROVED', 'REJECTED', 'EXPIRED']);
 export type ApprovalStatus = z.infer<typeof approvalStatusSchema>;
 
 export const analysisPresetSchema = z.enum([

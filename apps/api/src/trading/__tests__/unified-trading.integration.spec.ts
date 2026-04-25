@@ -35,7 +35,11 @@ async function isRedisUp(): Promise<boolean> {
     await probe.quit();
     return true;
   } catch {
-    try { await probe.disconnect(); } catch { /* swallow */ }
+    try {
+      await probe.disconnect();
+    } catch {
+      /* swallow */
+    }
     return false;
   }
 }

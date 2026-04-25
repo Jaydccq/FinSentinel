@@ -16,10 +16,7 @@ describe('authConfigFactory', () => {
     expect(cfg.cookie.secure).toBe(false);
     expect(cfg.cookie.sameSite).toBe('lax');
     expect(cfg.cookie.maxAgeMs).toBe(86400 * 1000);
-    expect(cfg.corsOrigins).toEqual([
-      'http://localhost:3000',
-      'http://localhost:5173',
-    ]);
+    expect(cfg.corsOrigins).toEqual(['http://localhost:3000', 'http://localhost:5173']);
   });
 
   it('honours secure=true and sameSite=strict', () => {
@@ -38,16 +35,11 @@ describe('authConfigFactory', () => {
     expect(cfg.cookie.secure).toBe(false); // dev default
     expect(cfg.cookie.sameSite).toBe('lax');
     expect(cfg.cookie.maxAgeMs).toBe(86400 * 1000);
-    expect(cfg.corsOrigins).toEqual([
-      'http://localhost:3000',
-      'http://localhost:5173',
-    ]);
+    expect(cfg.corsOrigins).toEqual(['http://localhost:3000', 'http://localhost:5173']);
   });
 
   it('rejects an invalid sameSite value', () => {
-    expect(() =>
-      authConfigFactory({ ...baseEnv, AUTH_COOKIE_SAMESITE: 'bogus' }),
-    ).toThrow();
+    expect(() => authConfigFactory({ ...baseEnv, AUTH_COOKIE_SAMESITE: 'bogus' })).toThrow();
   });
 
   it('passes through optional cookie domain', () => {

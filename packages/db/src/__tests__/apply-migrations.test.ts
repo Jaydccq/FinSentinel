@@ -21,25 +21,19 @@ describe('apply-migrations', () => {
     ];
     const applied = new Set([1, 3]);
     const pending = listPendingMigrations(all, applied);
-    expect(pending.map(m => m.version)).toEqual([12]);
+    expect(pending.map((m) => m.version)).toEqual([12]);
   });
 
   it('V16 migration file contains a ROLLBACK block', () => {
     const migrationsDir = join(__dirname, '../../migrations');
-    const sql = readFileSync(
-      join(migrationsDir, 'V16__add_rag_chunk_representations.sql'),
-      'utf8',
-    );
+    const sql = readFileSync(join(migrationsDir, 'V16__add_rag_chunk_representations.sql'), 'utf8');
     expect(sql).toContain('-- ROLLBACK:');
     expect(sql).toContain('DROP TABLE IF EXISTS document_chunk_representations');
   });
 
   it('V17 migration file contains a ROLLBACK block and DROP TABLE for rag_query_logs', () => {
     const migrationsDir = join(__dirname, '../../migrations');
-    const sql = readFileSync(
-      join(migrationsDir, 'V17__add_rag_query_logs.sql'),
-      'utf8',
-    );
+    const sql = readFileSync(join(migrationsDir, 'V17__add_rag_query_logs.sql'), 'utf8');
     expect(sql).toContain('-- ROLLBACK:');
     expect(sql).toContain('DROP TABLE IF EXISTS rag_query_logs');
   });

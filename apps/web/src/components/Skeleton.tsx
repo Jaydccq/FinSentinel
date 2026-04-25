@@ -1,21 +1,27 @@
-const base = 'animate-pulse rounded'
-const skeletonBg = 'bg-[#161618]'
+const base = 'animate-pulse rounded';
+const skeletonBg = 'bg-[#161618]';
 
 export function SkeletonLine({ className = '' }: { className?: string }) {
-  return <div className={`${base} ${skeletonBg} h-4 ${className}`} />
+  return <div className={`${base} ${skeletonBg} h-4 ${className}`} />;
 }
 
 export function SkeletonCard({ className = '' }: { className?: string }) {
-  return <div className={`${base} ${skeletonBg} rounded h-28 ${className}`} />
+  return <div className={`${base} ${skeletonBg} rounded h-28 ${className}`} />;
 }
 
-export function SkeletonCircle({ size = 14, className = '' }: { size?: number; className?: string }) {
+export function SkeletonCircle({
+  size = 14,
+  className = '',
+}: {
+  size?: number;
+  className?: string;
+}) {
   return (
     <div
       className={`${base} ${skeletonBg} rounded-full flex-shrink-0 ${className}`}
       style={{ width: size * 4, height: size * 4 }}
     />
-  )
+  );
 }
 
 /* --- Page-specific skeleton layouts --- */
@@ -37,7 +43,7 @@ export function DocumentListSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 export function PortfolioListSkeleton() {
@@ -54,7 +60,7 @@ export function PortfolioListSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 export function WatchlistSkeleton() {
@@ -71,7 +77,7 @@ export function WatchlistSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 export function ReportListSkeleton() {
@@ -95,7 +101,7 @@ export function ReportListSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 export function NewsListSkeleton() {
@@ -123,7 +129,7 @@ export function NewsListSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 export function StatCardsSkeleton() {
@@ -142,5 +148,5 @@ export function StatCardsSkeleton() {
         </div>
       ))}
     </div>
-  )
+  );
 }

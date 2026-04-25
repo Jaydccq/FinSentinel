@@ -7,7 +7,7 @@ Source: [docs/exec-plans/2026-04-24-deferred-followups.md §F-10](./2026-04-24-d
 
 ## Blocking dependencies
 
-F-10 cannot land production-ready without these *external* inputs.
+F-10 cannot land production-ready without these _external_ inputs.
 Everything on the engineering side is already written — the skeleton
 workflow at `.github/workflows/desktop-release.yml` has all jobs
 parked at `if: false` so it's one-line-ready to enable.
@@ -104,7 +104,7 @@ before removing the `if: false` guards.
   `bundle.active=true` and `bundle.targets: "all"`. No changes needed
   when the workflow unlocks.
 - The web build during release uses `NEXT_PUBLIC_API_BASE_URL=
-  https://api.finsentinel.example` (placeholder). Swap for the real
+https://api.finsentinel.example` (placeholder). Swap for the real
   prod origin before first signed release.
 
 ## Progress log

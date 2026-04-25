@@ -115,8 +115,7 @@ function parseArgs(argv: string[]): ReindexArgs {
       args.sourceId = argv[++i];
     } else if (arg.startsWith('--')) {
       console.error(
-        `Error: unrecognized flag: ${arg}\n` +
-        `Known flags: ${[...KNOWN_FLAGS].join(', ')}`,
+        `Error: unrecognized flag: ${arg}\n` + `Known flags: ${[...KNOWN_FLAGS].join(', ')}`,
       );
       process.exit(1);
     }
@@ -131,8 +130,8 @@ async function main() {
   if (!process.env['DATABASE_URL']) {
     console.error(
       'Error: DATABASE_URL environment variable is not set.\n' +
-      'Set it to your local Postgres connection string, e.g.:\n' +
-      '  DATABASE_URL=postgresql://user:pass@localhost:5432/finsentinel',
+        'Set it to your local Postgres connection string, e.g.:\n' +
+        '  DATABASE_URL=postgresql://user:pass@localhost:5432/finsentinel',
     );
     process.exit(1);
   }
@@ -143,8 +142,8 @@ async function main() {
   if (!cliArgs.fromVersion) {
     console.error(
       'Error: --from-version is required.\n' +
-      'Example: pnpm rag:repr:reindex --from-version rep-v1.0\n' +
-      'Chunks at or below this version will be re-enqueued.',
+        'Example: pnpm rag:repr:reindex --from-version rep-v1.0\n' +
+        'Chunks at or below this version will be re-enqueued.',
     );
     process.exit(1);
   }
@@ -153,7 +152,7 @@ async function main() {
   if (!FROM_VERSION_RE.test(cliArgs.fromVersion)) {
     console.error(
       `Error: --from-version "${cliArgs.fromVersion}" is not a valid version string.\n` +
-      'Expected format: rep-vX.Y (e.g. rep-v1.0, rep-v2.3).',
+        'Expected format: rep-vX.Y (e.g. rep-v1.0, rep-v2.3).',
     );
     process.exit(1);
   }
@@ -163,8 +162,8 @@ async function main() {
   if (!enrichmentEnabled && !cliArgs.dryRun) {
     console.error(
       'Error: RAG_ENRICHMENT_ENABLED=false — enrichment is globally disabled.\n' +
-      'Pass --dry-run to preview the plan without enqueueing, or set\n' +
-      'RAG_ENRICHMENT_ENABLED=true to enable actual enrichment.',
+        'Pass --dry-run to preview the plan without enqueueing, or set\n' +
+        'RAG_ENRICHMENT_ENABLED=true to enable actual enrichment.',
     );
     process.exit(1);
   }
@@ -177,10 +176,7 @@ async function main() {
   const service = app.get(RepresentationAdminService);
 
   try {
-    const chunks = await service.listStaleVersionChunks(
-      cliArgs.fromVersion,
-      cliArgs.limit,
-    );
+    const chunks = await service.listStaleVersionChunks(cliArgs.fromVersion, cliArgs.limit);
 
     // Apply source-type / source-id filters (post-query; listStaleVersionChunks
     // does not accept filters to keep the method signature simple)
@@ -215,7 +211,9 @@ async function main() {
     console.log(`Chunks filtered out   : ${filteredOut}`);
     console.log(`LLM calls             : ${costEstimate.llmCalls}`);
     console.log(`Embedding calls       : ${costEstimate.embeddingCalls}`);
-    console.log(`Estimated cost        : $${costEstimate.estimatedUsd.toFixed(4)} USD (rough estimate; see service header)`);
+    console.log(
+      `Estimated cost        : $${costEstimate.estimatedUsd.toFixed(4)} USD (rough estimate; see service header)`,
+    );
     console.log('');
 
     if (bySource.size > 0 && bySource.size <= 20) {

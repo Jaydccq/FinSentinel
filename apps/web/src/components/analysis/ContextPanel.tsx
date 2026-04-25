@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 interface ContextLayer {
   summary: string;
@@ -19,7 +19,9 @@ function LayerCard({ title, layer }: { title: string; layer: ContextLayer }) {
   return (
     <article className="rounded border border-slate-700 bg-slate-900/40 p-3">
       <h3 className="text-sm font-semibold">{title}</h3>
-      <p className="mt-2 text-sm whitespace-pre-wrap text-slate-200">{layer.summary || '(empty)'}</p>
+      <p className="mt-2 text-sm whitespace-pre-wrap text-slate-200">
+        {layer.summary || '(empty)'}
+      </p>
       <p className="mt-2 text-xs text-slate-400">
         {layer.sourceIds.length} source{layer.sourceIds.length === 1 ? '' : 's'}
       </p>

@@ -6,10 +6,7 @@ import type {
   StrategyTemplateEvaluation,
   StrategyTemplateKey,
 } from '@finsentinel/shared';
-import {
-  strategyArchivePayloadSchema,
-  strategyTemplateKeySchema,
-} from '@finsentinel/shared';
+import { strategyArchivePayloadSchema, strategyTemplateKeySchema } from '@finsentinel/shared';
 
 import { MarketDataService } from '../market/market-data.service';
 import { StrategyTemplateService } from '../market/strategy-template.service';
@@ -183,9 +180,7 @@ export class StrategyEvidenceService {
         }
       } catch (error) {
         degraded = true;
-        warnings.push(
-          `${TEMPLATE_FAILURE_PREFIX}${templateKey}: ${this.describeError(error)}`,
-        );
+        warnings.push(`${TEMPLATE_FAILURE_PREFIX}${templateKey}: ${this.describeError(error)}`);
       }
     }
 

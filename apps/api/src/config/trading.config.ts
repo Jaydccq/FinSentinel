@@ -1,16 +1,12 @@
 import { registerAs } from '@nestjs/config';
 
 export const tradingConfig = registerAs('trading', () => ({
-  defaultMode: (process.env['APP_TRADING_DEFAULT_MODE'] || 'PAPER') as
-    | 'PAPER'
-    | 'LIVE',
+  defaultMode: (process.env['APP_TRADING_DEFAULT_MODE'] || 'PAPER') as 'PAPER' | 'LIVE',
 
   alpaca: {
     apiKey: process.env['ALPACA_API_KEY'],
     secretKey: process.env['ALPACA_SECRET_KEY'],
-    baseUrl:
-      process.env['ALPACA_BASE_URL'] ||
-      'https://paper-api.alpaca.markets',
+    baseUrl: process.env['ALPACA_BASE_URL'] || 'https://paper-api.alpaca.markets',
   },
 
   okx: {

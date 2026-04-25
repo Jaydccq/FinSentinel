@@ -8,25 +8,27 @@
 **Approach:** Add a thin `WatchlistController` that exposes the methods the service already implements, register `WatchlistModule` in `app.module.ts`, build a typed `apps/web/src/api/watchlist.ts` client, migrate the Dashboard with auto-import of legacy `localStorage.finsentinel_watchlist`.
 
 ## Out of scope (defer)
+
 - Item-level CRUD endpoints (`PATCH /watchlist/items/:id`, `DELETE`). Service doesn't expose them yet; current Dashboard doesn't need them. Add when the UI grows fields beyond ticker.
 - Settings page redesign that exposes thesis / notes / priority editing (PRD §5.2 last paragraph).
 - Real-time multi-device sync (poll-and-revalidate is fine for V1).
 
 ## What we keep
+
 - The single "Dashboard watchlist" UX in V1 — auto-import from legacy localStorage into a category named **"Dashboard"**.
 
 ## File Map
 
-| Path | Role |
-|------|------|
-| `apps/api/src/watchlist/watchlist.controller.ts` | NEW — REST surface over the existing service. |
-| `apps/api/src/watchlist/__tests__/watchlist.controller.spec.ts` | NEW — controller spec covering GET / POST. |
-| `apps/api/src/watchlist/watchlist.module.ts` | MODIFY — register the controller. |
-| `apps/api/src/app.module.ts` | MODIFY — import `WatchlistModule`. |
-| `packages/shared/src/schemas/watchlist.ts` | MODIFY — add `saveWatchlistRequestSchema` + type. |
-| `apps/web/src/api/watchlist.ts` | NEW — fetch wrapper for GET / POST. |
-| `apps/web/src/views/DashboardPage.tsx` | MODIFY — read from server, write through, fall back to local cache, auto-import legacy localStorage on first run. |
-| `apps/web/src/api/__tests__/watchlist.test.ts` | NEW — unit test for the client. |
+| Path                                                            | Role                                                                                                              |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `apps/api/src/watchlist/watchlist.controller.ts`                | NEW — REST surface over the existing service.                                                                     |
+| `apps/api/src/watchlist/__tests__/watchlist.controller.spec.ts` | NEW — controller spec covering GET / POST.                                                                        |
+| `apps/api/src/watchlist/watchlist.module.ts`                    | MODIFY — register the controller.                                                                                 |
+| `apps/api/src/app.module.ts`                                    | MODIFY — import `WatchlistModule`.                                                                                |
+| `packages/shared/src/schemas/watchlist.ts`                      | MODIFY — add `saveWatchlistRequestSchema` + type.                                                                 |
+| `apps/web/src/api/watchlist.ts`                                 | NEW — fetch wrapper for GET / POST.                                                                               |
+| `apps/web/src/views/DashboardPage.tsx`                          | MODIFY — read from server, write through, fall back to local cache, auto-import legacy localStorage on first run. |
+| `apps/web/src/api/__tests__/watchlist.test.ts`                  | NEW — unit test for the client.                                                                                   |
 
 ## Tasks
 
@@ -35,6 +37,7 @@
 ### Task 1: shared `saveWatchlistRequestSchema`
 
 **Files:**
+
 - Modify: `packages/shared/src/schemas/watchlist.ts`
 
 - [ ] **Step 1.1 — Append to the schemas file**
@@ -79,6 +82,7 @@ git commit -m "feat(shared): add saveWatchlistRequestSchema for REST input"
 ### Task 2: `WatchlistController` with GET + POST
 
 **Files:**
+
 - Create: `apps/api/src/watchlist/watchlist.controller.ts`
 - Create: `apps/api/src/watchlist/__tests__/watchlist.controller.spec.ts`
 - Modify: `apps/api/src/watchlist/watchlist.module.ts`
@@ -100,8 +104,12 @@ describe('WatchlistController', () => {
     svc = {
       getWatchlist: vi.fn().mockResolvedValue({ categories: [] }),
       saveWatchlistItems: vi.fn().mockResolvedValue({
-        id: 'cat-1', name: 'Dashboard', key: 'dashboard',
-        description: '', summary: '', itemCount: 1,
+        id: 'cat-1',
+        name: 'Dashboard',
+        key: 'dashboard',
+        description: '',
+        summary: '',
+        itemCount: 1,
         items: [],
         createdAt: '2026-04-24T00:00:00.000Z',
         updatedAt: '2026-04-24T00:00:00.000Z',
@@ -164,9 +172,7 @@ export class WatchlistController {
 
   /** GET /watchlist — return all of the current user's categories with items. */
   @Get()
-  async list(
-    @CurrentUser() user: CurrentUserPayload,
-  ): Promise<WatchlistOverviewResponse> {
+  async list(@CurrentUser() user: CurrentUserPayload): Promise<WatchlistOverviewResponse> {
     return this.service.getWatchlist(user.userId);
   }
 
@@ -224,6 +230,7 @@ git commit -m "feat(watchlist): expose REST controller (GET + POST) and wire mod
 ### Task 3: frontend client `apps/web/src/api/watchlist.ts`
 
 **Files:**
+
 - Create: `apps/web/src/api/watchlist.ts`
 - Create: `apps/web/src/api/__tests__/watchlist.test.ts`
 
@@ -309,6 +316,7 @@ git commit -m "feat(web): watchlist API client (list + save)"
 ### Task 4: Dashboard migration
 
 **Files:**
+
 - Modify: `apps/web/src/views/DashboardPage.tsx`
 
 - [ ] **Step 4.1 — Read current loadWatchlist helpers**
@@ -324,74 +332,82 @@ The current helpers are sync (read localStorage). We replace them with an async 
 Replace the `LS_KEY`/`loadWatchlist`/`saveWatchlist` helpers with:
 
 ```ts
-const LS_KEY = 'finsentinel_watchlist'
-const SERVER_CATEGORY_NAME = 'Dashboard'
+const LS_KEY = 'finsentinel_watchlist';
+const SERVER_CATEGORY_NAME = 'Dashboard';
 
 function loadCachedTickers(): string[] {
   try {
-    const stored = typeof window !== 'undefined' && window.localStorage.getItem(LS_KEY)
+    const stored = typeof window !== 'undefined' && window.localStorage.getItem(LS_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored)
+      const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter((t): t is string => typeof t === 'string')
+        return parsed.filter((t): t is string => typeof t === 'string');
       }
     }
-  } catch { /* ignore */ }
-  return DEFAULT_TICKERS
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_TICKERS;
 }
 
 function cacheTickers(tickers: string[]) {
-  try { window.localStorage.setItem(LS_KEY, JSON.stringify(tickers)) } catch { /* ignore */ }
+  try {
+    window.localStorage.setItem(LS_KEY, JSON.stringify(tickers));
+  } catch {
+    /* ignore */
+  }
 }
 ```
 
 In the component, after the current `useState(loadWatchlist)` line, add a `useEffect` that fetches from the server, falling back to the cached value on error:
 
 ```tsx
-import { watchlistApi } from '../api/watchlist'
+import { watchlistApi } from '../api/watchlist';
 
 // inside Dashboard():
 useEffect(() => {
-  let cancelled = false
-  ;(async () => {
+  let cancelled = false;
+  (async () => {
     try {
-      const overview = await watchlistApi.list()
-      if (cancelled) return
-      const dash = overview.categories.find((c) => c.name === SERVER_CATEGORY_NAME)
+      const overview = await watchlistApi.list();
+      if (cancelled) return;
+      const dash = overview.categories.find((c) => c.name === SERVER_CATEGORY_NAME);
       if (dash && dash.items.length > 0) {
-        const symbols = dash.items.map((i) => i.symbol)
-        setWatchlist(symbols)
-        cacheTickers(symbols)
-        return
+        const symbols = dash.items.map((i) => i.symbol);
+        setWatchlist(symbols);
+        cacheTickers(symbols);
+        return;
       }
       // Server has no Dashboard category yet — auto-import legacy localStorage
       // contents (or DEFAULT_TICKERS) as a one-time bootstrap.
-      const cached = loadCachedTickers()
+      const cached = loadCachedTickers();
       if (cached.length > 0) {
         await watchlistApi.save({
           categoryName: SERVER_CATEGORY_NAME,
           items: cached.map((symbol) => ({ symbol })),
-        })
+        });
       }
     } catch {
       // Offline / unauth / error: fall back to whatever we have cached,
       // which the initial useState already populated.
     }
-  })()
-  return () => { cancelled = true }
-}, [])
+  })();
+  return () => {
+    cancelled = true;
+  };
+}, []);
 ```
 
 Replace `saveWatchlist(updated)` call sites with a write-through that updates both the server and the cache:
 
 ```ts
 async function persist(updated: string[]) {
-  cacheTickers(updated)
+  cacheTickers(updated);
   try {
     await watchlistApi.save({
       categoryName: SERVER_CATEGORY_NAME,
       items: updated.map((symbol) => ({ symbol })),
-    })
+    });
   } catch {
     // Stay optimistic — cached copy keeps the UI consistent until the
     // network comes back.

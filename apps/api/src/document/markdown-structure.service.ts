@@ -128,9 +128,7 @@ export class MarkdownStructureService {
           i++;
         }
         // Only treat as a table if a separator row (|---|) is present
-        const hasSep = tableLines.some((l) =>
-          MarkdownStructureService.TABLE_SEP.test(l),
-        );
+        const hasSep = tableLines.some((l) => MarkdownStructureService.TABLE_SEP.test(l));
         if (hasSep) {
           blocks.push({ kind: 'table', text: tableLines.join('\n') });
         } else {
@@ -151,10 +149,7 @@ export class MarkdownStructureService {
           break;
         }
         // Setext heading look-ahead: stop before the text line that is being underlined
-        if (
-          l.trim().length > 0 &&
-          i + 1 < lines.length
-        ) {
+        if (l.trim().length > 0 && i + 1 < lines.length) {
           const nextTrimmed = lines[i + 1]!.trim();
           if (
             (nextTrimmed.length >= 1 && MarkdownStructureService.SETEXT_H1.test(nextTrimmed)) ||

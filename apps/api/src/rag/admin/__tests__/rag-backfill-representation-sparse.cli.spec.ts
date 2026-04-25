@@ -52,14 +52,18 @@ describe('parseBackfillArgs', () => {
   });
 
   it('--representation-type <type> accepts the four known types', () => {
-    expect(parseBackfillArgs(['--representation-type', 'contextual_text']).representationType)
-      .toBe('contextual_text');
-    expect(parseBackfillArgs(['--representation-type', 'sample_question']).representationType)
-      .toBe('sample_question');
-    expect(parseBackfillArgs(['--representation-type', 'summary']).representationType)
-      .toBe('summary');
-    expect(parseBackfillArgs(['--representation-type', 'keyword_entity']).representationType)
-      .toBe('keyword_entity');
+    expect(parseBackfillArgs(['--representation-type', 'contextual_text']).representationType).toBe(
+      'contextual_text',
+    );
+    expect(parseBackfillArgs(['--representation-type', 'sample_question']).representationType).toBe(
+      'sample_question',
+    );
+    expect(parseBackfillArgs(['--representation-type', 'summary']).representationType).toBe(
+      'summary',
+    );
+    expect(parseBackfillArgs(['--representation-type', 'keyword_entity']).representationType).toBe(
+      'keyword_entity',
+    );
   });
 
   it('--representation-type rejects unknown types', () => {
@@ -85,7 +89,9 @@ describe('isObviouslyEphemeralDb', () => {
   it('accepts the well-known test DB names', () => {
     expect(isObviouslyEphemeralDb('postgresql://u:p@prod.example.com/finsentinel_test')).toBe(true);
     expect(isObviouslyEphemeralDb('postgresql://u:p@prod.example.com/finsentinel_ci')).toBe(true);
-    expect(isObviouslyEphemeralDb('postgresql://u:p@prod.example.com/finsentinel_ephemeral')).toBe(true);
+    expect(isObviouslyEphemeralDb('postgresql://u:p@prod.example.com/finsentinel_ephemeral')).toBe(
+      true,
+    );
   });
 
   it('rejects unknown host + unknown DB name', () => {
@@ -176,10 +182,7 @@ describe('backfillSparseSearchVectors', () => {
       makeRow('r3', 'keyword_entity'),
     ];
     // Fetcher yields all rows on the first call, then empty (end-of-stream).
-    const fetcher: BackfillRowFetcher = vi
-      .fn()
-      .mockResolvedValueOnce(rows)
-      .mockResolvedValue([]);
+    const fetcher: BackfillRowFetcher = vi.fn().mockResolvedValueOnce(rows).mockResolvedValue([]);
     const updater: BackfillRowUpdater = vi.fn().mockResolvedValue(undefined);
 
     const summary = await backfillSparseSearchVectors({
@@ -198,15 +201,9 @@ describe('backfillSparseSearchVectors', () => {
   });
 
   it('wet-run updates every null row once, idempotency == 0 on the second pass', async () => {
-    const rows = [
-      makeRow('r1', 'contextual_text'),
-      makeRow('r2', 'sample_question'),
-    ];
+    const rows = [makeRow('r1', 'contextual_text'), makeRow('r2', 'sample_question')];
 
-    const fetcher: BackfillRowFetcher = vi
-      .fn()
-      .mockResolvedValueOnce(rows)
-      .mockResolvedValue([]);
+    const fetcher: BackfillRowFetcher = vi.fn().mockResolvedValueOnce(rows).mockResolvedValue([]);
     const updater: BackfillRowUpdater = vi.fn().mockResolvedValue(undefined);
 
     const first = await backfillSparseSearchVectors({
@@ -240,9 +237,7 @@ describe('backfillSparseSearchVectors', () => {
 
   it('honours batch-size boundary — 1200 rows at batch 500 yields 3 batches', async () => {
     const total = 1200;
-    const all = Array.from({ length: total }, (_, i) =>
-      makeRow(`r${i}`, 'contextual_text'),
-    );
+    const all = Array.from({ length: total }, (_, i) => makeRow(`r${i}`, 'contextual_text'));
     // Fetcher returns up to batchSize rows per call until drained.
     let cursor = 0;
     const fetcher: BackfillRowFetcher = vi.fn().mockImplementation(async (limit: number) => {
@@ -300,4 +295,3 @@ describe('backfillSparseSearchVectors', () => {
     expect((chunks as unknown[]).length).toBeGreaterThan(0);
   });
 });
-

@@ -55,10 +55,10 @@ describe('buildRepresentationTsvector', () => {
 
   it('parameterises all user inputs (no raw string interpolation)', () => {
     const fragment = buildRepresentationTsvector('contextual_text', {
-      title: "O'Malley & Co.",            // contains single quote
-      sectionPath: 'foo $$ bar',          // contains dollar-quote delimiter
+      title: "O'Malley & Co.", // contains single quote
+      sectionPath: 'foo $$ bar', // contains dollar-quote delimiter
       chunkContent: 'line 1\\nbackslash', // contains backslash
-      representationContent: '"nested"',  // contains double quote
+      representationContent: '"nested"', // contains double quote
     });
     const text = sqlToText(fragment);
     // None of the raw characters should leak into the SQL text — they must be

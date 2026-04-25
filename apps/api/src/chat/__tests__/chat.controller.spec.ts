@@ -100,11 +100,7 @@ describe('ChatController', () => {
         stream: createSSEStream(['event: done\ndata: [DONE]\n\n']),
       });
 
-      await controller.stream(
-        { message: 'Hello agent' },
-        user,
-        createMockResponse() as never,
-      );
+      await controller.stream({ message: 'Hello agent' }, user, createMockResponse() as never);
 
       expect(mockChatService.streamChat).toHaveBeenCalledWith(
         'Hello agent',
@@ -125,10 +121,7 @@ describe('ChatController', () => {
         actionableAdvice: ['Provide a portfolioId for a holdings-aware assessment.'],
       });
 
-      const result = await controller.assess(
-        { message: 'Assess AAPL risk' },
-        user,
-      );
+      const result = await controller.assess({ message: 'Assess AAPL risk' }, user);
 
       expect(result.riskScore).toBe(25);
       expect(mockChatService.assess).toHaveBeenCalledWith(
@@ -178,33 +171,21 @@ describe('ChatController', () => {
 
   describe('validation', () => {
     it('rejects empty message', async () => {
-      expect(() =>
-        validationPipe.transform(
-          { message: '' },
-        ),
-      ).toThrow(BadRequestException);
+      expect(() => validationPipe.transform({ message: '' })).toThrow(BadRequestException);
     });
 
     it('rejects missing message', async () => {
-      expect(() =>
-        validationPipe.transform(
-          {},
-        ),
-      ).toThrow(BadRequestException);
+      expect(() => validationPipe.transform({})).toThrow(BadRequestException);
     });
 
     it('rejects invalid sessionId', async () => {
-      expect(() =>
-        validationPipe.transform(
-          { message: 'Hello', sessionId: 'not-a-uuid' },
-        ),
-      ).toThrow(BadRequestException);
+      expect(() => validationPipe.transform({ message: 'Hello', sessionId: 'not-a-uuid' })).toThrow(
+        BadRequestException,
+      );
     });
 
     it('accepts valid payload', async () => {
-      const result = validationPipe.transform(
-        { message: 'Hello', sessionId: SESSION_ID },
-      );
+      const result = validationPipe.transform({ message: 'Hello', sessionId: SESSION_ID });
 
       expect(result).toEqual({ message: 'Hello', sessionId: SESSION_ID });
     });

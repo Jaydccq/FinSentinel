@@ -642,9 +642,7 @@ describe('createPortfolioAnalysisTools', () => {
   };
 
   it('returns 1 tool key', () => {
-    expect(Object.keys(createPortfolioAnalysisTools(stub, 'user-1'))).toEqual([
-      'analyzePortfolio',
-    ]);
+    expect(Object.keys(createPortfolioAnalysisTools(stub, 'user-1'))).toEqual(['analyzePortfolio']);
   });
 
   it('tools have correct AI SDK structure', () => {
@@ -679,9 +677,7 @@ describe('createAutonomyTools', () => {
   });
 
   it('tools have correct AI SDK structure', () => {
-    assertToolStructure(
-      createAutonomyTools(scheduleStub, heartbeatStub, 'user-1'),
-    );
+    assertToolStructure(createAutonomyTools(scheduleStub, heartbeatStub, 'user-1'));
   });
 });
 
@@ -802,35 +798,33 @@ describe('error handling contract', () => {
 
 describe('total tool count across all factories', () => {
   it('produces 65+ total tools', () => {
-    const allStub = new Proxy(
-      {},
-      { get: () => vi.fn().mockResolvedValue('ok') },
-    ) as any;
+    const allStub = new Proxy({}, { get: () => vi.fn().mockResolvedValue('ok') }) as any;
 
     const allTools = {
-      ...createStockMarketTools(allStub),                          // 2
-      ...createTechnicalIndicatorTools(allStub),                   // 9
-      ...createStrategyTemplateTools(allStub),                     // 1
-      ...createNewsAnalysisTools(allStub),                         // 2
-      ...createQuantAnalysisTools(allStub),                        // 3
-      ...createCompanyResearchTools(allStub),                      // 3
-      ...createEquityScreenerTools(allStub),                       // 3
-      ...createMarketCalendarTools(allStub),                       // 4
-      ...createOwnershipTools(allStub),                            // 2
-      ...createShortInterestTools(allStub),                        // 2
-      ...createThinkingTools(),                                    // 4
-      ...createConfirmationTools({                                 // 1
+      ...createStockMarketTools(allStub), // 2
+      ...createTechnicalIndicatorTools(allStub), // 9
+      ...createStrategyTemplateTools(allStub), // 1
+      ...createNewsAnalysisTools(allStub), // 2
+      ...createQuantAnalysisTools(allStub), // 3
+      ...createCompanyResearchTools(allStub), // 3
+      ...createEquityScreenerTools(allStub), // 3
+      ...createMarketCalendarTools(allStub), // 4
+      ...createOwnershipTools(allStub), // 2
+      ...createShortInterestTools(allStub), // 2
+      ...createThinkingTools(), // 4
+      ...createConfirmationTools({
+        // 1
         blockLiveMode: true,
         tradeAmountThreshold: 10000,
       }),
-      ...createUnifiedTradingTools(allStub, 'u'),                  // 11
-      ...createBrainTools(allStub, 'u'),                           // 5
-      ...createUserProfileTools(allStub, 'u'),                     // 4
-      ...createPortfolioAnalysisTools(allStub, 'u'),               // 1
-      ...createAutonomyTools(allStub, allStub, 'u'),               // 7
-      ...createCryptoNewsTools(allStub),                           // 2
-      ...createTwitterTools(allStub),                              // 4
-      ...createCryptoAnalyticsTools(allStub),                      // 3
+      ...createUnifiedTradingTools(allStub, 'u'), // 11
+      ...createBrainTools(allStub, 'u'), // 5
+      ...createUserProfileTools(allStub, 'u'), // 4
+      ...createPortfolioAnalysisTools(allStub, 'u'), // 1
+      ...createAutonomyTools(allStub, allStub, 'u'), // 7
+      ...createCryptoNewsTools(allStub), // 2
+      ...createTwitterTools(allStub), // 4
+      ...createCryptoAnalyticsTools(allStub), // 3
     };
 
     const totalCount = Object.keys(allTools).length;

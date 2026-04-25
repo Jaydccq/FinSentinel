@@ -137,11 +137,7 @@ interface CanonicalChunk {
 Add a representation table so multiple searchable surfaces can map to one canonical chunk:
 
 ```ts
-type ChunkRepresentationType =
-  | 'contextual_text'
-  | 'sample_question'
-  | 'summary'
-  | 'keyword_entity';
+type ChunkRepresentationType = 'contextual_text' | 'sample_question' | 'summary' | 'keyword_entity';
 
 interface DocumentChunkRepresentation {
   id: string;
@@ -229,7 +225,7 @@ Verify: evaluator tests show `expected_chunk_ids` drive strict recall and `accep
 
 ```yaml
 retrieval:
-  endpoint: "/api/rag/search"
+  endpoint: '/api/rag/search'
   top_k: 10
 minimum_metrics:
   recall@5: 0.65
@@ -475,9 +471,10 @@ Sidecar contract codified: `POST /extract-entities` now accepts `{ texts, extrac
 
 **Evaluation gate for promoting graph-lane default-on:**
 Run `compare_reports` on the T1.B `multirep` baseline vs a `graph` report generated with `RAG_GRAPH_ENABLED=true`. Promotion requires:
+
 - No regression on overall `strict.recall@10` vs the `multirep` baseline.
 - At least +5 pp improvement on the `relational` tag subset strict.recall@10.
-Until these thresholds are met, `RAG_GRAPH_ENABLED` stays as-is (env-controlled, not forced on by default code).
+  Until these thresholds are met, `RAG_GRAPH_ENABLED` stays as-is (env-controlled, not forced on by default code).
 
 ### Task 8: Document Desktop Local RAG Parity Plan
 
@@ -642,6 +639,7 @@ All eight tasks (T1–T8) have landed on `feat/rag-redesign`. 32 commits, 1208/1
 **2026-04-19 — T1.A done** (prior session): stable `chunkId`/`sourceId` returned from API; flag-off regression test added.
 
 **2026-04-19 — T1.B done**: strict/lenient recall split + `minimum_metrics` gate implemented.
+
 - `GoldenEntry.acceptable_chunk_ids` added (optional, default empty).
 - `TopKEvaluator.evaluate()` now returns `strict.*` and `lenient.*` namespaces for recall and MRR; precision kept strict-only.
 - `check_minimum_metrics()` helper factored out of `run_evaluation.py` for testability.
@@ -658,17 +656,18 @@ Next: T1.C — golden set candidate export CLI.
 
 ## GSTACK REVIEW REPORT
 
-| Review | Trigger | Why | Runs | Status | Findings |
-|--------|---------|-----|------|--------|----------|
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
-| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | ISSUES_FIXED | 12 issues surfaced (3 P0, 6 P1, 3 P2); 4 critical failure-mode gaps; all addressed via targeted edits to Tasks 1, 2, 5, 6 + Risks + Acceptance |
-| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | — |
-| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+| Review        | Trigger               | Why                             | Runs | Status       | Findings                                                                                                                                       |
+| ------------- | --------------------- | ------------------------------- | ---- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| CEO Review    | `/plan-ceo-review`    | Scope & strategy                | 0    | —            | —                                                                                                                                              |
+| Codex Review  | `/codex review`       | Independent 2nd opinion         | 0    | —            | —                                                                                                                                              |
+| Eng Review    | `/plan-eng-review`    | Architecture & tests (required) | 1    | ISSUES_FIXED | 12 issues surfaced (3 P0, 6 P1, 3 P2); 4 critical failure-mode gaps; all addressed via targeted edits to Tasks 1, 2, 5, 6 + Risks + Acceptance |
+| Design Review | `/plan-design-review` | UI/UX gaps                      | 0    | —            | —                                                                                                                                              |
+| DX Review     | `/plan-devex-review`  | Developer experience gaps       | 0    | —            | —                                                                                                                                              |
 
 **VERDICT:** ENG REVIEW CLEARED — structural issues resolved, scope unchanged, ready to implement Task 1 Step 1.
 
 **2026-04-19 — T3 done**: heading-aware chunking + structured document ingestion.
+
 - Created `apps/api/src/document/structured-document.ts` with `StructuredChunk` and `StructuredDocument` interfaces.
 - Created `apps/api/src/document/markdown-structure.service.ts`: regex-based ATX heading parser (levels 1-6), setext headings (H1/H2), fenced code blocks (verbatim, modality 'text'), table detection (requires separator row, modality 'table'), paragraph blocks (modality 'text'). Section stack pops correctly on shallower headings. pageStart/pageEnd always null. parentId null at parse time.
 - Added `DocumentChunkingService.chunkStructured(doc)`: tables and non-text blocks emitted as-is (truncated at 4x chunkSize with note); text blocks split on paragraph/sentence/word boundaries inheriting parent sectionPath + title + modality. minChunkSizeChars and maxNumChunks caps honored. Legacy `chunk(text)` signature unchanged.
@@ -679,6 +678,7 @@ Next: T1.C — golden set candidate export CLI.
 - Commit: `1f63e45`.
 
 **2026-04-19 — T4 done**: query variant planner with HyDE + decomposition.
+
 - Created `apps/api/src/rag/query-variant.service.ts`: three methods — `rewrite()` (delegates to `QueryRewriteService`), `hyde()` (returns trimmed hypothetical passage capped at 400 chars or null on failure), `decompose()` (parses zod-validated JSON array of 0-3 subqueries, returns [] on failure). Both LLM methods degrade gracefully and log warn on failure, never throw.
 - Modified `apps/api/src/rag/retrieval-planner.service.ts`: added `QueryClass` (`factoid | relational | analytical | multi_part`), `VariantKind`, `QueryVariant`, and extended `RetrievalPlan` with `queryClass`, `variants[]`, and `fallbackFlags[]`. Kept `rewrittenQuery` for T5 backward compat. Regex classifier (no LLM): `multi_part` (multiple `?` or `and` adjacent to `?`) > `analytical` (length > 120 OR analytical keywords) > `relational` (existing cues) > `factoid`. Activation: analytical + `RAG_HYDE_ENABLED` triggers hyde; multi_part + `RAG_QUERY_DECOMPOSE_ENABLED` triggers decompose. Graph lane activation consolidated under relational class path.
 - Modified `apps/api/src/config/rag.config.ts`: added `hydeEnabled` (default false) and `queryDecomposeEnabled` (default false) under `retrieval`.

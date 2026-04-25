@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt.guard';
 import { parseIntParam } from '../common/utils/parse-int-param';
 import { MarketDataService } from './market-data.service';
@@ -30,19 +22,13 @@ export class MarketDataController {
   }
 
   @Get('history/:ticker')
-  async getHistory(
-    @Param('ticker') ticker: string,
-    @Query('days') daysParam?: string,
-  ) {
+  async getHistory(@Param('ticker') ticker: string, @Query('days') daysParam?: string) {
     const days = parseIntParam(daysParam, 30, 1, 365);
     return this.marketDataService.getHistoricalBars(ticker, days);
   }
 
   @Get('search')
-  async searchTickers(
-    @Query('q') query?: string,
-    @Query('limit') limitParam?: string,
-  ) {
+  async searchTickers(@Query('q') query?: string, @Query('limit') limitParam?: string) {
     if (!query || query.trim().length === 0) return [];
     const limit = parseIntParam(limitParam, 8, 1, 50);
     return this.marketDataService.searchTickers(query, limit);

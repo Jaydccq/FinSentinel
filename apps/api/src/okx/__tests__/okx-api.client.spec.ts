@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { OkxApiClient } from '../okx-api.client';
-import type { OkxResponse, OkxTicker, OkxAccountBalance, OkxPosition, OkxOrder, OkxFundingRate } from '../interfaces/okx-types';
+import type {
+  OkxResponse,
+  OkxTicker,
+  OkxAccountBalance,
+  OkxPosition,
+  OkxOrder,
+  OkxFundingRate,
+} from '../interfaces/okx-types';
 
 // ── Mock fetch ────────────────────────────────────────────────────────────────
 const mockFetch = vi.fn();
@@ -16,13 +23,7 @@ describe('OkxApiClient', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockReset();
-    client = new OkxApiClient(
-      TEST_API_KEY,
-      TEST_SECRET_KEY,
-      TEST_PASSPHRASE,
-      TEST_BASE_URL,
-      false,
-    );
+    client = new OkxApiClient(TEST_API_KEY, TEST_SECRET_KEY, TEST_PASSPHRASE, TEST_BASE_URL, false);
   });
 
   afterEach(() => {
@@ -130,21 +131,23 @@ describe('OkxApiClient', () => {
       const okxResponse: OkxResponse<OkxTicker> = {
         code: '0',
         msg: '',
-        data: [{
-          instId: 'BTC-USDT-SWAP',
-          last: '65000',
-          lastSz: '1',
-          askPx: '65001',
-          askSz: '10',
-          bidPx: '64999',
-          bidSz: '10',
-          open24h: '64000',
-          high24h: '66000',
-          low24h: '63000',
-          vol24h: '100000',
-          volCcy24h: '6500000000',
-          ts: '1711886400000',
-        }],
+        data: [
+          {
+            instId: 'BTC-USDT-SWAP',
+            last: '65000',
+            lastSz: '1',
+            askPx: '65001',
+            askSz: '10',
+            bidPx: '64999',
+            bidSz: '10',
+            open24h: '64000',
+            high24h: '66000',
+            low24h: '63000',
+            vol24h: '100000',
+            volCcy24h: '6500000000',
+            ts: '1711886400000',
+          },
+        ],
       };
 
       mockFetch.mockResolvedValue(mockResponse(okxResponse));
@@ -164,7 +167,10 @@ describe('OkxApiClient', () => {
       );
 
       // Verify OK-ACCESS-SIGN and OK-ACCESS-TIMESTAMP are present
-      const headers = (mockFetch.mock.calls[0]![1] as RequestInit).headers as Record<string, string>;
+      const headers = (mockFetch.mock.calls[0]![1] as RequestInit).headers as Record<
+        string,
+        string
+      >;
       expect(headers['OK-ACCESS-SIGN']).toBeTruthy();
       expect(headers['OK-ACCESS-TIMESTAMP']).toBeTruthy();
     });
@@ -188,7 +194,10 @@ describe('OkxApiClient', () => {
 
       await sandboxClient.getTicker('BTC-USDT-SWAP');
 
-      const headers = (mockFetch.mock.calls[0]![1] as RequestInit).headers as Record<string, string>;
+      const headers = (mockFetch.mock.calls[0]![1] as RequestInit).headers as Record<
+        string,
+        string
+      >;
       expect(headers['x-simulated-trading']).toBe('1');
     });
 
@@ -203,7 +212,10 @@ describe('OkxApiClient', () => {
 
       await client.getTicker('BTC-USDT-SWAP');
 
-      const headers = (mockFetch.mock.calls[0]![1] as RequestInit).headers as Record<string, string>;
+      const headers = (mockFetch.mock.calls[0]![1] as RequestInit).headers as Record<
+        string,
+        string
+      >;
       expect(headers['x-simulated-trading']).toBeUndefined();
     });
   });
@@ -227,9 +239,7 @@ describe('OkxApiClient', () => {
         ts: '1711886400000',
       };
 
-      mockFetch.mockResolvedValue(
-        mockResponse({ code: '0', msg: '', data: [ticker] }),
-      );
+      mockFetch.mockResolvedValue(mockResponse({ code: '0', msg: '', data: [ticker] }));
 
       const result = await client.getTicker('BTC-USDT-SWAP');
 
@@ -239,9 +249,7 @@ describe('OkxApiClient', () => {
     });
 
     it('returns null when data array is empty', async () => {
-      mockFetch.mockResolvedValue(
-        mockResponse({ code: '0', msg: '', data: [] }),
-      );
+      mockFetch.mockResolvedValue(mockResponse({ code: '0', msg: '', data: [] }));
 
       const result = await client.getTicker('NONEXISTENT');
       expect(result).toBeNull();
@@ -282,19 +290,19 @@ describe('OkxApiClient', () => {
         imr: '5000.00',
         mmr: '2500.00',
         notionalUsd: '100000.00',
-        details: [{
-          ccy: 'USDT',
-          eq: '150000.00',
-          cashBal: '100000.00',
-          availBal: '95000.00',
-          frozenBal: '5000.00',
-          upl: '500.00',
-        }],
+        details: [
+          {
+            ccy: 'USDT',
+            eq: '150000.00',
+            cashBal: '100000.00',
+            availBal: '95000.00',
+            frozenBal: '5000.00',
+            upl: '500.00',
+          },
+        ],
       };
 
-      mockFetch.mockResolvedValue(
-        mockResponse({ code: '0', msg: '', data: [balance] }),
-      );
+      mockFetch.mockResolvedValue(mockResponse({ code: '0', msg: '', data: [balance] }));
 
       const result = await client.getAccountBalance();
 
@@ -333,9 +341,7 @@ describe('OkxApiClient', () => {
         },
       ];
 
-      mockFetch.mockResolvedValue(
-        mockResponse({ code: '0', msg: '', data: positions }),
-      );
+      mockFetch.mockResolvedValue(mockResponse({ code: '0', msg: '', data: positions }));
 
       const result = await client.getPositions();
 
@@ -374,9 +380,7 @@ describe('OkxApiClient', () => {
         uTime: '1711886400000',
       };
 
-      mockFetch.mockResolvedValue(
-        mockResponse({ code: '0', msg: '', data: [order] }),
-      );
+      mockFetch.mockResolvedValue(mockResponse({ code: '0', msg: '', data: [order] }));
 
       const result = await client.placeOrder({
         instId: 'BTC-USDT-SWAP',
@@ -402,9 +406,7 @@ describe('OkxApiClient', () => {
     });
 
     it('includes price for limit orders', async () => {
-      mockFetch.mockResolvedValue(
-        mockResponse({ code: '0', msg: '', data: [{ ordId: '456' }] }),
-      );
+      mockFetch.mockResolvedValue(mockResponse({ code: '0', msg: '', data: [{ ordId: '456' }] }));
 
       await client.placeOrder({
         instId: 'BTC-USDT-SWAP',
@@ -421,9 +423,7 @@ describe('OkxApiClient', () => {
     });
 
     it('includes reduceOnly when set', async () => {
-      mockFetch.mockResolvedValue(
-        mockResponse({ code: '0', msg: '', data: [{ ordId: '789' }] }),
-      );
+      mockFetch.mockResolvedValue(mockResponse({ code: '0', msg: '', data: [{ ordId: '789' }] }));
 
       await client.placeOrder({
         instId: 'BTC-USDT-SWAP',
@@ -457,9 +457,7 @@ describe('OkxApiClient', () => {
   // ── 7. cancelOrder ─────────────────────────────────────────────────────
   describe('cancelOrder()', () => {
     it('returns true on success', async () => {
-      mockFetch.mockResolvedValue(
-        mockResponse({ code: '0', msg: '', data: [{ ordId: '12345' }] }),
-      );
+      mockFetch.mockResolvedValue(mockResponse({ code: '0', msg: '', data: [{ ordId: '12345' }] }));
 
       const result = await client.cancelOrder('BTC-USDT-SWAP', '12345');
 
@@ -492,9 +490,7 @@ describe('OkxApiClient', () => {
         fundingTime: '1711900800000',
       };
 
-      mockFetch.mockResolvedValue(
-        mockResponse({ code: '0', msg: '', data: [fundingRate] }),
-      );
+      mockFetch.mockResolvedValue(mockResponse({ code: '0', msg: '', data: [fundingRate] }));
 
       const result = await client.getFundingRate('BTC-USDT-SWAP');
 
@@ -513,15 +509,9 @@ describe('OkxApiClient', () => {
   // ── 9. Default base URL ────────────────────────────────────────────────
   describe('default base URL', () => {
     it('uses https://www.okx.com when no base URL is provided', async () => {
-      const defaultClient = new OkxApiClient(
-        TEST_API_KEY,
-        TEST_SECRET_KEY,
-        TEST_PASSPHRASE,
-      );
+      const defaultClient = new OkxApiClient(TEST_API_KEY, TEST_SECRET_KEY, TEST_PASSPHRASE);
 
-      mockFetch.mockResolvedValue(
-        mockResponse({ code: '0', msg: '', data: [] }),
-      );
+      mockFetch.mockResolvedValue(mockResponse({ code: '0', msg: '', data: [] }));
 
       await defaultClient.getTicker('BTC-USDT-SWAP');
 

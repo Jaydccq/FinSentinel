@@ -79,9 +79,8 @@ export class ContextExpanderService {
       DEFAULT_MIN_DOC_TOKENS,
     );
     const minDocNum = Number(minDocRaw);
-    this.minDocTokens = Number.isFinite(minDocNum) && minDocNum > 0
-      ? minDocNum
-      : DEFAULT_MIN_DOC_TOKENS;
+    this.minDocTokens =
+      Number.isFinite(minDocNum) && minDocNum > 0 ? minDocNum : DEFAULT_MIN_DOC_TOKENS;
   }
 
   async expand(
@@ -97,8 +96,7 @@ export class ContextExpanderService {
     // (b) at least one top-K candidate comes from a long document.
     // source_token_count is preferred; content.length/4 is an estimator when
     // the explicit field is not populated at ingest time (follow-up backfill).
-    const classAllows =
-      options.queryClass !== undefined && this.classes.has(options.queryClass);
+    const classAllows = options.queryClass !== undefined && this.classes.has(options.queryClass);
     if (!classAllows) {
       const hasLongDoc = topReranked.some((c) => {
         const explicit =
@@ -149,12 +147,7 @@ export class ContextExpanderService {
             candidate.chunkId,
           );
         } else {
-          rows = await this.queryNeighborOnly(
-            candidate.sourceId,
-            chunkIndex,
-            W,
-            candidate.chunkId,
-          );
+          rows = await this.queryNeighborOnly(candidate.sourceId, chunkIndex, W, candidate.chunkId);
         }
       } catch {
         continue;

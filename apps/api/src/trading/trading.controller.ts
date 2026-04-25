@@ -102,7 +102,11 @@ export class TradingController {
     const wallet = await this.tradingService.getOrCreateWallet(user.userId);
     const cashBalance = Number(wallet.cashBalance);
     const initialCapital = Number(wallet.initialCapital);
-    const positions = wallet.positions as Array<{ shares: number; currentPrice?: number; avgCost: number }>;
+    const positions = wallet.positions as Array<{
+      shares: number;
+      currentPrice?: number;
+      avgCost: number;
+    }>;
     let positionValue = 0;
     for (const pos of positions) {
       positionValue += pos.shares * (pos.currentPrice ?? pos.avgCost);
@@ -121,10 +125,7 @@ export class TradingController {
   }
 
   @Get('history')
-  async getHistory(
-    @CurrentUser() user: CurrentUserPayload,
-    @Query('limit') limitParam?: string,
-  ) {
+  async getHistory(@CurrentUser() user: CurrentUserPayload, @Query('limit') limitParam?: string) {
     const limit = parseIntParam(limitParam, 10, 1, 50);
     const log = await this.tradingService.getCommitLog(user.userId, limit);
     return { history: log };
@@ -178,7 +179,13 @@ export class TradingController {
       hash: string;
       message: string;
       timestamp: string;
-      operations: Array<{ action?: unknown; symbol?: unknown; qty?: unknown; amount?: unknown; price?: unknown }>;
+      operations: Array<{
+        action?: unknown;
+        symbol?: unknown;
+        qty?: unknown;
+        amount?: unknown;
+        price?: unknown;
+      }>;
     };
     return {
       hash: commitData.hash,
@@ -216,10 +223,7 @@ export class TradingController {
   }
 
   @Get('v2/search')
-  async v2Search(
-    @CurrentUser() user: CurrentUserPayload,
-    @Query('query') query?: string,
-  ) {
+  async v2Search(@CurrentUser() user: CurrentUserPayload, @Query('query') query?: string) {
     if (!query || query.trim().length === 0) {
       return [];
     }

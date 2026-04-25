@@ -52,13 +52,11 @@ export class RateLimiterService {
     const key = `rl:${dimension}:${identifier}:${endpoint}`;
 
     // ioredis .eval(script, numKeys, ...keys, ...args)
-    const result = (await this.redis.eval(
-      LUA_RATE_LIMIT,
-      1,
-      key,
-      windowSecs,
-      limit,
-    )) as [number, number, number];
+    const result = (await this.redis.eval(LUA_RATE_LIMIT, 1, key, windowSecs, limit)) as [
+      number,
+      number,
+      number,
+    ];
 
     return {
       allowed: result[0] === 1,

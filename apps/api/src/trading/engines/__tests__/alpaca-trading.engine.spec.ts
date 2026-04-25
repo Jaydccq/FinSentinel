@@ -15,11 +15,7 @@ describe('AlpacaTradingEngine', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', mockFetch);
     mockFetch.mockReset();
-    engine = new AlpacaTradingEngine(
-      TEST_API_KEY,
-      TEST_SECRET_KEY,
-      TEST_BASE_URL,
-    );
+    engine = new AlpacaTradingEngine(TEST_API_KEY, TEST_SECRET_KEY, TEST_BASE_URL);
   });
 
   afterEach(() => {
@@ -167,9 +163,7 @@ describe('AlpacaTradingEngine', () => {
 
   // ── 5. placeOrder_apiError_returnsRejectedResult ──────────────────────────
   it('placeOrder returns rejected result on API error', async () => {
-    mockFetch.mockResolvedValue(
-      mockResponse({ message: 'insufficient funds' }, 422),
-    );
+    mockFetch.mockResolvedValue(mockResponse({ message: 'insufficient funds' }, 422));
 
     const request: OrderRequest = {
       symbol: 'AAPL',
@@ -269,9 +263,7 @@ describe('AlpacaTradingEngine', () => {
 
   // ── 8. getPositions_apiError_returnsEmptyArray ────────────────────────────
   it('getPositions returns empty array on API error', async () => {
-    mockFetch.mockResolvedValue(
-      mockResponse({ message: 'unauthorized' }, 401),
-    );
+    mockFetch.mockResolvedValue(mockResponse({ message: 'unauthorized' }, 401));
 
     const positions = await engine.getPositions();
     expect(positions).toEqual([]);
@@ -334,9 +326,7 @@ describe('AlpacaTradingEngine', () => {
 
   // ── 10. getOrders_apiError_returnsEmptyArray ──────────────────────────────
   it('getOrders returns empty array on API error', async () => {
-    mockFetch.mockResolvedValue(
-      mockResponse({ message: 'error' }, 500),
-    );
+    mockFetch.mockResolvedValue(mockResponse({ message: 'error' }, 500));
 
     const orders = await engine.getOrders();
     expect(orders).toEqual([]);
@@ -393,17 +383,12 @@ describe('AlpacaTradingEngine', () => {
     expect(account.unrealizedPnL).toBe('5000.00');
     expect(account.realizedPnL).toBe('2000.00');
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      `${TEST_BASE_URL}/v2/account`,
-      expect.anything(),
-    );
+    expect(mockFetch).toHaveBeenCalledWith(`${TEST_BASE_URL}/v2/account`, expect.anything());
   });
 
   // ── 13. getAccount_apiError_returnsZeroValues ─────────────────────────────
   it('getAccount returns zero values on API error', async () => {
-    mockFetch.mockResolvedValue(
-      mockResponse({ message: 'error' }, 500),
-    );
+    mockFetch.mockResolvedValue(mockResponse({ message: 'error' }, 500));
 
     const account = await engine.getAccount();
 
@@ -433,9 +418,7 @@ describe('AlpacaTradingEngine', () => {
 
   // ── 15. cancelOrder_apiError_returnsFalse ─────────────────────────────────
   it('cancelOrder returns false on API error', async () => {
-    mockFetch.mockResolvedValue(
-      mockResponse({ message: 'not found' }, 404),
-    );
+    mockFetch.mockResolvedValue(mockResponse({ message: 'not found' }, 404));
 
     const result = await engine.cancelOrder('nonexistent-order');
     expect(result).toBe(false);
@@ -462,9 +445,7 @@ describe('AlpacaTradingEngine', () => {
 
   // ── 17. getMarketClock_apiError_returnsClosed ─────────────────────────────
   it('getMarketClock returns closed on API error', async () => {
-    mockFetch.mockResolvedValue(
-      mockResponse({ message: 'error' }, 500),
-    );
+    mockFetch.mockResolvedValue(mockResponse({ message: 'error' }, 500));
 
     const clock = await engine.getMarketClock!();
 
@@ -511,10 +492,7 @@ describe('AlpacaTradingEngine', () => {
 
   // ── 19. constructor_usesDefaultBaseUrl ─────────────────────────────────────
   it('uses default base URL when not provided', async () => {
-    const defaultEngine = new AlpacaTradingEngine(
-      TEST_API_KEY,
-      TEST_SECRET_KEY,
-    );
+    const defaultEngine = new AlpacaTradingEngine(TEST_API_KEY, TEST_SECRET_KEY);
 
     mockFetch.mockResolvedValue(
       mockResponse({

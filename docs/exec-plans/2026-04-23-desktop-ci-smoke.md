@@ -8,17 +8,18 @@
 **Approach:** New GitHub Actions workflow `.github/workflows/desktop-smoke.yml` per the codex consult on 2026-04-23 — `ubuntu-latest` on every PR + nightly `macos-latest` cron + `macos-latest` immediate trigger when build config / native bindings / packaging files change.
 
 ## Out of scope
+
 - Producing signed release artifacts (DMG / MSI / AppImage).
 - Adding a runtime smoke that drives the actual GUI / Tauri IPC. Today `apps/desktop/test` is a stub; building is enough signal that the desktop path didn't rot.
 - Replacing the existing `pnpm build/test` filter exclusion. Keeping fast PR feedback as the default; the new workflow is what catches the desktop path.
 
 ## File Map
 
-| Path | Role |
-|------|------|
-| `.github/workflows/desktop-smoke.yml` | NEW — three jobs (PR ubuntu, nightly macOS, on-touch macOS). |
-| `docs/product-specs/2026-04-23-desktop-ci-smoke-build.md` | MODIFY — append progress log. |
-| `.gitignore` | MODIFY — whitelist this exec plan. |
+| Path                                                      | Role                                                         |
+| --------------------------------------------------------- | ------------------------------------------------------------ |
+| `.github/workflows/desktop-smoke.yml`                     | NEW — three jobs (PR ubuntu, nightly macOS, on-touch macOS). |
+| `docs/product-specs/2026-04-23-desktop-ci-smoke-build.md` | MODIFY — append progress log.                                |
+| `.gitignore`                                              | MODIFY — whitelist this exec plan.                           |
 
 ## Tasks
 

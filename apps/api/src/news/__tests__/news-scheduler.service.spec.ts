@@ -18,7 +18,8 @@ function createConfigService(overrides: Record<string, unknown> = {}) {
 
   return {
     get: vi.fn((key: string, defaultValue?: unknown) =>
-      key in values ? values[key] : defaultValue),
+      key in values ? values[key] : defaultValue,
+    ),
   };
 }
 

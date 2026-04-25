@@ -45,15 +45,11 @@ describe('Contract', () => {
     });
 
     it('PERP returns symbol-currency-SWAP', () => {
-      expect(Contract.cryptoPerp('BTC', 'OKX', 'USDT').toEngineSymbol()).toBe(
-        'BTC-USDT-SWAP',
-      );
+      expect(Contract.cryptoPerp('BTC', 'OKX', 'USDT').toEngineSymbol()).toBe('BTC-USDT-SWAP');
     });
 
     it('CRYPTO returns symbol/currency', () => {
-      expect(
-        Contract.cryptoSpot('BTC', 'binance', 'USD').toEngineSymbol(),
-      ).toBe('BTC/USD');
+      expect(Contract.cryptoSpot('BTC', 'binance', 'USD').toEngineSymbol()).toBe('BTC/USD');
     });
 
     it('FUTURE returns symbol-currency-YYMMDD', () => {
@@ -113,15 +109,13 @@ describe('Contract', () => {
     });
 
     it('PERP displays as "BTC-USDT Perp @OKX"', () => {
-      expect(Contract.cryptoPerp('BTC', 'OKX', 'USDT').displayName()).toBe(
-        'BTC-USDT Perp @OKX',
-      );
+      expect(Contract.cryptoPerp('BTC', 'OKX', 'USDT').displayName()).toBe('BTC-USDT Perp @OKX');
     });
 
     it('CRYPTO displays as "BTC/USD Spot @binance"', () => {
-      expect(
-        Contract.cryptoSpot('BTC', 'binance', 'USD').displayName(),
-      ).toBe('BTC/USD Spot @binance');
+      expect(Contract.cryptoSpot('BTC', 'binance', 'USD').displayName()).toBe(
+        'BTC/USD Spot @binance',
+      );
     });
 
     it('FUTURE displays with expiry date', () => {

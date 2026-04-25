@@ -86,17 +86,12 @@ export class DocumentUploadService {
           `rule=${regionOutcome.inferredFrom} file=${file.originalname}`,
       );
     } else if (regionOutcome.regionId === 'UNKNOWN') {
-      this.logger.warn(
-        `regionId=UNKNOWN (no rule matched): file=${file.originalname}`,
-      );
+      this.logger.warn(`regionId=UNKNOWN (no rule matched): file=${file.originalname}`);
     }
     const resolvedRegionId = regionOutcome.regionId;
 
     // 2. Production guard: refuse synchronous fallback when configured to.
-    const requireAsync = this.config.get<boolean>(
-      'rag.documents.requireAsyncVectorize',
-      false,
-    );
+    const requireAsync = this.config.get<boolean>('rag.documents.requireAsyncVectorize', false);
     if (requireAsync && !this.vectorizeProducer) {
       throw new Error(
         'async vectorization required: rag.documents.requireAsyncVectorize=true ' +
@@ -142,10 +137,7 @@ export class DocumentUploadService {
       this.logger.log(`Uploaded file to storage: ${storageKey}`);
     } catch (err) {
       try {
-        await this.db
-          .update(documents)
-          .set({ status: 'FAILED' })
-          .where(eq(documents.id, doc.id));
+        await this.db.update(documents).set({ status: 'FAILED' }).where(eq(documents.id, doc.id));
       } catch (markErr) {
         this.logger.error(
           `Failed to mark document ${doc.id} FAILED after storage error: ${markErr}`,
@@ -155,10 +147,7 @@ export class DocumentUploadService {
     }
 
     // 6. Promote to PENDING (upload done, ready for vectorization).
-    await this.db
-      .update(documents)
-      .set({ status: 'PENDING' })
-      .where(eq(documents.id, doc.id));
+    await this.db.update(documents).set({ status: 'PENDING' }).where(eq(documents.id, doc.id));
     this.logger.log(`Created document record: ${doc.id} (status=PENDING)`);
 
     // 6. Dispatch to BullMQ queue if available, otherwise fall back to sync.
@@ -200,17 +189,11 @@ export class DocumentUploadService {
         return { id: doc.id, status: 'VECTORIZED' };
       }
 
-      await this.db
-        .update(documents)
-        .set({ status: 'EMPTY' })
-        .where(eq(documents.id, doc.id));
+      await this.db.update(documents).set({ status: 'EMPTY' }).where(eq(documents.id, doc.id));
       return { id: doc.id, status: 'EMPTY' };
     } catch (error) {
       this.logger.error(`Vectorization failed for ${doc.id}: ${error}`);
-      await this.db
-        .update(documents)
-        .set({ status: 'FAILED' })
-        .where(eq(documents.id, doc.id));
+      await this.db.update(documents).set({ status: 'FAILED' }).where(eq(documents.id, doc.id));
 
       return { id: doc.id, status: 'FAILED' };
     }
@@ -245,10 +228,7 @@ export class DocumentUploadService {
     });
     // Size check against the separately-declared limit (validate() only
     // checks the buffer we pass in — here the real bytes haven't arrived).
-    const maxBytes = this.config.get<number>(
-      'rag.parser.uploadMaxBytes',
-      100 * 1024 * 1024,
-    );
+    const maxBytes = this.config.get<number>('rag.parser.uploadMaxBytes', 100 * 1024 * 1024);
     if (sizeBytes > maxBytes) {
       throw new BadRequestException(
         `File exceeds maximum size of ${Math.floor(maxBytes / (1024 * 1024))} MB`,
@@ -262,19 +242,10 @@ export class DocumentUploadService {
     const safeFileName = originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storageKey = `documents/${userId}/${timestamp}_${safeFileName}`;
 
-    const ttlSeconds = this.config.get<number>(
-      'rag.documents.presignedUploadTtlSeconds',
-      15 * 60,
-    );
-    const uploadUrl = await this.storage.createPresignedUploadUrl(
-      storageKey,
-      mimetype,
-      ttlSeconds,
-    );
+    const ttlSeconds = this.config.get<number>('rag.documents.presignedUploadTtlSeconds', 15 * 60);
+    const uploadUrl = await this.storage.createPresignedUploadUrl(storageKey, mimetype, ttlSeconds);
     if (!uploadUrl) {
-      throw new BadRequestException(
-        'Direct upload not supported by this storage backend',
-      );
+      throw new BadRequestException('Direct upload not supported by this storage backend');
     }
 
     const insertResult = await this.db
@@ -308,10 +279,7 @@ export class DocumentUploadService {
    * verify the object actually exists in storage (can't trust client
    * blindly), mark the row PENDING, and enqueue vectorization.
    */
-  async finalizeDirectUpload(
-    userId: string,
-    documentId: string,
-  ): Promise<UploadResult> {
+  async finalizeDirectUpload(userId: string, documentId: string): Promise<UploadResult> {
     const [row] = await this.db
       .select({
         id: documents.id,
@@ -341,10 +309,7 @@ export class DocumentUploadService {
       );
     }
 
-    await this.db
-      .update(documents)
-      .set({ status: 'PENDING' })
-      .where(eq(documents.id, documentId));
+    await this.db.update(documents).set({ status: 'PENDING' }).where(eq(documents.id, documentId));
 
     if (this.vectorizeProducer) {
       await this.vectorizeProducer.send(documentId);
@@ -365,12 +330,11 @@ export class DocumentUploadService {
       );
     }
 
-    const normalizedMime =
-      file.mimetype.toLowerCase().split(';', 1).at(0)?.trim() ?? '';
+    const normalizedMime = file.mimetype.toLowerCase().split(';', 1).at(0)?.trim() ?? '';
     if (!ALLOWED_MIME_TYPES.has(normalizedMime)) {
       throw new BadRequestException(
         `Unsupported file type: ${normalizedMime}. ` +
-        `Allowed: ${[...ALLOWED_MIME_TYPES].join(', ')}`,
+          `Allowed: ${[...ALLOWED_MIME_TYPES].join(', ')}`,
       );
     }
   }

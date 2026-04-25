@@ -82,9 +82,7 @@ describe('Persona prompts', () => {
 
     it('has default analysis style', () => {
       expect(defaultPersona).toContain('### Analysis Style');
-      expect(defaultPersona).toContain(
-        'Apply all four analysis layers with equal weight',
-      );
+      expect(defaultPersona).toContain('Apply all four analysis layers with equal weight');
       expect(defaultPersona).toContain(
         'balance the Quality Compounder and Fundamental L/S philosophy lenses',
       );
@@ -93,21 +91,13 @@ describe('Persona prompts', () => {
 
   describe('conservative persona', () => {
     it('has conservative overrides', () => {
-      expect(conservativePersona).toContain(
-        'capital-preservation-focused',
-      );
-      expect(conservativePersona).toContain(
-        'Lower MOVE threshold to 100',
-      );
-      expect(conservativePersona).toContain(
-        'Default position cap: 5%',
-      );
+      expect(conservativePersona).toContain('capital-preservation-focused');
+      expect(conservativePersona).toContain('Lower MOVE threshold to 100');
+      expect(conservativePersona).toContain('Default position cap: 5%');
     });
 
     it('does NOT contain default analysis style', () => {
-      expect(conservativePersona).not.toContain(
-        'Apply all four analysis layers with equal weight',
-      );
+      expect(conservativePersona).not.toContain('Apply all four analysis layers with equal weight');
     });
 
     it('contains all 45 tool names', () => {
@@ -118,19 +108,13 @@ describe('Persona prompts', () => {
 
   describe('aggressive persona', () => {
     it('has aggressive overrides', () => {
-      expect(aggressivePersona).toContain(
-        'opportunity-focused growth analyst',
-      );
-      expect(aggressivePersona).toContain(
-        'Higher MOVE threshold at 150',
-      );
+      expect(aggressivePersona).toContain('opportunity-focused growth analyst');
+      expect(aggressivePersona).toContain('Higher MOVE threshold at 150');
       expect(aggressivePersona).toContain('up to 15% per stock');
     });
 
     it('does NOT contain default analysis style', () => {
-      expect(aggressivePersona).not.toContain(
-        'Apply all four analysis layers with equal weight',
-      );
+      expect(aggressivePersona).not.toContain('Apply all four analysis layers with equal weight');
     });
 
     it('contains all 45 tool names', () => {
@@ -147,9 +131,21 @@ describe('Persona prompts', () => {
         return text.slice(start, end).trim();
       };
 
-      const defaultI = extractSection(defaultPersona, '## [I] Instructions', '## [A] Analysis Frameworks');
-      const conservativeI = extractSection(conservativePersona, '## [I] Instructions', '## [A] Analysis Frameworks');
-      const aggressiveI = extractSection(aggressivePersona, '## [I] Instructions', '## [A] Analysis Frameworks');
+      const defaultI = extractSection(
+        defaultPersona,
+        '## [I] Instructions',
+        '## [A] Analysis Frameworks',
+      );
+      const conservativeI = extractSection(
+        conservativePersona,
+        '## [I] Instructions',
+        '## [A] Analysis Frameworks',
+      );
+      const aggressiveI = extractSection(
+        aggressivePersona,
+        '## [I] Instructions',
+        '## [A] Analysis Frameworks',
+      );
 
       expect(defaultI).toBe(conservativeI);
       expect(defaultI).toBe(aggressiveI);
@@ -163,8 +159,16 @@ describe('Persona prompts', () => {
       };
 
       const defaultA = extractSection(defaultPersona, '## [A] Analysis Frameworks', '## [S] Steps');
-      const conservativeA = extractSection(conservativePersona, '## [A] Analysis Frameworks', '## [S] Steps');
-      const aggressiveA = extractSection(aggressivePersona, '## [A] Analysis Frameworks', '## [S] Steps');
+      const conservativeA = extractSection(
+        conservativePersona,
+        '## [A] Analysis Frameworks',
+        '## [S] Steps',
+      );
+      const aggressiveA = extractSection(
+        aggressivePersona,
+        '## [A] Analysis Frameworks',
+        '## [S] Steps',
+      );
 
       expect(defaultA).toBe(conservativeA);
       expect(defaultA).toBe(aggressiveA);

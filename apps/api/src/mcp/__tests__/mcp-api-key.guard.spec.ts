@@ -66,17 +66,13 @@ describe('McpApiKeyGuard', () => {
   it('should throw UnauthorizedException when API key is missing', () => {
     const ctx = createMockContext({});
 
-    expect(() => guard.canActivate(ctx as never)).toThrow(
-      UnauthorizedException,
-    );
+    expect(() => guard.canActivate(ctx as never)).toThrow(UnauthorizedException);
   });
 
   it('should throw UnauthorizedException when API key is wrong', () => {
     const ctx = createMockContext({ 'x-api-key': 'wrong-key' });
 
-    expect(() => guard.canActivate(ctx as never)).toThrow(
-      UnauthorizedException,
-    );
+    expect(() => guard.canActivate(ctx as never)).toThrow(UnauthorizedException);
   });
 
   it('should throw UnauthorizedException when configured key is undefined', async () => {
@@ -96,8 +92,6 @@ describe('McpApiKeyGuard', () => {
     const guardNoKey = module.get(McpApiKeyGuard);
     const ctx = createMockContext({ 'x-api-key': 'some-key' });
 
-    expect(() => guardNoKey.canActivate(ctx as never)).toThrow(
-      UnauthorizedException,
-    );
+    expect(() => guardNoKey.canActivate(ctx as never)).toThrow(UnauthorizedException);
   });
 });

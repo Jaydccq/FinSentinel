@@ -8,22 +8,22 @@
 
 ## 优先级总览
 
-| 优先级 | 条目 | 估算 | 阻塞 |
-|--------|------|------|------|
-| ✅ landed 2026-04-24 | [F-1: 桌面端 keychain（Tauri Rust 端）](#f-1-桌面端-keychain-tauri-rust-端) — see [exec plan](./2026-04-24-f1-tauri-keychain.md) | 1.5–2 day | 无 |
-| ✅ landed 2026-04-24 | [F-2: 移除 `NEXT_PUBLIC_LOCAL_USER_*` 构建烘焙](#f-2-移除-next_public_local_user_-构建烘焙) — see [exec plan](./2026-04-24-f2-f3-keychain-migration.md) | 0.5 day | F-1 |
-| ✅ landed 2026-04-24 | [F-3: 1-release 兼容 shim（`localStorage.fs_local_token` → keychain 迁移）](#f-3-1-release-兼容-shim) — [runbook](../runbooks/2026-04-24-f3-localstorage-shim-removal.md) | 0.5 day | F-1, F-2 |
-| ✅ landed 2026-04-24 (outbox + reconciler + presigned URL backend + web helper); UI rewire follow-up | [F-4: 文档上传 outbox + presigned URL 直传](#f-4-文档上传-outbox--presigned-url-直传) — [exec plan](./2026-04-24-f4-document-outbox.md) | 2–3 day | 无 |
-| ✅ landed 2026-04-24 (flag + wiring; quality eval pending golden set) | [F-5: RAG `strict_metadata=true` HARD SQL 下沉](#f-5-rag-strict_metadatatrue-hard-sql-下沉) | 1.5 day | 30 题 golden 评测可信 |
-| ✅ landed 2026-04-24 (backend + web API + Settings redirect); Dashboard edit drawer follow-up | [F-6: Watchlist item-level CRUD + Settings UI](#f-6-watchlist-item-level-crud--settings-ui) | 1.5–2 day | 无 |
-| ✅ F-7a/b landed, F-7c stub, F-7d/e N/A 2026-04-24 | [F-7: 平台层 Dynamic Module 重构（OpenBB / OKX / Queue / News / Twitter）](#f-7-dynamic-module-重构) — [exec plan](./2026-04-24-f7-dynamic-module-refactor.md) | 2 day per module × 5 | 单独跑，逐模块 |
-| ✅ landed 2026-04-24 (strict CSP + HSTS gated on cookie.secure) | [F-8: helmet CSP + HSTS 启用](#f-8-helmet-csp--hsts-启用) | 0.5 day | Web + 桌面端 SSE QA 通过 |
-| ✅ landed 2026-04-24 (IPC mock-runtime test + xvfb runtime no-panic smoke) | [F-9: 桌面 CI 真正的运行时 smoke（GUI/IPC）](#f-9-桌面-ci-runtime-smoke) — [exec plan](./2026-04-24-f9-desktop-ping-smoke.md) | 1 day | F-1 落地后更有意义 |
-| 🔒 blocked 2026-04-24 (external procurement only — engineering done) | [F-10: 桌面端发行包（DMG / MSI / AppImage）+ 签名](#f-10-桌面端发行包--签名) — [exec plan](./2026-04-24-f10-release-signing.md) | 2 day | F-9 |
-| ✅ landed 2026-04-24 (Polygon + FMP) | [F-11: 新增 search-capable provider（Polygon / Alpaca）](#f-11-新增-search-capable-provider) | 0.5 day per provider | 无 |
-| ✅ landed 2026-04-24 (via Logger-compat; individual InjectPinoLogger swaps incremental) | [F-12: nestjs-pino 替换内置 Logger](#f-12-nestjs-pino-替换内置-logger) | 1 day | 无 |
-| ✅ landed 2026-04-24 (filename heuristics; PDF-metadata + agent event deferred) | [F-13: 文档上传 `regionId` 元数据自动推断](#f-13-文档上传-regionid-元数据自动推断) | 0.5 day | 无 |
-| ✅ landed 2026-04-24 | [F-14: 接受标准 `colloquial` query class TODO](#f-14-接受标准-colloquial-query-class-todo) | 0.5 day | 无 |
+| 优先级                                                                                               | 条目                                                                                                                                                                      | 估算                 | 阻塞                     |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------------------------ |
+| ✅ landed 2026-04-24                                                                                 | [F-1: 桌面端 keychain（Tauri Rust 端）](#f-1-桌面端-keychain-tauri-rust-端) — see [exec plan](./2026-04-24-f1-tauri-keychain.md)                                          | 1.5–2 day            | 无                       |
+| ✅ landed 2026-04-24                                                                                 | [F-2: 移除 `NEXT_PUBLIC_LOCAL_USER_*` 构建烘焙](#f-2-移除-next_public_local_user_-构建烘焙) — see [exec plan](./2026-04-24-f2-f3-keychain-migration.md)                   | 0.5 day              | F-1                      |
+| ✅ landed 2026-04-24                                                                                 | [F-3: 1-release 兼容 shim（`localStorage.fs_local_token` → keychain 迁移）](#f-3-1-release-兼容-shim) — [runbook](../runbooks/2026-04-24-f3-localstorage-shim-removal.md) | 0.5 day              | F-1, F-2                 |
+| ✅ landed 2026-04-24 (outbox + reconciler + presigned URL backend + web helper); UI rewire follow-up | [F-4: 文档上传 outbox + presigned URL 直传](#f-4-文档上传-outbox--presigned-url-直传) — [exec plan](./2026-04-24-f4-document-outbox.md)                                   | 2–3 day              | 无                       |
+| ✅ landed 2026-04-24 (flag + wiring; quality eval pending golden set)                                | [F-5: RAG `strict_metadata=true` HARD SQL 下沉](#f-5-rag-strict_metadatatrue-hard-sql-下沉)                                                                               | 1.5 day              | 30 题 golden 评测可信    |
+| ✅ landed 2026-04-24 (backend + web API + Settings redirect); Dashboard edit drawer follow-up        | [F-6: Watchlist item-level CRUD + Settings UI](#f-6-watchlist-item-level-crud--settings-ui)                                                                               | 1.5–2 day            | 无                       |
+| ✅ F-7a/b landed, F-7c stub, F-7d/e N/A 2026-04-24                                                   | [F-7: 平台层 Dynamic Module 重构（OpenBB / OKX / Queue / News / Twitter）](#f-7-dynamic-module-重构) — [exec plan](./2026-04-24-f7-dynamic-module-refactor.md)            | 2 day per module × 5 | 单独跑，逐模块           |
+| ✅ landed 2026-04-24 (strict CSP + HSTS gated on cookie.secure)                                      | [F-8: helmet CSP + HSTS 启用](#f-8-helmet-csp--hsts-启用)                                                                                                                 | 0.5 day              | Web + 桌面端 SSE QA 通过 |
+| ✅ landed 2026-04-24 (IPC mock-runtime test + xvfb runtime no-panic smoke)                           | [F-9: 桌面 CI 真正的运行时 smoke（GUI/IPC）](#f-9-桌面-ci-runtime-smoke) — [exec plan](./2026-04-24-f9-desktop-ping-smoke.md)                                             | 1 day                | F-1 落地后更有意义       |
+| 🔒 blocked 2026-04-24 (external procurement only — engineering done)                                 | [F-10: 桌面端发行包（DMG / MSI / AppImage）+ 签名](#f-10-桌面端发行包--签名) — [exec plan](./2026-04-24-f10-release-signing.md)                                           | 2 day                | F-9                      |
+| ✅ landed 2026-04-24 (Polygon + FMP)                                                                 | [F-11: 新增 search-capable provider（Polygon / Alpaca）](#f-11-新增-search-capable-provider)                                                                              | 0.5 day per provider | 无                       |
+| ✅ landed 2026-04-24 (via Logger-compat; individual InjectPinoLogger swaps incremental)              | [F-12: nestjs-pino 替换内置 Logger](#f-12-nestjs-pino-替换内置-logger)                                                                                                    | 1 day                | 无                       |
+| ✅ landed 2026-04-24 (filename heuristics; PDF-metadata + agent event deferred)                      | [F-13: 文档上传 `regionId` 元数据自动推断](#f-13-文档上传-regionid-元数据自动推断)                                                                                        | 0.5 day              | 无                       |
+| ✅ landed 2026-04-24                                                                                 | [F-14: 接受标准 `colloquial` query class TODO](#f-14-接受标准-colloquial-query-class-todo)                                                                                | 0.5 day              | 无                       |
 
 ---
 
@@ -36,6 +36,7 @@
 **目标：** Tauri 启动时通过 Rust 端 `tauri::api::keychain` (或 `keyring-rs`) 把 JWT 写入系统 keychain（macOS Keychain / Windows Credential Manager / Linux libsecret）；前端通过 Tauri command 读取，不再走 `localStorage`。
 
 **落地步骤建议：**
+
 1. `apps/desktop/src-tauri/Cargo.toml` 加 `keyring = "3"`。
 2. 在 `apps/desktop/src-tauri/src/lib.rs` 暴露 `#[tauri::command] fn read_token()` / `write_token(token)` / `clear_token()`，service name 用 `"finsentinel-desktop"`，user 用 `"jwt"`。
 3. `apps/web/src/lib/auth/local-login.ts` 在 `window.__TAURI__` 存在时改为 `await invoke('read_token')`；`performLogin` 成功后 `await invoke('write_token', { token })`，不再写 `localStorage.setItem(TOKEN_KEY, ...)`。
@@ -55,6 +56,7 @@
 **目标：** 完全移除这两个 env，桌面端登录改为 F-1 落地后的 keychain + 一次性 UI。
 
 **落地步骤建议：**
+
 1. F-1 必须先完成（否则会留下没有自动登录路径）。
 2. 删 `isLocalLoginEnabled()` 中的 env 检查；改为 `window.__TAURI__` 存在时启用 keychain 路径。
 3. 跨仓库 `grep -r NEXT_PUBLIC_LOCAL_USER` 清干净（包含 docs / Tauri config）。
@@ -71,6 +73,7 @@
 **目标：** F-1 / F-2 第一个 release 上线时，桌面端启动期检测 `localStorage.fs_local_token`，迁移到 keychain 后清空 `localStorage`。下一个 release 移除 shim。
 
 **落地步骤建议：**
+
 1. 在 `apps/web/src/lib/auth/local-login.ts` 的 `ensureLocalToken` 入口加：
 
 ```ts
@@ -97,10 +100,12 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 **来源 PRD：** `docs/product-specs/2026-04-23-document-upload-pipeline-hardening.md` §5.1 / §5.2
 **当前状态：** P1-1 解决了 storage→DB 顺序补偿、`regionId` 参数化、`requireAsyncVectorize` 配置门。**文件仍整体进 Node 内存（`file.buffer`），仍是 storage-first 然后 DB-first 顺序。**
 **目标：**
+
 - 引入 outbox pattern：先写 DB 行 `status: PENDING_UPLOAD`（含 `storageKey` 占位），再上传 storage，再标 `READY`；后台 reconciler 清理 stuck `PENDING_UPLOAD`。
 - 大文件改成 presigned URL 直传：controller 返回 `{ uploadUrl, storageKey }`，前端 PUT 到 RustFS，再回调 `POST /documents/finalize` 把 metadata 写入 DB。
 
 **落地步骤建议：**
+
 1. 先 outbox（不改 transport）：
    - DB schema 加 `status PENDING_UPLOAD` enum 值（V23 migration）。
    - `DocumentUploadService.upload` 改为 INSERT 先发，storage 上传后 `update status=READY`，失败时 `status=FAILED` + `storage.delete`。
@@ -125,6 +130,7 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 **目标：** 调用方传 `strict_metadata: true` 时，把 sector / region 转为 SQL `WHERE sector = ANY($1) AND region_id = ANY($2)`，召回换精度。
 
 **落地步骤建议：**
+
 1. `RetrievalOrchestrator` / `RagRetrievalService` 入参增 `strict_metadata?: boolean`。
 2. `MetadataPreFilterService.buildFilter` 在 `strict_metadata === true` 时，把 top-N sector / region 写到 `hardFilter.sector` / `hardFilter.regionId`（注意当前 `SparseSearchFilters.sector` 是单值 `string`，HARD 路径要么扩成 `string[]` 要么只取 top-1）。
 3. SQL 已经支持 `metadata->>'sector' = filters.sector`（`sparse-search.service.ts:125-128`），但需要确认 `documents` 索引覆盖（如果 sector 走 `documents.sector` 列而不是 metadata JSON，确认 V21 / V22 索引能命中）。
@@ -142,10 +148,12 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 **来源 PRD：** `docs/product-specs/2026-04-23-watchlist-server-persistence.md` §5.1 / §5.2
 **当前状态：** P1-2 实现了 `GET /watchlist` + `POST /watchlist`（整个 category 上传）。**条目级 CRUD、thesis / notes / priority 编辑 UI 没做**。
 **目标：**
+
 - 后端：`PATCH /watchlist/items/:id`、`DELETE /watchlist/items/:id`、`PATCH /watchlist/categories/:id`、`DELETE /watchlist/categories/:id`、`POST /watchlist/categories/:id/organize`。
 - 前端：Dashboard 旁加抽屉，能编辑 thesis / notes / priority；Settings 里把「自选股」入口下沉到 Dashboard，避免两套写入路径。
 
 **落地步骤建议：**
+
 1. 后端：
    - `WatchlistService` 加 `updateItem`、`deleteItem`、`deleteCategory`、`updateCategory` 方法。
    - `WatchlistController` 加对应 routes，复用 `JwtGuard`。
@@ -173,6 +181,7 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 **落地步骤建议：每模块独立做，避免大爆炸。**
 
 每个模块的 PR 长这样：
+
 1. 把 `XxxModule` 改为：
    ```ts
    @Module({})
@@ -181,8 +190,12 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
        if (!cfg.enabled) return { module: XxxModule };
        return {
          module: XxxModule,
-         providers: [/* 原 providers */],
-         exports: [/* 原 exports */],
+         providers: [
+           /* 原 providers */
+         ],
+         exports: [
+           /* 原 exports */
+         ],
        };
      }
    }
@@ -192,6 +205,7 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 4. 启动期 `nest test` 断言 `XXX_ENABLED=false` 时 `XxxService` 不在容器里。
 
 **优先级建议（先易后难）：**
+
 - F-7a: OpenBB（最孤立）
 - F-7b: OKX
 - F-7c: Twitter (`APP_TWITTER_6551_ENABLED`)
@@ -210,6 +224,7 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 **目标：** 测出一组 CSP directives 能容纳 SSE + Tauri + 现有 web 资源；HSTS 在 prod 启用。
 
 **落地步骤建议：**
+
 1. 浏览器侧：抓出当前 `/news/stream`、`/chat/stream`、`/analysis/stream` 的 SSE behavior；`/reports/:id/pdf`、`/documents/:id/download` 的 blob 下载行为。
 2. 起一个最小 helmet config：
    ```ts
@@ -241,6 +256,7 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 **目标：** 真正跑一次 Tauri webview，触发一条 IPC，断言无 panic / unhandled rejection。
 
 **落地步骤建议：**
+
 1. 在 `apps/desktop/scripts/smoke.ts`（或 `smoke.spec.ts`）写：
    - 用 `@tauri-apps/api` 启 Tauri dev process（`tauri dev --no-watch` 或 mock NestJS 的 `mock-api.ts`）。
    - `invoke('ping')` 一条预置的健康检查 command（Rust 端实现：返回 `"pong"`）。
@@ -260,6 +276,7 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 **目标：** 给 release tag 触发的 workflow 跑 `tauri build`（不是 `--debug --no-bundle`），产出 macOS DMG / Windows MSI / Linux AppImage，做 macOS notarization + Windows code-signing。
 
 **落地步骤建议：**
+
 1. 单独 workflow `release.yml`，trigger on `push: tags: ['v*']`。
 2. macOS：需要 Apple Developer 账号 + Developer ID Application 证书，secrets 存 GH Actions：
    - `APPLE_CERTIFICATE` (base64 .p12)
@@ -282,6 +299,7 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 **目标：** 给 `PolygonMarketDataProvider` / `FmpMarketDataProvider` 加 `searchTickers` 实现，让 default provider 自身能搜，省掉 Yahoo 流量。
 
 **落地步骤建议（每个 provider 独立）：**
+
 1. Polygon：`GET https://api.polygon.io/v3/reference/tickers?search=X&active=true&limit=10`，map 字段到 `TickerSearchResult`。
 2. FMP：`GET https://financialmodelingprep.com/api/v3/search?query=X&limit=10`，类似 map。
 3. 在 `MarketDataServiceTest` 中给 default provider 注入 mock `searchTickers`，断言 registry 优先选 default。
@@ -298,6 +316,7 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 **目标：** 切到 `nestjs-pino`，让所有日志带 JSON 结构 + child context（`requestId`, `userId`），方便 ingress 到 Loki / DataDog / CloudWatch。
 
 **落地步骤建议：**
+
 1. `pnpm --filter @finsentinel/api add nestjs-pino pino-http` + `-D pino-pretty`。
 2. `app.module.ts` `imports` 加 `LoggerModule.forRoot({ pinoHttp: { level, transport: dev ? pino-pretty : undefined, customProps: req => ({ requestId: req.id }) } })`。
 3. `main.ts` `app.useLogger(app.get(Logger))`。
@@ -316,6 +335,7 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 **目标：** PDF metadata、URL host、SEC scraper 已知映射 → 自动猜 `regionId`；猜不到落到 `'UNKNOWN'` 并打 metric。
 
 **落地步骤建议：**
+
 1. 在 `DocumentParseService` 加 `extractRegionHint(buffer, mimetype, originalName): string | null`：
    - PDF：parse `Author` / `Producer` 元数据找国家提示。
    - 文件名：含 `10-K` / `S-1` → US；含 `Annual Report` + 中文 → CN 等。
@@ -331,12 +351,15 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 ### F-14: 接受标准 `colloquial` query class TODO
 
 **来源 PRD：** 不直接来自这批；在 `apps/api/src/rag/__tests__/metadata-pre-filter.service.spec.ts:67-68` 有 FIXME(R4)：
+
 ```ts
 // FIXME(R4): plan uses 'colloquial' but QueryClass omits it; reconcile in a follow-up.
 ```
+
 **目标：** 把 `colloquial` 加到 `QueryClass` enum 里，移除 `as any` 强制转。
 
 **落地步骤建议：**
+
 1. `apps/api/src/rag/retrieval-planner.service.ts` 的 `QueryClass` union 加 `'colloquial'`。
 2. `query-classifier.service.ts` 决定何时分类为 colloquial。
 3. `MetadataPreFilterService.minCandidatesByClass` 给 colloquial 加默认值（建议 0 — 闲聊不强制有候选）。
@@ -369,6 +392,7 @@ if (typeof window !== 'undefined' && window.__TAURI__) {
 ## 不在本文档的内容
 
 不属于本批 9 PRD 衍生延后项的工作（已经有自己的位置）：
+
 - `docs/exec-plans/tech-debt-tracker.md` 里的 `[RAG-TD-R4-*]` 系列条目
 - `docs/runbooks/2026-04-19-rag-wave2-rollout.md` 的剩余 R4 / R5 / R6 / R7 工作
 - 任何 trading subsystem 的 broker-adapter / 策略层工作（在 `docs/product-specs/2026-04-17-*` 系列）

@@ -43,9 +43,11 @@ function createMockSentimentService() {
 
 function createMockFirecrawl() {
   return {
-    scrape: vi.fn().mockResolvedValue(
-      '# Federal Reserve Rate Decision\n\nThe Federal Reserve raised interest rates by 25 basis points...',
-    ),
+    scrape: vi
+      .fn()
+      .mockResolvedValue(
+        '# Federal Reserve Rate Decision\n\nThe Federal Reserve raised interest rates by 25 basis points...',
+      ),
   };
 }
 
@@ -252,9 +254,6 @@ describe('NewsEnrichConsumer', () => {
     const job = createMockJob({ newsItemId: 'news-uuid-3' });
     await consumer.process(job);
 
-    expect(mockSentimentService.classify).toHaveBeenCalledWith(
-      'Quick headline',
-      null,
-    );
+    expect(mockSentimentService.classify).toHaveBeenCalledWith('Quick headline', null);
   });
 });

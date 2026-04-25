@@ -182,12 +182,7 @@ export class PaperTradingEngine implements TradingEngine {
     } else if (request.notional != null && request.notional !== '') {
       qty = Number(request.notional) / price;
     } else {
-      const result = this.buildResult(
-        false,
-        '0',
-        '0',
-        'Either qty or notional must be specified',
-      );
+      const result = this.buildResult(false, '0', '0', 'Either qty or notional must be specified');
       this.orderHistory.push(result);
       return result;
     }
@@ -208,15 +203,12 @@ export class PaperTradingEngine implements TradingEngine {
     this.cash -= cost;
 
     // Find existing position
-    const existing = this.positions.find(
-      (p) => p.ticker === request.symbol,
-    );
+    const existing = this.positions.find((p) => p.ticker === request.symbol);
 
     if (existing) {
       // Weighted average cost
       const newShares = existing.shares + qty;
-      const newAvgCost =
-        (existing.shares * existing.avgCost + qty * price) / newShares;
+      const newAvgCost = (existing.shares * existing.avgCost + qty * price) / newShares;
       existing.shares = newShares;
       existing.avgCost = newAvgCost;
       existing.currentPrice = price;
@@ -239,17 +231,10 @@ export class PaperTradingEngine implements TradingEngine {
   // ---------------------------------------------------------------------------
 
   private async executeSell(request: OrderRequest): Promise<OrderResult> {
-    const posIndex = this.positions.findIndex(
-      (p) => p.ticker === request.symbol,
-    );
+    const posIndex = this.positions.findIndex((p) => p.ticker === request.symbol);
 
     if (posIndex === -1) {
-      const result = this.buildResult(
-        false,
-        '0',
-        '0',
-        `No position found for ${request.symbol}`,
-      );
+      const result = this.buildResult(false, '0', '0', `No position found for ${request.symbol}`);
       this.orderHistory.push(result);
       return result;
     }

@@ -43,39 +43,37 @@ describe('OpenbbPublicDataService', () => {
     it('throws when OpenBB is disabled', async () => {
       mockConfig.enabled = false;
 
-      await expect(
-        service.queryPublicData('economy/cpi', 'fred'),
-      ).rejects.toThrow('OpenBB integration is disabled');
+      await expect(service.queryPublicData('economy/cpi', 'fred')).rejects.toThrow(
+        'OpenBB integration is disabled',
+      );
     });
 
     it('throws on empty path', async () => {
-      await expect(
-        service.queryPublicData('', 'fred'),
-      ).rejects.toThrow('Query path is required');
+      await expect(service.queryPublicData('', 'fred')).rejects.toThrow('Query path is required');
     });
 
     it('throws on path traversal', async () => {
-      await expect(
-        service.queryPublicData('../etc/passwd', 'fred'),
-      ).rejects.toThrow('Invalid query path');
+      await expect(service.queryPublicData('../etc/passwd', 'fred')).rejects.toThrow(
+        'Invalid query path',
+      );
     });
 
     it('throws on encoded path traversal', async () => {
-      await expect(
-        service.queryPublicData('%2e%2e/etc/passwd', 'fred'),
-      ).rejects.toThrow('Invalid query path');
+      await expect(service.queryPublicData('%2e%2e/etc/passwd', 'fred')).rejects.toThrow(
+        'Invalid query path',
+      );
     });
 
     it('throws on path containing query string', async () => {
-      await expect(
-        service.queryPublicData('economy/cpi?provider=fred', 'fred'),
-      ).rejects.toThrow('Path must not include query string');
+      await expect(service.queryPublicData('economy/cpi?provider=fred', 'fred')).rejects.toThrow(
+        'Path must not include query string',
+      );
     });
 
     it('throws on absolute URL in path', async () => {
-      await expect(
-        service.queryPublicData('http://evil.com/exploit', 'fred'),
-      ).rejects.toThrow('Path must be relative');
+      await expect(service.queryPublicData('http://evil.com/exploit', 'fred')).rejects.toThrow(
+        'Path must be relative',
+      );
     });
 
     it('makes GET request to correct URL with provider', async () => {
@@ -169,18 +167,18 @@ describe('OpenbbPublicDataService', () => {
       });
       vi.stubGlobal('fetch', mockFetch);
 
-      await expect(
-        service.queryPublicData('economy/unknown', 'fred'),
-      ).rejects.toThrow('OpenBB request failed (HTTP 404)');
+      await expect(service.queryPublicData('economy/unknown', 'fred')).rejects.toThrow(
+        'OpenBB request failed (HTTP 404)',
+      );
     });
 
     it('throws on fetch network error', async () => {
       const mockFetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
       vi.stubGlobal('fetch', mockFetch);
 
-      await expect(
-        service.queryPublicData('economy/cpi', 'fred'),
-      ).rejects.toThrow('Failed to call OpenBB');
+      await expect(service.queryPublicData('economy/cpi', 'fred')).rejects.toThrow(
+        'Failed to call OpenBB',
+      );
     });
 
     it('strips leading slashes from path', async () => {

@@ -330,13 +330,13 @@ Performance rule:
 
 ## Failure Modes
 
-| New path | Realistic failure | Test required | Error handling expectation | User impact if missed |
-| --- | --- | --- | --- | --- |
-| Boundary check | Check misses app-to-package cycle | Intentional failing import fixture | CI fails clearly | Hidden circular dependencies |
-| `packages/config` | Missing env var silently defaults | Invalid env test | Config parser reports exact key | Misconfigured deploy |
-| `packages/watchlist` | API response shape changes after move | Existing API spec plus package tests | Controller keeps current response mapping | Broken frontend calls |
-| Provider adapter extraction | Adapter starts importing API config directly | Import-boundary check | Adapter accepts typed config dependency | Hard-to-test provider behavior |
-| Sidecar documentation | Service omitted from supported surface | README/docs check in review | Docs list run command and boundary | Onboarding/deploy confusion |
+| New path                    | Realistic failure                            | Test required                        | Error handling expectation                | User impact if missed          |
+| --------------------------- | -------------------------------------------- | ------------------------------------ | ----------------------------------------- | ------------------------------ |
+| Boundary check              | Check misses app-to-package cycle            | Intentional failing import fixture   | CI fails clearly                          | Hidden circular dependencies   |
+| `packages/config`           | Missing env var silently defaults            | Invalid env test                     | Config parser reports exact key           | Misconfigured deploy           |
+| `packages/watchlist`        | API response shape changes after move        | Existing API spec plus package tests | Controller keeps current response mapping | Broken frontend calls          |
+| Provider adapter extraction | Adapter starts importing API config directly | Import-boundary check                | Adapter accepts typed config dependency   | Hard-to-test provider behavior |
+| Sidecar documentation       | Service omitted from supported surface       | README/docs check in review          | Docs list run command and boundary        | Onboarding/deploy confusion    |
 
 Critical gaps:
 
@@ -492,7 +492,7 @@ module.exports = {
 
 Create `docs/architecture/package-boundaries.md`:
 
-```markdown
+````markdown
 # Package Boundaries
 
 ## Dependency Direction
@@ -515,7 +515,9 @@ Run:
 ```bash
 pnpm check:boundaries
 ```
-```
+````
+
+````
 
 - [ ] **Step 5: Verify boundary check**
 
@@ -523,7 +525,7 @@ Run:
 
 ```bash
 pnpm check:boundaries
-```
+````
 
 Expected: PASS or only documented warnings for existing deep imports. Any package importing from `apps/*` is a blocking failure.
 
@@ -595,9 +597,7 @@ Create `packages/config/package.json`:
       "default": "./dist/index.js"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
     "test": "vitest run",
@@ -770,9 +770,7 @@ Create `packages/watchlist/package.json`:
       "default": "./dist/index.js"
     }
   },
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
     "test": "vitest run",
@@ -924,14 +922,14 @@ Expected: `README.md` remains concise and points to detailed docs rather than be
 
 ## What Already Exists
 
-| Existing asset | Reuse plan |
-| --- | --- |
-| `packages/shared` | Keep as foundation contracts/schemas initially. |
-| `packages/db` | Keep as persistence foundation package. |
-| `turbo.json` | Keep dependency-aware workspace orchestration. |
-| API domain tests | Reuse as regression tests during extraction. |
-| `README.md` | Keep as concise map; link deeper architecture docs. |
-| `services/*` | Keep as explicit sidecar deployables in wave 1. |
+| Existing asset    | Reuse plan                                          |
+| ----------------- | --------------------------------------------------- |
+| `packages/shared` | Keep as foundation contracts/schemas initially.     |
+| `packages/db`     | Keep as persistence foundation package.             |
+| `turbo.json`      | Keep dependency-aware workspace orchestration.      |
+| API domain tests  | Reuse as regression tests during extraction.        |
+| `README.md`       | Keep as concise map; link deeper architecture docs. |
+| `services/*`      | Keep as explicit sidecar deployables in wave 1.     |
 
 ## Backlog Candidates
 
@@ -981,12 +979,12 @@ Planning is complete for the architecture migration. No production code has been
 
 ## GSTACK REVIEW REPORT
 
-| Review | Trigger | Why | Runs | Status | Findings |
-|--------|---------|-----|------|--------|----------|
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | - | Not run |
-| Codex Review | `/codex review` | Independent 2nd opinion | 0 | - | Not run |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | issues_open | Big-bang rewrite rejected; 13 test/check gaps identified; 2 critical gaps remain until implementation |
-| Design Review | `/plan-design-review` | UI/UX gaps | 0 | - | Not applicable to backend/package architecture plan |
+| Review        | Trigger               | Why                             | Runs | Status      | Findings                                                                                              |
+| ------------- | --------------------- | ------------------------------- | ---- | ----------- | ----------------------------------------------------------------------------------------------------- |
+| CEO Review    | `/plan-ceo-review`    | Scope & strategy                | 0    | -           | Not run                                                                                               |
+| Codex Review  | `/codex review`       | Independent 2nd opinion         | 0    | -           | Not run                                                                                               |
+| Eng Review    | `/plan-eng-review`    | Architecture & tests (required) | 1    | issues_open | Big-bang rewrite rejected; 13 test/check gaps identified; 2 critical gaps remain until implementation |
+| Design Review | `/plan-design-review` | UI/UX gaps                      | 0    | -           | Not applicable to backend/package architecture plan                                                   |
 
 **UNRESOLVED:** Confirm desktop status, sidecar long-term status, and whether later toolchain parity is desired.
 

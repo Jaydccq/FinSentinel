@@ -82,11 +82,11 @@ export class OkxApiClient {
   /** POST /api/v5/trade/order — place an order */
   async placeOrder(params: {
     instId: string;
-    tdMode: string;         // "cross", "isolated", "cash"
-    side: string;           // "buy" or "sell"
-    ordType: string;        // "market", "limit"
-    sz: string;             // size
-    px?: string;            // price (for limit orders)
+    tdMode: string; // "cross", "isolated", "cash"
+    side: string; // "buy" or "sell"
+    ordType: string; // "market", "limit"
+    sz: string; // size
+    px?: string; // price (for limit orders)
     reduceOnly?: boolean;
   }): Promise<OkxOrder | null> {
     try {
@@ -177,11 +177,7 @@ export class OkxApiClient {
   }
 
   /** POST /api/v5/account/set-leverage — configure leverage for an instrument */
-  async setLeverage(
-    instId: string,
-    leverage: string,
-    marginMode: string,
-  ): Promise<boolean> {
+  async setLeverage(instId: string, leverage: string, marginMode: string): Promise<boolean> {
     try {
       const response = await this.sendPost('/api/v5/account/set-leverage', {
         instId,
@@ -205,27 +201,16 @@ export class OkxApiClient {
    * Generates the OKX API signature.
    * Sign = base64(hmacSha256(timestamp + method + requestPath + body, secretKey))
    */
-  sign(
-    timestamp: string,
-    method: string,
-    requestPath: string,
-    body: string,
-  ): string {
+  sign(timestamp: string, method: string, requestPath: string, body: string): string {
     const preSign = timestamp + method.toUpperCase() + requestPath + body;
-    return createHmac('sha256', this.secretKey)
-      .update(preSign)
-      .digest('base64');
+    return createHmac('sha256', this.secretKey).update(preSign).digest('base64');
   }
 
   // ---------------------------------------------------------------------------
   // HTTP helpers
   // ---------------------------------------------------------------------------
 
-  private authHeaders(
-    method: string,
-    requestPath: string,
-    body: string,
-  ): Record<string, string> {
+  private authHeaders(method: string, requestPath: string, body: string): Record<string, string> {
     const timestamp = new Date().toISOString();
     const signature = this.sign(timestamp, method, requestPath, body);
 
@@ -254,10 +239,7 @@ export class OkxApiClient {
     return response;
   }
 
-  private async sendPost(
-    path: string,
-    body: Record<string, unknown>,
-  ): Promise<Response> {
+  private async sendPost(path: string, body: Record<string, unknown>): Promise<Response> {
     const bodyStr = JSON.stringify(body);
     const headers = this.authHeaders('POST', path, bodyStr);
     const response = await fetch(`${this.baseUrl}${path}`, {
@@ -271,17 +253,13 @@ export class OkxApiClient {
 
   private checkHttpStatus(response: Response): void {
     if (!response.ok) {
-      throw new Error(
-        `OKX API HTTP error ${response.status}: ${response.statusText}`,
-      );
+      throw new Error(`OKX API HTTP error ${response.status}: ${response.statusText}`);
     }
   }
 
   private checkOkxResponse(response: OkxResponse<unknown>): void {
     if (response.code !== '0') {
-      throw new Error(
-        `OKX API error code ${response.code}: ${response.msg}`,
-      );
+      throw new Error(`OKX API error code ${response.code}: ${response.msg}`);
     }
   }
 }

@@ -1,4 +1,4 @@
-import { isTauri } from './is-tauri'
+import { isTauri } from './is-tauri';
 
 /**
  * Desktop runtime smoke helper. Calls the Rust `ping` command and expects
@@ -10,7 +10,7 @@ import { isTauri } from './is-tauri'
  * live.
  */
 export async function pingDesktop(): Promise<string | null> {
-  if (!isTauri()) return null
-  const { invoke } = await import('@tauri-apps/api/core')
-  return invoke<string>('ping')
+  if (!isTauri()) return null;
+  const { invoke } = await import('@tauri-apps/api/core');
+  return invoke<string>('ping');
 }

@@ -76,7 +76,7 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/finsentinel_ci
       REDIS_URL: redis://localhost:6379
       NODE_ENV: test
-      FIXTURE_SEED_CONFIRM: "1"
+      FIXTURE_SEED_CONFIRM: '1'
 
     steps:
       - name: Checkout
@@ -96,7 +96,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install JS dependencies
         run: pnpm install --frozen-lockfile

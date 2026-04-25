@@ -206,25 +206,15 @@ export class OkxWebSocketClient {
 
   // ── HMAC signing ───────────────────────────────────────────────────────────
 
-  signMessage(
-    timestamp: string,
-    method: string,
-    path: string,
-    body: string,
-  ): string {
+  signMessage(timestamp: string, method: string, path: string, body: string): string {
     const prehash = timestamp + method + path + body;
-    return createHmac('sha256', this.secretKey)
-      .update(prehash)
-      .digest('base64');
+    return createHmac('sha256', this.secretKey).update(prehash).digest('base64');
   }
 
   // ── Reconnect with exponential backoff ─────────────────────────────────────
 
   private scheduleReconnect(channel: 'public' | 'private'): void {
-    const delay = Math.min(
-      1000 * Math.pow(2, this.reconnectAttempts),
-      this.maxReconnectDelay,
-    );
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), this.maxReconnectDelay);
     this.reconnectAttempts++;
     this.logger.log(
       `Reconnecting ${channel} channel in ${delay}ms (attempt ${this.reconnectAttempts})`,

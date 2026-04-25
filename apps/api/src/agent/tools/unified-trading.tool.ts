@@ -2,7 +2,14 @@ import { defineZodTool as tool } from '@finsentinel/ai-runtime';
 import { z } from 'zod';
 
 interface UnifiedTradingAdapter {
-  stage(userId: string, action: string, symbol: string, qty?: string, amount?: string, price?: string): Promise<string>;
+  stage(
+    userId: string,
+    action: string,
+    symbol: string,
+    qty?: string,
+    amount?: string,
+    price?: string,
+  ): Promise<string>;
   commit(userId: string, message: string): Promise<string>;
   execute(userId: string): Promise<string>;
   getWalletStatus(userId: string): Promise<string>;
@@ -23,10 +30,7 @@ interface UnifiedTradingAdapter {
  *
  * Unified trading tool surface exposed to the agent.
  */
-export function createUnifiedTradingTools(
-  service: UnifiedTradingAdapter,
-  userId: string,
-) {
+export function createUnifiedTradingTools(service: UnifiedTradingAdapter, userId: string) {
   return {
     stageOrder: tool({
       description:
@@ -37,7 +41,10 @@ export function createUnifiedTradingTools(
       inputSchema: z.object({
         action: z.enum(['BUY', 'SELL', 'CLOSE']).describe('Trade action: BUY, SELL, or CLOSE'),
         symbol: z.string().describe('Asset symbol, e.g. AAPL, BTC-USDT-SWAP, BTC/USD'),
-        qty: z.string().optional().describe('Number of shares/contracts, or omit if specifying amount'),
+        qty: z
+          .string()
+          .optional()
+          .describe('Number of shares/contracts, or omit if specifying amount'),
         amount: z.string().optional().describe('Dollar amount, or omit if specifying qty'),
         price: z.string().optional().describe('Limit price, or omit for market order'),
       }),
@@ -58,7 +65,7 @@ export function createUnifiedTradingTools(
         message: z
           .string()
           .describe(
-            "Commit message explaining the trading rationale, " +
+            'Commit message explaining the trading rationale, ' +
               "e.g. 'Going long BTC based on bullish breakout and strong funding rate'",
           ),
       }),
@@ -154,9 +161,7 @@ export function createUnifiedTradingTools(
         "and compare assets cross-market (e.g., search 'gold' to find GLD ETF, GC futures, " +
         'PAXG crypto). Returns a list of matching Contracts with their broker and security type.',
       inputSchema: z.object({
-        query: z
-          .string()
-          .describe("Search query, e.g. 'gold', 'BTC', 'AAPL'"),
+        query: z.string().describe("Search query, e.g. 'gold', 'BTC', 'AAPL'"),
       }),
       execute: async ({ query }) => {
         try {
@@ -200,9 +205,7 @@ export function createUnifiedTradingTools(
         'Switch between PAPER (simulated) and LIVE (real broker) trading mode. ' +
         'WARNING: LIVE mode executes real trades with real money.',
       inputSchema: z.object({
-        mode: z
-          .enum(['PAPER', 'LIVE'])
-          .describe('Trading mode: PAPER or LIVE'),
+        mode: z.enum(['PAPER', 'LIVE']).describe('Trading mode: PAPER or LIVE'),
       }),
       execute: async ({ mode }) => {
         try {

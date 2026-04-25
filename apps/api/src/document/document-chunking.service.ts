@@ -67,9 +67,7 @@ export class DocumentChunkingService {
     const chunks = this.mergeWithOverlap(segments);
 
     // Step 3: Filter out too-small chunks
-    const filtered = chunks.filter(
-      (c) => c.trim().length >= this.config.minChunkSizeChars,
-    );
+    const filtered = chunks.filter((c) => c.trim().length >= this.config.minChunkSizeChars);
 
     // Step 4: Cap at maxNumChunks
     if (filtered.length > this.config.maxNumChunks) {
@@ -102,10 +100,14 @@ export class DocumentChunkingService {
   chunkStructured(doc: StructuredDocument): StructuredChunk[] {
     const docType = classifyDocType(doc);
     switch (docType) {
-      case 'report':      return this.reportChunker.chunk(doc);
-      case 'qa':          return this.qaChunker.chunk(doc);
-      case 'table_heavy': return this.tableChunker.chunk(doc);
-      default:            return this.defaultChunker.chunk(doc);
+      case 'report':
+        return this.reportChunker.chunk(doc);
+      case 'qa':
+        return this.qaChunker.chunk(doc);
+      case 'table_heavy':
+        return this.tableChunker.chunk(doc);
+      default:
+        return this.defaultChunker.chunk(doc);
     }
   }
 
@@ -196,9 +198,7 @@ export class DocumentChunkingService {
           chunks.push(current);
           // Build overlap prefix from the tail of the current chunk
           const overlapText =
-            chunkOverlap > 0 && current.length > chunkOverlap
-              ? current.slice(-chunkOverlap)
-              : '';
+            chunkOverlap > 0 && current.length > chunkOverlap ? current.slice(-chunkOverlap) : '';
           // Start new chunk with overlap + new segment
           if (overlapText && segment.length + overlapText.length + 1 <= chunkSize) {
             current = overlapText + ' ' + segment;

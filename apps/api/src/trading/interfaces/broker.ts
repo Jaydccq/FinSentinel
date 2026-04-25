@@ -1,12 +1,6 @@
 import type { SecurityType, BrokerCapability } from '@finsentinel/shared';
 import type { Contract } from '@finsentinel/shared';
-import type {
-  OrderRequest,
-  OrderResult,
-  PositionInfo,
-  AccountInfo,
-  MarketClock,
-} from './types';
+import type { OrderRequest, OrderResult, PositionInfo, AccountInfo, MarketClock } from './types';
 
 /**
  * Contract-aware broker abstraction.

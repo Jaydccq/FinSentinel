@@ -8,21 +8,22 @@
 **Approach:** keep the existing call sites unchanged where possible; introduce additive method overloads / fields so default callers don't have to change.
 
 ## Out of scope (per codex consult 2026-04-23)
+
 - HARD `strict_metadata=true` SQL pushdown for sector/region — defer until eval data backs the precision/recall trade.
 - New SQL columns / migrations.
 - Reranker tuning / new dense model.
 
 ## File Map
 
-| Path | Role |
-|------|------|
-| `apps/api/src/rag/retrieval-fusion.service.ts` | MODIFY — overload `fuse()` to accept `WeightedLane[]` (keep existing array signature backwards-compatible). |
-| `apps/api/src/rag/__tests__/retrieval-fusion.service.spec.ts` | MODIFY — add weighted-RRF cases. |
-| `apps/api/src/rag/metadata-pre-filter.service.ts` | MODIFY — populate `softFilter.sector` + `softFilter.regionId` from `extracted.sectors` / `.regions` (top-1 by confidence); replace stale "discards" comment. |
-| `apps/api/src/rag/sparse-search.service.ts` | MODIFY — extend the `softFilter` shape to include optional sector + regionId. |
-| `apps/api/src/rag/__tests__/metadata-pre-filter.service.spec.ts` | MODIFY — add cases for sector/region soft pushdown. |
-| `apps/api/src/rag/shadow-runner.service.ts` | MODIFY — replace polling `waitForSlot` with semaphore. |
-| `apps/api/src/rag/__tests__/shadow-runner.service.spec.ts` | NEW or MODIFY — assert no `setTimeout(5)` polling; deterministic acquire/release. |
+| Path                                                             | Role                                                                                                                                                         |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/api/src/rag/retrieval-fusion.service.ts`                   | MODIFY — overload `fuse()` to accept `WeightedLane[]` (keep existing array signature backwards-compatible).                                                  |
+| `apps/api/src/rag/__tests__/retrieval-fusion.service.spec.ts`    | MODIFY — add weighted-RRF cases.                                                                                                                             |
+| `apps/api/src/rag/metadata-pre-filter.service.ts`                | MODIFY — populate `softFilter.sector` + `softFilter.regionId` from `extracted.sectors` / `.regions` (top-1 by confidence); replace stale "discards" comment. |
+| `apps/api/src/rag/sparse-search.service.ts`                      | MODIFY — extend the `softFilter` shape to include optional sector + regionId.                                                                                |
+| `apps/api/src/rag/__tests__/metadata-pre-filter.service.spec.ts` | MODIFY — add cases for sector/region soft pushdown.                                                                                                          |
+| `apps/api/src/rag/shadow-runner.service.ts`                      | MODIFY — replace polling `waitForSlot` with semaphore.                                                                                                       |
+| `apps/api/src/rag/__tests__/shadow-runner.service.spec.ts`       | NEW or MODIFY — assert no `setTimeout(5)` polling; deterministic acquire/release.                                                                            |
 
 ## Tasks
 

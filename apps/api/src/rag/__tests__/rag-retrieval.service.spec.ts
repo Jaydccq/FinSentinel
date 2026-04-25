@@ -33,7 +33,12 @@ describe('RagRetrievalService', () => {
         { provide: RagChunkStoreService, useValue: mockChunkStore },
         {
           provide: MetricsService,
-          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn(), startHistogramTimer: vi.fn(() => vi.fn()) },
+          useValue: {
+            incrementCounter: vi.fn(),
+            setGauge: vi.fn(),
+            observeHistogram: vi.fn(),
+            startHistogramTimer: vi.fn(() => vi.fn()),
+          },
         },
         {
           provide: ConfigService,
@@ -184,7 +189,9 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     };
 
     const mockOrchestrator = {
-      orchestrate: vi.fn().mockResolvedValue({ fused: [fusedCandidate], laneCounts: { dense: 20 } }),
+      orchestrate: vi
+        .fn()
+        .mockResolvedValue({ fused: [fusedCandidate], laneCounts: { dense: 20 } }),
     };
 
     const mockReranker = {
@@ -197,9 +204,7 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
 
     const mockPacker = {
       pack: vi.fn().mockReturnValue({
-        chunks: [
-          { chunkId: 'c1', sourceId: 'src-1', content: 'fused content', metadata: {} },
-        ],
+        chunks: [{ chunkId: 'c1', sourceId: 'src-1', content: 'fused content', metadata: {} }],
         totalTokenEstimate: 10,
       }),
     };
@@ -211,7 +216,10 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const module = await Test.createTestingModule({
       providers: [
         RagRetrievalService,
-        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
+        {
+          provide: RagEmbeddingService,
+          useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) },
+        },
         { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([]) } },
         {
           provide: MetricsService,
@@ -240,10 +248,10 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const results = await svc.search('AAPL revenue', 5);
 
     expect(mockReranker.rerank).toHaveBeenCalledOnce();
-    expect(mockExpander.expand).toHaveBeenCalledWith(
-      [rerankedCandidate],
-      { neighborChunks: 1, fetchParentSection: true },
-    );
+    expect(mockExpander.expand).toHaveBeenCalledWith([rerankedCandidate], {
+      neighborChunks: 1,
+      fetchParentSection: true,
+    });
     expect(mockPacker.pack).toHaveBeenCalledWith(
       [rerankedCandidate, expandedCandidate],
       expect.any(Object),
@@ -299,7 +307,9 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const mockReranker = { rerank: vi.fn().mockResolvedValue([rerankedCandidate]) };
     const mockPacker = {
       pack: vi.fn().mockReturnValue({
-        chunks: [{ chunkId: 'c1', sourceId: 'src-1', content: 'Apple Q4 2025 EPS $1.64', metadata: {} }],
+        chunks: [
+          { chunkId: 'c1', sourceId: 'src-1', content: 'Apple Q4 2025 EPS $1.64', metadata: {} },
+        ],
         totalTokenEstimate: 5,
       }),
     };
@@ -307,7 +317,10 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const module = await Test.createTestingModule({
       providers: [
         RagRetrievalService,
-        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
+        {
+          provide: RagEmbeddingService,
+          useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) },
+        },
         { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([]) } },
         {
           provide: MetricsService,
@@ -375,7 +388,14 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const mockReranker = { rerank: vi.fn().mockResolvedValue([rerankedCandidate]) };
     const mockPacker = {
       pack: vi.fn().mockReturnValue({
-        chunks: [{ chunkId: 'c1', sourceId: 'src-1', content: 'Apple revenue grew 12% year-over-year.', metadata: {} }],
+        chunks: [
+          {
+            chunkId: 'c1',
+            sourceId: 'src-1',
+            content: 'Apple revenue grew 12% year-over-year.',
+            metadata: {},
+          },
+        ],
         totalTokenEstimate: 5,
       }),
     };
@@ -383,7 +403,10 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const module = await Test.createTestingModule({
       providers: [
         RagRetrievalService,
-        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
+        {
+          provide: RagEmbeddingService,
+          useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) },
+        },
         { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([]) } },
         {
           provide: MetricsService,
@@ -430,7 +453,14 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const rerankedCandidate = { ...fusedCandidate, rerankScore: 0.9, fallbackReason: null };
 
     const mockPlanner = {
-      plan: vi.fn().mockResolvedValue({ rewrittenQuery: 'q', rerankQuery: 'q', lanes: ['dense'], topKPerLane: 20 }),
+      plan: vi
+        .fn()
+        .mockResolvedValue({
+          rewrittenQuery: 'q',
+          rerankQuery: 'q',
+          lanes: ['dense'],
+          topKPerLane: 20,
+        }),
     };
     const mockOrchestrator = {
       orchestrate: vi.fn().mockResolvedValue({ fused: [fusedCandidate], laneCounts: { dense: 1 } }),
@@ -446,7 +476,10 @@ describe('RagRetrievalService multi-stage pipeline (reranker -> expander -> pack
     const module = await Test.createTestingModule({
       providers: [
         RagRetrievalService,
-        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
+        {
+          provide: RagEmbeddingService,
+          useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) },
+        },
         { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([]) } },
         {
           provide: MetricsService,

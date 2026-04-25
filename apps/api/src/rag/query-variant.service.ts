@@ -103,9 +103,7 @@ export class QueryVariantService {
 
       return parsed.data.slice(0, MAX_SUBQUERIES);
     } catch (error) {
-      this.logger.warn(
-        `Query decomposition failed for query "${query}": ${error}`,
-      );
+      this.logger.warn(`Query decomposition failed for query "${query}": ${error}`);
       return [];
     }
   }

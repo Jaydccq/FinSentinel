@@ -19,6 +19,6 @@ const skip = process.env['RAG_PARSER_E2E'] !== '1';
     // Await the eventual VECTORIZED status via polling `documents` table.
     // Fetch chunks and assert metadata.
 
-    expect(process.env['RAG_PARSER_E2E']).toBe('1');  // only reached when gated on
+    expect(process.env['RAG_PARSER_E2E']).toBe('1'); // only reached when gated on
   });
 });

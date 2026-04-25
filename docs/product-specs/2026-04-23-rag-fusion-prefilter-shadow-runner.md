@@ -62,12 +62,16 @@ class Semaphore {
   private waiters: Array<() => void> = [];
   constructor(private slots: number) {}
   async acquire() {
-    if (this.slots > 0) { this.slots--; return; }
-    await new Promise<void>(resolve => this.waiters.push(resolve));
+    if (this.slots > 0) {
+      this.slots--;
+      return;
+    }
+    await new Promise<void>((resolve) => this.waiters.push(resolve));
   }
   release() {
     const w = this.waiters.shift();
-    if (w) w(); else this.slots++;
+    if (w) w();
+    else this.slots++;
   }
 }
 ```

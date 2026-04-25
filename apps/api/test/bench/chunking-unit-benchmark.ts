@@ -33,9 +33,7 @@ function detectLang(text: string): 'en' | 'cjk' {
 // ---------------------------------------------------------------------------
 
 function approxTokenCount(text: string, lang: 'en' | 'cjk'): number {
-  return lang === 'cjk'
-    ? Math.ceil(text.length / 1.5)
-    : Math.ceil(text.length / 4);
+  return lang === 'cjk' ? Math.ceil(text.length / 1.5) : Math.ceil(text.length / 4);
 }
 
 // ---------------------------------------------------------------------------
@@ -71,10 +69,7 @@ function splitByTokens(text: string, lang: 'en' | 'cjk', maxTokens = 480): strin
 
 function percentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
-  const idx = Math.min(
-    Math.ceil((p / 100) * sorted.length) - 1,
-    sorted.length - 1,
-  );
+  const idx = Math.min(Math.ceil((p / 100) * sorted.length) - 1, sorted.length - 1);
   return sorted[idx];
 }
 
@@ -130,9 +125,7 @@ async function main() {
     const charChunks = charChunker.chunk(text);
     const charWallMs = Math.round((performance.now() - t0) * 100) / 100;
 
-    const charTokenCounts = charChunks
-      .map((c) => approxTokenCount(c, lang))
-      .sort((a, b) => a - b);
+    const charTokenCounts = charChunks.map((c) => approxTokenCount(c, lang)).sort((a, b) => a - b);
     const charMeanLen = charChunks.length
       ? Math.round(charChunks.reduce((a, c) => a + c.length, 0) / charChunks.length)
       : 0;
@@ -146,9 +139,7 @@ async function main() {
     const tokChunks = splitByTokens(text, lang, MAX_TOKENS);
     const tokenWallMs = Math.round((performance.now() - t1) * 100) / 100;
 
-    const tokTokenCounts = tokChunks
-      .map((c) => approxTokenCount(c, lang))
-      .sort((a, b) => a - b);
+    const tokTokenCounts = tokChunks.map((c) => approxTokenCount(c, lang)).sort((a, b) => a - b);
     const tokenMeanTokens = tokTokenCounts.length
       ? Math.round(tokTokenCounts.reduce((a, v) => a + v, 0) / tokTokenCounts.length)
       : 0;
@@ -185,7 +176,10 @@ async function main() {
       totalWallMs: Math.round(results.reduce((a, r) => a + r.charWallMs, 0) * 100) / 100,
       overallMeanTokens: Math.round(
         results.reduce((a, r) => a + r.charMeanTokens * r.charChunks, 0) /
-          Math.max(results.reduce((a, r) => a + r.charChunks, 0), 1),
+          Math.max(
+            results.reduce((a, r) => a + r.charChunks, 0),
+            1,
+          ),
       ),
       maxP95Tokens: Math.max(...results.map((r) => r.charP95Tokens)),
     },
@@ -194,7 +188,10 @@ async function main() {
       totalWallMs: Math.round(results.reduce((a, r) => a + r.tokenWallMs, 0) * 100) / 100,
       overallMeanTokens: Math.round(
         results.reduce((a, r) => a + r.tokenMeanTokens * r.tokenChunks, 0) /
-          Math.max(results.reduce((a, r) => a + r.tokenChunks, 0), 1),
+          Math.max(
+            results.reduce((a, r) => a + r.tokenChunks, 0),
+            1,
+          ),
       ),
       maxP95Tokens: Math.max(...results.map((r) => r.tokenP95Tokens)),
     },

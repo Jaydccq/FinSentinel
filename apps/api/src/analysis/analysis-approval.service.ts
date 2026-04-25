@@ -116,8 +116,7 @@ export class AnalysisApprovalService {
       .update(analysisApprovals)
       .set({
         status: newStatus,
-        approvedPayloadJson:
-          args.decision === 'APPROVE' ? existing.requestedPayloadJson : null,
+        approvedPayloadJson: args.decision === 'APPROVE' ? existing.requestedPayloadJson : null,
         resolvedAt: new Date(),
         resolvedByUserId: args.userId,
       })
@@ -158,11 +157,10 @@ export class AnalysisApprovalService {
           for (const req of mappedRequests) {
             await this.trading.stage(args.userId, req);
           }
-          const committed = await this.trading.commit(
-            args.userId,
-            `auto:run ${existing.runId}`,
-            { runId: existing.runId, ...(ledgerRow ? { ledgerId: ledgerRow.id } : {}) },
-          );
+          const committed = await this.trading.commit(args.userId, `auto:run ${existing.runId}`, {
+            runId: existing.runId,
+            ...(ledgerRow ? { ledgerId: ledgerRow.id } : {}),
+          });
           await this.ledger?.markCommitted({
             approvalId: existing.id,
             commitHash: committed.hash,

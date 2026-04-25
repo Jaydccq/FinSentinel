@@ -94,6 +94,7 @@
 ### Task 1: Add Shared And Database Contracts For The Ledger
 
 **Files:**
+
 - Create: `packages/shared/src/schemas/execution-ledger.ts`
 - Modify: `packages/shared/src/schemas/index.ts`
 - Modify: `packages/shared/src/schemas/trading.ts`
@@ -173,22 +174,33 @@ import { pgTable, uuid, varchar, jsonb, timestamp, index } from 'drizzle-orm/pg-
 import { analysisRuns } from './analysis-runs';
 import { analysisApprovals } from './analysis-approvals';
 
-export const executionReviewLedgers = pgTable('execution_review_ledgers', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  runId: uuid('run_id').notNull().references(() => analysisRuns.id, { onDelete: 'cascade' }),
-  approvalId: uuid('approval_id').notNull().references(() => analysisApprovals.id, { onDelete: 'cascade' }),
-  status: varchar('status', { length: 16 }).notNull(),
-  orderDraftRefsJson: jsonb('order_draft_refs_json').$type<string[]>().notNull().default([]),
-  stagedOperationRefsJson: jsonb('staged_operation_refs_json').$type<string[]>().notNull().default([]),
-  commitHash: varchar('commit_hash', { length: 128 }),
-  executionResultRef: varchar('execution_result_ref', { length: 255 }),
-  rejectionNote: varchar('rejection_note', { length: 255 }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [
-  index('idx_execution_review_ledgers_run').on(table.runId, table.updatedAt.desc()),
-  index('idx_execution_review_ledgers_approval').on(table.approvalId),
-]);
+export const executionReviewLedgers = pgTable(
+  'execution_review_ledgers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => analysisRuns.id, { onDelete: 'cascade' }),
+    approvalId: uuid('approval_id')
+      .notNull()
+      .references(() => analysisApprovals.id, { onDelete: 'cascade' }),
+    status: varchar('status', { length: 16 }).notNull(),
+    orderDraftRefsJson: jsonb('order_draft_refs_json').$type<string[]>().notNull().default([]),
+    stagedOperationRefsJson: jsonb('staged_operation_refs_json')
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    commitHash: varchar('commit_hash', { length: 128 }),
+    executionResultRef: varchar('execution_result_ref', { length: 255 }),
+    rejectionNote: varchar('rejection_note', { length: 255 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_execution_review_ledgers_run').on(table.runId, table.updatedAt.desc()),
+    index('idx_execution_review_ledgers_approval').on(table.approvalId),
+  ],
+);
 ```
 
 - [ ] **Step 4: Generate the migration**
@@ -217,6 +229,7 @@ git commit -m "feat: add execution review ledger contracts"
 ### Task 2: Create The Ledger Service And Wire Approval Resolution
 
 **Files:**
+
 - Create: `apps/api/src/analysis/execution-review-ledger.service.ts`
 - Modify: `apps/api/src/analysis/analysis-approval.service.ts`
 - Modify: `apps/api/src/analysis/teams/execution-prep-team.service.ts`
@@ -233,7 +246,14 @@ import { ExecutionReviewLedgerService } from '../execution-review-ledger.service
 
 describe('ExecutionReviewLedgerService', () => {
   it('creates a drafted ledger when approval is requested', async () => {
-    const db = { insert: vi.fn().mockReturnValue({ values: vi.fn().mockReturnThis(), returning: vi.fn().mockResolvedValue([{ id: 'ledger-1' }]) }) } as never;
+    const db = {
+      insert: vi
+        .fn()
+        .mockReturnValue({
+          values: vi.fn().mockReturnThis(),
+          returning: vi.fn().mockResolvedValue([{ id: 'ledger-1' }]),
+        }),
+    } as never;
     const service = new ExecutionReviewLedgerService(db);
     const ledger = await service.createDraft({
       runId: 'run-1',
@@ -248,10 +268,12 @@ describe('ExecutionReviewLedgerService', () => {
 ```ts
 it('marks the ledger rejected when approval is rejected', async () => {
   await service.resolve({ userId, approvalId, decision: 'REJECT', note: 'Too much sizing risk' });
-  expect(ledgerService.markRejected).toHaveBeenCalledWith(expect.objectContaining({
-    approvalId,
-    note: 'Too much sizing risk',
-  }));
+  expect(ledgerService.markRejected).toHaveBeenCalledWith(
+    expect.objectContaining({
+      approvalId,
+      note: 'Too much sizing risk',
+    }),
+  );
 });
 ```
 
@@ -270,23 +292,29 @@ export class ExecutionReviewLedgerService {
   constructor(@Inject('DRIZZLE_DB') private readonly db: DrizzleDB) {}
 
   async createDraft(args: { runId: string; approvalId: string; orderDraftRefs: string[] }) {
-    const [row] = await this.db.insert(executionReviewLedgers).values({
-      runId: args.runId,
-      approvalId: args.approvalId,
-      status: 'DRAFTED',
-      orderDraftRefsJson: args.orderDraftRefs,
-      stagedOperationRefsJson: [],
-      updatedAt: new Date(),
-    }).returning();
+    const [row] = await this.db
+      .insert(executionReviewLedgers)
+      .values({
+        runId: args.runId,
+        approvalId: args.approvalId,
+        status: 'DRAFTED',
+        orderDraftRefsJson: args.orderDraftRefs,
+        stagedOperationRefsJson: [],
+        updatedAt: new Date(),
+      })
+      .returning();
     return row;
   }
 
   async markRejected(args: { approvalId: string; note?: string }) {
-    await this.db.update(executionReviewLedgers).set({
-      status: 'REJECTED',
-      rejectionNote: args.note ?? null,
-      updatedAt: new Date(),
-    }).where(eq(executionReviewLedgers.approvalId, args.approvalId));
+    await this.db
+      .update(executionReviewLedgers)
+      .set({
+        status: 'REJECTED',
+        rejectionNote: args.note ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(executionReviewLedgers.approvalId, args.approvalId));
   }
 }
 ```
@@ -358,6 +386,7 @@ git commit -m "feat: create execution review ledger service"
 ### Task 3: Add Manual Commit/Dispatch Paths And Trading Back-Links
 
 **Files:**
+
 - Create: `apps/api/src/analysis/analysis-ledger.controller.ts`
 - Modify: `apps/api/src/trading/unified-trading.service.ts`
 - Modify: `apps/api/src/trading/trading.controller.ts`
@@ -434,13 +463,19 @@ export class AnalysisLedgerController {
   constructor(private readonly ledger: ExecutionReviewLedgerService) {}
 
   @Post(':id/commit')
-  async commitLedger(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() user: CurrentUserPayload) {
+  async commitLedger(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
     await this.ledger.commit(user.userId, id);
     return { ok: true };
   }
 
   @Post(':id/dispatch')
-  async dispatchLedger(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() user: CurrentUserPayload) {
+  async dispatchLedger(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: CurrentUserPayload,
+  ) {
     await this.ledger.dispatch(user.userId, id);
     return { ok: true };
   }
@@ -476,6 +511,7 @@ git commit -m "feat: add ledger commit and dispatch controls"
 ### Task 4: Render The Ledger In Analysis And Trading UI
 
 **Files:**
+
 - Modify: `apps/web/src/api/analysis-runs.ts`
 - Modify: `apps/web/src/api/analysis-approvals.ts`
 - Modify: `apps/web/src/api/trading.ts`
@@ -493,19 +529,23 @@ import { render, screen } from '@testing-library/react';
 import { ExecutionLedgerPanel } from '../ExecutionLedgerPanel';
 
 it('renders draft -> staged -> committed status and action buttons', () => {
-  render(<ExecutionLedgerPanel ledger={{
-    id: 'ledger-1',
-    runId: 'run-1',
-    approvalId: 'approval-1',
-    status: 'STAGED',
-    orderDraftRefs: ['artifact-1'],
-    stagedOperationRefs: ['BUY:AAPL', 'SELL:MSFT'],
-    commitHash: null,
-    executionResultRef: null,
-    rejectionNote: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }} />);
+  render(
+    <ExecutionLedgerPanel
+      ledger={{
+        id: 'ledger-1',
+        runId: 'run-1',
+        approvalId: 'approval-1',
+        status: 'STAGED',
+        orderDraftRefs: ['artifact-1'],
+        stagedOperationRefs: ['BUY:AAPL', 'SELL:MSFT'],
+        commitHash: null,
+        executionResultRef: null,
+        rejectionNote: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }}
+    />,
+  );
 
   expect(screen.getByText(/STAGED/i)).toBeTruthy();
   expect(screen.getByText(/BUY:AAPL/)).toBeTruthy();
@@ -550,10 +590,20 @@ export function ExecutionLedgerPanel({ ledger, onCommit, onDispatch }: Props) {
       <h2 className="text-base font-semibold">Execution Ledger</h2>
       <p className="text-xs text-slate-400">Status: {ledger.status}</p>
       <ul className="space-y-1 text-sm">
-        {ledger.stagedOperationRefs.map((op) => <li key={op}>{op}</li>)}
+        {ledger.stagedOperationRefs.map((op) => (
+          <li key={op}>{op}</li>
+        ))}
       </ul>
-      {!ledger.commitHash ? <button className="btn-secondary px-3 py-1 text-xs" onClick={onCommit}>Create Commit</button> : null}
-      {ledger.commitHash && ledger.status !== 'EXECUTED' ? <button className="btn-primary px-3 py-1 text-xs" onClick={onDispatch}>Dispatch</button> : null}
+      {!ledger.commitHash ? (
+        <button className="btn-secondary px-3 py-1 text-xs" onClick={onCommit}>
+          Create Commit
+        </button>
+      ) : null}
+      {ledger.commitHash && ledger.status !== 'EXECUTED' ? (
+        <button className="btn-primary px-3 py-1 text-xs" onClick={onDispatch}>
+          Dispatch
+        </button>
+      ) : null}
     </section>
   );
 }
@@ -572,18 +622,23 @@ export function ExecutionLedgerPanel({ ledger, onCommit, onDispatch }: Props) {
 
 ```tsx
 // apps/web/src/views/TradingPage.tsx
-{history.map((commit) => (
-  <li key={commit.hash}>
-    <div className="flex items-center justify-between">
-      <span>{truncHash(commit.hash)}</span>
-      {commit.metadata?.runId ? (
-        <a className="text-xs underline text-slate-300" href={`/analysis?runId=${commit.metadata.runId}`}>
-          Source Run
-        </a>
-      ) : null}
-    </div>
-  </li>
-))}
+{
+  history.map((commit) => (
+    <li key={commit.hash}>
+      <div className="flex items-center justify-between">
+        <span>{truncHash(commit.hash)}</span>
+        {commit.metadata?.runId ? (
+          <a
+            className="text-xs underline text-slate-300"
+            href={`/analysis?runId=${commit.metadata.runId}`}
+          >
+            Source Run
+          </a>
+        ) : null}
+      </div>
+    </li>
+  ));
+}
 ```
 
 - [ ] **Step 5: Re-run the ledger UI test and web typecheck**

@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileDown,
   ShieldAlert,
@@ -11,96 +11,99 @@ import {
   ChevronDown,
   ArrowUp,
   ArrowDown,
-} from 'lucide-react'
-import { toast } from 'sonner'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-import { portfolioApi, type PortfolioResponse, type RiskReportSummary } from '../api/portfolio'
-import { downloadPdf } from '../api/reports'
-import { ReportListSkeleton } from '../components/Skeleton'
-import EmptyState from '../components/EmptyState'
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { portfolioApi, type PortfolioResponse, type RiskReportSummary } from '../api/portfolio';
+import { downloadPdf } from '../api/reports';
+import { ReportListSkeleton } from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
 
-const LEVEL: Record<string, {
-  border:     string
-  scoreBg:    string
-  scoreText:  string
-  badgeBg:    string
-  badgeText:  string
-  iconColor:  string
-  chartColor: string
-}> = {
+const LEVEL: Record<
+  string,
+  {
+    border: string;
+    scoreBg: string;
+    scoreText: string;
+    badgeBg: string;
+    badgeText: string;
+    iconColor: string;
+    chartColor: string;
+  }
+> = {
   LOW: {
-    border:     'border-l-emerald-500',
-    scoreBg:    'linear-gradient(135deg, #064e3b 0%, #065f46 100%)',
-    scoreText:  'text-emerald-300',
-    badgeBg:    'bg-emerald-500/15',
-    badgeText:  'text-emerald-400',
-    iconColor:  'text-emerald-400',
+    border: 'border-l-emerald-500',
+    scoreBg: 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)',
+    scoreText: 'text-emerald-300',
+    badgeBg: 'bg-emerald-500/15',
+    badgeText: 'text-emerald-400',
+    iconColor: 'text-emerald-400',
     chartColor: '#34d399',
   },
   MEDIUM: {
-    border:     'border-l-yellow-500',
-    scoreBg:    'linear-gradient(135deg, #451a03 0%, #78350f 100%)',
-    scoreText:  'text-yellow-300',
-    badgeBg:    'bg-yellow-500/15',
-    badgeText:  'text-yellow-400',
-    iconColor:  'text-yellow-400',
+    border: 'border-l-yellow-500',
+    scoreBg: 'linear-gradient(135deg, #451a03 0%, #78350f 100%)',
+    scoreText: 'text-yellow-300',
+    badgeBg: 'bg-yellow-500/15',
+    badgeText: 'text-yellow-400',
+    iconColor: 'text-yellow-400',
     chartColor: '#fbbf24',
   },
   HIGH: {
-    border:     'border-l-orange-500',
-    scoreBg:    'linear-gradient(135deg, #431407 0%, #7c2d12 100%)',
-    scoreText:  'text-orange-300',
-    badgeBg:    'bg-orange-500/15',
-    badgeText:  'text-orange-400',
-    iconColor:  'text-orange-400',
+    border: 'border-l-orange-500',
+    scoreBg: 'linear-gradient(135deg, #431407 0%, #7c2d12 100%)',
+    scoreText: 'text-orange-300',
+    badgeBg: 'bg-orange-500/15',
+    badgeText: 'text-orange-400',
+    iconColor: 'text-orange-400',
     chartColor: '#fb923c',
   },
   CRITICAL: {
-    border:     'border-l-red-500',
-    scoreBg:    'linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%)',
-    scoreText:  'text-red-300',
-    badgeBg:    'bg-red-500/15',
-    badgeText:  'text-red-400',
-    iconColor:  'text-red-400',
+    border: 'border-l-red-500',
+    scoreBg: 'linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%)',
+    scoreText: 'text-red-300',
+    badgeBg: 'bg-red-500/15',
+    badgeText: 'text-red-400',
+    iconColor: 'text-red-400',
     chartColor: '#f87171',
   },
-}
+};
 
 function formatDate(iso: string): string {
-  const d = new Date(iso)
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffDays = Math.floor(diffMs / 86_400_000)
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / 86_400_000);
 
-  if (diffDays === 0) return 'Today'
-  if (diffDays === 1) return 'Yesterday'
-  if (diffDays < 7)  return `${diffDays} days ago`
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return `${diffDays} days ago`;
 
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function scoreColor(score: number): string {
-  if (score <= 30) return 'text-emerald-400'
-  if (score <= 50) return 'text-yellow-400'
-  if (score <= 70) return 'text-orange-400'
-  return 'text-red-400'
+  if (score <= 30) return 'text-emerald-400';
+  if (score <= 50) return 'text-yellow-400';
+  if (score <= 70) return 'text-orange-400';
+  return 'text-red-400';
 }
 
 function ScoreTrendChart({ reports }: { reports: RiskReportSummary[] }) {
   const data = [...reports]
     .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-    .map(r => ({
-      date:  shortDate(r.createdAt),
+    .map((r) => ({
+      date: shortDate(r.createdAt),
       score: r.riskScore,
       level: r.riskLevel,
-    }))
+    }));
 
-  const latestLevel = data[data.length - 1]?.level ?? 'MEDIUM'
-  const color = LEVEL[latestLevel]?.chartColor ?? '#fbbf24'
+  const latestLevel = data[data.length - 1]?.level ?? 'MEDIUM';
+  const color = LEVEL[latestLevel]?.chartColor ?? '#fbbf24';
 
   return (
     <div className="bg-[var(--bg-panel)] border border-[color:var(--border-subtle)] rounded p-5 mb-5">
@@ -123,11 +126,11 @@ function ScoreTrendChart({ reports }: { reports: RiskReportSummary[] }) {
           />
           <Tooltip
             contentStyle={{
-              background:   'var(--bg-elevated)',
-              border:       '1px solid var(--border-subtle)',
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-subtle)',
               borderRadius: '4px',
-              fontSize:     '12px',
-              color:        'var(--text-primary)',
+              fontSize: '12px',
+              color: 'var(--text-primary)',
             }}
           />
           <Line
@@ -141,10 +144,18 @@ function ScoreTrendChart({ reports }: { reports: RiskReportSummary[] }) {
         </LineChart>
       </ResponsiveContainer>
     </div>
-  )
+  );
 }
 
-function FactorBar({ category, score, description }: { category: string; score: number; description: string }) {
+function FactorBar({
+  category,
+  score,
+  description,
+}: {
+  category: string;
+  score: number;
+  description: string;
+}) {
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
@@ -158,37 +169,43 @@ function FactorBar({ category, score, description }: { category: string; score: 
           transition={{ duration: 0.6, ease: 'easeOut' }}
           className="h-full rounded-full"
           style={{
-            background: score <= 30 ? '#34d399'
-              : score <= 50 ? '#fbbf24'
-              : score <= 70 ? '#fb923c'
-              : '#f87171',
+            background:
+              score <= 30
+                ? '#34d399'
+                : score <= 50
+                  ? '#fbbf24'
+                  : score <= 70
+                    ? '#fb923c'
+                    : '#f87171',
           }}
         />
       </div>
       <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">{description}</p>
     </div>
-  )
+  );
 }
 
 function FactorComparison({
   current,
   previous,
 }: {
-  current:  RiskReportSummary
-  previous: RiskReportSummary
+  current: RiskReportSummary;
+  previous: RiskReportSummary;
 }) {
-  const prevMap = new Map(previous.factors.map(f => [f.category, f.score]))
+  const prevMap = new Map(previous.factors.map((f) => [f.category, f.score]));
 
   return (
     <div className="mt-3 space-y-1.5">
-      <p className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">Change vs Previous</p>
+      <p className="text-[11px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">
+        Change vs Previous
+      </p>
       <div className="flex flex-wrap gap-2">
-        {current.factors.map(f => {
-          const prevScore = prevMap.get(f.category)
-          if (prevScore === undefined) return null
-          const diff = f.score - prevScore
-          if (diff === 0) return null
-          const isUp = diff > 0
+        {current.factors.map((f) => {
+          const prevScore = prevMap.get(f.category);
+          if (prevScore === undefined) return null;
+          const diff = f.score - prevScore;
+          if (diff === 0) return null;
+          const isUp = diff > 0;
           return (
             <span
               key={f.category}
@@ -196,81 +213,86 @@ function FactorComparison({
             >
               {f.category}: {prevScore} &rarr; {f.score}
               {isUp ? <ArrowUp size={10} /> : <ArrowDown size={10} />}
-              {isUp ? '+' : ''}{diff}
+              {isUp ? '+' : ''}
+              {diff}
             </span>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }
 
 export default function ReportsPage() {
-  const [portfolios,  setPortfolios]  = useState<PortfolioResponse[]>([])
-  const [selectedId,  setSelectedId]  = useState<string>('')
-  const [reports,     setReports]     = useState<RiskReportSummary[]>([])
-  const [loading,     setLoading]     = useState(false)
-  const [downloading, setDownloading] = useState<string | null>(null)
-  const [expandedId,  setExpandedId]  = useState<string | null>(null)
+  const [portfolios, setPortfolios] = useState<PortfolioResponse[]>([]);
+  const [selectedId, setSelectedId] = useState<string>('');
+  const [reports, setReports] = useState<RiskReportSummary[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    portfolioApi.list().then(ps => {
-      setPortfolios(ps)
-      if (ps.length > 0) setSelectedId(ps[0].id)
-    }).catch(() => toast.error('Failed to load portfolios.'))
-  }, [])
+    portfolioApi
+      .list()
+      .then((ps) => {
+        setPortfolios(ps);
+        if (ps.length > 0) setSelectedId(ps[0].id);
+      })
+      .catch(() => toast.error('Failed to load portfolios.'));
+  }, []);
 
   useEffect(() => {
-    if (!selectedId) return
-    setLoading(true)
-    setExpandedId(null)
-    portfolioApi.listReports(selectedId)
+    if (!selectedId) return;
+    setLoading(true);
+    setExpandedId(null);
+    portfolioApi
+      .listReports(selectedId)
       .then(setReports)
       .catch(() => {
-        toast.error('Failed to load reports.')
-        setReports([])
+        toast.error('Failed to load reports.');
+        setReports([]);
       })
-      .finally(() => setLoading(false))
-  }, [selectedId])
+      .finally(() => setLoading(false));
+  }, [selectedId]);
 
   const handleDownload = async (reportId: string) => {
-    setDownloading(reportId)
+    setDownloading(reportId);
     try {
-      await downloadPdf(reportId)
-      toast.success('PDF downloaded.')
+      await downloadPdf(reportId);
+      toast.success('PDF downloaded.');
     } catch {
-      toast.error('Failed to download PDF.')
+      toast.error('Failed to download PDF.');
     } finally {
-      setDownloading(null)
+      setDownloading(null);
     }
-  }
+  };
 
   const sortedByDate = useMemo(
-    () => [...reports].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    () =>
+      [...reports].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      ),
     [reports],
-  )
+  );
 
   const previousReportMap = useMemo(() => {
-    const map = new Map<string, RiskReportSummary>()
+    const map = new Map<string, RiskReportSummary>();
     for (let i = 1; i < sortedByDate.length; i++) {
-      map.set(sortedByDate[i].id, sortedByDate[i - 1])
+      map.set(sortedByDate[i].id, sortedByDate[i - 1]);
     }
-    return map
-  }, [sortedByDate])
+    return map;
+  }, [sortedByDate]);
 
   const getPreviousReport = useCallback(
     (reportId: string): RiskReportSummary | null => previousReportMap.get(reportId) ?? null,
     [previousReportMap],
-  )
+  );
 
   return (
     <div className="p-10 space-y-10">
-
       {/* Page title */}
       <div>
-        <h1 className="text-3xl text-[var(--text-primary)]">
-          Reports
-        </h1>
+        <h1 className="text-3xl text-[var(--text-primary)]">Reports</h1>
         <p className="text-[var(--text-muted)] text-sm mt-2">
           View risk assessment details, track score trends, and download PDF reports
         </p>
@@ -278,7 +300,10 @@ export default function ReportsPage() {
 
       {/* Portfolio selector */}
       <div className="flex items-center gap-3">
-        <label htmlFor="reports-portfolio" className="text-[var(--text-secondary)] text-sm font-medium">
+        <label
+          htmlFor="reports-portfolio"
+          className="text-[var(--text-secondary)] text-sm font-medium"
+        >
           Portfolio
         </label>
         <select
@@ -287,16 +312,18 @@ export default function ReportsPage() {
                      focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)]/40
                      transition-colors cursor-pointer"
           value={selectedId}
-          onChange={e => setSelectedId(e.target.value)}
+          onChange={(e) => setSelectedId(e.target.value)}
         >
-          {portfolios.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          {portfolios.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
         </select>
       </div>
 
       {/* Score trend chart — shown when 2+ reports exist */}
-      {!loading && reports.length >= 2 && (
-        <ScoreTrendChart reports={reports} />
-      )}
+      {!loading && reports.length >= 2 && <ScoreTrendChart reports={reports} />}
 
       {/* Reports list */}
       {loading ? (
@@ -310,10 +337,10 @@ export default function ReportsPage() {
       ) : (
         <div className="space-y-3">
           {reports.map((r, i) => {
-            const lv          = LEVEL[r.riskLevel] ?? LEVEL.CRITICAL
-            const isLow       = r.riskLevel === 'LOW' || r.riskLevel === 'MEDIUM'
-            const isExpanded  = expandedId === r.id
-            const previousReport = getPreviousReport(r.id)
+            const lv = LEVEL[r.riskLevel] ?? LEVEL.CRITICAL;
+            const isLow = r.riskLevel === 'LOW' || r.riskLevel === 'MEDIUM';
+            const isExpanded = expandedId === r.id;
+            const previousReport = getPreviousReport(r.id);
 
             return (
               <motion.div
@@ -339,7 +366,9 @@ export default function ReportsPage() {
                     <span className={`text-xl font-bold font-data leading-none ${lv.scoreText}`}>
                       {r.riskScore}
                     </span>
-                    <span className="text-[var(--text-muted)] text-[9px] font-medium tracking-wide mt-0.5">/100</span>
+                    <span className="text-[var(--text-muted)] text-[9px] font-medium tracking-wide mt-0.5">
+                      /100
+                    </span>
                   </div>
 
                   <div className="flex-1 min-w-0">
@@ -415,7 +444,7 @@ export default function ReportsPage() {
                               Risk Factors
                             </h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {r.factors.map(f => (
+                              {r.factors.map((f) => (
                                 <FactorBar key={f.category} {...f} />
                               ))}
                             </div>
@@ -435,24 +464,28 @@ export default function ReportsPage() {
                             </h4>
                             <ul className="space-y-1.5">
                               {r.actionableAdvice.map((advice, idx) => (
-                                <li key={idx} className="flex items-start gap-2 text-sm text-[var(--text-secondary)]">
-                                  <span className="text-[var(--accent)] mt-0.5 flex-shrink-0">•</span>
+                                <li
+                                  key={idx}
+                                  className="flex items-start gap-2 text-sm text-[var(--text-secondary)]"
+                                >
+                                  <span className="text-[var(--accent)] mt-0.5 flex-shrink-0">
+                                    •
+                                  </span>
                                   {advice}
                                 </li>
                               ))}
                             </ul>
                           </div>
                         )}
-
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
               </motion.div>
-            )
+            );
           })}
         </div>
       )}
     </div>
-  )
+  );
 }

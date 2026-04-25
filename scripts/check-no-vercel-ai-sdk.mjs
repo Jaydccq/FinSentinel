@@ -1,11 +1,6 @@
 import { execFileSync } from 'node:child_process';
 
-const patterns = [
-  "from 'ai'",
-  'from "ai"',
-  "'@ai-sdk/openai'",
-  '"@ai-sdk/openai"',
-];
+const patterns = ["from 'ai'", 'from "ai"', "'@ai-sdk/openai'", '"@ai-sdk/openai"'];
 
 let failed = false;
 
@@ -20,12 +15,7 @@ for (const pattern of patterns) {
       process.stderr.write(output);
     }
   } catch (error) {
-    if (
-      error &&
-      typeof error === 'object' &&
-      'status' in error &&
-      error.status === 1
-    ) {
+    if (error && typeof error === 'object' && 'status' in error && error.status === 1) {
       continue;
     }
     throw error;
@@ -33,8 +23,6 @@ for (const pattern of patterns) {
 }
 
 if (failed) {
-  process.stderr.write(
-    'Vercel AI SDK imports are not allowed. Use @finsentinel/ai-runtime.\n',
-  );
+  process.stderr.write('Vercel AI SDK imports are not allowed. Use @finsentinel/ai-runtime.\n');
   process.exit(1);
 }

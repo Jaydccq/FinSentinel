@@ -10,13 +10,13 @@ Convert the five optional integration modules from "always imported,
 service guards inside" to `Module.register({ enabled })` dynamic modules
 so their HTTP surface disappears when the feature flag is off.
 
-| Sub-item | Module | Flag | Status |
-|----------|--------|------|--------|
-| F-7a | OpenbbModule | `OPENBB_ENABLED` | ✅ landed 2026-04-24 |
-| F-7b | OkxModule | `APP_OKX_ENABLED` | ✅ landed 2026-04-24 |
-| F-7c | TwitterModule | `APP_TWITTER_6551_ENABLED` | ✅ stub landed 2026-04-24 — see note below |
-| F-7d | (News) CryptoNews | `APP_CRYPTO_NEWS_ENABLED` | ❌ **not applicable** — see note below |
-| F-7e | QueueModule | (multiple consumers) | ❌ **not applicable** — see note below |
+| Sub-item | Module            | Flag                       | Status                                     |
+| -------- | ----------------- | -------------------------- | ------------------------------------------ |
+| F-7a     | OpenbbModule      | `OPENBB_ENABLED`           | ✅ landed 2026-04-24                       |
+| F-7b     | OkxModule         | `APP_OKX_ENABLED`          | ✅ landed 2026-04-24                       |
+| F-7c     | TwitterModule     | `APP_TWITTER_6551_ENABLED` | ✅ stub landed 2026-04-24 — see note below |
+| F-7d     | (News) CryptoNews | `APP_CRYPTO_NEWS_ENABLED`  | ❌ **not applicable** — see note below     |
+| F-7e     | QueueModule       | (multiple consumers)       | ❌ **not applicable** — see note below     |
 
 ## Refactor recipe (the pattern F-7a established)
 
@@ -65,7 +65,7 @@ it one consumer at a time.
    or cross-module state. ✅ landed.
 2. **OkxModule** — services + controller + autonomy cron hooks. Services
    inject `AgentEvent` repository. Keep providers always; skip controllers
-   + cron handlers when disabled.
+   - cron handlers when disabled.
 3. **TwitterModule** — single service + one tool binding. Tool consumers
    (agent runtime) need `@Optional()` check if we want to drop the
    provider entirely. Safer to keep services always.
@@ -79,14 +79,15 @@ it one consumer at a time.
 
 ## Verification (F-7a)
 
-| Check | Result |
-|-------|--------|
+| Check                                  | Result      |
+| -------------------------------------- | ----------- |
 | `pnpm --filter @finsentinel/api build` | 0 TS issues |
-| `pnpm --filter @finsentinel/api test` | 1569 passed |
+| `pnpm --filter @finsentinel/api test`  | 1569 passed |
 
 ## Architectural notes per sub-item
 
 ### F-7b (OKX) — straightforward, landed
+
 Same pattern as F-7a: `@Module({...})` carries always-on providers
 (`OkxPriceService`, `OkxAnalysisService`, factory-built
 `OKX_API_CLIENT` / `OKX_TRADING_ENGINE`); `register({ enabled })`
@@ -111,7 +112,7 @@ Left as a follow-up; not blocking.
 
 `APP_CRYPTO_NEWS_ENABLED` does **not** gate a whole Nest module.
 `NewsModule` is always on; the CryptoNews-specific pieces live
-*inside* it:
+_inside_ it:
 
 - `CryptoNewsApiClient` + `CryptoNewsFetcher` — always registered.
 - The service's `isEnabled()` method reads the env flag and the

@@ -28,10 +28,13 @@ export class StageGraphService {
   build(input: StageGraphInput): StageGraphNode[] {
     const plan = this.presets.resolve({ preset: input.preset, researchDepth: input.researchDepth });
     const presetStages = new Set<AnalysisStageKey>(plan.stageKeys);
-    const override = input.enabledTeams?.length ? new Set<AnalysisStageKey>(input.enabledTeams) : null;
+    const override = input.enabledTeams?.length
+      ? new Set<AnalysisStageKey>(input.enabledTeams)
+      : null;
     return CANONICAL_ORDER.map((stageKey) => ({
       stageKey,
-      status: presetStages.has(stageKey) && (!override || override.has(stageKey)) ? 'ENABLED' : 'SKIPPED',
+      status:
+        presetStages.has(stageKey) && (!override || override.has(stageKey)) ? 'ENABLED' : 'SKIPPED',
     }));
   }
 

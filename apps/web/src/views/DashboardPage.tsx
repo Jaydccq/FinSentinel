@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { motion } from 'framer-motion'
-import Link from 'next/link'
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { motion } from 'framer-motion';
+import Link from 'next/link';
 import {
   TrendingUp,
   Briefcase,
@@ -13,19 +13,36 @@ import {
   X,
   Check,
   StickyNote,
-} from 'lucide-react'
-import { toast } from 'sonner'
-import { portfolioApi, type PortfolioResponse } from '../api/portfolio'
-import { marketApi, type QuoteData } from '../api/market'
-import { watchlistApi } from '../api/watchlist'
-import { StatCardsSkeleton, PortfolioListSkeleton, WatchlistSkeleton } from '../components/Skeleton'
-import EmptyState from '../components/EmptyState'
-import TickerSearchInput from '../components/TickerSearchInput'
-import WatchlistItemEditor from '../components/WatchlistItemEditor'
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { portfolioApi, type PortfolioResponse } from '../api/portfolio';
+import { marketApi, type QuoteData } from '../api/market';
+import { watchlistApi } from '../api/watchlist';
+import {
+  StatCardsSkeleton,
+  PortfolioListSkeleton,
+  WatchlistSkeleton,
+} from '../components/Skeleton';
+import EmptyState from '../components/EmptyState';
+import TickerSearchInput from '../components/TickerSearchInput';
+import WatchlistItemEditor from '../components/WatchlistItemEditor';
 
-const DEFAULT_TICKERS = ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'TSLA', 'BTC-USD', 'ETH-USD', 'AMD', 'AMZN', 'AVGO', 'SOL-USD']
-const LS_KEY = 'finsentinel_watchlist'
-const SERVER_CATEGORY_NAME = 'Dashboard'
+const DEFAULT_TICKERS = [
+  'AAPL',
+  'MSFT',
+  'NVDA',
+  'GOOGL',
+  'META',
+  'TSLA',
+  'BTC-USD',
+  'ETH-USD',
+  'AMD',
+  'AMZN',
+  'AVGO',
+  'SOL-USD',
+];
+const LS_KEY = 'finsentinel_watchlist';
+const SERVER_CATEGORY_NAME = 'Dashboard';
 
 /**
  * Local cache fallback. The watchlist now lives on the server (cross-device,
@@ -33,24 +50,28 @@ const SERVER_CATEGORY_NAME = 'Dashboard'
  * show during the initial server fetch and when offline.
  */
 function loadCachedTickers(): string[] {
-  if (typeof window === 'undefined') return DEFAULT_TICKERS
+  if (typeof window === 'undefined') return DEFAULT_TICKERS;
   try {
-    const stored = window.localStorage.getItem(LS_KEY)
+    const stored = window.localStorage.getItem(LS_KEY);
     if (stored) {
-      const parsed = JSON.parse(stored)
+      const parsed = JSON.parse(stored);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter((t): t is string => typeof t === 'string')
+        return parsed.filter((t): t is string => typeof t === 'string');
       }
     }
-  } catch { /* ignore */ }
-  return DEFAULT_TICKERS
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_TICKERS;
 }
 
 function cacheTickers(tickers: string[]) {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(LS_KEY, JSON.stringify(tickers))
-  } catch { /* ignore */ }
+    window.localStorage.setItem(LS_KEY, JSON.stringify(tickers));
+  } catch {
+    /* ignore */
+  }
 }
 
 const COLOR_META: Record<string, { icon: string; border: string; text: string }> = {
@@ -69,7 +90,7 @@ const COLOR_META: Record<string, { icon: string; border: string; text: string }>
     border: 'border-status-info',
     text: 'text-blue-100',
   },
-}
+};
 
 function StatCard({
   label,
@@ -78,13 +99,13 @@ function StatCard({
   icon: Icon,
   color,
 }: {
-  label: string
-  value: string
-  sub?: string
-  icon: React.ElementType
-  color: keyof typeof COLOR_META
+  label: string;
+  value: string;
+  sub?: string;
+  icon: React.ElementType;
+  color: keyof typeof COLOR_META;
 }) {
-  const meta = COLOR_META[color]
+  const meta = COLOR_META[color];
 
   return (
     <motion.div
@@ -104,145 +125,156 @@ function StatCard({
         </div>
       </div>
     </motion.div>
-  )
+  );
 }
 
 export default function DashboardPage() {
-  const [portfolios, setPortfolios] = useState<PortfolioResponse[]>([])
-  const [watchlist, setWatchlist] = useState<string[]>(loadCachedTickers)
-  const [quotes, setQuotes] = useState<Record<string, QuoteData | null>>({})
-  const [loading, setLoading] = useState(true)
-  const [quotesLoading, setQuotesLoading] = useState(true)
-  const [editing, setEditing] = useState(false)
-  const [editingSymbol, setEditingSymbol] = useState<string | null>(null)
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [portfolios, setPortfolios] = useState<PortfolioResponse[]>([]);
+  const [watchlist, setWatchlist] = useState<string[]>(loadCachedTickers);
+  const [quotes, setQuotes] = useState<Record<string, QuoteData | null>>({});
+  const [loading, setLoading] = useState(true);
+  const [quotesLoading, setQuotesLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editingSymbol, setEditingSymbol] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchQuotes = useCallback((tickers: string[]) => {
     if (tickers.length === 0) {
-      setQuotes({})
-      setQuotesLoading(false)
-      return
+      setQuotes({});
+      setQuotesLoading(false);
+      return;
     }
-    marketApi.batchQuotes(tickers)
-      .then(data => {
-        const parsed: Record<string, QuoteData | null> = {}
+    marketApi
+      .batchQuotes(tickers)
+      .then((data) => {
+        const parsed: Record<string, QuoteData | null> = {};
         for (const ticker of tickers) {
-          const quote = data[ticker]
-          parsed[ticker] = quote && !('error' in quote) ? (quote as QuoteData) : null
+          const quote = data[ticker];
+          parsed[ticker] = quote && !('error' in quote) ? (quote as QuoteData) : null;
         }
-        setQuotes(parsed)
+        setQuotes(parsed);
       })
       .catch(() => {
-        toast.warning('Market data temporarily unavailable.')
-        const failed: Record<string, null> = {}
-        tickers.forEach(ticker => { failed[ticker] = null })
-        setQuotes(failed)
+        toast.warning('Market data temporarily unavailable.');
+        const failed: Record<string, null> = {};
+        tickers.forEach((ticker) => {
+          failed[ticker] = null;
+        });
+        setQuotes(failed);
       })
-      .finally(() => setQuotesLoading(false))
-  }, [])
+      .finally(() => setQuotesLoading(false));
+  }, []);
 
   useEffect(() => {
-    portfolioApi.list()
+    portfolioApi
+      .list()
       .then(setPortfolios)
       .catch(() => toast.error('Failed to load portfolios.'))
-      .finally(() => setLoading(false))
+      .finally(() => setLoading(false));
 
     // Initial quote fetch — uses marketApi directly to avoid lint false-positive
     // on calling fetchQuotes (which internally calls setState) within effect body
-    marketApi.batchQuotes(watchlist)
-      .then(data => {
-        const parsed: Record<string, QuoteData | null> = {}
+    marketApi
+      .batchQuotes(watchlist)
+      .then((data) => {
+        const parsed: Record<string, QuoteData | null> = {};
         for (const ticker of watchlist) {
-          const quote = data[ticker]
-          parsed[ticker] = quote && !('error' in quote) ? (quote as QuoteData) : null
+          const quote = data[ticker];
+          parsed[ticker] = quote && !('error' in quote) ? (quote as QuoteData) : null;
         }
-        setQuotes(parsed)
+        setQuotes(parsed);
       })
       .catch(() => {
-        toast.warning('Market data temporarily unavailable.')
-        const failed: Record<string, null> = {}
-        watchlist.forEach(ticker => { failed[ticker] = null })
-        setQuotes(failed)
+        toast.warning('Market data temporarily unavailable.');
+        const failed: Record<string, null> = {};
+        watchlist.forEach((ticker) => {
+          failed[ticker] = null;
+        });
+        setQuotes(failed);
       })
-      .finally(() => setQuotesLoading(false))
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+      .finally(() => setQuotesLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 60-second auto-refresh polling
   useEffect(() => {
     pollRef.current = setInterval(() => {
-      fetchQuotes(watchlist)
-    }, 60_000)
+      fetchQuotes(watchlist);
+    }, 60_000);
 
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current)
-    }
-  }, [watchlist, fetchQuotes])
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [watchlist, fetchQuotes]);
 
   // Server is the source of truth. On mount, fetch the user's "Dashboard"
   // category. If absent and the local cache has tickers, auto-import them as
   // a one-time bootstrap. Network/auth failures fall back silently to the
   // cached value (already populated by useState above).
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     void (async () => {
       try {
-        const overview = await watchlistApi.list()
-        if (cancelled) return
-        const dash = overview.categories.find((c) => c.name === SERVER_CATEGORY_NAME)
+        const overview = await watchlistApi.list();
+        if (cancelled) return;
+        const dash = overview.categories.find((c) => c.name === SERVER_CATEGORY_NAME);
         if (dash && dash.items.length > 0) {
-          const symbols = dash.items.map((i) => i.symbol)
-          setWatchlist(symbols)
-          cacheTickers(symbols)
-          return
+          const symbols = dash.items.map((i) => i.symbol);
+          setWatchlist(symbols);
+          cacheTickers(symbols);
+          return;
         }
-        const cached = loadCachedTickers()
+        const cached = loadCachedTickers();
         if (cached.length > 0) {
           await watchlistApi.save({
             categoryName: SERVER_CATEGORY_NAME,
             items: cached.map((symbol) => ({ symbol })),
-          })
+          });
         }
       } catch {
         /* offline / unauth — keep the cached watchlist */
       }
-    })()
+    })();
     return () => {
-      cancelled = true
-    }
-  }, [])
+      cancelled = true;
+    };
+  }, []);
 
   /** Write-through: update the cache instantly, then sync to the server. */
   const persist = useCallback(async (updated: string[]) => {
-    cacheTickers(updated)
+    cacheTickers(updated);
     try {
       await watchlistApi.save({
         categoryName: SERVER_CATEGORY_NAME,
         items: updated.map((symbol) => ({ symbol })),
-      })
+      });
     } catch {
       /* stay optimistic; cache keeps the UI consistent until network returns */
     }
-  }, [])
+  }, []);
 
   const removeTicker = (ticker: string) => {
-    const updated = watchlist.filter(t => t !== ticker)
-    setWatchlist(updated)
-    void persist(updated)
-  }
+    const updated = watchlist.filter((t) => t !== ticker);
+    setWatchlist(updated);
+    void persist(updated);
+  };
 
   const doneEditing = () => {
-    setEditing(false)
-  }
+    setEditing(false);
+  };
 
-  const totalValue = portfolios.reduce((sum, p) => sum + Number(p.totalValue), 0)
-  const totalHoldings = portfolios.reduce((sum, p) => sum + p.holdings.length, 0)
+  const totalValue = portfolios.reduce((sum, p) => sum + Number(p.totalValue), 0);
+  const totalHoldings = portfolios.reduce((sum, p) => sum + p.holdings.length, 0);
 
   return (
     <div className="px-4 py-4 md:px-8 md:py-6 space-y-4">
       <section className="glass-panel rounded p-3 md:p-4">
-        <p className="text-xs uppercase tracking-[0.13em] text-blue-200/80">Portfolio Intelligence</p>
+        <p className="text-xs uppercase tracking-[0.13em] text-blue-200/80">
+          Portfolio Intelligence
+        </p>
         <h1 className="page-title mt-2">Dashboard</h1>
-        <p className="page-subtitle max-w-2xl">Track value concentration, monitor top holdings, and react to market movement in one view.</p>
+        <p className="page-subtitle max-w-2xl">
+          Track value concentration, monitor top holdings, and react to market movement in one view.
+        </p>
       </section>
 
       {loading ? (
@@ -274,9 +306,13 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
             <h2 className="text-xl font-semibold text-[var(--text-primary)]">Your Portfolios</h2>
-            <p className="text-sm text-[var(--text-secondary)] mt-0.5">Current market value and holding density</p>
+            <p className="text-sm text-[var(--text-secondary)] mt-0.5">
+              Current market value and holding density
+            </p>
           </div>
-          <Link href="/portfolio" className="btn-ghost px-3 py-2 text-xs">Open Manager</Link>
+          <Link href="/portfolio" className="btn-ghost px-3 py-2 text-xs">
+            Open Manager
+          </Link>
         </div>
 
         {loading ? (
@@ -286,7 +322,10 @@ export default function DashboardPage() {
             icon={<Briefcase size={28} />}
             title="No portfolios yet."
             action={
-              <Link href="/portfolio" className="inline-flex text-sm font-semibold text-blue-200 hover:text-blue-100 transition-colors">
+              <Link
+                href="/portfolio"
+                className="inline-flex text-sm font-semibold text-blue-200 hover:text-blue-100 transition-colors"
+              >
                 Create your first portfolio
               </Link>
             }
@@ -301,14 +340,24 @@ export default function DashboardPage() {
                 transition={{ delay: i * 0.05 }}
                 className="surface-panel surface-panel-hover rounded p-3"
               >
-                <p className="text-base font-semibold text-[var(--text-primary)] truncate">{portfolio.name}</p>
-                <p className="text-xs text-[var(--text-muted)] mt-1 truncate">{portfolio.description || 'No description'}</p>
+                <p className="text-base font-semibold text-[var(--text-primary)] truncate">
+                  {portfolio.name}
+                </p>
+                <p className="text-xs text-[var(--text-muted)] mt-1 truncate">
+                  {portfolio.description || 'No description'}
+                </p>
                 <p className="kpi-value mt-3 text-[var(--up)]">
-                  ${Number(portfolio.totalValue).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  $
+                  {Number(portfolio.totalValue).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                  })}
                 </p>
                 <div className="mt-2 flex items-center justify-between text-xs text-[var(--text-secondary)]">
                   <span>{portfolio.holdings.length} holdings</span>
-                  <Link href="/portfolio" className="inline-flex items-center gap-1 text-blue-200 hover:text-blue-100">
+                  <Link
+                    href="/portfolio"
+                    className="inline-flex items-center gap-1 text-blue-200 hover:text-blue-100"
+                  >
                     Details <ArrowUpRight size={13} />
                   </Link>
                 </div>
@@ -323,7 +372,9 @@ export default function DashboardPage() {
           <div>
             <h2 className="text-xl font-semibold text-[var(--text-primary)]">Market Watchlist</h2>
             <p className="text-sm text-[var(--text-secondary)] mt-0.5">
-              {editing ? 'Add or remove tickers from your watchlist' : 'Selected tickers with intraday direction'}
+              {editing
+                ? 'Add or remove tickers from your watchlist'
+                : 'Selected tickers with intraday direction'}
             </p>
           </div>
           {editing ? (
@@ -342,20 +393,21 @@ export default function DashboardPage() {
             <TickerSearchInput
               onSelect={({ symbol }) => {
                 if (!watchlist.includes(symbol)) {
-                  const updated = [...watchlist, symbol]
-                  setWatchlist(updated)
-                  void persist(updated)
-                  marketApi.batchQuotes([symbol])
-                    .then(data => {
-                      const quote = data[symbol]
-                      setQuotes(prev => ({
+                  const updated = [...watchlist, symbol];
+                  setWatchlist(updated);
+                  void persist(updated);
+                  marketApi
+                    .batchQuotes([symbol])
+                    .then((data) => {
+                      const quote = data[symbol];
+                      setQuotes((prev) => ({
                         ...prev,
                         [symbol]: quote && !('error' in quote) ? (quote as QuoteData) : null,
-                      }))
+                      }));
                     })
                     .catch(() => {
-                      setQuotes(prev => ({ ...prev, [symbol]: null }))
-                    })
+                      setQuotes((prev) => ({ ...prev, [symbol]: null }));
+                    });
                 }
               }}
               excludeSymbols={watchlist}
@@ -374,11 +426,12 @@ export default function DashboardPage() {
           />
         ) : (
           <div className="grid grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2">
-            {watchlist.map(ticker => {
-              const quote = quotes[ticker]
-              const isFailed = ticker in quotes && quote === null
-              const change = quote && quote.open !== 0 ? ((quote.close - quote.open) / quote.open) * 100 : null
-              const isUp = change !== null && change >= 0
+            {watchlist.map((ticker) => {
+              const quote = quotes[ticker];
+              const isFailed = ticker in quotes && quote === null;
+              const change =
+                quote && quote.open !== 0 ? ((quote.close - quote.open) / quote.open) * 100 : null;
+              const isUp = change !== null && change >= 0;
 
               return (
                 <div key={ticker} className="relative">
@@ -406,12 +459,14 @@ export default function DashboardPage() {
                   )}
                   <Link
                     href={editing ? '#' : `/stock?ticker=${encodeURIComponent(ticker)}`}
-                    onClick={e => editing && e.preventDefault()}
+                    onClick={(e) => editing && e.preventDefault()}
                     className={`surface-panel rounded p-2.5 block ${editing ? 'ring-1 ring-blue-400/25' : 'surface-panel-hover'}`}
                   >
                     <div className="flex items-center justify-between gap-1 flex-wrap">
                       <div className="flex items-center gap-1">
-                        <p className="font-data text-xs font-bold tracking-wide text-[var(--text-primary)]">{ticker}</p>
+                        <p className="font-data text-xs font-bold tracking-wide text-[var(--text-primary)]">
+                          {ticker}
+                        </p>
                         {ticker.includes('-') && (
                           <span className="text-[9px] px-1 py-0.5 rounded bg-orange-500/15 text-orange-300 font-medium">
                             C
@@ -419,25 +474,29 @@ export default function DashboardPage() {
                         )}
                       </div>
                       {change !== null && !editing && (
-                        <span className={`status-chip border-0 text-[10px] px-1 py-0 ${isUp ? 'bg-green-500/20 text-[var(--up)]' : 'bg-red-500/20 text-[var(--down)]'}`}>
-                          {isUp ? '+' : ''}{change.toFixed(2)}%
+                        <span
+                          className={`status-chip border-0 text-[10px] px-1 py-0 ${isUp ? 'bg-green-500/20 text-[var(--up)]' : 'bg-red-500/20 text-[var(--down)]'}`}
+                        >
+                          {isUp ? '+' : ''}
+                          {change.toFixed(2)}%
                         </span>
                       )}
                     </div>
 
-                    {!editing && (
-                      quote && change !== null ? (
+                    {!editing &&
+                      (quote && change !== null ? (
                         <>
                           <p className="kpi-value mt-2 text-sm">${quote.close.toFixed(2)}</p>
-                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">o ${quote.open.toFixed(2)}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                            o ${quote.open.toFixed(2)}
+                          </p>
                         </>
                       ) : isFailed ? (
                         <p className="text-[11px] text-yellow-200 mt-2">N/A</p>
-                      ) : null
-                    )}
+                      ) : null)}
                   </Link>
                 </div>
-              )
+              );
             })}
           </div>
         )}
@@ -451,5 +510,5 @@ export default function DashboardPage() {
         />
       )}
     </div>
-  )
+  );
 }

@@ -1,9 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type {
-  CompanyProfile,
-  FinancialMetrics,
-  AnalystConsensus,
-} from '@finsentinel/shared';
+import type { CompanyProfile, FinancialMetrics, AnalystConsensus } from '@finsentinel/shared';
 import type { ResearchDataProvider } from '../interfaces/research-data-provider';
 
 // ── Polygon API response shapes ──────────────────────────────────────────────
@@ -85,16 +81,12 @@ export class PolygonResearchProvider implements ResearchDataProvider {
       `${PolygonResearchProvider.BASE_URL}/v3/reference/tickers/${ticker}` +
       `?apiKey=${this.apiKey}`;
 
-    this.logger.debug(
-      `Polygon request: ${url.replace(this.apiKey, '***')}`,
-    );
+    this.logger.debug(`Polygon request: ${url.replace(this.apiKey, '***')}`);
 
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(
-        `Polygon API error: ${response.status} ${response.statusText}`,
-      );
+      throw new Error(`Polygon API error: ${response.status} ${response.statusText}`);
     }
 
     const data = (await response.json()) as PolygonTickerDetails;
@@ -114,24 +106,17 @@ export class PolygonResearchProvider implements ResearchDataProvider {
     };
   }
 
-  async getFinancialMetrics(
-    ticker: string,
-    periods = 4,
-  ): Promise<FinancialMetrics[]> {
+  async getFinancialMetrics(ticker: string, periods = 4): Promise<FinancialMetrics[]> {
     const url =
       `${PolygonResearchProvider.BASE_URL}/vX/reference/financials` +
       `?ticker=${ticker}&limit=${periods}&apiKey=${this.apiKey}`;
 
-    this.logger.debug(
-      `Polygon request: ${url.replace(this.apiKey, '***')}`,
-    );
+    this.logger.debug(`Polygon request: ${url.replace(this.apiKey, '***')}`);
 
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(
-        `Polygon API error: ${response.status} ${response.statusText}`,
-      );
+      throw new Error(`Polygon API error: ${response.status} ${response.statusText}`);
     }
 
     const data = (await response.json()) as PolygonFinancialsResponse;
@@ -161,10 +146,7 @@ export class PolygonResearchProvider implements ResearchDataProvider {
 
   // ── Internal ────────────────────────────────────────────────────────────
 
-  private mapFinancialResult(
-    ticker: string,
-    r: PolygonFinancialResult,
-  ): FinancialMetrics {
+  private mapFinancialResult(ticker: string, r: PolygonFinancialResult): FinancialMetrics {
     const is = r.financials.income_statement ?? {};
     const bs = r.financials.balance_sheet ?? {};
     const cf = r.financials.cash_flow_statement ?? {};
@@ -178,17 +160,14 @@ export class PolygonResearchProvider implements ResearchDataProvider {
     const totalEquity = bs.equity?.value ?? 0;
     const currentAssets = bs.current_assets?.value ?? 0;
     const currentLiabilities = bs.current_liabilities?.value ?? 0;
-    const operatingCashFlow =
-      cf.net_cash_flow_from_operating_activities?.value ?? 0;
+    const operatingCashFlow = cf.net_cash_flow_from_operating_activities?.value ?? 0;
     const capex = cf.net_cash_flow_from_investing_activities?.value ?? 0;
 
     const grossMargin = revenue !== 0 ? grossProfit / revenue : 0;
     const operatingMargin = revenue !== 0 ? operatingIncome / revenue : 0;
     const netMargin = revenue !== 0 ? netIncome / revenue : 0;
-    const currentRatio =
-      currentLiabilities !== 0 ? currentAssets / currentLiabilities : 0;
-    const debtToEquity =
-      totalEquity !== 0 ? totalLiabilities / totalEquity : 0;
+    const currentRatio = currentLiabilities !== 0 ? currentAssets / currentLiabilities : 0;
+    const debtToEquity = totalEquity !== 0 ? totalLiabilities / totalEquity : 0;
 
     return {
       ticker,

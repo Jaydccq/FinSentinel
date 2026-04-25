@@ -62,9 +62,7 @@ describe('FmpMarketDataProvider', () => {
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const url = fetchMock.mock.calls[0]![0] as string;
-      expect(url).toBe(
-        `${BASE_URL}/quote/AAPL?apikey=${API_KEY}`,
-      );
+      expect(url).toBe(`${BASE_URL}/quote/AAPL?apikey=${API_KEY}`);
 
       expect(quote).toEqual({
         ticker: 'AAPL',
@@ -84,9 +82,7 @@ describe('FmpMarketDataProvider', () => {
         statusText: 'Forbidden',
       });
 
-      await expect(provider.getQuote('AAPL')).rejects.toThrow(
-        /FMP API error/,
-      );
+      await expect(provider.getQuote('AAPL')).rejects.toThrow(/FMP API error/);
     });
 
     it('throws when no data returned', async () => {
@@ -106,8 +102,22 @@ describe('FmpMarketDataProvider', () => {
       const fmpResponse = {
         symbol: 'AAPL',
         historical: [
-          { date: '2024-11-16', open: 153.5, high: 156.0, low: 152.0, close: 154.0, volume: 45000000 },
-          { date: '2024-11-15', open: 150.0, high: 155.0, low: 149.0, close: 153.5, volume: 50000000 },
+          {
+            date: '2024-11-16',
+            open: 153.5,
+            high: 156.0,
+            low: 152.0,
+            close: 154.0,
+            volume: 45000000,
+          },
+          {
+            date: '2024-11-15',
+            open: 150.0,
+            high: 155.0,
+            low: 149.0,
+            close: 153.5,
+            volume: 50000000,
+          },
         ],
       };
 
@@ -153,9 +163,7 @@ describe('FmpMarketDataProvider', () => {
         statusText: 'Internal Server Error',
       });
 
-      await expect(provider.getHistoricalBars('AAPL', 30)).rejects.toThrow(
-        /FMP API error/,
-      );
+      await expect(provider.getHistoricalBars('AAPL', 30)).rejects.toThrow(/FMP API error/);
     });
 
     it('throws when no historical data returned', async () => {
@@ -164,9 +172,7 @@ describe('FmpMarketDataProvider', () => {
         json: vi.fn().mockResolvedValue({ symbol: 'AAPL', historical: [] }),
       });
 
-      await expect(provider.getHistoricalBars('AAPL', 30)).rejects.toThrow(
-        /No historical data/,
-      );
+      await expect(provider.getHistoricalBars('AAPL', 30)).rejects.toThrow(/No historical data/);
     });
   });
 
@@ -314,9 +320,7 @@ describe('YahooFinanceMarketDataProvider', () => {
         statusText: 'Not Found',
       });
 
-      await expect(provider.getQuote('AAPL')).rejects.toThrow(
-        /Yahoo Finance API error/,
-      );
+      await expect(provider.getQuote('AAPL')).rejects.toThrow(/Yahoo Finance API error/);
     });
 
     it('throws when chart error is present', async () => {
@@ -330,9 +334,7 @@ describe('YahooFinanceMarketDataProvider', () => {
         }),
       });
 
-      await expect(provider.getQuote('FAKE')).rejects.toThrow(
-        /Yahoo Finance error/,
-      );
+      await expect(provider.getQuote('FAKE')).rejects.toThrow(/Yahoo Finance error/);
     });
 
     it('throws when no results returned', async () => {
@@ -356,7 +358,9 @@ describe('YahooFinanceMarketDataProvider', () => {
                 meta: { symbol: 'AAPL', regularMarketPrice: 0, chartPreviousClose: 0 },
                 timestamp: [1700245600],
                 indicators: {
-                  quote: [{ open: [null], high: [null], low: [null], close: [null], volume: [null] }],
+                  quote: [
+                    { open: [null], high: [null], low: [null], close: [null], volume: [null] },
+                  ],
                 },
               },
             ],
@@ -365,9 +369,7 @@ describe('YahooFinanceMarketDataProvider', () => {
         }),
       });
 
-      await expect(provider.getQuote('AAPL')).rejects.toThrow(
-        /Incomplete quote data/,
-      );
+      await expect(provider.getQuote('AAPL')).rejects.toThrow(/Incomplete quote data/);
     });
   });
 
@@ -452,7 +454,7 @@ describe('YahooFinanceMarketDataProvider', () => {
 
       // 5 days -> 5d
       await provider.getHistoricalBars('X', 5);
-      expect((fetchMock.mock.calls[0]![0] as string)).toContain('range=5d');
+      expect(fetchMock.mock.calls[0]![0] as string).toContain('range=5d');
 
       // 90 days -> 3mo
       fetchMock.mockResolvedValue({
@@ -460,7 +462,7 @@ describe('YahooFinanceMarketDataProvider', () => {
         json: vi.fn().mockResolvedValue(makeResponse()),
       });
       await provider.getHistoricalBars('X', 90);
-      expect((fetchMock.mock.calls[1]![0] as string)).toContain('range=3mo');
+      expect(fetchMock.mock.calls[1]![0] as string).toContain('range=3mo');
 
       // 365 days -> 1y
       fetchMock.mockResolvedValue({
@@ -468,7 +470,7 @@ describe('YahooFinanceMarketDataProvider', () => {
         json: vi.fn().mockResolvedValue(makeResponse()),
       });
       await provider.getHistoricalBars('X', 365);
-      expect((fetchMock.mock.calls[2]![0] as string)).toContain('range=1y');
+      expect(fetchMock.mock.calls[2]![0] as string).toContain('range=1y');
     });
 
     it('throws when all data points are null', async () => {
@@ -481,7 +483,9 @@ describe('YahooFinanceMarketDataProvider', () => {
                 meta: { symbol: 'X', regularMarketPrice: 0, chartPreviousClose: 0 },
                 timestamp: [1700000000],
                 indicators: {
-                  quote: [{ open: [null], high: [null], low: [null], close: [null], volume: [null] }],
+                  quote: [
+                    { open: [null], high: [null], low: [null], close: [null], volume: [null] },
+                  ],
                 },
               },
             ],
@@ -490,9 +494,7 @@ describe('YahooFinanceMarketDataProvider', () => {
         }),
       });
 
-      await expect(provider.getHistoricalBars('X', 30)).rejects.toThrow(
-        /No historical data/,
-      );
+      await expect(provider.getHistoricalBars('X', 30)).rejects.toThrow(/No historical data/);
     });
   });
 });

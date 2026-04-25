@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import type { AnalysisArtifactResponse } from '../../api/analysis-runs';
 import { JsonTree } from './JsonTree';

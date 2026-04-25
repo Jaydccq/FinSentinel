@@ -47,20 +47,14 @@ export class ApiKeyController {
   /** Delete an API key. */
   @Delete(':name')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async delete(
-    @CurrentUser() user: CurrentUserPayload,
-    @Param('name') name: string,
-  ) {
+  async delete(@CurrentUser() user: CurrentUserPayload, @Param('name') name: string) {
     await this.apiKeyService.delete(user.userId, name);
   }
 
   /** Test API key connectivity (stub — always returns test_not_available). */
   @Post(':name/test')
   @HttpCode(HttpStatus.OK)
-  async test(
-    @CurrentUser() _user: CurrentUserPayload,
-    @Param('name') _name: string,
-  ) {
+  async test(@CurrentUser() _user: CurrentUserPayload, @Param('name') _name: string) {
     return { success: false, message: 'API key connectivity test is not implemented yet.' };
   }
 }

@@ -35,8 +35,7 @@ export class NewsAnalysisService {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
 
-    const tickerWhere =
-      sql`${newsItems.tickers}::jsonb @> ${JSON.stringify([upperTicker])}::jsonb`;
+    const tickerWhere = sql`${newsItems.tickers}::jsonb @> ${JSON.stringify([upperTicker])}::jsonb`;
 
     let rows: RecentNewsRow[] = await this.db
       .select({
@@ -95,11 +94,7 @@ export class NewsAnalysisService {
       .join('\n\n');
   }
 
-  async searchKnowledgeBase(
-    query: string,
-    docType?: string,
-    afterDate?: string,
-  ): Promise<string> {
+  async searchKnowledgeBase(query: string, docType?: string, afterDate?: string): Promise<string> {
     const results = await this.ragRetrievalService.search({
       query,
       topK: 8,
@@ -138,9 +133,9 @@ export class NewsAnalysisService {
       })
       .from(documents);
 
-    const fallbackDocs: KnowledgeBaseDocumentRow[] = await (docType
-      ? baseQuery.where(sql`${documents.docType} = ${docType}`)
-      : baseQuery)
+    const fallbackDocs: KnowledgeBaseDocumentRow[] = await (
+      docType ? baseQuery.where(sql`${documents.docType} = ${docType}`) : baseQuery
+    )
       .orderBy(desc(documents.createdAt))
       .limit(5);
 
@@ -168,10 +163,7 @@ export class NewsAnalysisService {
       .join('\n\n');
   }
 
-  private readMetadata(
-    metadata: Record<string, unknown>,
-    key: string,
-  ): string | null {
+  private readMetadata(metadata: Record<string, unknown>, key: string): string | null {
     const value = metadata[key];
     return typeof value === 'string' && value.trim().length > 0 ? value : null;
   }

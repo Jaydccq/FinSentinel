@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import ReportsPage from '@/views/ReportsPage'
+import ReportsPage from '@/views/ReportsPage';
 
 export default function Page() {
-  return <ReportsPage />
+  return <ReportsPage />;
 }

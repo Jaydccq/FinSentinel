@@ -37,10 +37,7 @@ function makeRewrite(impl?: (q: string) => Promise<string>) {
   };
 }
 
-function makeVariant(overrides?: {
-  hyde?: Mock;
-  decompose?: Mock;
-}) {
+function makeVariant(overrides?: { hyde?: Mock; decompose?: Mock }) {
   return {
     hyde: overrides?.hyde ?? vi.fn().mockResolvedValue(null),
     decompose: overrides?.decompose ?? vi.fn().mockResolvedValue([]),
@@ -76,7 +73,9 @@ describe('RetrievalPlannerService', () => {
   });
 
   it('activates graph lane for relational queries when graph is enabled', async () => {
-    const plan = await makeService({ graphEnabled: true }).plan('Who are the main competitors of Tesla?');
+    const plan = await makeService({ graphEnabled: true }).plan(
+      'Who are the main competitors of Tesla?',
+    );
     expect(plan.lanes).toContain('graph');
   });
 
@@ -141,17 +140,13 @@ describe('RetrievalPlannerService', () => {
 
   // ── Colloquial ────────────────────────────────────────────────────────────
 
-  it.each([
-    'hi',
-    'hello',
-    'thanks!',
-    'got it',
-    'bye',
-    'help me',
-  ])('colloquial opener %s classifies as colloquial', async (q) => {
-    const plan = await makeService().plan(q);
-    expect(plan.queryClass).toBe('colloquial');
-  });
+  it.each(['hi', 'hello', 'thanks!', 'got it', 'bye', 'help me'])(
+    'colloquial opener %s classifies as colloquial',
+    async (q) => {
+      const plan = await makeService().plan(q);
+      expect(plan.queryClass).toBe('colloquial');
+    },
+  );
 
   it('colloquial precedence: "AAPL" alone is still exact_lookup, not colloquial', async () => {
     // Single ALLCAPS ticker without a time anchor falls through to factoid,
@@ -177,7 +172,8 @@ describe('RetrievalPlannerService', () => {
   // ── Analytical ────────────────────────────────────────────────────────────
 
   it('analytical long query with RAG_HYDE_ENABLED=true includes hyde variant', async () => {
-    const longQuery = 'Analyze the impact of interest rate changes on Apple and Microsoft earnings over the last decade.';
+    const longQuery =
+      'Analyze the impact of interest rate changes on Apple and Microsoft earnings over the last decade.';
     const hydePassage = 'Hypothetical passage about rate impact.';
     const variant = makeVariant({ hyde: vi.fn().mockResolvedValue(hydePassage) });
     const rewrite = makeRewrite((_q) => Promise.resolve('rewritten'));
@@ -189,7 +185,8 @@ describe('RetrievalPlannerService', () => {
   });
 
   it('analytical: HyDE LLM failure adds hyde_failed flag and no hyde variant', async () => {
-    const longQuery = 'Analyze and compare the risk profiles of TSMC and Samsung in the semiconductor industry.';
+    const longQuery =
+      'Analyze and compare the risk profiles of TSMC and Samsung in the semiconductor industry.';
     const variant = makeVariant({ hyde: vi.fn().mockResolvedValue(null) });
     const plan = await makeService({ hydeEnabled: true }, makeRewrite(), variant).plan(longQuery);
     expect(plan.queryClass).toBe('analytical');
@@ -198,7 +195,8 @@ describe('RetrievalPlannerService', () => {
   });
 
   it('analytical: HyDE disabled, no hyde variant even for analytical query', async () => {
-    const longQuery = 'Explain the impact of Fed rate hikes on tech sector valuations in detail with examples.';
+    const longQuery =
+      'Explain the impact of Fed rate hikes on tech sector valuations in detail with examples.';
     const variant = makeVariant({ hyde: vi.fn().mockResolvedValue('passage') });
     const plan = await makeService({ hydeEnabled: false }, makeRewrite(), variant).plan(longQuery);
     expect(plan.variants.map((v) => v.kind)).not.toContain('hyde');
@@ -284,7 +282,8 @@ describe('RetrievalPlannerService', () => {
   });
 
   it('analytical (not multi_part) happy path: original + rewrite + hyde', async () => {
-    const analyticalQuery = 'Analyze the long-term competitive outlook for NVIDIA versus AMD in the AI accelerator market given supply chain constraints.';
+    const analyticalQuery =
+      'Analyze the long-term competitive outlook for NVIDIA versus AMD in the AI accelerator market given supply chain constraints.';
     const hydePassage = 'NVIDIA and AMD both face...';
     const variant = makeVariant({ hyde: vi.fn().mockResolvedValue(hydePassage) });
     const rewrite = makeRewrite((_q) => Promise.resolve('rewritten analytical query'));
@@ -403,9 +402,7 @@ describe('RetrievalPlannerService', () => {
 
   it('R3.3: exact_lookup plan.rerankQuery === originalQuery (literal text, not rewritten)', async () => {
     const rewrite = makeRewrite((_q) => Promise.resolve('some paraphrased form'));
-    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(
-      'AAPL Q4 2025 EPS',
-    );
+    const plan = await makeService({ rewriteEnabled: true }, rewrite).plan('AAPL Q4 2025 EPS');
     expect(plan.queryClass).toBe('exact_lookup');
     expect(plan.rerankQuery).toBe('AAPL Q4 2025 EPS');
     expect(plan.rerankQuery).toBe(plan.originalQuery);
@@ -469,7 +466,10 @@ describe('RetrievalPlannerService', () => {
   });
 
   it('R3.3: rerankQuery is always populated (non-empty) for non-empty queries across all classes', async () => {
-    const svc = makeService({ rewriteEnabled: true }, makeRewrite((q) => Promise.resolve(q)));
+    const svc = makeService(
+      { rewriteEnabled: true },
+      makeRewrite((q) => Promise.resolve(q)),
+    );
     const cases = [
       'AAPL Q4 2025 EPS', // exact_lookup
       'What is Apple revenue?', // factoid

@@ -37,10 +37,7 @@ export class ContextComplexityService {
       (/technical/i.test(prompt) ? 1 : 0) +
       (/sentiment/i.test(prompt) ? 1 : 0) +
       (/valuation|dcf|multiples?/i.test(prompt) ? 1 : 0);
-    const predictedToolCalls = Math.min(
-      1 + tickerCount + comparisonPenalty + depthSignals,
-      20,
-    );
+    const predictedToolCalls = Math.min(1 + tickerCount + comparisonPenalty + depthSignals, 20);
     const predictedToolRounds = Math.max(1, Math.ceil(predictedToolCalls / 3));
     const predictedWallClockSec = 3 + predictedToolCalls * 2.5;
 

@@ -11,11 +11,13 @@ Make RAG CLI unit tests import pure helper functions without requiring CI secret
 ## Scope
 
 In scope:
+
 - RAG CLI files under `apps/api/src/rag/**` that import `AppConfigModule` from `../../config`.
 - Unit tests that import those CLI helper functions.
 - Targeted verification for the failing CI specs and TypeScript validity.
 
 Out of scope:
+
 - Relaxing production environment validation in `src/config/config.module.ts`.
 - Changing runtime CLI behavior when the CLI is executed directly.
 - Adding default fake credentials to CI.

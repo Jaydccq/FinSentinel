@@ -64,12 +64,7 @@ export class DocumentReconcilerService {
         storageKey: documents.storageKey,
       })
       .from(documents)
-      .where(
-        and(
-          eq(documents.status, 'PENDING_UPLOAD'),
-          lt(documents.createdAt, cutoff),
-        ),
-      )
+      .where(and(eq(documents.status, 'PENDING_UPLOAD'), lt(documents.createdAt, cutoff)))
       .limit(BATCH_LIMIT);
 
     if (stuck.length === 0) return { promoted: 0, deleted: 0 };
@@ -104,16 +99,12 @@ export class DocumentReconcilerService {
         } else {
           await this.db.delete(documents).where(eq(documents.id, row.id));
           deleted += 1;
-          this.logger.log(
-            `Deleted stuck row ${row.id} (no storage object at ${row.storageKey})`,
-          );
+          this.logger.log(`Deleted stuck row ${row.id} (no storage object at ${row.storageKey})`);
         }
       } catch (err) {
         // Log and skip to the next row. Don't let one bad row abort
         // the whole batch — the next cron tick will retry.
-        this.logger.warn(
-          `Reconcile failed for row ${row.id} (${row.storageKey}): ${err}`,
-        );
+        this.logger.warn(`Reconcile failed for row ${row.id} (${row.storageKey}): ${err}`);
       }
     }
 

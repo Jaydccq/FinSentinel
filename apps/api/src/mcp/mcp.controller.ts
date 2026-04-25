@@ -99,8 +99,7 @@ const MCP_TOOL_CATALOGUE: McpToolEntry[] = [
   // Group B — stateless service-backed (stubs until services exist)
   {
     name: 'getRecentNews',
-    description:
-      'Fetch recent financial news articles for a stock ticker from Polygon.io.',
+    description: 'Fetch recent financial news articles for a stock ticker from Polygon.io.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -164,8 +163,7 @@ const MCP_TOOL_CATALOGUE: McpToolEntry[] = [
   },
   {
     name: 'getMarketCalendar',
-    description:
-      'Get upcoming market events: earnings, IPOs, economic calendar, and dividends.',
+    description: 'Get upcoming market events: earnings, IPOs, economic calendar, and dividends.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -278,9 +276,7 @@ export class McpController {
    * - `initialize` → returns server capabilities
    */
   @Post('message')
-  async handleMessage(
-    @Body() body: JsonRpcRequest,
-  ): Promise<JsonRpcResponse> {
+  async handleMessage(@Body() body: JsonRpcRequest): Promise<JsonRpcResponse> {
     if (body.jsonrpc !== '2.0' || !body.method) {
       throw new BadRequestException('Invalid JSON-RPC 2.0 request');
     }
@@ -314,7 +310,9 @@ export class McpController {
 
       case 'tools/call': {
         const toolName = (body.params as Record<string, unknown>)?.name as string;
-        const toolArgs = (body.params as Record<string, unknown>)?.arguments as Record<string, unknown> | undefined;
+        const toolArgs = (body.params as Record<string, unknown>)?.arguments as
+          | Record<string, unknown>
+          | undefined;
 
         if (!toolName || !TOOL_MAP.has(toolName)) {
           return {

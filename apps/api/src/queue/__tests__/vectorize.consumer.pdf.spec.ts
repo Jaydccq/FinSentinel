@@ -15,13 +15,15 @@ import type { VectorizeJobData } from '../vectorize.consumer';
 
 // ── Mock factories ─────────────────────────────────────────────────────────
 
-function makeDocRow(overrides: Partial<{
-  id: string;
-  storageKey: string;
-  docType: string;
-  sector: string | null;
-  originalFileName: string;
-}> = {}) {
+function makeDocRow(
+  overrides: Partial<{
+    id: string;
+    storageKey: string;
+    docType: string;
+    sector: string | null;
+    originalFileName: string;
+  }> = {},
+) {
   return {
     id: 'doc-uuid-pdf',
     storageKey: 'documents/user-1/report.pdf',
@@ -90,7 +92,10 @@ async function buildConsumer(
       { provide: 'BULLMQ_CONNECTION', useValue: { host: 'localhost', port: 6379 } },
       { provide: 'DRIZZLE_DB', useValue: mockDb },
       { provide: DocumentParseService, useValue: parseService },
-      { provide: DocumentVectorService, useValue: { vectorize: vi.fn().mockResolvedValue(3), ...vectorService } },
+      {
+        provide: DocumentVectorService,
+        useValue: { vectorize: vi.fn().mockResolvedValue(3), ...vectorService },
+      },
       { provide: HybridStorageService, useValue: mockStorage },
       { provide: ParserSidecarClient, useValue: sidecar },
     ],
@@ -121,11 +126,7 @@ describe('VectorizeConsumer PDF routing (R5.4)', () => {
     await consumer.process(createMockJob({ docId: 'doc-uuid-pdf' }));
 
     expect(sidecar.parse).toHaveBeenCalledTimes(1);
-    expect(sidecar.parse).toHaveBeenCalledWith(
-      expect.any(Buffer),
-      'application/pdf',
-      'report.pdf',
-    );
+    expect(sidecar.parse).toHaveBeenCalledWith(expect.any(Buffer), 'application/pdf', 'report.pdf');
     expect(parseService.parseToCleanText).not.toHaveBeenCalled();
   });
 
@@ -159,7 +160,10 @@ describe('VectorizeConsumer PDF routing (R5.4)', () => {
     const parseService = { parseToCleanText: vi.fn() };
 
     const { consumer } = await buildConsumer(
-      makeDocRow({ originalFileName: 'contract.docx', storageKey: 'documents/user-1/contract.docx' }),
+      makeDocRow({
+        originalFileName: 'contract.docx',
+        storageKey: 'documents/user-1/contract.docx',
+      }),
       sidecar,
       parseService,
     );
@@ -201,9 +205,11 @@ describe('VectorizeConsumer PDF routing (R5.4)', () => {
   it('falls through to parseService for text/plain MIME, sidecar not called', async () => {
     const sidecar = { parse: vi.fn() };
     const parseService = {
-      parseToCleanText: vi.fn().mockReturnValue(
-        'hello world — more than 50 characters so vectorize is called without issue',
-      ),
+      parseToCleanText: vi
+        .fn()
+        .mockReturnValue(
+          'hello world — more than 50 characters so vectorize is called without issue',
+        ),
     };
 
     const { consumer } = await buildConsumer(
@@ -216,10 +222,7 @@ describe('VectorizeConsumer PDF routing (R5.4)', () => {
 
     expect(sidecar.parse).not.toHaveBeenCalled();
     expect(parseService.parseToCleanText).toHaveBeenCalledTimes(1);
-    expect(parseService.parseToCleanText).toHaveBeenCalledWith(
-      expect.any(Buffer),
-      'text/plain',
-    );
+    expect(parseService.parseToCleanText).toHaveBeenCalledWith(expect.any(Buffer), 'text/plain');
   });
 });
 
@@ -233,7 +236,8 @@ describe('VectorizeConsumer parser metadata (R5.6)', () => {
   it('threads parser metadata (pageCount, parserVersion, sourceMimeType) onto persisted chunk metadata', async () => {
     const sidecar = {
       parse: vi.fn().mockResolvedValue({
-        markdown: '# Doc\n\nBody content above threshold so the parser_empty_output check does not fire.',
+        markdown:
+          '# Doc\n\nBody content above threshold so the parser_empty_output check does not fire.',
         metadata: {
           pageCount: 42,
           headings: [],
@@ -246,10 +250,12 @@ describe('VectorizeConsumer parser metadata (R5.6)', () => {
 
     const vectorServiceCalls: Record<string, string>[] = [];
     const vectorService = {
-      vectorize: vi.fn().mockImplementation((_id: string, _text: string, metadata: Record<string, string>) => {
-        vectorServiceCalls.push(metadata);
-        return Promise.resolve(1);
-      }),
+      vectorize: vi
+        .fn()
+        .mockImplementation((_id: string, _text: string, metadata: Record<string, string>) => {
+          vectorServiceCalls.push(metadata);
+          return Promise.resolve(1);
+        }),
     };
 
     const { consumer } = await buildConsumer(
@@ -271,17 +277,21 @@ describe('VectorizeConsumer parser metadata (R5.6)', () => {
   it('does NOT attach parser_* keys when the non-sidecar path is used', async () => {
     const sidecar = { parse: vi.fn() };
     const parseService = {
-      parseToCleanText: vi.fn().mockReturnValue(
-        'plain text content long enough to pass the empty-text guard without issue',
-      ),
+      parseToCleanText: vi
+        .fn()
+        .mockReturnValue(
+          'plain text content long enough to pass the empty-text guard without issue',
+        ),
     };
 
     const vectorServiceCalls: Record<string, string>[] = [];
     const vectorService = {
-      vectorize: vi.fn().mockImplementation((_id: string, _text: string, metadata: Record<string, string>) => {
-        vectorServiceCalls.push(metadata);
-        return Promise.resolve(1);
-      }),
+      vectorize: vi
+        .fn()
+        .mockImplementation((_id: string, _text: string, metadata: Record<string, string>) => {
+          vectorServiceCalls.push(metadata);
+          return Promise.resolve(1);
+        }),
     };
 
     const { consumer } = await buildConsumer(

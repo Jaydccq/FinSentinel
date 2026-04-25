@@ -95,6 +95,7 @@ Task 1 through Task 4 have been implemented on the runtime foundation workstream
 ### Task 1: Shared Contracts And Database Schema
 
 **Files:**
+
 - Create: `packages/shared/src/schemas/context-journal.ts`
 - Modify: `packages/shared/src/schemas/analysis.ts`
 - Modify: `packages/shared/src/schemas/event.ts`
@@ -221,23 +222,33 @@ import { pgTable, uuid, varchar, jsonb, timestamp, index } from 'drizzle-orm/pg-
 import { users } from './users';
 import { analysisRuns } from './analysis-runs';
 
-export const contextJournalEntries = pgTable('context_journal_entries', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id').notNull().references(() => users.id),
-  sessionId: uuid('session_id'),
-  runId: uuid('run_id').references(() => analysisRuns.id, { onDelete: 'cascade' }),
-  stageKey: varchar('stage_key', { length: 32 }),
-  roleKey: varchar('role_key', { length: 64 }),
-  entryType: varchar('entry_type', { length: 40 }).notNull(),
-  sourceType: varchar('source_type', { length: 32 }).notNull(),
-  sourceRef: varchar('source_ref', { length: 255 }),
-  payloadJson: jsonb('payload_json').$type<Record<string, unknown>>().notNull().default({}),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-}, (table) => [
-  index('idx_context_journal_run_created').on(table.runId, table.createdAt.desc()),
-  index('idx_context_journal_session_created').on(table.sessionId, table.createdAt.desc()),
-  index('idx_context_journal_stage_created').on(table.runId, table.stageKey, table.createdAt.desc()),
-]);
+export const contextJournalEntries = pgTable(
+  'context_journal_entries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    sessionId: uuid('session_id'),
+    runId: uuid('run_id').references(() => analysisRuns.id, { onDelete: 'cascade' }),
+    stageKey: varchar('stage_key', { length: 32 }),
+    roleKey: varchar('role_key', { length: 64 }),
+    entryType: varchar('entry_type', { length: 40 }).notNull(),
+    sourceType: varchar('source_type', { length: 32 }).notNull(),
+    sourceRef: varchar('source_ref', { length: 255 }),
+    payloadJson: jsonb('payload_json').$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index('idx_context_journal_run_created').on(table.runId, table.createdAt.desc()),
+    index('idx_context_journal_session_created').on(table.sessionId, table.createdAt.desc()),
+    index('idx_context_journal_stage_created').on(
+      table.runId,
+      table.stageKey,
+      table.createdAt.desc(),
+    ),
+  ],
+);
 ```
 
 - [ ] **Step 4: Generate the migration**
@@ -266,6 +277,7 @@ git commit -m "feat: add runtime context journal contracts"
 ### Task 2: Context Journal Service And Context Read APIs
 
 **Files:**
+
 - Create: `apps/api/src/analysis/context-journal.service.ts`
 - Modify: `apps/api/src/analysis/analysis.module.ts`
 - Modify: `apps/api/src/chat/chat-compaction.service.ts`
@@ -284,7 +296,10 @@ import { ContextJournalService } from '../context-journal.service';
 
 describe('ContextJournalService', () => {
   it('writes stage input snapshots and builds lineage-aware shared context', async () => {
-    const insertChain = { values: vi.fn().mockReturnThis(), returning: vi.fn().mockResolvedValue([{ id: 'journal-1' }]) };
+    const insertChain = {
+      values: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([{ id: 'journal-1' }]),
+    };
     const db = { insert: vi.fn().mockReturnValue(insertChain), select: vi.fn() } as never;
     const service = new ContextJournalService(db);
 
@@ -377,7 +392,11 @@ await this.contextJournal?.append({
   entryType: 'COMPACTION_BOUNDARY',
   sourceType: 'CHAT',
   sourceRef: `chat_messages/${sessionId}`,
-  payload: { threshold: this.threshold, recentWindow: this.recentWindow, compactedCount: oldMessages.length },
+  payload: {
+    threshold: this.threshold,
+    recentWindow: this.recentWindow,
+    compactedCount: oldMessages.length,
+  },
 });
 await this.contextJournal?.appendCompactionSummary({
   userId,
@@ -445,6 +464,7 @@ git commit -m "feat: wire context journal into chat and analysis"
 ### Task 3: Runtime Control Service And Live Stream
 
 **Files:**
+
 - Create: `apps/api/src/analysis/runtime-control.service.ts`
 - Create: `apps/api/src/analysis/analysis-stream.controller.ts`
 - Modify: `apps/api/src/events/agent-event.service.ts`
@@ -552,13 +572,8 @@ export class AnalysisStreamController {
   constructor(private readonly events: AgentEventService) {}
 
   @Sse(':id/stream')
-  stream(
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @CurrentUser() user: CurrentUserPayload,
-  ) {
-    return this.events.streamAggregate(user.userId, id).pipe(
-      map((event) => ({ data: event })),
-    );
+  stream(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() user: CurrentUserPayload) {
+    return this.events.streamAggregate(user.userId, id).pipe(map((event) => ({ data: event })));
   }
 }
 ```
@@ -583,6 +598,7 @@ git commit -m "fix: close runtime control loop and add analysis stream"
 ### Task 4: Materialize Run Outputs On Completion
 
 **Files:**
+
 - Create: `apps/api/src/analysis/run-report-assembler.service.ts`
 - Modify: `apps/api/src/analysis/analysis-run.service.ts`
 - Modify: `apps/api/src/analysis/analysis-checkpoint.service.ts`
@@ -601,14 +617,49 @@ describe('RunReportAssembler', () => {
     const assembler = new RunReportAssembler();
     const result = assembler.build({
       sharedContext: {
-        longTermPreferenceContext: { summary: 'risk aware', sourceIds: [], updatedAt: new Date().toISOString() },
-        midTermStrategyContext: { summary: 'swing trading', sourceIds: [], updatedAt: new Date().toISOString() },
-        shortTermSessionContext: { summary: 'chat summary', sourceIds: [], updatedAt: new Date().toISOString() },
-        retrievalContext: { summary: 'earnings beat', sourceIds: ['news-1'], updatedAt: new Date().toISOString() },
+        longTermPreferenceContext: {
+          summary: 'risk aware',
+          sourceIds: [],
+          updatedAt: new Date().toISOString(),
+        },
+        midTermStrategyContext: {
+          summary: 'swing trading',
+          sourceIds: [],
+          updatedAt: new Date().toISOString(),
+        },
+        shortTermSessionContext: {
+          summary: 'chat summary',
+          sourceIds: [],
+          updatedAt: new Date().toISOString(),
+        },
+        retrievalContext: {
+          summary: 'earnings beat',
+          sourceIds: ['news-1'],
+          updatedAt: new Date().toISOString(),
+        },
       },
       stages: [
-        { stageKey: 'RISK', humanReportMarkdown: 'risk ok', structuredOutput: { portfolioDecision: 'BUY', allocationGuidance: { notes: 'scale in', targets: [] }, riskLimits: { maxDrawdownPct: 8, stopLossTriggers: [] }, alertTriggers: [], summary: 'risk ok', thesis: 'buy', risks: [], openQuestions: [], citations: [], confidence: 0.72 } },
-        { stageKey: 'EXECUTION_PREP', humanReportMarkdown: 'drafts ready', structuredOutput: { orderDraftCount: 1, orderDraftsArtifactId: 'artifact-order-drafts' } },
+        {
+          stageKey: 'RISK',
+          humanReportMarkdown: 'risk ok',
+          structuredOutput: {
+            portfolioDecision: 'BUY',
+            allocationGuidance: { notes: 'scale in', targets: [] },
+            riskLimits: { maxDrawdownPct: 8, stopLossTriggers: [] },
+            alertTriggers: [],
+            summary: 'risk ok',
+            thesis: 'buy',
+            risks: [],
+            openQuestions: [],
+            citations: [],
+            confidence: 0.72,
+          },
+        },
+        {
+          stageKey: 'EXECUTION_PREP',
+          humanReportMarkdown: 'drafts ready',
+          structuredOutput: { orderDraftCount: 1, orderDraftsArtifactId: 'artifact-order-drafts' },
+        },
       ],
       executionPayload: {
         orderDrafts: [],
@@ -635,7 +686,11 @@ Expected: FAIL because no assembler exists and completion does not persist outpu
 export class RunReportAssembler {
   build(args: {
     sharedContext: SharedContext | null;
-    stages: Array<{ stageKey: AnalysisStageKey; humanReportMarkdown: string | null; structuredOutput: Record<string, unknown> | null }>;
+    stages: Array<{
+      stageKey: AnalysisStageKey;
+      humanReportMarkdown: string | null;
+      structuredOutput: Record<string, unknown> | null;
+    }>;
     executionPayload: Record<string, unknown> | null;
   }): {
     finalReportMarkdown: string;
@@ -696,7 +751,9 @@ if (next === null) {
   const sharedContext = await this.contextJournal.getRunContext(data.userId, data.runId);
   const stages = await this.runs.listStagesForRun(data.runId);
   const artifacts = await this.runs.listArtifactsForRun(data.runId);
-  const executionArtifact = artifacts.find((artifact) => artifact.artifactKind === 'EXECUTION_PAYLOAD');
+  const executionArtifact = artifacts.find(
+    (artifact) => artifact.artifactKind === 'EXECUTION_PAYLOAD',
+  );
   const executionPayload = executionArtifact?.payloadJson ?? null;
   const assembled = this.reportAssembler.build({
     sharedContext,

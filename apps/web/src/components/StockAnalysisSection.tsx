@@ -1,15 +1,22 @@
-import { useState, useRef, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Sparkles, TrendingUp, TrendingDown, Target, ShieldAlert,
-  ChevronDown, ChevronUp, Loader2, ArrowRightCircle
-} from 'lucide-react'
-import { analysisApi, parseAnalysisResult, type StockAnalysisResult } from '../api/analysis'
-import { tradingApi } from '../api/trading'
+  Sparkles,
+  TrendingUp,
+  TrendingDown,
+  Target,
+  ShieldAlert,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  ArrowRightCircle,
+} from 'lucide-react';
+import { analysisApi, parseAnalysisResult, type StockAnalysisResult } from '../api/analysis';
+import { tradingApi } from '../api/trading';
 
 interface Props {
-  ticker: string
-  currentPrice?: number | null
+  ticker: string;
+  currentPrice?: number | null;
 }
 
 const REC_COLORS: Record<string, string> = {
@@ -18,7 +25,7 @@ const REC_COLORS: Record<string, string> = {
   HOLD: 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-strong)]',
   SELL: 'bg-red-500/10 text-red-400 border-red-500/20',
   STRONG_SELL: 'bg-red-500/15 text-red-300 border-red-400/30',
-}
+};
 
 const REC_LABELS: Record<string, string> = {
   STRONG_BUY: 'Strong Buy',
@@ -26,71 +33,71 @@ const REC_LABELS: Record<string, string> = {
   HOLD: 'Hold',
   SELL: 'Sell',
   STRONG_SELL: 'Strong Sell',
-}
+};
 
 const RISK_COLORS: Record<string, string> = {
   LOW: 'text-[var(--up)]',
   MEDIUM: 'text-[var(--warn)]',
   HIGH: 'text-orange-400',
   CRITICAL: 'text-[var(--down)]',
-}
+};
 
 export default function StockAnalysisSection({ ticker }: Props) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [isRunning, setIsRunning] = useState(false)
-  const [narrative, setNarrative] = useState('')
-  const [result, setResult] = useState<StockAnalysisResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [staged, setStaged] = useState(false)
-  const [stagingError, setStagingError] = useState<string | null>(null)
-  const narrativeRef = useRef<HTMLDivElement>(null)
+  const [isOpen, setIsOpen] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [narrative, setNarrative] = useState('');
+  const [result, setResult] = useState<StockAnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [staged, setStaged] = useState(false);
+  const [stagingError, setStagingError] = useState<string | null>(null);
+  const narrativeRef = useRef<HTMLDivElement>(null);
 
   const runAnalysis = useCallback(() => {
-    setIsRunning(true)
-    setNarrative('')
-    setResult(null)
-    setError(null)
-    setStaged(false)
-    setStagingError(null)
-    setIsOpen(true)
+    setIsRunning(true);
+    setNarrative('');
+    setResult(null);
+    setError(null);
+    setStaged(false);
+    setStagingError(null);
+    setIsOpen(true);
 
     analysisApi.stream(
       ticker,
       (chunk) => {
-        setNarrative(prev => prev + chunk)
+        setNarrative((prev) => prev + chunk);
         if (narrativeRef.current) {
-          narrativeRef.current.scrollTop = narrativeRef.current.scrollHeight
+          narrativeRef.current.scrollTop = narrativeRef.current.scrollHeight;
         }
       },
       (fullText) => {
-        setIsRunning(false)
-        const parsed = parseAnalysisResult(fullText)
-        if (parsed) setResult(parsed)
+        setIsRunning(false);
+        const parsed = parseAnalysisResult(fullText);
+        if (parsed) setResult(parsed);
       },
       (err) => {
-        setIsRunning(false)
-        setError(err)
-      }
-    )
-  }, [ticker])
+        setIsRunning(false);
+        setError(err);
+      },
+    );
+  }, [ticker]);
 
   const handleStage = async () => {
-    if (!result?.suggestedAction || result.suggestedAction.action === 'HOLD') return
+    if (!result?.suggestedAction || result.suggestedAction.action === 'HOLD') return;
     try {
       await tradingApi.stage({
         action: result.suggestedAction.action,
         ticker,
         shares: result.suggestedAction.shares ?? undefined,
         amount: result.suggestedAction.amount ?? undefined,
-      })
-      setStaged(true)
+      });
+      setStaged(true);
     } catch (e) {
-      setStagingError(e instanceof Error ? e.message : 'Failed to stage trade')
+      setStagingError(e instanceof Error ? e.message : 'Failed to stage trade');
     }
-  }
+  };
 
   // Strip the JSON block from display text
-  const displayNarrative = narrative.replace(/```json[\s\S]*?```/g, '').trim()
+  const displayNarrative = narrative.replace(/```json[\s\S]*?```/g, '').trim();
 
   return (
     <motion.div
@@ -104,7 +111,9 @@ export default function StockAnalysisSection({ ticker }: Props) {
         <div className="flex items-center gap-3">
           <span className="w-[2px] h-4 bg-blue-500 inline-block" />
           <Sparkles size={14} className="text-blue-400" />
-          <h2 className="text-sm font-semibold text-[var(--text-primary)] tracking-wide uppercase">AI Stock Analysis</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-primary)] tracking-wide uppercase">
+            AI Stock Analysis
+          </h2>
         </div>
 
         <div className="flex items-center gap-2">
@@ -127,7 +136,10 @@ export default function StockAnalysisSection({ ticker }: Props) {
           </button>
 
           {(narrative || error) && (
-            <button onClick={() => setIsOpen(!isOpen)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+            >
               {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
             </button>
           )}
@@ -157,10 +169,15 @@ export default function StockAnalysisSection({ ticker }: Props) {
                 <div
                   ref={narrativeRef}
                   className="max-h-[480px] overflow-y-auto pr-2 text-xs text-[var(--text-secondary)] leading-relaxed whitespace-pre-wrap font-mono"
-                  style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border-strong) transparent' }}
+                  style={{
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'var(--border-strong) transparent',
+                  }}
                 >
                   {displayNarrative}
-                  {isRunning && <span className="inline-block w-2 h-3.5 bg-blue-400/60 animate-pulse ml-0.5" />}
+                  {isRunning && (
+                    <span className="inline-block w-2 h-3.5 bg-blue-400/60 animate-pulse ml-0.5" />
+                  )}
                 </div>
               )}
 
@@ -173,16 +190,26 @@ export default function StockAnalysisSection({ ticker }: Props) {
                 >
                   {/* Recommendation header */}
                   <div className="flex items-center gap-3 flex-wrap">
-                    <span className={`px-2.5 py-1 rounded text-xs font-bold border status-chip ${REC_COLORS[result.recommendation] ?? ''}`}>
+                    <span
+                      className={`px-2.5 py-1 rounded text-xs font-bold border status-chip ${REC_COLORS[result.recommendation] ?? ''}`}
+                    >
                       {REC_LABELS[result.recommendation] ?? result.recommendation}
                     </span>
                     <span className="text-[var(--text-muted)] text-xs">
-                      Confidence: <span className="text-[var(--text-primary)] font-semibold">{result.confidencePercent}%</span>
+                      Confidence:{' '}
+                      <span className="text-[var(--text-primary)] font-semibold">
+                        {result.confidencePercent}%
+                      </span>
                     </span>
                     <span className="text-[var(--text-muted)] text-xs">
-                      Value: <span className="text-[var(--text-primary)] font-semibold">{result.valueRating} ({result.valueScore}/12)</span>
+                      Value:{' '}
+                      <span className="text-[var(--text-primary)] font-semibold">
+                        {result.valueRating} ({result.valueScore}/12)
+                      </span>
                     </span>
-                    <span className={`text-xs ${RISK_COLORS[result.riskLevel] ?? 'text-[var(--text-muted)]'}`}>
+                    <span
+                      className={`text-xs ${RISK_COLORS[result.riskLevel] ?? 'text-[var(--text-muted)]'}`}
+                    >
                       <ShieldAlert size={11} className="inline mr-1" />
                       {result.riskLevel} Risk
                     </span>
@@ -191,26 +218,40 @@ export default function StockAnalysisSection({ ticker }: Props) {
                   {/* Price zones grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded p-2.5">
-                      <p className="text-[var(--up)] text-[10px] flex items-center gap-1 opacity-70"><TrendingUp size={10} />Buy Zone</p>
+                      <p className="text-[var(--up)] text-[10px] flex items-center gap-1 opacity-70">
+                        <TrendingUp size={10} />
+                        Buy Zone
+                      </p>
                       <p className="text-green-400 font-semibold font-mono text-xs tabular-nums mt-1">
                         ${result.buyZone.low.toFixed(2)} – ${result.buyZone.high.toFixed(2)}
                       </p>
                     </div>
                     <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded p-2.5">
-                      <p className="text-blue-400 text-[10px] flex items-center gap-1 opacity-70"><Target size={10} />Target Price</p>
+                      <p className="text-blue-400 text-[10px] flex items-center gap-1 opacity-70">
+                        <Target size={10} />
+                        Target Price
+                      </p>
                       <p className="text-blue-300 font-semibold font-mono text-xs tabular-nums mt-1">
                         ${result.targetPrice.toFixed(2)}
-                        <span className="text-[10px] ml-1 text-blue-400/60">(+{result.impliedUpside.toFixed(1)}%)</span>
+                        <span className="text-[10px] ml-1 text-blue-400/60">
+                          (+{result.impliedUpside.toFixed(1)}%)
+                        </span>
                       </p>
                     </div>
                     <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded p-2.5">
-                      <p className="text-orange-400 text-[10px] flex items-center gap-1 opacity-70"><TrendingDown size={10} />Sell Zone</p>
+                      <p className="text-orange-400 text-[10px] flex items-center gap-1 opacity-70">
+                        <TrendingDown size={10} />
+                        Sell Zone
+                      </p>
                       <p className="text-orange-300 font-semibold font-mono text-xs tabular-nums mt-1">
                         ${result.sellZone.low.toFixed(2)} – ${result.sellZone.high.toFixed(2)}
                       </p>
                     </div>
                     <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded p-2.5">
-                      <p className="text-[var(--down)] text-[10px] flex items-center gap-1 opacity-70"><ShieldAlert size={10} />Stop Loss</p>
+                      <p className="text-[var(--down)] text-[10px] flex items-center gap-1 opacity-70">
+                        <ShieldAlert size={10} />
+                        Stop Loss
+                      </p>
                       <p className="text-red-400 font-semibold font-mono text-xs tabular-nums mt-1">
                         ${result.stopLoss.toFixed(2)}
                       </p>
@@ -220,9 +261,14 @@ export default function StockAnalysisSection({ ticker }: Props) {
                   {/* Key Forces */}
                   {result.keyForces.length > 0 && (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider">Key Forces:</span>
+                      <span className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider">
+                        Key Forces:
+                      </span>
                       {result.keyForces.map((force, i) => (
-                        <span key={i} className="px-2 py-0.5 rounded text-[10px] bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]">
+                        <span
+                          key={i}
+                          className="px-2 py-0.5 rounded text-[10px] bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-subtle)]"
+                        >
                           {force}
                         </span>
                       ))}
@@ -234,14 +280,24 @@ export default function StockAnalysisSection({ ticker }: Props) {
                     <div className="flex items-center gap-3 p-3 rounded bg-[var(--bg-elevated)] border border-[var(--border-subtle)]">
                       <div className="flex-1">
                         <p className="text-[var(--text-primary)] text-xs font-medium">
-                          Suggested: <span className={result.suggestedAction.action === 'BUY' ? 'text-[var(--up)]' : 'text-[var(--down)]'}>
+                          Suggested:{' '}
+                          <span
+                            className={
+                              result.suggestedAction.action === 'BUY'
+                                ? 'text-[var(--up)]'
+                                : 'text-[var(--down)]'
+                            }
+                          >
                             {result.suggestedAction.action}
-                          </span>
-                          {' '}{ticker}
-                          {result.suggestedAction.shares && ` x ${result.suggestedAction.shares} shares`}
+                          </span>{' '}
+                          {ticker}
+                          {result.suggestedAction.shares &&
+                            ` x ${result.suggestedAction.shares} shares`}
                           {result.suggestedAction.amount && ` $${result.suggestedAction.amount}`}
                         </p>
-                        <p className="text-[var(--text-muted)] text-[10px] mt-0.5">{result.suggestedAction.rationale}</p>
+                        <p className="text-[var(--text-muted)] text-[10px] mt-0.5">
+                          {result.suggestedAction.rationale}
+                        </p>
                       </div>
                       {staged ? (
                         <span className="px-2.5 py-1 rounded text-[10px] status-chip bg-blue-500/15 text-blue-300 border border-blue-400/20">
@@ -256,7 +312,9 @@ export default function StockAnalysisSection({ ticker }: Props) {
                           Stage Trade
                         </button>
                       )}
-                      {stagingError && <span className="text-[var(--down)] text-[10px]">{stagingError}</span>}
+                      {stagingError && (
+                        <span className="text-[var(--down)] text-[10px]">{stagingError}</span>
+                      )}
                     </div>
                   )}
 
@@ -271,5 +329,5 @@ export default function StockAnalysisSection({ ticker }: Props) {
         )}
       </AnimatePresence>
     </motion.div>
-  )
+  );
 }

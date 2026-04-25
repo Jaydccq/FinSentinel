@@ -14,10 +14,7 @@ import type { INestApplication } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { randomUUID } from 'crypto';
 import { AppModule } from '../../app.module';
-import {
-  VECTORIZE_QUEUE_TOKEN,
-  NEWS_ENRICH_QUEUE_TOKEN,
-} from '../../queue/queue.constants';
+import { VECTORIZE_QUEUE_TOKEN, NEWS_ENRICH_QUEUE_TOKEN } from '../../queue/queue.constants';
 import { VectorizeConsumer } from '../../queue/vectorize.consumer';
 import { NewsEnrichConsumer } from '../../queue/news-enrich.consumer';
 
@@ -55,16 +52,13 @@ export function createMockDb() {
    *
    * We extract the column name and comparison value from these structures.
    */
-  function matchesWhere(
-    row: Record<string, unknown>,
-    whereFn: unknown,
-  ): boolean {
+  function matchesWhere(row: Record<string, unknown>, whereFn: unknown): boolean {
     if (!whereFn) return true;
 
     const sql = whereFn as {
       queryChunks?: unknown[];
-      name?: string;    // Column has .name
-      value?: unknown;  // Param or StringChunk has .value
+      name?: string; // Column has .name
+      value?: unknown; // Param or StringChunk has .value
     };
 
     // Not a SQL object — fallback to true
@@ -78,7 +72,12 @@ export function createMockDb() {
       const opChunk = chunks[2] as { value?: string[] };
       const paramChunk = chunks[3] as { value?: unknown };
 
-      if (colChunk?.name && opChunk?.value?.[0]?.includes('=') && paramChunk && 'value' in paramChunk) {
+      if (
+        colChunk?.name &&
+        opChunk?.value?.[0]?.includes('=') &&
+        paramChunk &&
+        'value' in paramChunk
+      ) {
         return row[colChunk.name] === paramChunk.value;
       }
     }
@@ -88,9 +87,7 @@ export function createMockDb() {
       const inner = chunks[1] as { queryChunks?: unknown[] };
       if (inner?.queryChunks) {
         // Inner queryChunks alternate: [sql1, StringChunk(' and '), sql2, ...]
-        const conditions = inner.queryChunks.filter(
-          (_: unknown, i: number) => i % 2 === 0,
-        );
+        const conditions = inner.queryChunks.filter((_: unknown, i: number) => i % 2 === 0);
         return conditions.every((c: unknown) => matchesWhere(row, c));
       }
     }
@@ -130,9 +127,7 @@ export function createMockDb() {
           return chain;
         },
         then(resolve: (rows: Record<string, unknown>[]) => void) {
-          let rows = getTable(_table).filter((r) =>
-            matchesWhere(r, _whereClause),
-          );
+          let rows = getTable(_table).filter((r) => matchesWhere(r, _whereClause));
           if (_offset > 0) {
             rows = rows.slice(_offset);
           }
@@ -171,8 +166,7 @@ export function createMockDb() {
         if (looksLikeUsersInsert) {
           const rows = getTable(table);
           const dupe = rows.find(
-            (r) =>
-              r.username === _values!.username || r.email === _values!.email,
+            (r) => r.username === _values!.username || r.email === _values!.email,
           );
           if (dupe) {
             const err = Object.assign(
@@ -200,10 +194,7 @@ export function createMockDb() {
         returning() {
           return chain;
         },
-        then(
-          resolve: (rows: Record<string, unknown>[]) => void,
-          reject?: (err: unknown) => void,
-        ) {
+        then(resolve: (rows: Record<string, unknown>[]) => void, reject?: (err: unknown) => void) {
           settle().then(resolve, reject);
         },
         [Symbol.toStringTag]: 'Promise' as const,
@@ -259,9 +250,7 @@ export function createMockDb() {
         },
         then(resolve: (result: unknown) => void) {
           const rows = getTable(table);
-          const remaining = rows.filter(
-            (r) => !matchesWhere(r, _whereClause),
-          );
+          const remaining = rows.filter((r) => !matchesWhere(r, _whereClause));
           tables.set(table, remaining);
           resolve({ rowCount: rows.length - remaining.length });
         },
@@ -351,11 +340,7 @@ export function createMockRedis() {
      * server for execution. It is NOT JavaScript eval() — it is safe and
      * standard practice for atomic Redis operations.
      */
-    luaEval(
-      script: string,
-      numKeys: number,
-      ...args: unknown[]
-    ): Promise<unknown> {
+    luaEval(script: string, numKeys: number, ...args: unknown[]): Promise<unknown> {
       // Rate-limit script: returns [allowed, remaining, ttl*1000]
       if (script.includes('INCR') && script.includes('EXPIRE') && script.includes('TTL')) {
         const key = String(args[0]);

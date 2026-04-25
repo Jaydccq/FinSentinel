@@ -157,9 +157,7 @@ describe('Chat compaction — token reduction benchmark', () => {
     const conversation = generateConversation(MESSAGE_COUNT);
 
     // ── BEFORE compaction: all messages sent as prompt context ─────────
-    const fullContextText = conversation
-      .map((m) => `${m.role}: ${m.content}`)
-      .join('\n');
+    const fullContextText = conversation.map((m) => `${m.role}: ${m.content}`).join('\n');
     const tokensBefore = estimateTokens(fullContextText);
 
     // ── AFTER compaction: summary of oldest 20 + recent 10 messages ───
@@ -171,9 +169,7 @@ describe('Chat compaction — token reduction benchmark', () => {
     const summary = await service.generateSummary(oldMessages);
 
     // Build the post-compaction context
-    const recentText = recentMessages
-      .map((m) => `${m.role}: ${m.content}`)
-      .join('\n');
+    const recentText = recentMessages.map((m) => `${m.role}: ${m.content}`).join('\n');
     const compactedContextText = `[Previous context summary: ${summary}]\n\n${recentText}`;
     const tokensAfter = estimateTokens(compactedContextText);
 

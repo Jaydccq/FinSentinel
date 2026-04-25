@@ -9,7 +9,7 @@
 
 html {
   color: #111827;
-  font-family: "Arial", "Helvetica Neue", "PingFang SC", "Songti SC", sans-serif;
+  font-family: 'Arial', 'Helvetica Neue', 'PingFang SC', 'Songti SC', sans-serif;
   font-size: 11.5pt;
   line-height: 1.58;
 }
@@ -40,7 +40,7 @@ h1:first-child {
 h1:first-child::after {
   border-bottom: 0.28in solid #1f4e79;
   color: #5f6368;
-  content: "Interview Review Guide • FinSentinel / Autonomous Investment Research & Risk Platform";
+  content: 'Interview Review Guide • FinSentinel / Autonomous Investment Research & Risk Platform';
   display: block;
   font-size: 10.5pt;
   font-style: italic;
@@ -93,7 +93,7 @@ li > p {
 code {
   background: #f3f4f6;
   border-radius: 3px;
-  font-family: "Menlo", "Consolas", monospace;
+  font-family: 'Menlo', 'Consolas', monospace;
   font-size: 0.88em;
   padding: 0.02in 0.04in;
 }
@@ -102,7 +102,7 @@ pre {
   background: #f8fafc;
   border: 1px solid #d1d5db;
   border-radius: 4px;
-  font-family: "Menlo", "Consolas", monospace;
+  font-family: 'Menlo', 'Consolas', monospace;
   font-size: 9.2pt;
   line-height: 1.42;
   margin: 0.12in 0 0.16in;

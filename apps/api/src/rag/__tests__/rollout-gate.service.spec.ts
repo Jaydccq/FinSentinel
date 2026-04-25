@@ -3,7 +3,13 @@ import { RolloutGateService } from '../rollout-gate.service';
 
 describe('RolloutGateService.decide', () => {
   const config = {
-    percentByClass: { exact_lookup: 100, factoid: 10, relational: 10, analytical: 10, multi_part: 10 },
+    percentByClass: {
+      exact_lookup: 100,
+      factoid: 10,
+      relational: 10,
+      analytical: 10,
+      multi_part: 10,
+    },
     anonMultiplier: 0.5,
   };
 
@@ -30,7 +36,10 @@ describe('RolloutGateService.decide', () => {
     let multi = 0;
     const total = 10_000;
     for (let i = 0; i < total; i++) {
-      if (gate.decide('analytical', { ipAddress: `10.0.${(i >> 8) & 0xff}.${i & 0xff}` }).pipeline === 'multi_stage') {
+      if (
+        gate.decide('analytical', { ipAddress: `10.0.${(i >> 8) & 0xff}.${i & 0xff}` }).pipeline ===
+        'multi_stage'
+      ) {
         multi++;
       }
     }

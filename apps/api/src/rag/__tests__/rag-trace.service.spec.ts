@@ -41,7 +41,11 @@ function baseInput(overrides: Partial<RagTraceInput> = {}): RagTraceInput {
 describe('RagTraceService — hashing', () => {
   it('same query produces same query_hash in INSERT payload', async () => {
     const executeFn = vi.fn().mockResolvedValue([]);
-    const svc = new RagTraceService(makeDb(executeFn) as any, makeConfigService() as any, makeMetrics() as any);
+    const svc = new RagTraceService(
+      makeDb(executeFn) as any,
+      makeConfigService() as any,
+      makeMetrics() as any,
+    );
 
     await svc.recordTrace(baseInput({ query: 'hello world' }));
 
@@ -60,7 +64,11 @@ describe('RagTraceService — hashing', () => {
       calls.push(JSON.stringify(sqlArg));
       return [];
     });
-    const svc = new RagTraceService(makeDb(executeFn) as any, makeConfigService() as any, makeMetrics() as any);
+    const svc = new RagTraceService(
+      makeDb(executeFn) as any,
+      makeConfigService() as any,
+      makeMetrics() as any,
+    );
 
     await svc.recordTrace(baseInput({ query: 'consistent query' }));
     await svc.recordTrace(baseInput({ query: 'consistent query' }));
@@ -105,12 +113,18 @@ describe('RagTraceService — hashing', () => {
 
   it('hashes variant queries independently', async () => {
     const executeFn = vi.fn().mockResolvedValue([]);
-    const svc = new RagTraceService(makeDb(executeFn) as any, makeConfigService() as any, makeMetrics() as any);
+    const svc = new RagTraceService(
+      makeDb(executeFn) as any,
+      makeConfigService() as any,
+      makeMetrics() as any,
+    );
 
     const variantQuery = 'rewritten variant query';
-    await svc.recordTrace(baseInput({
-      variants: [{ kind: 'rewrite', query: variantQuery }],
-    }));
+    await svc.recordTrace(
+      baseInput({
+        variants: [{ kind: 'rewrite', query: variantQuery }],
+      }),
+    );
 
     const serialised = JSON.stringify(executeFn.mock.calls[0]);
     const variantHash = sha256hex(variantQuery);
@@ -236,12 +250,18 @@ describe('RagTraceService — error handling', () => {
 describe('RagTraceService — representationTypesSeen __reps sub-key', () => {
   it('folds representationTypesSeen into lane_counts.__reps when present', async () => {
     const executeFn = vi.fn().mockResolvedValue([]);
-    const svc = new RagTraceService(makeDb(executeFn) as any, makeConfigService() as any, makeMetrics() as any);
+    const svc = new RagTraceService(
+      makeDb(executeFn) as any,
+      makeConfigService() as any,
+      makeMetrics() as any,
+    );
 
-    await svc.recordTrace(baseInput({
-      laneCounts: { dense: 60, sparse: 45 },
-      representationTypesSeen: ['canonical', 'contextual_text'],
-    }));
+    await svc.recordTrace(
+      baseInput({
+        laneCounts: { dense: 60, sparse: 45 },
+        representationTypesSeen: ['canonical', 'contextual_text'],
+      }),
+    );
 
     const serialised = JSON.stringify(executeFn.mock.calls[0]);
     // The serialised INSERT payload must contain the __reps key with the rep types.
@@ -255,12 +275,18 @@ describe('RagTraceService — representationTypesSeen __reps sub-key', () => {
 
   it('omits __reps sub-key when representationTypesSeen is empty', async () => {
     const executeFn = vi.fn().mockResolvedValue([]);
-    const svc = new RagTraceService(makeDb(executeFn) as any, makeConfigService() as any, makeMetrics() as any);
+    const svc = new RagTraceService(
+      makeDb(executeFn) as any,
+      makeConfigService() as any,
+      makeMetrics() as any,
+    );
 
-    await svc.recordTrace(baseInput({
-      laneCounts: { dense: 30 },
-      representationTypesSeen: [],
-    }));
+    await svc.recordTrace(
+      baseInput({
+        laneCounts: { dense: 30 },
+        representationTypesSeen: [],
+      }),
+    );
 
     const serialised = JSON.stringify(executeFn.mock.calls[0]);
     expect(serialised).not.toContain('__reps');
@@ -268,7 +294,11 @@ describe('RagTraceService — representationTypesSeen __reps sub-key', () => {
 
   it('omits __reps sub-key when representationTypesSeen is absent', async () => {
     const executeFn = vi.fn().mockResolvedValue([]);
-    const svc = new RagTraceService(makeDb(executeFn) as any, makeConfigService() as any, makeMetrics() as any);
+    const svc = new RagTraceService(
+      makeDb(executeFn) as any,
+      makeConfigService() as any,
+      makeMetrics() as any,
+    );
 
     // baseInput does not set representationTypesSeen
     await svc.recordTrace(baseInput());
@@ -281,19 +311,37 @@ describe('RagTraceService — representationTypesSeen __reps sub-key', () => {
 describe('RagTraceService — INSERT column completeness', () => {
   it('INSERT SQL references all required columns', async () => {
     const executeFn = vi.fn().mockResolvedValue([]);
-    const svc = new RagTraceService(makeDb(executeFn) as any, makeConfigService() as any, makeMetrics() as any);
-    await svc.recordTrace(baseInput({
-      userId: 'user-uuid-123',
-      queryClass: 'factoid',
-      rerankReason: null,
-      totalMs: 120,
-    }));
+    const svc = new RagTraceService(
+      makeDb(executeFn) as any,
+      makeConfigService() as any,
+      makeMetrics() as any,
+    );
+    await svc.recordTrace(
+      baseInput({
+        userId: 'user-uuid-123',
+        queryClass: 'factoid',
+        rerankReason: null,
+        totalMs: 120,
+      }),
+    );
 
     const serialised = JSON.stringify(executeFn.mock.calls[0]);
     const requiredColumns = [
-      'id', 'user_id', 'query_hash', 'query_preview', 'query_class',
-      'variants', 'filters', 'lanes', 'result_chunk_ids', 'lane_counts',
-      'timings_ms', 'fallback_flags', 'rerank_reason', 'total_ms', 'created_at',
+      'id',
+      'user_id',
+      'query_hash',
+      'query_preview',
+      'query_class',
+      'variants',
+      'filters',
+      'lanes',
+      'result_chunk_ids',
+      'lane_counts',
+      'timings_ms',
+      'fallback_flags',
+      'rerank_reason',
+      'total_ms',
+      'created_at',
     ];
     for (const col of requiredColumns) {
       expect(serialised, `Missing column ${col}`).toContain(col);

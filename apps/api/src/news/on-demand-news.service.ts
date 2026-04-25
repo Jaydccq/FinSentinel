@@ -54,12 +54,7 @@ export class OnDemandNewsService {
       const existing = await this.db
         .select({ id: newsItems.id })
         .from(newsItems)
-        .where(
-          and(
-            eq(newsItems.source, item.source),
-            eq(newsItems.sourceId, item.sourceId),
-          ),
-        )
+        .where(and(eq(newsItems.source, item.source), eq(newsItems.sourceId, item.sourceId)))
         .limit(1);
 
       if (existing.length === 0) {

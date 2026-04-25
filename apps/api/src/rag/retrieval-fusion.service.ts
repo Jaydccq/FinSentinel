@@ -14,7 +14,10 @@ export interface RankedCandidate {
   representationType?: string[];
 }
 
-export interface FusedCandidate extends Omit<RankedCandidate, 'lane' | 'score' | 'variantKind' | 'representationType'> {
+export interface FusedCandidate extends Omit<
+  RankedCandidate,
+  'lane' | 'score' | 'variantKind' | 'representationType'
+> {
   rrfScore: number;
   lanes: string[];
   /** All representation types that contributed hits for this chunkId. */
@@ -51,10 +54,7 @@ export class RetrievalFusionService {
    *
    * Both signatures work so existing call sites don't need updating.
    */
-  fuse(
-    lanes: RankedCandidate[][] | WeightedLane[],
-    k = 60,
-  ): FusedCandidate[] {
+  fuse(lanes: RankedCandidate[][] | WeightedLane[], k = 60): FusedCandidate[] {
     const weightedLanes: WeightedLane[] = lanes.map((lane) =>
       isWeightedLane(lane) ? lane : { candidates: lane, weight: 1 },
     );
@@ -84,10 +84,7 @@ export class RetrievalFusionService {
               }
             }
           }
-          if (
-            candidate.variantKind &&
-            !existing.variantKindsSeen.includes(candidate.variantKind)
-          ) {
+          if (candidate.variantKind && !existing.variantKindsSeen.includes(candidate.variantKind)) {
             existing.variantKindsSeen.push(candidate.variantKind);
           }
         } else {

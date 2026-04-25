@@ -76,32 +76,28 @@ import { RagModule } from '../rag/rag.module';
     // ── Vectorize queue ──────────────────────────────────────────────
     {
       provide: VECTORIZE_QUEUE_TOKEN,
-      useFactory: (connection: ConnectionOptions) =>
-        new Queue(VECTORIZE_QUEUE, { connection }),
+      useFactory: (connection: ConnectionOptions) => new Queue(VECTORIZE_QUEUE, { connection }),
       inject: ['BULLMQ_CONNECTION'],
     },
 
     // ── News enrich queue ────────────────────────────────────────────
     {
       provide: NEWS_ENRICH_QUEUE_TOKEN,
-      useFactory: (connection: ConnectionOptions) =>
-        new Queue(NEWS_ENRICH_QUEUE, { connection }),
+      useFactory: (connection: ConnectionOptions) => new Queue(NEWS_ENRICH_QUEUE, { connection }),
       inject: ['BULLMQ_CONNECTION'],
     },
 
     // ── Graph enrich queue ──────────────────────────────────────────
     {
       provide: GRAPH_ENRICH_QUEUE_TOKEN,
-      useFactory: (connection: ConnectionOptions) =>
-        new Queue(GRAPH_ENRICH_QUEUE, { connection }),
+      useFactory: (connection: ConnectionOptions) => new Queue(GRAPH_ENRICH_QUEUE, { connection }),
       inject: ['BULLMQ_CONNECTION'],
     },
 
     // ── Analysis run queue ──────────────────────────────────────────
     {
       provide: ANALYSIS_RUN_QUEUE_TOKEN,
-      useFactory: (connection: ConnectionOptions) =>
-        new Queue(ANALYSIS_RUN_QUEUE, { connection }),
+      useFactory: (connection: ConnectionOptions) => new Queue(ANALYSIS_RUN_QUEUE, { connection }),
       inject: ['BULLMQ_CONNECTION'],
     },
 
@@ -127,6 +123,12 @@ import { RagModule } from '../rag/rag.module';
     AnalysisRunConsumer,
     RepresentationEnrichConsumer,
   ],
-  exports: [VectorizeProducer, NewsEnrichProducer, GraphEnrichProducer, AnalysisRunProducer, RepresentationEnrichProducer],
+  exports: [
+    VectorizeProducer,
+    NewsEnrichProducer,
+    GraphEnrichProducer,
+    AnalysisRunProducer,
+    RepresentationEnrichProducer,
+  ],
 })
 export class QueueModule {}

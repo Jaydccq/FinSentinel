@@ -1,5 +1,5 @@
-import { Suspense } from 'react'
-import Layout from '@/components/Layout'
+import { Suspense } from 'react';
+import Layout from '@/components/Layout';
 
 // Layout reads useSearchParams() to surface the current ticker on
 // /stock. In `output: 'export'` that hook triggers Next's
@@ -11,5 +11,5 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <Suspense fallback={null}>
       <Layout>{children}</Layout>
     </Suspense>
-  )
+  );
 }

@@ -101,6 +101,7 @@ StrategyTemplateEvaluation
 ## Task 1: Shared Strategy Contracts
 
 **Files:**
+
 - Create: `packages/shared/src/schemas/strategy.ts`
 - Modify: `packages/shared/src/schemas/index.ts`
 - Create: `packages/shared/src/__tests__/strategy-schema.test.ts`
@@ -109,10 +110,7 @@ StrategyTemplateEvaluation
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import {
-  strategyTemplateEvaluationSchema,
-  strategyTemplateKeySchema,
-} from '../schemas/strategy';
+import { strategyTemplateEvaluationSchema, strategyTemplateKeySchema } from '../schemas/strategy';
 
 describe('strategy schemas', () => {
   it('lists the v1 Minara-derived templates', () => {
@@ -176,12 +174,7 @@ export const strategyTemplateKeySchema = z.enum([
 ]);
 export type StrategyTemplateKey = z.infer<typeof strategyTemplateKeySchema>;
 
-export const strategySignalSchema = z.enum([
-  'ENTER_LONG',
-  'EXIT_LONG',
-  'HOLD',
-  'BLOCKED',
-]);
+export const strategySignalSchema = z.enum(['ENTER_LONG', 'EXIT_LONG', 'HOLD', 'BLOCKED']);
 export type StrategySignal = z.infer<typeof strategySignalSchema>;
 
 export const strategyRecommendedNextStepSchema = z.enum([
@@ -189,9 +182,7 @@ export const strategyRecommendedNextStepSchema = z.enum([
   'PAPER_ONLY',
   'REVIEW_FOR_BACKTEST',
 ]);
-export type StrategyRecommendedNextStep = z.infer<
-  typeof strategyRecommendedNextStepSchema
->;
+export type StrategyRecommendedNextStep = z.infer<typeof strategyRecommendedNextStepSchema>;
 
 export const strategyIndicatorSnapshotSchema = z.object({
   close: z.number(),
@@ -202,9 +193,7 @@ export const strategyIndicatorSnapshotSchema = z.object({
   sma50: z.number().nullable(),
   sma200: z.number().nullable(),
 });
-export type StrategyIndicatorSnapshot = z.infer<
-  typeof strategyIndicatorSnapshotSchema
->;
+export type StrategyIndicatorSnapshot = z.infer<typeof strategyIndicatorSnapshotSchema>;
 
 export const strategyCostProfileSchema = z.object({
   makerFeeBps: z.number().nonnegative(),
@@ -227,9 +216,7 @@ export const strategyTemplateEvaluationSchema = z.object({
   indicatorSnapshot: strategyIndicatorSnapshotSchema,
   costProfile: strategyCostProfileSchema,
 });
-export type StrategyTemplateEvaluation = z.infer<
-  typeof strategyTemplateEvaluationSchema
->;
+export type StrategyTemplateEvaluation = z.infer<typeof strategyTemplateEvaluationSchema>;
 ```
 
 - [x] **Step 4: Export the schema**
@@ -253,6 +240,7 @@ Expected: PASS.
 ## Task 2: Strategy Template Evaluator Service
 
 **Files:**
+
 - Create: `apps/api/src/market/strategy-template.service.ts`
 - Create: `apps/api/src/market/__tests__/strategy-template.service.spec.ts`
 - Modify: `apps/api/src/market/market.module.ts`
@@ -453,18 +441,33 @@ export class StrategyTemplateService {
     const closes = bars.map((bar) => bar.c);
     const highs = bars.map((bar) => bar.h);
     const lows = bars.map((bar) => bar.l);
-    const stoch = bars.length >= 17
-      ? Stochastic.calculate({ high: highs, low: lows, close: closes, period: 14, signalPeriod: 3 }).at(-1)
-      : undefined;
+    const stoch =
+      bars.length >= 17
+        ? Stochastic.calculate({
+            high: highs,
+            low: lows,
+            close: closes,
+            period: 14,
+            signalPeriod: 3,
+          }).at(-1)
+        : undefined;
 
     return {
       close: closes.at(-1)!,
-      rsi14: this.lastOrNull(bars.length >= 15 ? RSI.calculate({ values: closes, period: 14 }) : []),
+      rsi14: this.lastOrNull(
+        bars.length >= 15 ? RSI.calculate({ values: closes, period: 14 }) : [],
+      ),
       stochasticK14: stoch?.k ?? null,
       stochasticD3: stoch?.d ?? null,
-      ema200: this.lastOrNull(bars.length >= 200 ? EMA.calculate({ values: closes, period: 200 }) : []),
-      sma50: this.lastOrNull(bars.length >= 50 ? SMA.calculate({ values: closes, period: 50 }) : []),
-      sma200: this.lastOrNull(bars.length >= 200 ? SMA.calculate({ values: closes, period: 200 }) : []),
+      ema200: this.lastOrNull(
+        bars.length >= 200 ? EMA.calculate({ values: closes, period: 200 }) : [],
+      ),
+      sma50: this.lastOrNull(
+        bars.length >= 50 ? SMA.calculate({ values: closes, period: 50 }) : [],
+      ),
+      sma200: this.lastOrNull(
+        bars.length >= 200 ? SMA.calculate({ values: closes, period: 200 }) : [],
+      ),
     };
   }
 
@@ -489,15 +492,36 @@ export class StrategyTemplateService {
     receivedBars: number,
     warnings: string[],
   ): { signal: StrategySignal; confidence: number; reasons: string[] } {
-    if (receivedBars < 200 || snapshot.rsi14 === null || snapshot.stochasticK14 === null || snapshot.ema200 === null) {
-      warnings.push('Mean reversion template requires at least 200 bars for EMA200 and oscillator confirmation.');
-      return { signal: 'BLOCKED', confidence: 0, reasons: ['Insufficient data for mean reversion template.'] };
+    if (
+      receivedBars < 200 ||
+      snapshot.rsi14 === null ||
+      snapshot.stochasticK14 === null ||
+      snapshot.ema200 === null
+    ) {
+      warnings.push(
+        'Mean reversion template requires at least 200 bars for EMA200 and oscillator confirmation.',
+      );
+      return {
+        signal: 'BLOCKED',
+        confidence: 0,
+        reasons: ['Insufficient data for mean reversion template.'],
+      };
     }
     if (snapshot.rsi14 <= 20 && snapshot.stochasticK14 <= 25 && snapshot.close > snapshot.ema200) {
-      return { signal: 'ENTER_LONG', confidence: 0.78, reasons: ['RSI is deeply oversold, Stochastic confirms washout, and price remains above EMA200.'] };
+      return {
+        signal: 'ENTER_LONG',
+        confidence: 0.78,
+        reasons: [
+          'RSI is deeply oversold, Stochastic confirms washout, and price remains above EMA200.',
+        ],
+      };
     }
     if (snapshot.rsi14 >= 65 || snapshot.close < snapshot.ema200) {
-      return { signal: 'EXIT_LONG', confidence: 0.68, reasons: ['Mean reversion exit condition is active.'] };
+      return {
+        signal: 'EXIT_LONG',
+        confidence: 0.68,
+        reasons: ['Mean reversion exit condition is active.'],
+      };
     }
     return { signal: 'HOLD', confidence: 0.5, reasons: ['Mean reversion setup is incomplete.'] };
   }
@@ -509,12 +533,24 @@ export class StrategyTemplateService {
   ): { signal: StrategySignal; confidence: number; reasons: string[] } {
     if (receivedBars < 15 || snapshot.rsi14 === null) {
       warnings.push('Momentum template requires at least 15 bars for RSI14.');
-      return { signal: 'BLOCKED', confidence: 0, reasons: ['Insufficient data for RSI momentum template.'] };
+      return {
+        signal: 'BLOCKED',
+        confidence: 0,
+        reasons: ['Insufficient data for RSI momentum template.'],
+      };
     }
     if (snapshot.rsi14 >= 70) {
-      return { signal: 'ENTER_LONG', confidence: 0.7, reasons: ['RSI is above 70, matching the momentum continuation template.'] };
+      return {
+        signal: 'ENTER_LONG',
+        confidence: 0.7,
+        reasons: ['RSI is above 70, matching the momentum continuation template.'],
+      };
     }
-    return { signal: 'EXIT_LONG', confidence: 0.62, reasons: ['RSI is below 70, matching the template exit condition.'] };
+    return {
+      signal: 'EXIT_LONG',
+      confidence: 0.62,
+      reasons: ['RSI is below 70, matching the template exit condition.'],
+    };
   }
 
   private evaluateLongOnlyTrend(
@@ -522,12 +558,31 @@ export class StrategyTemplateService {
     receivedBars: number,
     warnings: string[],
   ): { signal: StrategySignal; confidence: number; reasons: string[] } {
-    if (receivedBars < 200 || snapshot.rsi14 === null || snapshot.sma50 === null || snapshot.sma200 === null) {
+    if (
+      receivedBars < 200 ||
+      snapshot.rsi14 === null ||
+      snapshot.sma50 === null ||
+      snapshot.sma200 === null
+    ) {
       warnings.push('Long-only SMA/RSI template requires at least 200 bars.');
-      return { signal: 'BLOCKED', confidence: 0, reasons: ['Insufficient data for long-only trend template.'] };
+      return {
+        signal: 'BLOCKED',
+        confidence: 0,
+        reasons: ['Insufficient data for long-only trend template.'],
+      };
     }
-    if (snapshot.close > snapshot.sma50 && snapshot.sma50 > snapshot.sma200 && snapshot.rsi14 >= 50) {
-      return { signal: 'ENTER_LONG', confidence: 0.74, reasons: ['Price is above SMA50, SMA50 is above SMA200, and RSI confirms positive momentum.'] };
+    if (
+      snapshot.close > snapshot.sma50 &&
+      snapshot.sma50 > snapshot.sma200 &&
+      snapshot.rsi14 >= 50
+    ) {
+      return {
+        signal: 'ENTER_LONG',
+        confidence: 0.74,
+        reasons: [
+          'Price is above SMA50, SMA50 is above SMA200, and RSI confirms positive momentum.',
+        ],
+      };
     }
     if (snapshot.close < snapshot.sma200 || snapshot.rsi14 < 45) {
       return { signal: 'EXIT_LONG', confidence: 0.67, reasons: ['Long-only trend filter failed.'] };
@@ -538,7 +593,8 @@ export class StrategyTemplateService {
   private buildCostProfile(args: EvaluateStrategyArgs): StrategyCostProfile {
     const makerFeeBps = args.makerFeeBps ?? 1.5;
     const takerFeeBps = args.takerFeeBps ?? 4.5;
-    const expectedAnnualTrades = args.expectedAnnualTrades ?? this.defaultAnnualTrades(args.templateKey);
+    const expectedAnnualTrades =
+      args.expectedAnnualTrades ?? this.defaultAnnualTrades(args.templateKey);
     const estimatedRoundTripBps = makerFeeBps + takerFeeBps;
     return {
       makerFeeBps,
@@ -559,10 +615,7 @@ export class StrategyTemplateService {
     return 80;
   }
 
-  private nextStep(
-    signal: StrategySignal,
-    warnings: string[],
-  ): StrategyRecommendedNextStep {
+  private nextStep(signal: StrategySignal, warnings: string[]): StrategyRecommendedNextStep {
     if (signal === 'BLOCKED') return 'REJECT';
     if (warnings.some((warning) => warning.toLowerCase().includes('fee drag'))) {
       return 'PAPER_ONLY';
@@ -599,6 +652,7 @@ Expected: PASS.
 ## Task 3: Agent Tool Exposure
 
 **Files:**
+
 - Create: `apps/api/src/agent/tools/strategy-template.tool.ts`
 - Modify: `apps/api/src/agent/tools/index.ts`
 - Modify: `apps/api/src/agent/tools/__tests__/tools.spec.ts`
@@ -693,9 +747,7 @@ import { strategyTemplateKeySchema } from '@finsentinel/shared';
 import { z } from 'zod';
 import type { StrategyTemplateService } from '../../market/strategy-template.service';
 
-export function createStrategyTemplateTools(
-  strategyTemplateService: StrategyTemplateService,
-) {
+export function createStrategyTemplateTools(strategyTemplateService: StrategyTemplateService) {
   return {
     evaluateStrategyTemplate: tool({
       description:
@@ -704,12 +756,8 @@ export function createStrategyTemplateTools(
         'and whether the strategy should be rejected, paper-tested, or reviewed for backtesting. ' +
         'This tool is analysis-only and never stages or executes orders.',
       inputSchema: z.object({
-        barsJson: z
-          .string()
-          .describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
-        templateKey: strategyTemplateKeySchema.describe(
-          'Strategy template to evaluate',
-        ),
+        barsJson: z.string().describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
+        templateKey: strategyTemplateKeySchema.describe('Strategy template to evaluate'),
         makerFeeBps: z.number().nonnegative().optional(),
         takerFeeBps: z.number().nonnegative().optional(),
         expectedAnnualTrades: z.number().int().nonnegative().optional(),
@@ -786,6 +834,7 @@ Expected: PASS.
 ## Task 4: Focused Verification
 
 **Files:**
+
 - All files above
 
 - [x] **Step 1: Run the focused package tests**
@@ -872,13 +921,13 @@ EVAL: not required; no prompt template changes are introduced
 
 ## Failure Modes
 
-| Flow | Failure Mode | Planned Handling | Planned Test |
-|------|--------------|------------------|--------------|
-| `evaluate()` | malformed `barsJson` | `BadRequestException` with clear message | service malformed JSON test |
-| `evaluate()` | insufficient bars | structured `BLOCKED` result when possible | service `<200 bars` test |
-| `evaluate()` | fee drag too high | warning + `PAPER_ONLY` next step | fee drag test |
-| tool execute | service throws | returns error string | tool error contract test |
-| agent scope | tool not exposed to market analyst | add to `ROLE_TOOL_SCOPE` | tool registry/role scope check |
+| Flow         | Failure Mode                       | Planned Handling                          | Planned Test                   |
+| ------------ | ---------------------------------- | ----------------------------------------- | ------------------------------ |
+| `evaluate()` | malformed `barsJson`               | `BadRequestException` with clear message  | service malformed JSON test    |
+| `evaluate()` | insufficient bars                  | structured `BLOCKED` result when possible | service `<200 bars` test       |
+| `evaluate()` | fee drag too high                  | warning + `PAPER_ONLY` next step          | fee drag test                  |
+| tool execute | service throws                     | returns error string                      | tool error contract test       |
+| agent scope  | tool not exposed to market analyst | add to `ROLE_TOOL_SCOPE`                  | tool registry/role scope check |
 
 ## Plan-Eng Review
 
@@ -952,11 +1001,11 @@ Verification completed:
 
 ## GSTACK REVIEW REPORT
 
-| Review | Trigger | Why | Runs | Status | Findings |
-|--------|---------|-----|------|--------|----------|
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
-| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | scoped | 2 issues resolved in-plan, 0 critical gaps |
-| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | Backend-only slice |
+| Review        | Trigger               | Why                             | Runs | Status | Findings                                   |
+| ------------- | --------------------- | ------------------------------- | ---- | ------ | ------------------------------------------ |
+| CEO Review    | `/plan-ceo-review`    | Scope & strategy                | 0    | —      | —                                          |
+| Codex Review  | `/codex review`       | Independent 2nd opinion         | 0    | —      | —                                          |
+| Eng Review    | `/plan-eng-review`    | Architecture & tests (required) | 1    | scoped | 2 issues resolved in-plan, 0 critical gaps |
+| Design Review | `/plan-design-review` | UI/UX gaps                      | 0    | —      | Backend-only slice                         |
 
 **VERDICT:** ENG REVIEW SCOPED CLEAR — ready to implement backend v1.

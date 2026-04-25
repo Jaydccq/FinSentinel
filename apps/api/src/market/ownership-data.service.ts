@@ -20,11 +20,9 @@ export class OwnershipDataService {
   async getInstitutionalHolders(ticker: string): Promise<unknown> {
     this.logger.debug(`Fetching institutional holders for ${ticker}`);
 
-    return this.openbb.queryPublicData(
-      'equity/ownership/institutional',
-      undefined,
-      { symbol: ticker.toUpperCase() },
-    );
+    return this.openbb.queryPublicData('equity/ownership/institutional', undefined, {
+      symbol: ticker.toUpperCase(),
+    });
   }
 
   /**
@@ -35,10 +33,8 @@ export class OwnershipDataService {
   async getInsiderTransactions(ticker: string): Promise<unknown> {
     this.logger.debug(`Fetching insider transactions for ${ticker}`);
 
-    return this.openbb.queryPublicData(
-      'equity/ownership/insider_trading',
-      undefined,
-      { symbol: ticker.toUpperCase() },
-    );
+    return this.openbb.queryPublicData('equity/ownership/insider_trading', undefined, {
+      symbol: ticker.toUpperCase(),
+    });
   }
 }

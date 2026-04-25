@@ -48,11 +48,14 @@ export class RolloutGateService {
       source = 'request_id';
     }
 
-    const hash = createHash('sha256').update(`${stickinessKey}:${hourFloor}:${queryClass}`).digest();
+    const hash = createHash('sha256')
+      .update(`${stickinessKey}:${hourFloor}:${queryClass}`)
+      .digest();
     const bucket = (hash.readUInt32BE(0) % 10_000) / 100; // 0..99.99
 
     const basePercent = this.config.percentByClass[queryClass] ?? 0;
-    const effectivePercent = auth === 'anon' ? basePercent * this.config.anonMultiplier : basePercent;
+    const effectivePercent =
+      auth === 'anon' ? basePercent * this.config.anonMultiplier : basePercent;
     const pipeline: 'multi_stage' | 'single_stage' =
       bucket < effectivePercent ? 'multi_stage' : 'single_stage';
 

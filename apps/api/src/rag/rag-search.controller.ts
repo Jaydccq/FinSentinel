@@ -65,12 +65,11 @@ export class RagSearchController {
     private readonly retrievalService: RagRetrievalService,
     @Optional() configService?: ConfigService,
   ) {
-    this.enabled =
-      configService?.get<string>('RAG_EVAL_ENDPOINT_ENABLED', 'false') === 'true';
+    this.enabled = configService?.get<string>('RAG_EVAL_ENDPOINT_ENABLED', 'false') === 'true';
     if (this.enabled) {
       this.logger.warn(
         'RAG_EVAL_ENDPOINT_ENABLED=true — /api/rag/search is open for ' +
-        'evaluation use. Do NOT enable in production environments.',
+          'evaluation use. Do NOT enable in production environments.',
       );
     }
   }

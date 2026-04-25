@@ -18,12 +18,11 @@ import { aiConfig } from '../../config/ai.config';
 // silently returns zero hits (CLAUDE.md codex finding #5).
 
 const VALID_LLM_RESPONSE = JSON.stringify({
-  contextual: 'Apple Inc. reported Q4 2025 revenue of $119.58 billion, up 15% YoY, driven by iPhone 17 sales and services growth across all geographies.',
-  sample_questions: [
-    'What was Apple Q4 2025 revenue?',
-    'How did iPhone 17 perform in Q4 2025?',
-  ],
-  summary: 'Apple Q4 2025 revenue rose 15% YoY to $119.58 billion on iPhone 17 and services growth.',
+  contextual:
+    'Apple Inc. reported Q4 2025 revenue of $119.58 billion, up 15% YoY, driven by iPhone 17 sales and services growth across all geographies.',
+  sample_questions: ['What was Apple Q4 2025 revenue?', 'How did iPhone 17 perform in Q4 2025?'],
+  summary:
+    'Apple Q4 2025 revenue rose 15% YoY to $119.58 billion on iPhone 17 and services growth.',
   keywords: ['apple', 'iphone 17', 'q4 2025', 'revenue', 'services'],
 });
 
@@ -40,7 +39,7 @@ function makeChunkRow() {
 function createMockDb() {
   const selectResults: Array<unknown[]> = [
     [makeChunkRow()], // chunk load
-    [],               // idempotency check
+    [], // idempotency check
   ];
   let selectCallCount = 0;
 
@@ -80,7 +79,9 @@ function createMockEmbeddingService() {
     embedQuery: vi.fn().mockImplementation(async (text: string) =>
       // 2048-dim matches the canonical NVIDIA nvidia/llama-nemotron-embed-1b-v2
       // provider (see seed-fixture.cli.ts STUB_EMBEDDING_DIM).
-      Array(2048).fill(0).map((_, i) => i / 2048 + text.length * 0.0001),
+      Array(2048)
+        .fill(0)
+        .map((_, i) => i / 2048 + text.length * 0.0001),
     ),
     embedChunks: vi.fn().mockResolvedValue([]),
   };

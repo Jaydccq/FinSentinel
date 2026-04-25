@@ -10,10 +10,7 @@ import { PortfolioService } from '../../portfolio/portfolio.service';
  *
  * Portfolio-analysis tool surface exposed to the agent.
  */
-export function createPortfolioAnalysisTools(
-  service: PortfolioService,
-  userId: string,
-) {
+export function createPortfolioAnalysisTools(service: PortfolioService, userId: string) {
   return {
     analyzePortfolio: tool({
       description:

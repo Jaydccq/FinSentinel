@@ -13,9 +13,7 @@ import type { DrizzleDB } from '@finsentinel/db';
  */
 @Injectable()
 export class HeartbeatService {
-  constructor(
-    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
-  ) {}
+  constructor(@Inject('DRIZZLE_DB') private readonly db: DrizzleDB) {}
 
   /**
    * Get or create the heartbeat config for a user.

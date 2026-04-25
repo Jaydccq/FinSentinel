@@ -25,13 +25,17 @@ export class VectorizeProducer {
    * @param docId - UUID of the document to vectorize
    */
   async send(docId: string): Promise<void> {
-    await this.queue.add('vectorize', { docId }, {
-      jobId: `vectorize:${docId}`,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 2_000 },
-      removeOnComplete: 100,
-      removeOnFail: 500,
-    });
+    await this.queue.add(
+      'vectorize',
+      { docId },
+      {
+        jobId: `vectorize:${docId}`,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 2_000 },
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    );
     this.metrics.incrementCounter(
       'rag_jobs_enqueued_total',
       'Total number of RAG-related jobs enqueued',

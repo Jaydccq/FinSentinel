@@ -88,9 +88,7 @@ export class OkxAnalysisController {
 
   private ensureClient(): void {
     if (!this.client) {
-      throw new ServiceUnavailableException(
-        'OKX integration is disabled or not configured.',
-      );
+      throw new ServiceUnavailableException('OKX integration is disabled or not configured.');
     }
   }
 }

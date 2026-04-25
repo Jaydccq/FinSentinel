@@ -1,4 +1,4 @@
-import { Toaster } from 'sonner'
+import { Toaster } from 'sonner';
 
 export default function Toast() {
   return (
@@ -18,5 +18,5 @@ export default function Toast() {
         },
       }}
     />
-  )
+  );
 }

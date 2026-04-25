@@ -56,9 +56,7 @@ export class DocumentVectorService {
     const structuredChunks = this.chunking.chunkStructured(structuredDoc);
 
     if (structuredChunks.length === 0) {
-      this.logger.warn(
-        `No chunks produced for document ${docId} (text may be too short)`,
-      );
+      this.logger.warn(`No chunks produced for document ${docId} (text may be too short)`);
       this.recordVectorizationMetrics(sourceType, 'empty', startedAt, 0);
       return 0;
     }
@@ -68,7 +66,7 @@ export class DocumentVectorService {
 
     this.logger.log(
       `Vectorizing document ${docId}: ${structuredChunks.length} chunks ` +
-      `(format=${structuredDoc.sourceFormat}), metadata=${JSON.stringify(persistedMetadata)}`,
+        `(format=${structuredDoc.sourceFormat}), metadata=${JSON.stringify(persistedMetadata)}`,
     );
 
     try {
@@ -80,7 +78,10 @@ export class DocumentVectorService {
         );
       }
 
-      const sampleText = structuredChunks.slice(0, 3).map((c) => c.text).join('\n');
+      const sampleText = structuredChunks
+        .slice(0, 3)
+        .map((c) => c.text)
+        .join('\n');
       const { issuerName, tickers } = extractIssuerAndTickers({
         originalFileName: originalFileName ?? persistedMetadata['source'] ?? null,
         docTitle: persistedMetadata['title'] ?? null,
@@ -93,9 +94,7 @@ export class DocumentVectorService {
         structuredChunks.map((chunk, index) => ({
           content: chunk.text,
           embedding: embeddings[index]!,
-          sectionPath: chunk.sectionPath.length > 0
-            ? chunk.sectionPath.join(' / ')
-            : null,
+          sectionPath: chunk.sectionPath.length > 0 ? chunk.sectionPath.join(' / ') : null,
           title: chunk.title,
           metadata: {
             ...persistedMetadata,
@@ -103,9 +102,7 @@ export class DocumentVectorService {
             source_id: docId,
             chunk_index: index,
             modality: chunk.modality,
-            section_path: chunk.sectionPath.length > 0
-              ? chunk.sectionPath.join(' / ')
-              : null,
+            section_path: chunk.sectionPath.length > 0 ? chunk.sectionPath.join(' / ') : null,
             title: chunk.title ?? persistedMetadata['title'] ?? null,
             tickers,
             ...(issuerName ? { issuerName } : {}),

@@ -28,17 +28,9 @@ export interface CcxtExchange {
 
   fetchPositions(symbols?: string[]): Promise<CcxtPosition[]>;
 
-  fetchOrders(
-    symbol?: string,
-    since?: number,
-    limit?: number,
-  ): Promise<CcxtOrder[]>;
+  fetchOrders(symbol?: string, since?: number, limit?: number): Promise<CcxtOrder[]>;
 
-  fetchOpenOrders(
-    symbol?: string,
-    since?: number,
-    limit?: number,
-  ): Promise<CcxtOrder[]>;
+  fetchOpenOrders(symbol?: string, since?: number, limit?: number): Promise<CcxtOrder[]>;
 
   cancelOrder(id: string, symbol?: string): Promise<CcxtOrder>;
 }
@@ -100,8 +92,7 @@ export class CcxtTradingEngine implements TradingEngine {
   async placeOrder(request: OrderRequest): Promise<OrderResult> {
     try {
       const amount = Number(request.qty ?? request.notional ?? '0');
-      const price =
-        request.price != null ? Number(request.price) : undefined;
+      const price = request.price != null ? Number(request.price) : undefined;
 
       const order = await this.exchange.createOrder(
         request.symbol,
@@ -113,8 +104,7 @@ export class CcxtTradingEngine implements TradingEngine {
 
       return this.mapOrderResult(order);
     } catch (err: unknown) {
-      const errorMessage =
-        err instanceof Error ? err.message : String(err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
       return {
         success: false,
         orderId: '',
@@ -157,11 +147,7 @@ export class CcxtTradingEngine implements TradingEngine {
 
   async syncOrders(): Promise<OrderResult[]> {
     try {
-      const orders = await this.exchange.fetchOpenOrders(
-        undefined,
-        undefined,
-        50,
-      );
+      const orders = await this.exchange.fetchOpenOrders(undefined, undefined, 50);
       return orders.map((order) => this.mapOrderResult(order));
     } catch (err: unknown) {
       return [];
@@ -260,9 +246,7 @@ export class CcxtTradingEngine implements TradingEngine {
     }
   }
 
-  private mapPositionSide(
-    side?: string,
-  ): 'long' | 'short' | undefined {
+  private mapPositionSide(side?: string): 'long' | 'short' | undefined {
     if (side === 'long' || side === 'short') return side;
     return undefined;
   }

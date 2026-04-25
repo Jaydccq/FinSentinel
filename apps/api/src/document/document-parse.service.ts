@@ -48,8 +48,7 @@ export class DocumentParseService {
    * @returns Cleaned plain text suitable for chunking
    */
   parseToCleanText(content: Buffer, mimeType: string): string {
-    const normalizedMime =
-      mimeType.toLowerCase().split(';', 1).at(0)?.trim() ?? '';
+    const normalizedMime = mimeType.toLowerCase().split(';', 1).at(0)?.trim() ?? '';
 
     let rawText: string;
 
@@ -66,9 +65,7 @@ export class DocumentParseService {
     } else if (DocumentParseService.SIDECAR_MIME_TYPES.has(normalizedMime)) {
       throw new Error('USE_ASYNC_PARSER_PATH');
     } else {
-      this.logger.warn(
-        `Unsupported MIME type: ${normalizedMime}. Attempting UTF-8 decode.`,
-      );
+      this.logger.warn(`Unsupported MIME type: ${normalizedMime}. Attempting UTF-8 decode.`);
       rawText = content.toString('utf-8');
     }
 
@@ -84,11 +81,7 @@ export class DocumentParseService {
    * @returns Cleaned markdown text suitable for chunking
    * @throws Error('PARSER_SIDECAR_UNAVAILABLE') if no sidecar is injected
    */
-  async parseToMarkdown(
-    content: Buffer,
-    mimeType: string,
-    fileName: string,
-  ): Promise<string> {
+  async parseToMarkdown(content: Buffer, mimeType: string, fileName: string): Promise<string> {
     if (!this.parserSidecar) {
       throw new Error('PARSER_SIDECAR_UNAVAILABLE');
     }
@@ -113,7 +106,12 @@ export class DocumentParseService {
     content: Buffer,
     mimeType: string,
     fileName: string,
-  ): Promise<{ markdown: string; pageCount: number; parserVersion: string; sourceMimeType: string }> {
+  ): Promise<{
+    markdown: string;
+    pageCount: number;
+    parserVersion: string;
+    sourceMimeType: string;
+  }> {
     if (!this.parserSidecar) {
       throw new Error('PARSER_SIDECAR_UNAVAILABLE');
     }

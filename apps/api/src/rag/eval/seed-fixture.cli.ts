@@ -123,10 +123,7 @@ export interface SeedSummary {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const REPO_ROOT = resolve(__dirname, '../../../../..');
-const DEFAULT_CORPUS = resolve(
-  REPO_ROOT,
-  'services/evaluation-runner/datasets/corpus.json',
-);
+const DEFAULT_CORPUS = resolve(REPO_ROOT, 'services/evaluation-runner/datasets/corpus.json');
 
 // ── Arg parsing ───────────────────────────────────────────────────────────────
 
@@ -268,9 +265,9 @@ function guardProductionAccidents(): void {
 
   throw new Error(
     `Refusing to seed fixture corpus into a non-ephemeral database.\n` +
-    `DATABASE_URL does not look local/test (got host pattern not in allow-list) ` +
-    `and NODE_ENV is not 'test'.\n` +
-    `If you really mean to seed this DB, set FIXTURE_SEED_CONFIRM=1.`,
+      `DATABASE_URL does not look local/test (got host pattern not in allow-list) ` +
+      `and NODE_ENV is not 'test'.\n` +
+      `If you really mean to seed this DB, set FIXTURE_SEED_CONFIRM=1.`,
   );
 }
 
@@ -371,8 +368,8 @@ function requireDatabaseUrl(): void {
   if (!process.env['DATABASE_URL']) {
     console.error(
       'Error: DATABASE_URL environment variable is not set.\n' +
-      'Set it to your local Postgres connection string, e.g.:\n' +
-      '  DATABASE_URL=postgresql://postgres:postgres@localhost:5432/finsentinel',
+        'Set it to your local Postgres connection string, e.g.:\n' +
+        '  DATABASE_URL=postgresql://postgres:postgres@localhost:5432/finsentinel',
     );
     process.exit(1);
   }
@@ -381,9 +378,9 @@ function requireDatabaseUrl(): void {
 function emitSummary(summary: SeedSummary, outputPath: string | undefined): void {
   console.log(
     `[seed-fixture] corpus=${summary.corpusPath}\n` +
-    `[seed-fixture]   documents=${summary.documentCount} chunks=${summary.chunkCount} ` +
-    `stub_embeddings=${summary.stubEmbeddings} with_enrichment=${summary.withEnrichment} ` +
-    `dry_run=${summary.dryRun}`,
+      `[seed-fixture]   documents=${summary.documentCount} chunks=${summary.chunkCount} ` +
+      `stub_embeddings=${summary.stubEmbeddings} with_enrichment=${summary.withEnrichment} ` +
+      `dry_run=${summary.dryRun}`,
   );
   for (const g of summary.groups) {
     console.log(`[seed-fixture]   - ${g.sourceDoc} (${g.chunkCount} chunks)`);
@@ -419,7 +416,7 @@ async function main(): Promise<void> {
     // Ensure the `x would be inserted` accounting is visible
     console.log(
       `[seed-fixture] DRY RUN would insert ${summary.documentCount} documents ` +
-      `and ${summary.chunkCount} chunks`,
+        `and ${summary.chunkCount} chunks`,
     );
     return;
   }
@@ -441,7 +438,7 @@ async function main(): Promise<void> {
     for (const group of groups) {
       console.log(
         `[seed-fixture] seeding ${group.sourceDoc} (${group.chunks.length} chunks, ` +
-        `documentId=${group.documentId})`,
+          `documentId=${group.documentId})`,
       );
       await seedOneDocumentGroup(deps, group, cliArgs.stubEmbeddings);
     }
@@ -454,8 +451,8 @@ async function main(): Promise<void> {
     if (cliArgs.withEnrichment) {
       console.warn(
         '[seed-fixture][WARN] representation enrichment is a documented stub; ' +
-        'use `pnpm --filter @finsentinel/api rag:backfill:representations` to ' +
-        'populate reps against the seeded chunks.',
+          'use `pnpm --filter @finsentinel/api rag:backfill:representations` to ' +
+          'populate reps against the seeded chunks.',
       );
     }
 

@@ -17,22 +17,22 @@
 
 ## What we keep
 
-- `register()` and `login()` still return `{ token, username, email }` *to clients that send the desktop opt-in header*; everyone else gets `{ username, email }`.
+- `register()` and `login()` still return `{ token, username, email }` _to clients that send the desktop opt-in header_; everyone else gets `{ username, email }`.
 - Default behaviour: cookie attributes match the previous defaults (`secure: false`, `sameSite: 'lax'`) so dev workflow is unchanged.
 - DB schema is unchanged; no new migration. The V1 `users` table already has `UNIQUE (username, email)` constraints — the race lives in the application code's redundant SELECTs, not the DB.
 
 ## File Map
 
-| Path | Role |
-|------|------|
-| `apps/api/src/config/auth.config.ts` | NEW — typed `auth.cookie` + `auth.cors` config (Zod-validated, mirrors existing config files). |
-| `apps/api/src/config/__tests__/auth.config.spec.ts` | NEW — unit test for env→config mapping. |
-| `apps/api/src/config/config.module.ts` | MODIFY — register the new config. |
-| `apps/api/src/auth/auth.controller.ts` | MODIFY — read cookie attrs from typed config; gate token-in-body on `X-Client: desktop` header. |
-| `apps/api/src/auth/auth.service.ts` | MODIFY — remove SELECT-then-INSERT race; INSERT, catch PG 23505, throw `ConflictException`. |
-| `apps/api/src/auth/__tests__/auth.controller.spec.ts` | MODIFY — assert env-driven cookie attrs + header-gated token body. |
-| `apps/api/src/auth/__tests__/auth.service.spec.ts` | MODIFY — assert race-free register (no pre-SELECTs; catches DB unique violation). |
-| `apps/api/src/main.ts` | MODIFY — `enableCors({ origin: env.CORS_ORIGINS.split(',') })`. |
+| Path                                                  | Role                                                                                            |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `apps/api/src/config/auth.config.ts`                  | NEW — typed `auth.cookie` + `auth.cors` config (Zod-validated, mirrors existing config files).  |
+| `apps/api/src/config/__tests__/auth.config.spec.ts`   | NEW — unit test for env→config mapping.                                                         |
+| `apps/api/src/config/config.module.ts`                | MODIFY — register the new config.                                                               |
+| `apps/api/src/auth/auth.controller.ts`                | MODIFY — read cookie attrs from typed config; gate token-in-body on `X-Client: desktop` header. |
+| `apps/api/src/auth/auth.service.ts`                   | MODIFY — remove SELECT-then-INSERT race; INSERT, catch PG 23505, throw `ConflictException`.     |
+| `apps/api/src/auth/__tests__/auth.controller.spec.ts` | MODIFY — assert env-driven cookie attrs + header-gated token body.                              |
+| `apps/api/src/auth/__tests__/auth.service.spec.ts`    | MODIFY — assert race-free register (no pre-SELECTs; catches DB unique violation).               |
+| `apps/api/src/main.ts`                                | MODIFY — `enableCors({ origin: env.CORS_ORIGINS.split(',') })`.                                 |
 
 ## Tasks
 
@@ -41,6 +41,7 @@
 ### Task 1: typed `auth.cookie` + `auth.cors` config
 
 **Files:**
+
 - Create: `apps/api/src/config/auth.config.ts`
 - Create: `apps/api/src/config/__tests__/auth.config.spec.ts`
 - Modify: `apps/api/src/config/config.module.ts`
@@ -80,7 +81,11 @@ describe('authConfigFactory', () => {
   });
 
   it('honours secure=true and sameSite=strict', () => {
-    const cfg = authConfigFactory({ ...baseEnv, AUTH_COOKIE_SECURE: 'true', AUTH_COOKIE_SAMESITE: 'strict' });
+    const cfg = authConfigFactory({
+      ...baseEnv,
+      AUTH_COOKIE_SECURE: 'true',
+      AUTH_COOKIE_SAMESITE: 'strict',
+    });
     expect(cfg.cookie.secure).toBe(true);
     expect(cfg.cookie.sameSite).toBe('strict');
   });
@@ -105,6 +110,7 @@ describe('authConfigFactory', () => {
 ```
 pnpm --filter @finsentinel/api vitest run src/config/__tests__/auth.config.spec.ts
 ```
+
 Expected: module not found.
 
 - [ ] **Step 1.4 — Implement**
@@ -144,7 +150,10 @@ export function authConfigFactory(env: Record<string, string | undefined>): Auth
 
   const originsRaw = env.CORS_ORIGINS;
   const corsOrigins = originsRaw
-    ? originsRaw.split(',').map((o) => o.trim()).filter(Boolean)
+    ? originsRaw
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean)
     : DEFAULT_ORIGINS;
 
   return {
@@ -163,8 +172,9 @@ export function authConfigFactory(env: Record<string, string | undefined>): Auth
  * NestJS-side wiring — the AuthController and main.ts pull the typed config
  * via `configService.get<AuthRuntimeConfig>('auth')`.
  */
-export const authConfig = registerAs('auth', (): AuthRuntimeConfig =>
-  authConfigFactory(process.env),
+export const authConfig = registerAs(
+  'auth',
+  (): AuthRuntimeConfig => authConfigFactory(process.env),
 );
 ```
 
@@ -175,6 +185,7 @@ Find where other configs are added to `ConfigModule.forRoot({ load: [...] })` an
 ```
 pnpm --filter @finsentinel/api vitest run src/config/__tests__/auth.config.spec.ts
 ```
+
 Expected: PASS, all 4 cases.
 
 - [ ] **Step 1.6 — Commit**
@@ -191,6 +202,7 @@ git commit -m "feat(config): typed auth.cookie + auth.cors runtime config"
 ### Task 2: env-driven CORS in `main.ts`
 
 **Files:**
+
 - Modify: `apps/api/src/main.ts`
 
 - [ ] **Step 2.1 — Read current main.ts**
@@ -235,6 +247,7 @@ bootstrap();
 ```
 pnpm --filter @finsentinel/api typecheck
 ```
+
 Expected: clean.
 
 - [ ] **Step 2.4 — Commit**
@@ -249,6 +262,7 @@ git commit -m "feat(api): main.ts CORS origin from typed auth config"
 ### Task 3: header-gated token body + env-driven cookie attrs in `AuthController`
 
 **Files:**
+
 - Modify: `apps/api/src/auth/auth.controller.ts`
 - Modify: `apps/api/src/auth/__tests__/auth.controller.spec.ts`
 
@@ -278,8 +292,14 @@ describe('cookie attrs + token body gating (P0-3)', () => {
   it('omits the token from the response body for a default (browser) request', async () => {
     const ctrl = await buildController();
     const res = createMockResponse();
-    const out = await ctrl.login({ username: 'a', password: 'b' } as any, res, {} /* headers */ as any);
-    expect(out).toEqual(expect.objectContaining({ username: expect.any(String), email: expect.any(String) }));
+    const out = await ctrl.login(
+      { username: 'a', password: 'b' } as any,
+      res,
+      {} /* headers */ as any,
+    );
+    expect(out).toEqual(
+      expect.objectContaining({ username: expect.any(String), email: expect.any(String) }),
+    );
     expect((out as Record<string, unknown>).token).toBeUndefined();
   });
 
@@ -307,15 +327,7 @@ pnpm --filter @finsentinel/api vitest run src/auth/__tests__/auth.controller.spe
 Replace `apps/api/src/auth/auth.controller.ts` with:
 
 ```ts
-import {
-  Controller,
-  Post,
-  Body,
-  Res,
-  Headers,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Post, Body, Res, Headers, HttpCode, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { registerRequestSchema, loginRequestSchema } from '@finsentinel/shared';
@@ -404,6 +416,7 @@ export class AuthController {
 ```
 pnpm --filter @finsentinel/api vitest run src/auth/__tests__/auth.controller.spec.ts
 ```
+
 If any pre-existing controller test broke because it constructed the controller without the new `ConfigService` dep, update the helper to inject a stub via `Test.createTestingModule({ providers: [{ provide: ConfigService, useValue: { get: () => defaultAuthConfig } }, ...] })`.
 
 - [ ] **Step 3.5 — Commit**
@@ -419,6 +432,7 @@ git commit -m "feat(auth): env-driven cookie attrs + X-Client gated token body"
 ### Task 4: race-free `register()` (DB unique-violation catch)
 
 **Files:**
+
 - Modify: `apps/api/src/auth/auth.service.ts`
 - Modify: `apps/api/src/auth/__tests__/auth.service.spec.ts`
 
@@ -429,9 +443,19 @@ Append to `apps/api/src/auth/__tests__/auth.service.spec.ts`:
 ```ts
 describe('race-free register (P0-3)', () => {
   it('does NOT pre-SELECT for username/email — only INSERTs', async () => {
-    const insertSpy = vi.fn().mockResolvedValue([
-      { id: 'u1', username: 'alice', email: 'a@x', password: 'h', createdAt: new Date(), updatedAt: new Date(), displayName: null },
-    ]);
+    const insertSpy = vi
+      .fn()
+      .mockResolvedValue([
+        {
+          id: 'u1',
+          username: 'alice',
+          email: 'a@x',
+          password: 'h',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          displayName: null,
+        },
+      ]);
     const selectSpy = vi.fn();
     const db = {
       select: selectSpy,
@@ -550,7 +574,9 @@ git commit -m "feat(auth): race-free register via DB unique-violation catch"
 pnpm --filter @finsentinel/api typecheck
 pnpm --filter @finsentinel/api test
 ```
+
 Expected: green. Pay particular attention to:
+
 - `src/__tests__/integration/auth-flow.integration.spec.ts` if it exists (supertest E2E)
 - Any test using the controller that didn't previously pass headers (the new `@Headers()` param defaults to `{}` so old call sites keep working)
 
@@ -595,5 +621,5 @@ git commit -m "docs(auth): log auth/session hardening implementation progress"
 ## Risks Going In
 
 - The new `@Headers()` param means existing controller tests that constructed `AuthController` directly may need a third arg. The plan's tests use the helper pattern, but downstream supertest tests should be unaffected because Express auto-supplies headers.
-- Removing the response-body token by default is a *quiet* breaking change for any client that was reading it. The Web client uses the cookie (not the body); the Tauri client *also* uses the cookie via `apiFetch` after the P0-2 work, so the only consumer that actually reads the token is `local-login.ts` performLogin (which then stores it in localStorage). After this PRD lands, the Web build's auto-login will need to send `X-Client: desktop` OR switch to cookie-only — we'll handle that one-line patch in the Web side or the keychain follow-up; for the slice landing here, the dev workflow remains because dev doesn't have `NEXT_PUBLIC_LOCAL_USER_*` set in the browser.
+- Removing the response-body token by default is a _quiet_ breaking change for any client that was reading it. The Web client uses the cookie (not the body); the Tauri client _also_ uses the cookie via `apiFetch` after the P0-2 work, so the only consumer that actually reads the token is `local-login.ts` performLogin (which then stores it in localStorage). After this PRD lands, the Web build's auto-login will need to send `X-Client: desktop` OR switch to cookie-only — we'll handle that one-line patch in the Web side or the keychain follow-up; for the slice landing here, the dev workflow remains because dev doesn't have `NEXT_PUBLIC_LOCAL_USER_*` set in the browser.
 - The 23505 catch uses `(err as { code?: string }).code` — postgres-js surfaces the SQLSTATE as `code`. If an upstream wrapper renames it, the test in 4.2 will catch it. Worth grepping `.code === '23` once after the change to ensure consistency with how other services translate constraint errors.

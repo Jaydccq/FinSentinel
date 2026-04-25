@@ -35,9 +35,7 @@ export class EncryptionService {
     this.key = Buffer.from(base64Key, 'base64');
 
     if (this.key.length !== 32) {
-      throw new Error(
-        `ENCRYPTION_AES_KEY must decode to 32 bytes (got ${this.key.length})`,
-      );
+      throw new Error(`ENCRYPTION_AES_KEY must decode to 32 bytes (got ${this.key.length})`);
     }
   }
 
@@ -53,10 +51,7 @@ export class EncryptionService {
       authTagLength: AUTH_TAG_LENGTH,
     });
 
-    const encrypted = Buffer.concat([
-      cipher.update(plaintext, 'utf8'),
-      cipher.final(),
-    ]);
+    const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
     const authTag = cipher.getAuthTag();
 
     // Concatenate ciphertext + authTag for transport/storage.
@@ -89,10 +84,7 @@ export class EncryptionService {
     });
     decipher.setAuthTag(authTag);
 
-    const decrypted = Buffer.concat([
-      decipher.update(encrypted),
-      decipher.final(),
-    ]);
+    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
 
     return decrypted.toString('utf8');
   }

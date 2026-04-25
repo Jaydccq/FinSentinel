@@ -1,17 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockApiFetch = vi.fn()
+const mockApiFetch = vi.fn();
 
 vi.mock('../client', () => ({
   apiFetch: mockApiFetch,
-}))
+}));
 
-const { researchApi } = await import('../research')
+const { researchApi } = await import('../research');
 
 describe('researchApi', () => {
   beforeEach(() => {
-    mockApiFetch.mockReset()
-  })
+    mockApiFetch.mockReset();
+  });
 
   it('normalizes string-based company profile numerics into numbers', async () => {
     mockApiFetch.mockResolvedValueOnce({
@@ -25,13 +25,13 @@ describe('researchApi', () => {
       employeeCount: 161000,
       listDate: '1980-12-12',
       exchange: 'NASDAQ',
-    })
+    });
 
-    const result = await researchApi.profile('AAPL')
+    const result = await researchApi.profile('AAPL');
 
-    expect(result.marketCap).toBe(3210000000000)
-    expect(result.employeeCount).toBe(161000)
-  })
+    expect(result.marketCap).toBe(3210000000000);
+    expect(result.employeeCount).toBe(161000);
+  });
 
   it('normalizes string-based financial metrics into numbers', async () => {
     mockApiFetch.mockResolvedValueOnce([
@@ -57,9 +57,9 @@ describe('researchApi', () => {
         freeCashFlow: '99584000000.00',
         capitalExpenditure: '-18670000000.00',
       },
-    ])
+    ]);
 
-    const [result] = await researchApi.financials('AAPL', 1)
+    const [result] = await researchApi.financials('AAPL', 1);
 
     expect(result).toEqual({
       ticker: 'AAPL',
@@ -82,6 +82,6 @@ describe('researchApi', () => {
       operatingCashFlow: 118254000000,
       freeCashFlow: 99584000000,
       capitalExpenditure: -18670000000,
-    })
-  })
-})
+    });
+  });
+});

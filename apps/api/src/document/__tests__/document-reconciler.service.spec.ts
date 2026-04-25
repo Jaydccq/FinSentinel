@@ -46,9 +46,7 @@ describe('DocumentReconcilerService', () => {
 
   it('promotes stuck rows whose storage key exists', async () => {
     storage.head.mockResolvedValue(true);
-    const { service, db } = await build([
-      { id: 'doc-1', storageKey: 'documents/u/1_report.pdf' },
-    ]);
+    const { service, db } = await build([{ id: 'doc-1', storageKey: 'documents/u/1_report.pdf' }]);
 
     const { promoted, deleted } = await service.runOnce();
 
@@ -60,9 +58,7 @@ describe('DocumentReconcilerService', () => {
 
   it('deletes stuck rows whose storage key is missing', async () => {
     storage.head.mockResolvedValue(false);
-    const { service, db } = await build([
-      { id: 'doc-2', storageKey: 'documents/u/2_missing.pdf' },
-    ]);
+    const { service, db } = await build([{ id: 'doc-2', storageKey: 'documents/u/2_missing.pdf' }]);
 
     const { promoted, deleted } = await service.runOnce();
 

@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 export interface JsonTreeProps {
   value: unknown;

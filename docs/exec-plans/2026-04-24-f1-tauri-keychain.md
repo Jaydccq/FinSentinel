@@ -13,15 +13,16 @@ The 2026-04-23 auth-session-hardening PRD landed P0-3 (cookie/CORS/registration 
 
 Move the desktop JWT out of localStorage into the OS keychain via three new Tauri Rust commands, with a browser-safe fallback path that remains untouched.
 
-| Surface | Before F-1 | After F-1 |
-|---------|-----------|-----------|
-| Web build (SPA, non-Tauri) | `localStorage.fs_local_token` | unchanged |
-| Tauri desktop | `localStorage.fs_local_token` | OS keychain via Rust commands |
-| Linux without Secret Service | — | `session_only` error → in-memory only |
+| Surface                      | Before F-1                    | After F-1                             |
+| ---------------------------- | ----------------------------- | ------------------------------------- |
+| Web build (SPA, non-Tauri)   | `localStorage.fs_local_token` | unchanged                             |
+| Tauri desktop                | `localStorage.fs_local_token` | OS keychain via Rust commands         |
+| Linux without Secret Service | —                             | `session_only` error → in-memory only |
 
 ## Scope
 
 In scope:
+
 - `apps/desktop/src-tauri/Cargo.toml`: add `keyring = "3"` per-platform
 - New Rust module `apps/desktop/src-tauri/src/auth.rs` with `read_token` / `write_token` / `clear_token` commands
 - Register commands in `src-tauri/src/lib.rs`
@@ -29,13 +30,14 @@ In scope:
 - Tests: web side asserts localStorage is not touched under Tauri; Rust side ships with a mock-backed round-trip test (gated).
 
 Out of scope (deferred to F-2/F-3):
+
 - Removing `NEXT_PUBLIC_LOCAL_USER_*` build-bake.
 - localStorage → keychain migration shim.
 - Replacing env-driven auto-login with a UI login flow.
 
 ## Assumptions
 
-1. Tauri v2 runtime — `isTauri()` already uses `__TAURI_INTERNALS__`, not `__TAURI__`. Plan text ("window.__TAURI__") pre-dates this refactor.
+1. Tauri v2 runtime — `isTauri()` already uses `__TAURI_INTERNALS__`, not `__TAURI__`. Plan text ("window.**TAURI**") pre-dates this refactor.
 2. `keyring-rs` 3.x is stable for macOS/Windows; Linux uses `sync-secret-service` (libsecret at build time). Tauri v2 Linux bundles already require libsecret via WebKit2GTK stack, so this adds no new system dep on dev boxes.
 3. Existing `ensureLocalToken` callers (`apps/web/src/providers.tsx`, `apps/web/src/api/client.ts`) stay sync-compatible via a module-level in-memory cache primed at boot.
 
@@ -65,11 +67,11 @@ Out of scope (deferred to F-2/F-3):
 
 ## Verification
 
-| Check | Command |
-|-------|---------|
-| Rust compiles | `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml` |
-| Web tests | `pnpm --filter @finsentinel/web test` |
-| Web typecheck | `pnpm --filter @finsentinel/web typecheck` |
+| Check                                     | Command                                                         |
+| ----------------------------------------- | --------------------------------------------------------------- |
+| Rust compiles                             | `cargo check --manifest-path apps/desktop/src-tauri/Cargo.toml` |
+| Web tests                                 | `pnpm --filter @finsentinel/web test`                           |
+| Web typecheck                             | `pnpm --filter @finsentinel/web typecheck`                      |
 | No direct localStorage leak in Tauri path | `grep -n 'fs_local_token' apps/web/src/lib/auth/local-login.ts` |
 
 ## Risks / blockers
@@ -100,4 +102,3 @@ Out of scope (deferred to F-2/F-3):
 ## Final outcome
 
 F-1 delivered. Tauri keychain path is live; Web browser builds remain on localStorage (intentional — removal is F-2). Follow-ups F-2 and F-3 are now unblocked.
-

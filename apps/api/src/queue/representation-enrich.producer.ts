@@ -27,14 +27,18 @@ export class RepresentationEnrichProducer {
   async enqueueChunk(chunkId: string): Promise<void> {
     if (!this.enabled) return;
 
-    await this.queue.add('representation-enrich', { chunkId } satisfies RepresentationEnrichJobData, {
-      // BullMQ 5.x rejects ':' in custom Job.id (validateOptions), use '-'.
-      jobId: `rep-enrich-${chunkId}`,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5_000 },
-      removeOnComplete: 100,
-      removeOnFail: 500,
-    });
+    await this.queue.add(
+      'representation-enrich',
+      { chunkId } satisfies RepresentationEnrichJobData,
+      {
+        // BullMQ 5.x rejects ':' in custom Job.id (validateOptions), use '-'.
+        jobId: `rep-enrich-${chunkId}`,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5_000 },
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    );
     this.logger.debug(`Enqueued representation enrichment for chunk ${chunkId}`);
   }
 
@@ -47,7 +51,7 @@ export class RepresentationEnrichProducer {
       const overflow = ids.length - this.maxChunksPerDoc;
       this.logger.warn(
         `enqueueMany: doc has ${ids.length} chunks which exceeds cap of ` +
-        `${this.maxChunksPerDoc}; enqueueing first ${this.maxChunksPerDoc} only`,
+          `${this.maxChunksPerDoc}; enqueueing first ${this.maxChunksPerDoc} only`,
         { chunk_id_overflow: overflow },
       );
       ids = ids.slice(0, this.maxChunksPerDoc);

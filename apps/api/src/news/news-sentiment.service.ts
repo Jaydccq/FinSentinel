@@ -36,8 +36,7 @@ export class NewsSentimentService {
 
   constructor(configService: ConfigService) {
     this.apiKey =
-      configService.get<string>('ai.apiKey') ||
-      configService.get<string>('OPENROUTER_API_KEY', '');
+      configService.get<string>('ai.apiKey') || configService.get<string>('OPENROUTER_API_KEY', '');
     this.model =
       configService.get<string>('ai.model') ||
       configService.get<string>('AI_MODEL', DEFAULT_OPENROUTER_TEXT_MODEL);
@@ -55,9 +54,7 @@ export class NewsSentimentService {
    * @returns "POSITIVE" | "NEGATIVE" | "NEUTRAL"
    */
   async classify(title: string, summary: string | null): Promise<Sentiment> {
-    const content = summary
-      ? `Title: ${title}\nSummary: ${summary}`
-      : `Title: ${title}`;
+    const content = summary ? `Title: ${title}\nSummary: ${summary}` : `Title: ${title}`;
 
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -79,9 +76,7 @@ export class NewsSentimentService {
 
       if (!response.ok) {
         const text = await response.text();
-        this.logger.error(
-          `Sentiment API error: ${response.status} — ${text}`,
-        );
+        this.logger.error(`Sentiment API error: ${response.status} — ${text}`);
         return 'NEUTRAL';
       }
 
@@ -89,16 +84,13 @@ export class NewsSentimentService {
         choices?: Array<{ message?: { content?: string } }>;
       };
 
-      const rawAnswer =
-        data.choices?.[0]?.message?.content?.trim().toUpperCase() ?? '';
+      const rawAnswer = data.choices?.[0]?.message?.content?.trim().toUpperCase() ?? '';
 
       if (VALID_SENTIMENTS.has(rawAnswer)) {
         return rawAnswer as Sentiment;
       }
 
-      this.logger.warn(
-        `Unexpected sentiment response: "${rawAnswer}", defaulting to NEUTRAL`,
-      );
+      this.logger.warn(`Unexpected sentiment response: "${rawAnswer}", defaulting to NEUTRAL`);
       return 'NEUTRAL';
     } catch (err) {
       this.logger.error(

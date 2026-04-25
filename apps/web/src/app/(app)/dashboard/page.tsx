@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import DashboardPage from '@/views/DashboardPage'
+import DashboardPage from '@/views/DashboardPage';
 
 export default function Page() {
-  return <DashboardPage />
+  return <DashboardPage />;
 }

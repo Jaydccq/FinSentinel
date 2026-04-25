@@ -98,20 +98,12 @@ describe('CcxtTradingEngine', () => {
 
     await engine.placeOrder(request);
 
-    expect(mockExchange.createOrder).toHaveBeenCalledWith(
-      'ETH/USDT',
-      'limit',
-      'sell',
-      2,
-      3500,
-    );
+    expect(mockExchange.createOrder).toHaveBeenCalledWith('ETH/USDT', 'limit', 'sell', 2, 3500);
   });
 
   // ── 4. placeOrder_exchangeError_returnsRejectedResult ────────────────────
   it('placeOrder returns rejected result when exchange throws', async () => {
-    vi.mocked(mockExchange.createOrder).mockRejectedValue(
-      new Error('Insufficient balance'),
-    );
+    vi.mocked(mockExchange.createOrder).mockRejectedValue(new Error('Insufficient balance'));
 
     const request: OrderRequest = {
       symbol: 'BTC/USDT',
@@ -228,9 +220,7 @@ describe('CcxtTradingEngine', () => {
         unrealizedPnl: 1000,
       },
     ];
-    vi.mocked(mockExchange.fetchPositions).mockResolvedValue(
-      ccxtPositions,
-    );
+    vi.mocked(mockExchange.fetchPositions).mockResolvedValue(ccxtPositions);
 
     const positions = await engine.getPositions();
 
@@ -259,9 +249,7 @@ describe('CcxtTradingEngine', () => {
 
   // ── 9. getPositions_exchangeError_returnsEmptyArray ───────────────────────
   it('getPositions returns empty array on exchange error', async () => {
-    vi.mocked(mockExchange.fetchPositions).mockRejectedValue(
-      new Error('Exchange unavailable'),
-    );
+    vi.mocked(mockExchange.fetchPositions).mockRejectedValue(new Error('Exchange unavailable'));
 
     const positions = await engine.getPositions();
     expect(positions).toEqual([]);
@@ -315,18 +303,12 @@ describe('CcxtTradingEngine', () => {
     );
 
     // Verify fetchOrders called with limit
-    expect(mockExchange.fetchOrders).toHaveBeenCalledWith(
-      undefined,
-      undefined,
-      50,
-    );
+    expect(mockExchange.fetchOrders).toHaveBeenCalledWith(undefined, undefined, 50);
   });
 
   // ── 11. getOrders_exchangeError_returnsEmptyArray ─────────────────────────
   it('getOrders returns empty array on exchange error', async () => {
-    vi.mocked(mockExchange.fetchOrders).mockRejectedValue(
-      new Error('Timeout'),
-    );
+    vi.mocked(mockExchange.fetchOrders).mockRejectedValue(new Error('Timeout'));
 
     const orders = await engine.getOrders();
     expect(orders).toEqual([]);
@@ -351,18 +333,12 @@ describe('CcxtTradingEngine', () => {
 
     expect(orders).toHaveLength(1);
     expect(orders[0]!.status).toBe('pending'); // "open" -> "pending"
-    expect(mockExchange.fetchOpenOrders).toHaveBeenCalledWith(
-      undefined,
-      undefined,
-      50,
-    );
+    expect(mockExchange.fetchOpenOrders).toHaveBeenCalledWith(undefined, undefined, 50);
   });
 
   // ── 13. syncOrders_exchangeError_returnsEmptyArray ────────────────────────
   it('syncOrders returns empty array on exchange error', async () => {
-    vi.mocked(mockExchange.fetchOpenOrders).mockRejectedValue(
-      new Error('Rate limited'),
-    );
+    vi.mocked(mockExchange.fetchOpenOrders).mockRejectedValue(new Error('Rate limited'));
 
     const orders = await engine.syncOrders!();
     expect(orders).toEqual([]);
@@ -414,9 +390,7 @@ describe('CcxtTradingEngine', () => {
 
   // ── 17. getAccount_exchangeError_returnsZeroValues ────────────────────────
   it('getAccount returns zero values on exchange error', async () => {
-    vi.mocked(mockExchange.fetchBalance).mockRejectedValue(
-      new Error('Auth failed'),
-    );
+    vi.mocked(mockExchange.fetchBalance).mockRejectedValue(new Error('Auth failed'));
 
     const account = await engine.getAccount();
 
@@ -440,9 +414,7 @@ describe('CcxtTradingEngine', () => {
 
   // ── 19. cancelOrder_exchangeError_returnsFalse ────────────────────────────
   it('cancelOrder returns false on exchange error', async () => {
-    vi.mocked(mockExchange.cancelOrder).mockRejectedValue(
-      new Error('Order not found'),
-    );
+    vi.mocked(mockExchange.cancelOrder).mockRejectedValue(new Error('Order not found'));
 
     const result = await engine.cancelOrder('nonexistent');
     expect(result).toBe(false);
@@ -456,9 +428,7 @@ describe('CcxtTradingEngine', () => {
         // side, contracts, entryPrice, markPrice, notional, unrealizedPnl all undefined
       },
     ];
-    vi.mocked(mockExchange.fetchPositions).mockResolvedValue(
-      ccxtPositions,
-    );
+    vi.mocked(mockExchange.fetchPositions).mockResolvedValue(ccxtPositions);
 
     const positions = await engine.getPositions();
 
@@ -477,9 +447,7 @@ describe('CcxtTradingEngine', () => {
 
   // ── 21. placeOrder_networkError_returnsRejected ───────────────────────────
   it('placeOrder handles non-Error throws gracefully', async () => {
-    vi.mocked(mockExchange.createOrder).mockRejectedValue(
-      'string error',
-    );
+    vi.mocked(mockExchange.createOrder).mockRejectedValue('string error');
 
     const result = await engine.placeOrder({
       symbol: 'BTC/USDT',

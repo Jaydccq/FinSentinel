@@ -39,12 +39,17 @@ export class RagTraceRetentionService implements OnModuleInit {
     private readonly metrics: MetricsService,
   ) {
     this.retentionDays = configService.get<number>('rag.queryLog.retentionDays', 30);
-    this.retentionEnabled = configService.get<boolean>('rag.queryLog.retentionEnabled', false) as boolean;
+    this.retentionEnabled = configService.get<boolean>(
+      'rag.queryLog.retentionEnabled',
+      false,
+    ) as boolean;
   }
 
   onModuleInit(): void {
     if (!this.retentionEnabled) {
-      this.logger.log('RAG query log retention is disabled (RAG_QUERY_LOG_RETENTION_ENABLED not set).');
+      this.logger.log(
+        'RAG query log retention is disabled (RAG_QUERY_LOG_RETENTION_ENABLED not set).',
+      );
     }
   }
 
@@ -99,7 +104,9 @@ export class RagTraceRetentionService implements OnModuleInit {
         continue;
       }
 
-      this.logger.log(`Dropping old partition ${name} (month ${year}-${String(month).padStart(2, '0')} is before retention cutoff)`);
+      this.logger.log(
+        `Dropping old partition ${name} (month ${year}-${String(month).padStart(2, '0')} is before retention cutoff)`,
+      );
       // Use identifier interpolation — table name is validated by the regex above.
       await this.db.execute(sql`DROP TABLE IF EXISTS ${sql.identifier(name)}`);
       this.metrics.incrementCounter(
@@ -134,7 +141,9 @@ export class RagTraceRetentionService implements OnModuleInit {
 
     if (Number(existsRows[0]?.count ?? 0) > 0) return;
 
-    this.logger.log(`Creating next-month partition ${partitionName} [${startLiteral}, ${endLiteral})`);
+    this.logger.log(
+      `Creating next-month partition ${partitionName} [${startLiteral}, ${endLiteral})`,
+    );
     await this.db.execute(sql`
       CREATE TABLE IF NOT EXISTS ${sql.identifier(partitionName)}
         PARTITION OF rag_query_logs

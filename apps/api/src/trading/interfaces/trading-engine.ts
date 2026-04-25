@@ -1,10 +1,4 @@
-import type {
-  OrderRequest,
-  OrderResult,
-  PositionInfo,
-  AccountInfo,
-  MarketClock,
-} from './types';
+import type { OrderRequest, OrderResult, PositionInfo, AccountInfo, MarketClock } from './types';
 
 /**
  * Contract for trading engines (Paper, Alpaca, OKX, etc.).

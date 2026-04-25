@@ -72,14 +72,9 @@ export interface ChunkRowForBackfill {
   docTitle: string | null;
 }
 
-export type ChunkRowFetcher = (
-  limit: number,
-) => Promise<ChunkRowForBackfill[]>;
+export type ChunkRowFetcher = (limit: number) => Promise<ChunkRowForBackfill[]>;
 
-export type ChunkRowUpdater = (
-  id: string,
-  newFields: Record<string, unknown>,
-) => Promise<void>;
+export type ChunkRowUpdater = (id: string, newFields: Record<string, unknown>) => Promise<void>;
 
 export interface BackfillProgressLogger {
   info: (msg: string) => void;
@@ -104,12 +99,7 @@ export interface GuardEnv {
 const DEFAULT_BATCH_SIZE = 500;
 const DEFAULT_PROGRESS_EVERY = 1;
 
-const KNOWN_FLAGS = new Set([
-  '--dry-run',
-  '--batch-size',
-  '--progress-every',
-  '--force',
-]);
+const KNOWN_FLAGS = new Set(['--dry-run', '--batch-size', '--progress-every', '--force']);
 
 function parsePositiveInt(flag: string, raw: string): number {
   const n = Number(raw);
@@ -140,9 +130,7 @@ export function parseBackfillArgs(argv: string[]): BackfillCliArgs {
     } else if (a === '--progress-every' && argv[i + 1] !== undefined) {
       args.progressEveryBatches = parsePositiveInt('--progress-every', argv[++i]!);
     } else if (a.startsWith('--')) {
-      throw new Error(
-        `unrecognized flag: ${a}. Known flags: ${[...KNOWN_FLAGS].join(', ')}`,
-      );
+      throw new Error(`unrecognized flag: ${a}. Known flags: ${[...KNOWN_FLAGS].join(', ')}`);
     } else {
       throw new Error(`unrecognized positional argument: ${a}`);
     }
@@ -289,14 +277,16 @@ function buildDbFetcher(db: DrizzleDB, force: boolean): ChunkRowFetcher {
       LIMIT ${limit}
     `);
 
-    const arr = Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows ?? [];
-    const mapped = (arr as Array<{
-      id: string;
-      content: string;
-      metadata: Record<string, unknown>;
-      original_file_name: string | null;
-      doc_title: string | null;
-    }>).map((r) => ({
+    const arr = Array.isArray(rows) ? rows : ((rows as { rows?: unknown[] }).rows ?? []);
+    const mapped = (
+      arr as Array<{
+        id: string;
+        content: string;
+        metadata: Record<string, unknown>;
+        original_file_name: string | null;
+        doc_title: string | null;
+      }>
+    ).map((r) => ({
       id: r.id,
       content: r.content,
       metadata: r.metadata ?? {},
@@ -370,8 +360,7 @@ async function main(): Promise<void> {
     });
   }
 
-  const BackfillChunkIssuerTickersCliModule =
-    await createBackfillChunkIssuerTickersCliModule();
+  const BackfillChunkIssuerTickersCliModule = await createBackfillChunkIssuerTickersCliModule();
   const app = await NestFactory.createApplicationContext(BackfillChunkIssuerTickersCliModule, {
     logger: ['error', 'warn', 'log'],
   });

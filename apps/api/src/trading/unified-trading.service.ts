@@ -5,7 +5,12 @@ import { tradeWallets, eq } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import { TradingMode, Contract, AgentEventType, SecurityType } from '@finsentinel/shared';
 import type { AgentEventType as AgentEventTypeValue } from '@finsentinel/shared';
-import type { UnifiedStageRequest, V2WalletResponse, V2CommitResponse, V2StagedResponse } from '@finsentinel/shared';
+import type {
+  UnifiedStageRequest,
+  V2WalletResponse,
+  V2CommitResponse,
+  V2StagedResponse,
+} from '@finsentinel/shared';
 import { stableStringify } from '@finsentinel/shared/utils';
 import { BrokerRegistry } from './broker-registry.service';
 import { PaperBroker } from './brokers/paper.broker';
@@ -154,14 +159,14 @@ export class UnifiedTradingService {
     const item = JSON.stringify(op);
 
     // ioredis eval() executes Lua on the Redis server (not JS eval)
-    const result = await this.redis.eval(
+    const result = (await this.redis.eval(
       LUA_ATOMIC_APPEND,
-      1,      // number of KEYS
-      key,    // KEYS[1]
-      String(MAX_STAGING_SIZE),  // ARGV[1]
-      item,                      // ARGV[2]
+      1, // number of KEYS
+      key, // KEYS[1]
+      String(MAX_STAGING_SIZE), // ARGV[1]
+      item, // ARGV[2]
       String(STATE_TTL_SECONDS), // ARGV[3]
-    ) as number;
+    )) as number;
 
     if (result === -1) {
       throw new BadRequestException(
@@ -169,7 +174,9 @@ export class UnifiedTradingService {
       );
     }
 
-    this.logger.log(`Staged operation for user ${userId}: ${op.action} ${op.symbol} (count: ${result})`);
+    this.logger.log(
+      `Staged operation for user ${userId}: ${op.action} ${op.symbol} (count: ${result})`,
+    );
     return result;
   }
 
@@ -246,9 +253,7 @@ export class UnifiedTradingService {
       const cachedHash = await this.redis.get(idemCacheKey);
       if (cachedHash) {
         const pendingRaw = await this.redis.get(pendingKey);
-        const count = pendingRaw
-          ? (JSON.parse(pendingRaw) as CommitData).operations.length
-          : 0;
+        const count = pendingRaw ? (JSON.parse(pendingRaw) as CommitData).operations.length : 0;
         this.logger.log(
           `Idempotent commit hit user=${userId} key=${idempotencyKey} hash=${cachedHash.substring(0, 8)}...`,
         );
@@ -257,11 +262,7 @@ export class UnifiedTradingService {
     }
 
     // 2. Atomically capture and clear staging.
-    const stagingRaw = (await this.redis.eval(
-      LUA_ATOMIC_COMMIT,
-      1,
-      stagingKey,
-    )) as string | null;
+    const stagingRaw = (await this.redis.eval(LUA_ATOMIC_COMMIT, 1, stagingKey)) as string | null;
 
     if (!stagingRaw) {
       throw new BadRequestException('Nothing staged — stage operations before committing');
@@ -332,20 +333,18 @@ export class UnifiedTradingService {
     if (execCacheKey) {
       const cachedRaw = await this.redis.get(execCacheKey);
       if (cachedRaw) {
-        this.logger.log(
-          `Idempotent execute hit user=${userId} key=${idempotencyKey}`,
-        );
+        this.logger.log(`Idempotent execute hit user=${userId} key=${idempotencyKey}`);
         return JSON.parse(cachedRaw) as ExecuteResult;
       }
     }
 
     // 1. Atomic get-and-delete pending commit (Redis 6.2+ GETDEL)
-    const raw = await (this.redis as Redis & { getdel(key: string): Promise<string | null> }).getdel(pendingKey);
+    const raw = await (
+      this.redis as Redis & { getdel(key: string): Promise<string | null> }
+    ).getdel(pendingKey);
 
     if (!raw) {
-      throw new BadRequestException(
-        'No pending commit found. Stage and commit operations first.',
-      );
+      throw new BadRequestException('No pending commit found. Stage and commit operations first.');
     }
 
     const commitData = JSON.parse(raw) as CommitData;
@@ -354,9 +353,7 @@ export class UnifiedTradingService {
     const wallet = await this.getOrCreateWallet(userId);
 
     // 3. Idempotency: check if this hash was already executed
-    const existingHashes = (wallet.commitHistory as CommitData[]).map(
-      (c) => c.hash,
-    );
+    const existingHashes = (wallet.commitHistory as CommitData[]).map((c) => c.hash);
     if (existingHashes.includes(commitData.hash)) {
       throw new BadRequestException(
         `Commit ${commitData.hash.substring(0, 8)}... already executed (idempotency check)`,
@@ -396,9 +393,11 @@ export class UnifiedTradingService {
           const opContract = Contract.fromString(String(op.symbol));
           const orderResult = await broker.placeOrder(opContract, {
             symbol: String(op.symbol),
-            side: String(op.action).toLowerCase() === 'sell' || String(op.action).toLowerCase() === 'close'
-              ? 'sell'
-              : 'buy',
+            side:
+              String(op.action).toLowerCase() === 'sell' ||
+              String(op.action).toLowerCase() === 'close'
+                ? 'sell'
+                : 'buy',
             type: 'market',
             qty: op.qty ? String(op.qty) : undefined,
             notional: op.amount ? String(op.amount) : undefined,
@@ -437,17 +436,15 @@ export class UnifiedTradingService {
       for (const op of commitData.operations) {
         try {
           const opContract = Contract.fromString(String(op.symbol));
-          const broker = this.brokerRegistry.resolve(
-            opContract,
-            TradingMode.LIVE,
-            0,
-          );
+          const broker = this.brokerRegistry.resolve(opContract, TradingMode.LIVE, 0);
 
           const orderResult = await broker.placeOrder(opContract, {
             symbol: String(op.symbol),
-            side: String(op.action).toLowerCase() === 'sell' || String(op.action).toLowerCase() === 'close'
-              ? 'sell'
-              : 'buy',
+            side:
+              String(op.action).toLowerCase() === 'sell' ||
+              String(op.action).toLowerCase() === 'close'
+                ? 'sell'
+                : 'buy',
             type: 'market',
             qty: op.qty ? String(op.qty) : undefined,
             notional: op.amount ? String(op.amount) : undefined,
@@ -635,10 +632,7 @@ export class UnifiedTradingService {
       const currentPrice = pos.currentPrice || pos.avgCost;
       const marketValue = pos.shares * currentPrice;
       const unrealizedPnl = (currentPrice - pos.avgCost) * pos.shares;
-      const pnlPercent =
-        pos.avgCost > 0
-          ? ((currentPrice - pos.avgCost) / pos.avgCost) * 100
-          : 0;
+      const pnlPercent = pos.avgCost > 0 ? ((currentPrice - pos.avgCost) / pos.avgCost) * 100 : 0;
       positionValue += marketValue;
 
       return {
@@ -713,10 +707,7 @@ export class UnifiedTradingService {
   /**
    * Structured commit log (V2CommitResponse[]).
    */
-  async getCommitLogStructured(
-    userId: string,
-    limit: number = 10,
-  ): Promise<V2CommitResponse[]> {
+  async getCommitLogStructured(userId: string, limit: number = 10): Promise<V2CommitResponse[]> {
     const wallet = await this.getOrCreateWallet(userId);
     const history = (wallet.commitHistory as CommitData[]).slice(-limit);
 
@@ -739,10 +730,7 @@ export class UnifiedTradingService {
   /**
    * Search assets — delegates to MarketDataService.
    */
-  async searchAssets(
-    _userId: string,
-    query: string,
-  ): Promise<unknown[]> {
+  async searchAssets(_userId: string, query: string): Promise<unknown[]> {
     return this.marketDataService.searchTickers(query);
   }
 

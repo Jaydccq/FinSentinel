@@ -1,8 +1,4 @@
-import {
-  SecurityType,
-  BrokerCapability,
-  Contract,
-} from '@finsentinel/shared';
+import { SecurityType, BrokerCapability, Contract } from '@finsentinel/shared';
 import type { IBroker } from '../interfaces/broker';
 import type { OkxTradingEngine } from '../../okx/okx-trading.engine';
 import type {
@@ -55,18 +51,12 @@ export class OkxBroker implements IBroker {
   }
 
   canHandle(contract: Contract): boolean {
-    return (
-      contract.secType === SecurityType.PERP ||
-      contract.secType === SecurityType.FUTURE
-    );
+    return contract.secType === SecurityType.PERP || contract.secType === SecurityType.FUTURE;
   }
 
   // -- Order execution --------------------------------------------------------
 
-  async placeOrder(
-    contract: Contract,
-    request: OrderRequest,
-  ): Promise<OrderResult> {
+  async placeOrder(contract: Contract, request: OrderRequest): Promise<OrderResult> {
     const adapted: OrderRequest = {
       ...request,
       symbol: contract.toEngineSymbol(),

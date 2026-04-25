@@ -1,20 +1,10 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { Observable, Subject, filter } from 'rxjs';
-import {
-  agentEvents,
-  eq,
-  and,
-  gt,
-  desc,
-  asc,
-} from '@finsentinel/db';
+import { agentEvents, eq, and, gt, desc, asc } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import { sql } from 'drizzle-orm';
-import type {
-  AgentEventAggregateType,
-  AgentEventType,
-} from '@finsentinel/shared';
+import type { AgentEventAggregateType, AgentEventType } from '@finsentinel/shared';
 
 interface AgentEventRow {
   id: string;
@@ -38,9 +28,7 @@ interface AgentEventRow {
 export class AgentEventService {
   private readonly liveEvents = new Subject<AgentEventRow>();
 
-  constructor(
-    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
-  ) {}
+  constructor(@Inject('DRIZZLE_DB') private readonly db: DrizzleDB) {}
 
   /**
    * Append a new event to the log.
@@ -61,12 +49,7 @@ export class AgentEventService {
       const [existing] = await this.db
         .select()
         .from(agentEvents)
-        .where(
-          and(
-            eq(agentEvents.userId, userId),
-            eq(agentEvents.idempotencyKey, idempotencyKey),
-          ),
-        )
+        .where(and(eq(agentEvents.userId, userId), eq(agentEvents.idempotencyKey, idempotencyKey)))
         .limit(1);
 
       if (existing) {
@@ -180,12 +163,7 @@ export class AgentEventService {
     return this.db
       .select()
       .from(agentEvents)
-      .where(
-        and(
-          eq(agentEvents.userId, userId),
-          gt(agentEvents.seqNo, afterSeqNo),
-        ),
-      )
+      .where(and(eq(agentEvents.userId, userId), gt(agentEvents.seqNo, afterSeqNo)))
       .orderBy(asc(agentEvents.seqNo));
   }
 

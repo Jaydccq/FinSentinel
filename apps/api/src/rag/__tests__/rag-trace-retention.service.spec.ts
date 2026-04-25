@@ -68,10 +68,10 @@ describe('RagTraceRetentionService — drops old partitions', () => {
     // 3. DROP TABLE
     // 4. information_schema check for next-month partition — returns count = 1 (already exists)
     const db = makeDb([
-      [{ table_name: oldName }],  // scan for partitions
-      [{ count: 1 }],              // pg_inherits confirms it IS a partition
-      [],                          // DROP result
-      [{ count: 1 }],              // next-month partition already exists
+      [{ table_name: oldName }], // scan for partitions
+      [{ count: 1 }], // pg_inherits confirms it IS a partition
+      [], // DROP result
+      [{ count: 1 }], // next-month partition already exists
     ]);
 
     const metrics = makeMetrics();
@@ -122,7 +122,11 @@ describe('RagTraceRetentionService — drops old partitions', () => {
     ]);
 
     const metrics = makeMetrics();
-    const svc = new RagTraceRetentionService(db as any, makeConfigService({ 'rag.queryLog.retentionDays': 30 }) as any, metrics as any);
+    const svc = new RagTraceRetentionService(
+      db as any,
+      makeConfigService({ 'rag.queryLog.retentionDays': 30 }) as any,
+      metrics as any,
+    );
     await svc.runRetention();
 
     const calls = db._executeFn.mock.calls.map((c: unknown[]) => JSON.stringify(c[0]));
@@ -135,8 +139,8 @@ describe('RagTraceRetentionService — drops old partitions', () => {
 
     const db = makeDb([
       [{ table_name: oldName }],
-      [{ count: 0 }],   // pg_inherits says it is NOT a partition
-      [{ count: 1 }],   // next-month exists
+      [{ count: 0 }], // pg_inherits says it is NOT a partition
+      [{ count: 1 }], // next-month exists
     ]);
 
     const metrics = makeMetrics();
@@ -158,9 +162,9 @@ describe('RagTraceRetentionService — drops old partitions', () => {
 describe('RagTraceRetentionService — creates next month partition', () => {
   it('creates next month partition when it does not exist', async () => {
     const db = makeDb([
-      [],              // no old partitions to scan
+      [], // no old partitions to scan
       [{ count: 0 }], // next-month partition does NOT exist
-      [],              // CREATE TABLE result
+      [], // CREATE TABLE result
     ]);
 
     const metrics = makeMetrics();
@@ -182,7 +186,7 @@ describe('RagTraceRetentionService — creates next month partition', () => {
 
   it('skips CREATE when next month partition already exists', async () => {
     const db = makeDb([
-      [],              // no old partitions
+      [], // no old partitions
       [{ count: 1 }], // next-month already exists
     ]);
 
@@ -205,7 +209,11 @@ describe('RagTraceRetentionService — creates next month partition', () => {
 describe('RagTraceRetentionService — error resilience', () => {
   it('does not throw when DB execute rejects', async () => {
     const db = { execute: vi.fn().mockRejectedValue(new Error('DB offline')) };
-    const svc = new RagTraceRetentionService(db as any, makeConfigService() as any, makeMetrics() as any);
+    const svc = new RagTraceRetentionService(
+      db as any,
+      makeConfigService() as any,
+      makeMetrics() as any,
+    );
     await expect(svc.runRetention()).resolves.toBeUndefined();
   });
 });

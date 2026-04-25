@@ -1,9 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { JwtGuard } from '../auth/jwt.guard';
 import { RateLimitGuard } from '../common/guards/rate-limit.guard';
 import { RateLimit } from '../common/decorators/rate-limit.decorator';
@@ -40,9 +35,7 @@ export class ScraperController {
   @Post('sec-filings')
   @RateLimit({ limit: 10, windowSecs: 600 })
   @UseGuards(RateLimitGuard)
-  async scrapeSecFilings(
-    @Body() body?: { tickers?: string[] },
-  ) {
+  async scrapeSecFilings(@Body() body?: { tickers?: string[] }) {
     const tickers = body?.tickers ?? [];
     const count = await this.secEdgar.scrape(tickers);
     return { source: 'sec-edgar', newDocuments: count };
@@ -52,9 +45,7 @@ export class ScraperController {
   @Post('news')
   @RateLimit({ limit: 10, windowSecs: 300 })
   @UseGuards(RateLimitGuard)
-  async scrapeNews(
-    @Body() body?: { tickers?: string[] },
-  ) {
+  async scrapeNews(@Body() body?: { tickers?: string[] }) {
     const tickers = body?.tickers ?? [];
     const count = await this.polygonNews.scrape(tickers);
     return { source: 'polygon-news', newDocuments: count };
@@ -64,9 +55,7 @@ export class ScraperController {
   @Post('all')
   @RateLimit({ limit: 2, windowSecs: 3600 })
   @UseGuards(RateLimitGuard)
-  async scrapeAll(
-    @Body() body?: { tickers?: string[] },
-  ) {
+  async scrapeAll(@Body() body?: { tickers?: string[] }) {
     const tickers = body?.tickers ?? [];
     const result = await this.knowledgeBase.scrapeAll(tickers);
     return {

@@ -10,10 +10,7 @@ import { UserInvestmentProfileService } from '../user-investment-profile.service
  *
  * User-profile tool surface exposed to the agent.
  */
-export function createUserProfileTools(
-  service: UserInvestmentProfileService,
-  userId: string,
-) {
+export function createUserProfileTools(service: UserInvestmentProfileService, userId: string) {
   return {
     getUserInvestmentProfile: tool({
       description:
@@ -38,9 +35,7 @@ export function createUserProfileTools(
       inputSchema: z.object({
         sentiment: z
           .enum(['FEARFUL', 'CAUTIOUS', 'NEUTRAL', 'OPTIMISTIC', 'EUPHORIC'])
-          .describe(
-            'New sentiment: FEARFUL, CAUTIOUS, NEUTRAL, OPTIMISTIC, or EUPHORIC',
-          ),
+          .describe('New sentiment: FEARFUL, CAUTIOUS, NEUTRAL, OPTIMISTIC, or EUPHORIC'),
         reason: z
           .string()
           .describe(

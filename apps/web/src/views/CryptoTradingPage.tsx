@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wallet,
   DollarSign,
@@ -18,8 +18,8 @@ import {
   ArrowRightCircle,
   Target,
   Radio,
-} from 'lucide-react'
-import Link from 'next/link'
+} from 'lucide-react';
+import Link from 'next/link';
 import {
   okxApi,
   type OkxAccountInfo,
@@ -27,49 +27,49 @@ import {
   type OkxFundingRate,
   type OkxOrder,
   type CryptoAnalysisResult,
-} from '../api/okx'
-import { tradingApiV2 } from '../api/trading'
-import EmptyState from '../components/EmptyState'
-import { useOkxPrices, type PriceSnapshot } from '../hooks/useOkxPrices'
+} from '../api/okx';
+import { tradingApiV2 } from '../api/trading';
+import EmptyState from '../components/EmptyState';
+import { useOkxPrices, type PriceSnapshot } from '../hooks/useOkxPrices';
 
 /* ─── Helpers ─── */
 
 function usd(n: number) {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
 
 function pct(n: number) {
-  return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`
+  return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`;
 }
 
 function pnlColor(n: number) {
-  if (n > 0) return 'text-[var(--up)]'
-  if (n < 0) return 'text-[var(--down)]'
-  return 'text-[var(--text-muted)]'
+  if (n > 0) return 'text-[var(--up)]';
+  if (n < 0) return 'text-[var(--down)]';
+  return 'text-[var(--text-muted)]';
 }
 
 function fmtDate(iso: string) {
-  const d = new Date(Number(iso) || iso)
+  const d = new Date(Number(iso) || iso);
   return (
     d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) +
     ' ' +
     d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-  )
+  );
 }
 
 function fmtRate(rate: string) {
-  const n = parseFloat(rate) * 100
-  return `${n >= 0 ? '+' : ''}${n.toFixed(4)}%`
+  const n = parseFloat(rate) * 100;
+  return `${n >= 0 ? '+' : ''}${n.toFixed(4)}%`;
 }
 
 function rateColor(rate: string) {
-  const n = parseFloat(rate)
-  if (n > 0) return 'text-[var(--down)]' // positive = longs pay
-  if (n < 0) return 'text-[var(--up)]'   // negative = shorts pay
-  return 'text-[var(--text-muted)]'
+  const n = parseFloat(rate);
+  if (n > 0) return 'text-[var(--down)]'; // positive = longs pay
+  if (n < 0) return 'text-[var(--up)]'; // negative = shorts pay
+  return 'text-[var(--text-muted)]';
 }
 
-type PositionFilter = 'ALL' | 'SPOT' | 'FUTURES'
+type PositionFilter = 'ALL' | 'SPOT' | 'FUTURES';
 
 /* ─── Recommendation / Risk Badges ─── */
 
@@ -79,7 +79,7 @@ const REC_COLORS: Record<string, string> = {
   HOLD: 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] border-[var(--border-strong)]',
   SELL: 'bg-red-500/10 text-red-400 border-red-500/20',
   STRONG_SELL: 'bg-red-500/15 text-red-300 border-red-400/30',
-}
+};
 
 const REC_LABELS: Record<string, string> = {
   STRONG_BUY: 'Strong Buy',
@@ -87,23 +87,23 @@ const REC_LABELS: Record<string, string> = {
   HOLD: 'Hold',
   SELL: 'Sell',
   STRONG_SELL: 'Strong Sell',
-}
+};
 
 const RISK_COLORS: Record<string, string> = {
   LOW: 'text-[var(--up)]',
   MEDIUM: 'text-[var(--warn)]',
   HIGH: 'text-orange-400',
   CRITICAL: 'text-[var(--down)]',
-}
+};
 
 /* ─── Watched Funding Pairs ─── */
 
-const FUNDING_PAIRS = ['BTC-USDT-SWAP', 'ETH-USDT-SWAP', 'SOL-USDT-SWAP']
+const FUNDING_PAIRS = ['BTC-USDT-SWAP', 'ETH-USDT-SWAP', 'SOL-USDT-SWAP'];
 
 /* ─── Skeleton ─── */
 
 function CryptoSkeleton() {
-  const bar = 'bg-slate-700/40 animate-pulse rounded'
+  const bar = 'bg-slate-700/40 animate-pulse rounded';
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -120,13 +120,13 @@ function CryptoSkeleton() {
         ))}
       </div>
     </div>
-  )
+  );
 }
 
 /* ─── Side Badge ─── */
 
 function SideBadge({ side }: { side: string }) {
-  const isLong = side.toLowerCase() === 'long' || side.toLowerCase() === 'buy'
+  const isLong = side.toLowerCase() === 'long' || side.toLowerCase() === 'buy';
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold border ${
@@ -138,67 +138,67 @@ function SideBadge({ side }: { side: string }) {
       {isLong ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
       {side.toUpperCase()}
     </span>
-  )
+  );
 }
 
 /* ─── Per-Position AI Analysis Panel ─── */
 
 function PositionAnalysisPanel({ instId }: { instId: string }) {
-  const [isRunning, setIsRunning] = useState(false)
-  const [narrative, setNarrative] = useState('')
-  const [result, setResult] = useState<CryptoAnalysisResult | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [staged, setStaged] = useState(false)
-  const [stagingError, setStagingError] = useState<string | null>(null)
-  const narrativeRef = useRef<HTMLDivElement>(null)
+  const [isRunning, setIsRunning] = useState(false);
+  const [narrative, setNarrative] = useState('');
+  const [result, setResult] = useState<CryptoAnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [staged, setStaged] = useState(false);
+  const [stagingError, setStagingError] = useState<string | null>(null);
+  const narrativeRef = useRef<HTMLDivElement>(null);
 
   const runAnalysis = useCallback(() => {
-    setIsRunning(true)
-    setNarrative('')
-    setResult(null)
-    setError(null)
-    setStaged(false)
-    setStagingError(null)
+    setIsRunning(true);
+    setNarrative('');
+    setResult(null);
+    setError(null);
+    setStaged(false);
+    setStagingError(null);
 
     okxApi.streamAnalysis(
       instId,
       (chunk) => {
-        setNarrative((prev) => prev + chunk)
+        setNarrative((prev) => prev + chunk);
         if (narrativeRef.current) {
-          narrativeRef.current.scrollTop = narrativeRef.current.scrollHeight
+          narrativeRef.current.scrollTop = narrativeRef.current.scrollHeight;
         }
       },
       (_fullText, parsed) => {
-        setIsRunning(false)
-        if (parsed) setResult(parsed)
+        setIsRunning(false);
+        if (parsed) setResult(parsed);
       },
       (err) => {
-        setIsRunning(false)
-        setError(err)
+        setIsRunning(false);
+        setError(err);
       },
-    )
-  }, [instId])
+    );
+  }, [instId]);
 
   // Auto-run on mount — runAnalysis fetches external data and updates state on response
   useEffect(() => {
-    runAnalysis() // eslint-disable-line react-hooks/set-state-in-effect -- fetches external API data
-  }, [runAnalysis])
+    runAnalysis(); // eslint-disable-line react-hooks/set-state-in-effect -- fetches external API data
+  }, [runAnalysis]);
 
   const handleStage = async () => {
-    if (!result?.suggestedAction || result.suggestedAction.action === 'HOLD') return
+    if (!result?.suggestedAction || result.suggestedAction.action === 'HOLD') return;
     try {
       await tradingApiV2.stage({
         action: result.suggestedAction.action,
         symbol: instId,
         qty: result.suggestedAction.size != null ? String(result.suggestedAction.size) : undefined,
-      })
-      setStaged(true)
+      });
+      setStaged(true);
     } catch (e) {
-      setStagingError(e instanceof Error ? e.message : 'Failed to stage trade')
+      setStagingError(e instanceof Error ? e.message : 'Failed to stage trade');
     }
-  }
+  };
 
-  const displayNarrative = narrative.replace(/```json[\s\S]*?```/g, '').trim()
+  const displayNarrative = narrative.replace(/```json[\s\S]*?```/g, '').trim();
 
   return (
     <motion.div
@@ -224,7 +224,9 @@ function PositionAnalysisPanel({ instId }: { instId: string }) {
             style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border-strong) transparent' }}
           >
             {displayNarrative}
-            {isRunning && <span className="inline-block w-2 h-3.5 bg-blue-400/60 animate-pulse ml-0.5" />}
+            {isRunning && (
+              <span className="inline-block w-2 h-3.5 bg-blue-400/60 animate-pulse ml-0.5" />
+            )}
           </div>
         )}
 
@@ -238,7 +240,11 @@ function PositionAnalysisPanel({ instId }: { instId: string }) {
 
         {/* Structured result */}
         {result && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-3"
+          >
             {/* Recommendation header */}
             <div className="flex items-center gap-3 flex-wrap">
               <span
@@ -248,13 +254,19 @@ function PositionAnalysisPanel({ instId }: { instId: string }) {
               </span>
               <span className="text-[var(--text-muted)] text-xs">
                 Confidence:{' '}
-                <span className="text-[var(--text-primary)] font-semibold">{result.confidencePercent}%</span>
+                <span className="text-[var(--text-primary)] font-semibold">
+                  {result.confidencePercent}%
+                </span>
               </span>
               <span className="text-[var(--text-muted)] text-xs">
                 Fair Value:{' '}
-                <span className="text-[var(--text-primary)] font-semibold">${result.fairValueEstimate.toFixed(2)}</span>
+                <span className="text-[var(--text-primary)] font-semibold">
+                  ${result.fairValueEstimate.toFixed(2)}
+                </span>
               </span>
-              <span className={`text-xs ${RISK_COLORS[result.riskLevel] ?? 'text-[var(--text-muted)]'}`}>
+              <span
+                className={`text-xs ${RISK_COLORS[result.riskLevel] ?? 'text-[var(--text-muted)]'}`}
+              >
                 <ShieldAlert size={11} className="inline mr-1" />
                 {result.riskLevel} Risk
               </span>
@@ -265,7 +277,9 @@ function PositionAnalysisPanel({ instId }: { instId: string }) {
               <div className="grid grid-cols-3 gap-2">
                 <div className="bg-[var(--bg-elevated)] border border-[var(--border-subtle)] rounded p-2.5">
                   <p className="text-[var(--text-muted)] text-[10px]">Current Funding</p>
-                  <p className={`font-semibold font-mono text-xs tabular-nums mt-1 ${result.fundingInfo.currentRate >= 0 ? 'text-[var(--down)]' : 'text-[var(--up)]'}`}>
+                  <p
+                    className={`font-semibold font-mono text-xs tabular-nums mt-1 ${result.fundingInfo.currentRate >= 0 ? 'text-[var(--down)]' : 'text-[var(--up)]'}`}
+                  >
                     {(result.fundingInfo.currentRate * 100).toFixed(4)}%
                   </p>
                 </div>
@@ -287,7 +301,9 @@ function PositionAnalysisPanel({ instId }: { instId: string }) {
             {/* Risk factors */}
             {result.riskFactors.length > 0 && (
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider">Risks:</span>
+                <span className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider">
+                  Risks:
+                </span>
                 {result.riskFactors.map((rf, i) => (
                   <span
                     key={i}
@@ -307,7 +323,9 @@ function PositionAnalysisPanel({ instId }: { instId: string }) {
                     Suggested:{' '}
                     <span
                       className={
-                        result.suggestedAction.action === 'BUY' ? 'text-[var(--up)]' : 'text-[var(--down)]'
+                        result.suggestedAction.action === 'BUY'
+                          ? 'text-[var(--up)]'
+                          : 'text-[var(--down)]'
                       }
                     >
                       {result.suggestedAction.action}
@@ -316,7 +334,9 @@ function PositionAnalysisPanel({ instId }: { instId: string }) {
                     {result.suggestedAction.size && ` x ${result.suggestedAction.size}`}
                     {result.suggestedAction.price && ` @ $${result.suggestedAction.price}`}
                   </p>
-                  <p className="text-[var(--text-muted)] text-[10px] mt-0.5">{result.suggestedAction.rationale}</p>
+                  <p className="text-[var(--text-muted)] text-[10px] mt-0.5">
+                    {result.suggestedAction.rationale}
+                  </p>
                 </div>
                 {staged ? (
                   <span className="px-2.5 py-1 rounded text-[10px] status-chip bg-blue-500/15 text-blue-300 border border-blue-400/20">
@@ -331,13 +351,17 @@ function PositionAnalysisPanel({ instId }: { instId: string }) {
                     Stage Trade
                   </button>
                 )}
-                {stagingError && <span className="text-[var(--down)] text-[10px]">{stagingError}</span>}
+                {stagingError && (
+                  <span className="text-[var(--down)] text-[10px]">{stagingError}</span>
+                )}
               </div>
             )}
 
             {/* Disclaimer */}
             {result.disclaimer && (
-              <p className="text-[var(--text-muted)] text-[10px] leading-tight opacity-60">{result.disclaimer}</p>
+              <p className="text-[var(--text-muted)] text-[10px] leading-tight opacity-60">
+                {result.disclaimer}
+              </p>
             )}
           </motion.div>
         )}
@@ -354,118 +378,125 @@ function PositionAnalysisPanel({ instId }: { instId: string }) {
         )}
       </div>
     </motion.div>
-  )
+  );
 }
 
 /* ─── Main Page ─── */
 
 export default function CryptoTradingPage() {
-  const [account, setAccount] = useState<OkxAccountInfo | null>(null)
-  const [positions, setPositions] = useState<OkxPositionInfo[]>([])
-  const [fundingRates, setFundingRates] = useState<Record<string, OkxFundingRate>>({})
-  const [pendingOrders, setPendingOrders] = useState<OkxOrder[]>([])
-  const [orderHistory, setOrderHistory] = useState<OkxOrder[]>([])
-  const [loading, setLoading] = useState(true)
-  const [syncing, setSyncing] = useState(false)
+  const [account, setAccount] = useState<OkxAccountInfo | null>(null);
+  const [positions, setPositions] = useState<OkxPositionInfo[]>([]);
+  const [fundingRates, setFundingRates] = useState<Record<string, OkxFundingRate>>({});
+  const [pendingOrders, setPendingOrders] = useState<OkxOrder[]>([]);
+  const [orderHistory, setOrderHistory] = useState<OkxOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   // Position filter
-  const [posFilter, setPosFilter] = useState<PositionFilter>('ALL')
+  const [posFilter, setPosFilter] = useState<PositionFilter>('ALL');
   // Expanded analysis row
-  const [expandedPos, setExpandedPos] = useState<string | null>(null)
+  const [expandedPos, setExpandedPos] = useState<string | null>(null);
 
   // Quick trade form removed — use unified Trading page instead
 
   // Health check
-  const [healthRunning, setHealthRunning] = useState(false)
-  const [healthNarrative, setHealthNarrative] = useState('')
-  const [healthError, setHealthError] = useState<string | null>(null)
-  const healthRef = useRef<HTMLDivElement>(null)
+  const [healthRunning, setHealthRunning] = useState(false);
+  const [healthNarrative, setHealthNarrative] = useState('');
+  const [healthError, setHealthError] = useState<string | null>(null);
+  const healthRef = useRef<HTMLDivElement>(null);
 
   // Orders section
-  const [ordersOpen, setOrdersOpen] = useState(false)
-  const [ordersTab, setOrdersTab] = useState<'pending' | 'history'>('pending')
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const [ordersTab, setOrdersTab] = useState<'pending' | 'history'>('pending');
 
   // Timers
-  const accountTimer = useRef<ReturnType<typeof setInterval> | null>(null)
-  const fundingTimer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const accountTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fundingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   /* ─── Real-time prices (polling) ─── */
 
   // Derive watched pairs from current positions so the hook only fetches what we hold
-  const watchedPairs = positions.length > 0
-    ? [...new Set(positions.map((p) => p.symbol))]
-    : ['BTC-USDT', 'ETH-USDT', 'SOL-USDT']
+  const watchedPairs =
+    positions.length > 0
+      ? [...new Set(positions.map((p) => p.symbol))]
+      : ['BTC-USDT', 'ETH-USDT', 'SOL-USDT'];
 
-  const { prices: livePrices } = useOkxPrices(watchedPairs)
+  const { prices: livePrices } = useOkxPrices(watchedPairs);
 
   /** Return the live price for a position if available, otherwise fall back to the static mark price. */
   function resolveLivePrice(pos: OkxPositionInfo): { price: number; isLive: boolean } {
-    const snap: PriceSnapshot | undefined = livePrices.get(pos.symbol)
-    if (snap && snap.last > 0) return { price: snap.last, isLive: true }
-    return { price: pos.currentPrice, isLive: false }
+    const snap: PriceSnapshot | undefined = livePrices.get(pos.symbol);
+    if (snap && snap.last > 0) return { price: snap.last, isLive: true };
+    return { price: pos.currentPrice, isLive: false };
   }
 
   /* ─── Fetchers ─── */
 
   const fetchAccount = useCallback(async () => {
     try {
-      const data = await okxApi.account()
-      setAccount(data)
+      const data = await okxApi.account();
+      setAccount(data);
     } catch {
       // silent on auto-refresh
     }
-  }, [])
+  }, []);
 
   const fetchPositions = useCallback(async () => {
     try {
-      const data = await okxApi.positions()
-      setPositions(data)
+      const data = await okxApi.positions();
+      setPositions(data);
     } catch {
-      setPositions([])
+      setPositions([]);
     }
-  }, [])
+  }, []);
 
   const fetchFundingRates = useCallback(async () => {
-    const results: Record<string, OkxFundingRate> = {}
+    const results: Record<string, OkxFundingRate> = {};
     await Promise.allSettled(
       FUNDING_PAIRS.map(async (instId) => {
         try {
-          const rate = await okxApi.fundingRate(instId)
-          results[instId] = rate
+          const rate = await okxApi.fundingRate(instId);
+          results[instId] = rate;
         } catch {
           // skip failed
         }
       }),
-    )
-    setFundingRates(results)
-  }, [])
+    );
+    setFundingRates(results);
+  }, []);
 
   const fetchPendingOrders = useCallback(async () => {
     try {
-      const data = await okxApi.pendingOrders()
-      setPendingOrders(data)
+      const data = await okxApi.pendingOrders();
+      setPendingOrders(data);
     } catch {
-      setPendingOrders([])
+      setPendingOrders([]);
     }
-  }, [])
+  }, []);
 
   const fetchOrderHistory = useCallback(async () => {
     try {
-      const data = await okxApi.orderHistory('SPOT')
-      setOrderHistory(data)
+      const data = await okxApi.orderHistory('SPOT');
+      setOrderHistory(data);
     } catch {
-      setOrderHistory([])
+      setOrderHistory([]);
     }
-  }, [])
+  }, []);
 
   const syncAll = useCallback(async () => {
-    setSyncing(true)
-    await Promise.all([fetchAccount(), fetchPositions(), fetchFundingRates(), fetchPendingOrders(), fetchOrderHistory()])
-    setSyncing(false)
-  }, [fetchAccount, fetchPositions, fetchFundingRates, fetchPendingOrders, fetchOrderHistory])
+    setSyncing(true);
+    await Promise.all([
+      fetchAccount(),
+      fetchPositions(),
+      fetchFundingRates(),
+      fetchPendingOrders(),
+      fetchOrderHistory(),
+    ]);
+    setSyncing(false);
+  }, [fetchAccount, fetchPositions, fetchFundingRates, fetchPendingOrders, fetchOrderHistory]);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
 
     const loadInitialData = async () => {
       await Promise.all([
@@ -474,62 +505,62 @@ export default function CryptoTradingPage() {
         fetchFundingRates(),
         fetchPendingOrders(),
         fetchOrderHistory(),
-      ])
+      ]);
 
       if (!cancelled) {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    void loadInitialData()
+    void loadInitialData();
 
-    accountTimer.current = setInterval(fetchAccount, 60_000)
-    fundingTimer.current = setInterval(fetchFundingRates, 30_000)
+    accountTimer.current = setInterval(fetchAccount, 60_000);
+    fundingTimer.current = setInterval(fetchFundingRates, 30_000);
 
     return () => {
-      cancelled = true
-      if (accountTimer.current) clearInterval(accountTimer.current)
-      if (fundingTimer.current) clearInterval(fundingTimer.current)
-    }
-  }, [fetchAccount, fetchPositions, fetchFundingRates, fetchPendingOrders, fetchOrderHistory])
+      cancelled = true;
+      if (accountTimer.current) clearInterval(accountTimer.current);
+      if (fundingTimer.current) clearInterval(fundingTimer.current);
+    };
+  }, [fetchAccount, fetchPositions, fetchFundingRates, fetchPendingOrders, fetchOrderHistory]);
 
   /* ─── Actions ─── */
 
   const runHealthCheck = () => {
-    setHealthRunning(true)
-    setHealthNarrative('')
-    setHealthError(null)
+    setHealthRunning(true);
+    setHealthNarrative('');
+    setHealthError(null);
 
     okxApi.streamHealthCheck(
       (chunk) => {
-        setHealthNarrative((prev) => prev + chunk)
+        setHealthNarrative((prev) => prev + chunk);
         if (healthRef.current) {
-          healthRef.current.scrollTop = healthRef.current.scrollHeight
+          healthRef.current.scrollTop = healthRef.current.scrollHeight;
         }
       },
       () => {
-        setHealthRunning(false)
+        setHealthRunning(false);
       },
       (err) => {
-        setHealthRunning(false)
-        setHealthError(err)
+        setHealthRunning(false);
+        setHealthError(err);
       },
-    )
-  }
+    );
+  };
 
   /* ─── Derived ─── */
 
   const marginUsed =
-    account && account.equity > 0 ? ((1 - account.buyingPower / account.equity) * 100) : 0
+    account && account.equity > 0 ? (1 - account.buyingPower / account.equity) * 100 : 0;
 
   const filteredPositions = positions.filter((p) => {
-    if (posFilter === 'ALL') return true
+    if (posFilter === 'ALL') return true;
     // heuristic: if symbol contains -SWAP or leverage > 0, treat as futures
-    const isFutures = p.symbol.includes('-SWAP') || p.symbol.includes('FUTURES')
-    return posFilter === 'FUTURES' ? isFutures : !isFutures
-  })
+    const isFutures = p.symbol.includes('-SWAP') || p.symbol.includes('FUTURES');
+    return posFilter === 'FUTURES' ? isFutures : !isFutures;
+  });
 
-  const healthDisplay = healthNarrative.replace(/```json[\s\S]*?```/g, '').trim()
+  const healthDisplay = healthNarrative.replace(/```json[\s\S]*?```/g, '').trim();
 
   /* ─── Render ─── */
 
@@ -538,11 +569,20 @@ export default function CryptoTradingPage() {
       <div className="px-4 py-4 md:px-8 md:py-6 space-y-4">
         <section className="glass-panel rounded p-3 md:p-4">
           <h1 className="page-title">Crypto Analytics</h1>
-          <p className="page-subtitle">OKX account, positions, funding rates, and AI analysis. For trading, use the <Link href="/trading" className="text-blue-400 hover:text-blue-300 underline underline-offset-2">Trading Desk</Link>.</p>
+          <p className="page-subtitle">
+            OKX account, positions, funding rates, and AI analysis. For trading, use the{' '}
+            <Link
+              href="/trading"
+              className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
+            >
+              Trading Desk
+            </Link>
+            .
+          </p>
         </section>
         <CryptoSkeleton />
       </div>
-    )
+    );
   }
 
   return (
@@ -551,7 +591,16 @@ export default function CryptoTradingPage() {
       <section className="glass-panel rounded p-3 md:p-4 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="page-title">Crypto Analytics</h1>
-          <p className="page-subtitle">OKX account, positions, funding rates, and AI analysis. For trading, use the <Link href="/trading" className="text-blue-400 hover:text-blue-300 underline underline-offset-2">Trading Desk</Link>.</p>
+          <p className="page-subtitle">
+            OKX account, positions, funding rates, and AI analysis. For trading, use the{' '}
+            <Link
+              href="/trading"
+              className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
+            >
+              Trading Desk
+            </Link>
+            .
+          </p>
         </div>
         <button
           onClick={syncAll}
@@ -658,7 +707,11 @@ export default function CryptoTradingPage() {
             <EmptyState
               icon={<Package size={24} />}
               title="No open positions"
-              description={posFilter !== 'ALL' ? `No ${posFilter.toLowerCase()} positions found.` : 'Your OKX positions will appear here.'}
+              description={
+                posFilter !== 'ALL'
+                  ? `No ${posFilter.toLowerCase()} positions found.`
+                  : 'Your OKX positions will appear here.'
+              }
             />
           </div>
         ) : (
@@ -666,28 +719,45 @@ export default function CryptoTradingPage() {
             <table className="table-terminal w-full min-w-[720px]">
               <thead>
                 <tr className="bg-slate-900/35 text-[var(--text-muted)] text-xs border-b border-[color:var(--border-subtle)]">
-                  <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Pair</th>
-                  <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Side</th>
-                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Size</th>
-                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Entry</th>
-                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Mark</th>
-                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">PnL ($)</th>
-                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">PnL (%)</th>
-                  <th className="px-3 py-2 text-center font-semibold uppercase tracking-[0.08em]">AI</th>
+                  <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">
+                    Pair
+                  </th>
+                  <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">
+                    Side
+                  </th>
+                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">
+                    Size
+                  </th>
+                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">
+                    Entry
+                  </th>
+                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">
+                    Mark
+                  </th>
+                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">
+                    PnL ($)
+                  </th>
+                  <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">
+                    PnL (%)
+                  </th>
+                  <th className="px-3 py-2 text-center font-semibold uppercase tracking-[0.08em]">
+                    AI
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPositions.map((pos, idx) => {
-                  const { price: markPrice, isLive } = resolveLivePrice(pos)
-                  const livePnl = pos.side.toLowerCase() === 'short' || pos.side.toLowerCase() === 'sell'
-                    ? (pos.avgEntryPrice - markPrice) * pos.qty
-                    : (markPrice - pos.avgEntryPrice) * pos.qty
+                  const { price: markPrice, isLive } = resolveLivePrice(pos);
+                  const livePnl =
+                    pos.side.toLowerCase() === 'short' || pos.side.toLowerCase() === 'sell'
+                      ? (pos.avgEntryPrice - markPrice) * pos.qty
+                      : (markPrice - pos.avgEntryPrice) * pos.qty;
                   const pnlPct =
                     pos.avgEntryPrice > 0
                       ? ((markPrice - pos.avgEntryPrice) / pos.avgEntryPrice) * 100
-                      : 0
-                  const displayPnl = isLive ? livePnl : pos.unrealizedPnL
-                  const isExpanded = expandedPos === pos.symbol
+                      : 0;
+                  const displayPnl = isLive ? livePnl : pos.unrealizedPnL;
+                  const isExpanded = expandedPos === pos.symbol;
 
                   return (
                     <tr key={pos.symbol}>
@@ -698,7 +768,9 @@ export default function CryptoTradingPage() {
                               idx % 2 === 1 ? 'bg-slate-900/15' : ''
                             }`}
                           >
-                            <span className="px-3 py-2 font-data font-bold text-blue-100">{pos.symbol}</span>
+                            <span className="px-3 py-2 font-data font-bold text-blue-100">
+                              {pos.symbol}
+                            </span>
                             <span className="px-3 py-2">
                               <SideBadge side={pos.side} />
                             </span>
@@ -748,7 +820,7 @@ export default function CryptoTradingPage() {
                         </div>
                       </td>
                     </tr>
-                  )
+                  );
                 })}
               </tbody>
             </table>
@@ -768,8 +840,8 @@ export default function CryptoTradingPage() {
           <Wallet size={28} className="text-blue-400" />
           <h2 className="text-base font-semibold text-[var(--text-primary)]">Unified Trading</h2>
           <p className="text-sm text-[var(--text-muted)] max-w-xs">
-            Crypto trading is now handled through the unified Trading Desk. Stage, commit, and execute
-            orders for stocks and crypto in one place.
+            Crypto trading is now handled through the unified Trading Desk. Stage, commit, and
+            execute orders for stocks and crypto in one place.
           </p>
           <Link
             href="/trading"
@@ -789,11 +861,13 @@ export default function CryptoTradingPage() {
         >
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold text-[var(--text-primary)]">Funding Rates</h2>
-            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">Auto-refresh 30s</span>
+            <span className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider">
+              Auto-refresh 30s
+            </span>
           </div>
 
           {FUNDING_PAIRS.map((instId) => {
-            const rate = fundingRates[instId]
+            const rate = fundingRates[instId];
             return (
               <div
                 key={instId}
@@ -801,14 +875,18 @@ export default function CryptoTradingPage() {
               >
                 <div className="flex items-center gap-2">
                   <Target size={13} className="text-[var(--text-muted)]" />
-                  <span className="text-sm font-data font-medium text-[var(--text-primary)]">{instId}</span>
+                  <span className="text-sm font-data font-medium text-[var(--text-primary)]">
+                    {instId}
+                  </span>
                 </div>
                 {rate ? (
                   <div className="text-right space-y-0.5">
                     <div className="flex items-center gap-3">
                       <div>
                         <p className="text-[10px] text-[var(--text-muted)]">Current</p>
-                        <p className={`text-xs font-data font-semibold tabular-nums ${rateColor(rate.fundingRate)}`}>
+                        <p
+                          className={`text-xs font-data font-semibold tabular-nums ${rateColor(rate.fundingRate)}`}
+                        >
                           {fmtRate(rate.fundingRate)}
                         </p>
                       </div>
@@ -831,7 +909,7 @@ export default function CryptoTradingPage() {
                   <span className="text-xs text-[var(--text-muted)]">Loading...</span>
                 )}
               </div>
-            )
+            );
           })}
 
           {/* Daily funding cost total estimate */}
@@ -842,9 +920,11 @@ export default function CryptoTradingPage() {
                 <span className="text-xs font-data font-semibold text-[var(--text-secondary)] tabular-nums">
                   {(() => {
                     const avg =
-                      Object.values(fundingRates).reduce((sum, r) => sum + Math.abs(parseFloat(r.fundingRate)), 0) /
-                      Object.values(fundingRates).length
-                    return `${(avg * 3 * 100).toFixed(4)}%`
+                      Object.values(fundingRates).reduce(
+                        (sum, r) => sum + Math.abs(parseFloat(r.fundingRate)),
+                        0,
+                      ) / Object.values(fundingRates).length;
+                    return `${(avg * 3 * 100).toFixed(4)}%`;
                   })()}
                 </span>
               </div>
@@ -864,7 +944,9 @@ export default function CryptoTradingPage() {
           <div className="flex items-center gap-3">
             <span className="w-[2px] h-4 bg-purple-500 inline-block" />
             <Sparkles size={14} className="text-purple-400" />
-            <h2 className="text-base font-semibold text-[var(--text-primary)]">AI Portfolio Health Check</h2>
+            <h2 className="text-base font-semibold text-[var(--text-primary)]">
+              AI Portfolio Health Check
+            </h2>
           </div>
           <button
             onClick={runHealthCheck}
@@ -899,7 +981,9 @@ export default function CryptoTradingPage() {
               style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--border-strong) transparent' }}
             >
               {healthDisplay}
-              {healthRunning && <span className="inline-block w-2 h-3.5 bg-purple-400/60 animate-pulse ml-0.5" />}
+              {healthRunning && (
+                <span className="inline-block w-2 h-3.5 bg-purple-400/60 animate-pulse ml-0.5" />
+              )}
             </div>
           ) : !healthRunning ? (
             <p className="text-sm text-[var(--text-muted)] text-center py-4">
@@ -976,7 +1060,7 @@ export default function CryptoTradingPage() {
 
                 {/* Orders table */}
                 {(() => {
-                  const orders = ordersTab === 'pending' ? pendingOrders : orderHistory
+                  const orders = ordersTab === 'pending' ? pendingOrders : orderHistory;
                   if (orders.length === 0) {
                     return (
                       <div className="p-4">
@@ -990,7 +1074,7 @@ export default function CryptoTradingPage() {
                           }
                         />
                       </div>
-                    )
+                    );
                   }
 
                   return (
@@ -998,19 +1082,35 @@ export default function CryptoTradingPage() {
                       <table className="table-terminal w-full min-w-[640px]">
                         <thead>
                           <tr className="bg-slate-900/35 text-[var(--text-muted)] text-xs border-b border-[color:var(--border-subtle)]">
-                            <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Time</th>
-                            <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Pair</th>
-                            <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Side</th>
-                            <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Type</th>
-                            <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Size</th>
-                            <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">Price</th>
-                            <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">Status</th>
-                            <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">PnL</th>
+                            <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">
+                              Time
+                            </th>
+                            <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">
+                              Pair
+                            </th>
+                            <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">
+                              Side
+                            </th>
+                            <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">
+                              Type
+                            </th>
+                            <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">
+                              Size
+                            </th>
+                            <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">
+                              Price
+                            </th>
+                            <th className="px-3 py-2 text-left font-semibold uppercase tracking-[0.08em]">
+                              Status
+                            </th>
+                            <th className="px-3 py-2 text-right font-semibold uppercase tracking-[0.08em]">
+                              PnL
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {orders.map((order, idx) => {
-                            const pnlNum = parseFloat(order.pnl || '0')
+                            const pnlNum = parseFloat(order.pnl || '0');
                             return (
                               <tr
                                 key={order.ordId}
@@ -1059,12 +1159,12 @@ export default function CryptoTradingPage() {
                                   {pnlNum !== 0 ? usd(pnlNum) : '-'}
                                 </td>
                               </tr>
-                            )
+                            );
                           })}
                         </tbody>
                       </table>
                     </div>
-                  )
+                  );
                 })()}
               </div>
             </motion.div>
@@ -1072,5 +1172,5 @@ export default function CryptoTradingPage() {
         </AnimatePresence>
       </motion.section>
     </div>
-  )
+  );
 }

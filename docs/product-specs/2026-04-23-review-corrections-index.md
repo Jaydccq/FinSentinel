@@ -8,19 +8,19 @@
 
 本次评审针对外部反馈的 9 条问题，逐条对照仓库实际代码做了核对，并把可执行项拆成 9 份独立 PRD。结论概览：
 
-| # | 反馈主题 | 核对结果 | PRD |
-|---|----------|----------|-----|
-| 1 | 交易 stage/commit/execute 非原子 + hash 含时间戳 + 缺 idempotencyKey | **全部属实** | `2026-04-23-trading-stage-commit-execute-atomicity.md` (P0) |
-| 2 | Web/Tauri API base 实现不一致（`client.ts` 写死 `/api`、`ensureLocalToken` 默认空 base） | **全部属实** | `2026-04-23-web-tauri-api-base-url-unification.md` (P0) |
-| 3a | `callYahooSearch` URL 含杂引号 `"esCount=` | **不属实**（详见第 2 节） | — |
-| 3b | search 与 quote/history 抽象分裂 | **属实** | `2026-04-23-market-search-provider-abstraction.md` (P1) |
-| 3c | 搜索缓存 key 未规范化 | **属实** | 同上 |
-| 4 | 文档上传：内存 buffer / 无补偿 / 同步 fallback / regionId 写死 | **全部属实** | `2026-04-23-document-upload-pipeline-hardening.md` (P1) |
-| 5 | 认证与会话：cookie flag、响应体回 token、register 竞态、桌面账号入构建、JWT in localStorage、CORS 写死 | **全部属实** | `2026-04-23-auth-session-hardening.md` (P0) |
-| 6 | RAG：weight 未进 RRF / sectors-regions 未下沉 / shadow runner 5ms 轮询 | **全部属实** | `2026-04-23-rag-fusion-prefilter-shadow-runner.md` (P1) |
-| 7 | Watchlist：前端 localStorage、后端能力丰富但无 REST | **全部属实** | `2026-04-23-watchlist-server-persistence.md` (P1) |
-| 8 | 平台 bootstrap：CORS 写死 / eager module / 缺 helmet/requestId | **全部属实** | `2026-04-23-platform-bootstrap-and-module-scoping.md` (P2) |
-| 9 | 桌面端 CI 默认排除 | **全部属实** | `2026-04-23-desktop-ci-smoke-build.md` (P2) |
+| #   | 反馈主题                                                                                               | 核对结果                  | PRD                                                         |
+| --- | ------------------------------------------------------------------------------------------------------ | ------------------------- | ----------------------------------------------------------- |
+| 1   | 交易 stage/commit/execute 非原子 + hash 含时间戳 + 缺 idempotencyKey                                   | **全部属实**              | `2026-04-23-trading-stage-commit-execute-atomicity.md` (P0) |
+| 2   | Web/Tauri API base 实现不一致（`client.ts` 写死 `/api`、`ensureLocalToken` 默认空 base）               | **全部属实**              | `2026-04-23-web-tauri-api-base-url-unification.md` (P0)     |
+| 3a  | `callYahooSearch` URL 含杂引号 `"esCount=`                                                             | **不属实**（详见第 2 节） | —                                                           |
+| 3b  | search 与 quote/history 抽象分裂                                                                       | **属实**                  | `2026-04-23-market-search-provider-abstraction.md` (P1)     |
+| 3c  | 搜索缓存 key 未规范化                                                                                  | **属实**                  | 同上                                                        |
+| 4   | 文档上传：内存 buffer / 无补偿 / 同步 fallback / regionId 写死                                         | **全部属实**              | `2026-04-23-document-upload-pipeline-hardening.md` (P1)     |
+| 5   | 认证与会话：cookie flag、响应体回 token、register 竞态、桌面账号入构建、JWT in localStorage、CORS 写死 | **全部属实**              | `2026-04-23-auth-session-hardening.md` (P0)                 |
+| 6   | RAG：weight 未进 RRF / sectors-regions 未下沉 / shadow runner 5ms 轮询                                 | **全部属实**              | `2026-04-23-rag-fusion-prefilter-shadow-runner.md` (P1)     |
+| 7   | Watchlist：前端 localStorage、后端能力丰富但无 REST                                                    | **全部属实**              | `2026-04-23-watchlist-server-persistence.md` (P1)           |
+| 8   | 平台 bootstrap：CORS 写死 / eager module / 缺 helmet/requestId                                         | **全部属实**              | `2026-04-23-platform-bootstrap-and-module-scoping.md` (P2)  |
+| 9   | 桌面端 CI 默认排除                                                                                     | **全部属实**              | `2026-04-23-desktop-ci-smoke-build.md` (P2)                 |
 
 ## 2. 唯一一处需要更正的反馈
 

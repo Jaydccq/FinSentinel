@@ -65,11 +65,7 @@ describe('OpenRouterEmbeddingClient', () => {
   it('embedChunks returns embeddings in input order', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       createJsonResponse({
-        data: [
-          { embedding: [1, 1] },
-          { embedding: [2, 2] },
-          { embedding: [3, 3] },
-        ],
+        data: [{ embedding: [1, 1] }, { embedding: [2, 2] }, { embedding: [3, 3] }],
       }),
     );
 
@@ -145,7 +141,9 @@ describe('OpenRouterEmbeddingClient', () => {
   });
 
   it('throws with status and response body for non-2xx responses', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(createJsonResponse({ error: 'upstream down' }, 503));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(createJsonResponse({ error: 'upstream down' }, 503));
 
     const client = new OpenRouterEmbeddingClient({
       apiKey: 'test-key',

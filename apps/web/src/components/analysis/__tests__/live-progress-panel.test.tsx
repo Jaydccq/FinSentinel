@@ -25,7 +25,13 @@ describe('LiveProgressPanel', () => {
       checkpointVersion: 1,
       structuredOutput: {
         roleSummaries: [
-          { roleKey: 'THESIS_LEAD', status: 'COMPLETED', durationMs: 8100, toolCallCount: 2, summary: 'lead' },
+          {
+            roleKey: 'THESIS_LEAD',
+            status: 'COMPLETED',
+            durationMs: 8100,
+            toolCallCount: 2,
+            summary: 'lead',
+          },
         ],
       },
     };

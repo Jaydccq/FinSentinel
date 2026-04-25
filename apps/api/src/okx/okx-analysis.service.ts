@@ -1,9 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
-import {
-  createOpenAICompatibleModel,
-  streamAgentTextFromMessages,
-} from '@finsentinel/ai-runtime';
+import { createOpenAICompatibleModel, streamAgentTextFromMessages } from '@finsentinel/ai-runtime';
 import { aiConfig } from '../config/ai.config';
 import type { OkxApiClient } from './okx-api.client';
 
@@ -21,9 +18,7 @@ export class OkxAnalysisService {
   private readonly model;
   private client: OkxApiClient | null = null;
 
-  constructor(
-    @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
-  ) {
+  constructor(@Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>) {
     this.model = createOpenAICompatibleModel({
       provider: this.aiCfg.provider ?? 'openrouter',
       modelId: this.aiCfg.model,
@@ -45,10 +40,7 @@ export class OkxAnalysisService {
    * Fetches real-time ticker and funding rate data, then sends to the LLM
    * for analysis. Returns a ReadableStream of SSE events.
    */
-  async streamAnalysis(
-    instId: string,
-    sessionId: string,
-  ): Promise<ReadableStream<Uint8Array>> {
+  async streamAnalysis(instId: string, sessionId: string): Promise<ReadableStream<Uint8Array>> {
     // 1. Gather market context
     let marketContext = '';
     if (this.client) {
@@ -113,21 +105,14 @@ export class OkxAnalysisService {
         try {
           for await (const chunk of textStream) {
             const data = JSON.stringify({ content: chunk, sessionId });
-            controller.enqueue(
-              encoder.encode(`event: message\ndata: ${data}\n\n`),
-            );
+            controller.enqueue(encoder.encode(`event: message\ndata: ${data}\n\n`));
           }
-          controller.enqueue(
-            encoder.encode('event: done\ndata: [DONE]\n\n'),
-          );
+          controller.enqueue(encoder.encode('event: done\ndata: [DONE]\n\n'));
         } catch (err) {
-          const errorMessage =
-            err instanceof Error ? err.message : 'Unknown streaming error';
+          const errorMessage = err instanceof Error ? err.message : 'Unknown streaming error';
           logger.error('SSE stream error in OKX analysis', err);
           const data = JSON.stringify({ error: errorMessage });
-          controller.enqueue(
-            encoder.encode(`event: error\ndata: ${data}\n\n`),
-          );
+          controller.enqueue(encoder.encode(`event: error\ndata: ${data}\n\n`));
         } finally {
           controller.close();
         }

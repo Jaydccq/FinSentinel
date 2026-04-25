@@ -108,18 +108,10 @@ export class ToolRegistry {
       ...(this.companyResearchService
         ? createCompanyResearchTools(this.companyResearchService)
         : {}),
-      ...(this.newsAnalysisService
-        ? createNewsAnalysisTools(this.newsAnalysisService)
-        : {}),
-      ...(this.equityScreenerService
-        ? createEquityScreenerTools(this.equityScreenerService)
-        : {}),
-      ...(this.marketCalendarService
-        ? createMarketCalendarTools(this.marketCalendarService)
-        : {}),
-      ...(this.ownershipDataService
-        ? createOwnershipTools(this.ownershipDataService)
-        : {}),
+      ...(this.newsAnalysisService ? createNewsAnalysisTools(this.newsAnalysisService) : {}),
+      ...(this.equityScreenerService ? createEquityScreenerTools(this.equityScreenerService) : {}),
+      ...(this.marketCalendarService ? createMarketCalendarTools(this.marketCalendarService) : {}),
+      ...(this.ownershipDataService ? createOwnershipTools(this.ownershipDataService) : {}),
 
       ...(this.unifiedTradingService
         ? createUnifiedTradingTools(
@@ -159,37 +151,28 @@ export class ToolRegistry {
               syncOrders: async (currentUserId) =>
                 this.unifiedTradingService!.syncOrders(currentUserId),
               switchMode: async (currentUserId, mode) => {
-                await this.unifiedTradingService!.switchMode(currentUserId, mode as 'PAPER' | 'LIVE');
+                await this.unifiedTradingService!.switchMode(
+                  currentUserId,
+                  mode as 'PAPER' | 'LIVE',
+                );
                 return `Trading mode switched to ${mode}.`;
               },
             },
             userId,
           )
         : {}),
-      ...(this.agentBrainService
-        ? createBrainTools(this.agentBrainService, userId)
-        : {}),
+      ...(this.agentBrainService ? createBrainTools(this.agentBrainService, userId) : {}),
       ...(this.userInvestmentProfileService
         ? createUserProfileTools(this.userInvestmentProfileService, userId)
         : {}),
-      ...(this.portfolioService
-        ? createPortfolioAnalysisTools(this.portfolioService, userId)
-        : {}),
-      ...(this.watchlistService
-        ? createWatchlistTools(this.watchlistService, userId)
-        : {}),
+      ...(this.portfolioService ? createPortfolioAnalysisTools(this.portfolioService, userId) : {}),
+      ...(this.watchlistService ? createWatchlistTools(this.watchlistService, userId) : {}),
       ...(this.scheduleService && this.heartbeatService
         ? createAutonomyTools(this.scheduleService, this.heartbeatService, userId)
         : {}),
-      ...(this.cryptoToolsService
-        ? createCryptoNewsTools(this.cryptoToolsService)
-        : {}),
-      ...(this.twitterToolsService
-        ? createTwitterTools(this.twitterToolsService)
-        : {}),
-      ...(this.cryptoToolsService
-        ? createCryptoAnalyticsTools(this.cryptoToolsService)
-        : {}),
+      ...(this.cryptoToolsService ? createCryptoNewsTools(this.cryptoToolsService) : {}),
+      ...(this.twitterToolsService ? createTwitterTools(this.twitterToolsService) : {}),
+      ...(this.cryptoToolsService ? createCryptoAnalyticsTools(this.cryptoToolsService) : {}),
     };
   }
 

@@ -21,7 +21,8 @@ function createConfigService(overrides: Record<string, unknown> = {}) {
 
   return {
     get: vi.fn((key: string, defaultValue?: unknown) =>
-      key in values ? values[key] : defaultValue),
+      key in values ? values[key] : defaultValue,
+    ),
   };
 }
 
@@ -53,7 +54,12 @@ describe('RagBackfillSchedulerService', () => {
         },
         {
           provide: MetricsService,
-          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn(), startHistogramTimer: vi.fn(() => vi.fn()) },
+          useValue: {
+            incrementCounter: vi.fn(),
+            setGauge: vi.fn(),
+            observeHistogram: vi.fn(),
+            startHistogramTimer: vi.fn(() => vi.fn()),
+          },
         },
       ],
     }).compile();
@@ -71,10 +77,7 @@ describe('RagBackfillSchedulerService', () => {
 
     await vi.advanceTimersByTimeAsync(5000);
 
-    expect(mockReindexService.reindexMissingDocuments).toHaveBeenCalledWith(
-      11,
-      false,
-    );
+    expect(mockReindexService.reindexMissingDocuments).toHaveBeenCalledWith(11, false);
     expect(mockReindexService.reindexMissingNews).toHaveBeenCalledWith(7, false);
 
     await vi.advanceTimersByTimeAsync(60000);
@@ -97,7 +100,12 @@ describe('RagBackfillSchedulerService', () => {
         },
         {
           provide: MetricsService,
-          useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn(), startHistogramTimer: vi.fn(() => vi.fn()) },
+          useValue: {
+            incrementCounter: vi.fn(),
+            setGauge: vi.fn(),
+            observeHistogram: vi.fn(),
+            startHistogramTimer: vi.fn(() => vi.fn()),
+          },
         },
       ],
     }).compile();

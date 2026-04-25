@@ -92,9 +92,11 @@ function createMockMarketDataService(): MarketDataService {
       timestamp: Date.now(),
     }),
     getHistoricalBars: vi.fn(),
-    searchTickers: vi.fn().mockResolvedValue([
-      { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', type: 'EQUITY' },
-    ]),
+    searchTickers: vi
+      .fn()
+      .mockResolvedValue([
+        { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', type: 'EQUITY' },
+      ]),
   } as unknown as MarketDataService;
 }
 
@@ -222,7 +224,11 @@ describe('UnifiedTradingService', () => {
     function whenAtomicCommitReturns(stagingJson: string | null) {
       (mockRedis.eval as Mock).mockImplementation(
         async (script: string, _numKeys: number, ..._args: string[]) => {
-          if (typeof script === 'string' && script.includes("redis.call('GET'") && !script.includes('cjson.decode')) {
+          if (
+            typeof script === 'string' &&
+            script.includes("redis.call('GET'") &&
+            !script.includes('cjson.decode')
+          ) {
             return stagingJson;
           }
           return 1; // default for stage's append script
@@ -260,30 +266,26 @@ describe('UnifiedTradingService', () => {
     it('rejects empty staging', async () => {
       whenAtomicCommitReturns(null);
 
-      await expect(
-        service.commit(TEST_USER_ID, 'Empty commit'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.commit(TEST_USER_ID, 'Empty commit')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('rejects empty staging array', async () => {
       whenAtomicCommitReturns(JSON.stringify([]));
 
-      await expect(
-        service.commit(TEST_USER_ID, 'Empty commit'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.commit(TEST_USER_ID, 'Empty commit')).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('rejects blank message', async () => {
       const ops = [{ action: 'BUY', symbol: 'AAPL', qty: '10' }];
       whenAtomicCommitReturns(JSON.stringify(ops));
 
-      await expect(
-        service.commit(TEST_USER_ID, ''),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.commit(TEST_USER_ID, '')).rejects.toThrow(BadRequestException);
 
-      await expect(
-        service.commit(TEST_USER_ID, '   '),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.commit(TEST_USER_ID, '   ')).rejects.toThrow(BadRequestException);
     });
 
     it('persists ledger metadata on the pending commit payload when provided', async () => {
@@ -293,7 +295,9 @@ describe('UnifiedTradingService', () => {
 
       await service.commit(TEST_USER_ID, `analysis run ${runId}`, { ledgerId: 'ledger-1', runId });
 
-      const calls = (mockRedis.setex as unknown as { mock: { calls: Array<[string, number, string]> } }).mock.calls;
+      const calls = (
+        mockRedis.setex as unknown as { mock: { calls: Array<[string, number, string]> } }
+      ).mock.calls;
       const last = calls[calls.length - 1]!;
       expect(last[2]).toContain('"ledgerId":"ledger-1"');
       expect(last[2]).toContain(`"runId":"${runId}"`);
@@ -305,7 +309,9 @@ describe('UnifiedTradingService', () => {
 
       await service.commit(TEST_USER_ID, 'no-metadata commit');
 
-      const calls = (mockRedis.setex as unknown as { mock: { calls: Array<[string, number, string]> } }).mock.calls;
+      const calls = (
+        mockRedis.setex as unknown as { mock: { calls: Array<[string, number, string]> } }
+      ).mock.calls;
       const last = calls[calls.length - 1]!;
       const payload = JSON.parse(last[2]);
       expect(payload.metadata).toBeUndefined();
@@ -404,9 +410,7 @@ describe('UnifiedTradingService', () => {
     it('rejects when no pending commit', async () => {
       mockRedis.getdel.mockResolvedValue(null);
 
-      await expect(service.execute(TEST_USER_ID)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.execute(TEST_USER_ID)).rejects.toThrow(BadRequestException);
     });
 
     it('returns cached ExecuteResult when same Idempotency-Key is reused (no broker re-trigger)', async () => {
@@ -451,9 +455,7 @@ describe('UnifiedTradingService', () => {
         },
       ]);
 
-      await expect(service.execute(TEST_USER_ID)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.execute(TEST_USER_ID)).rejects.toThrow(BadRequestException);
     });
   });
 
@@ -543,9 +545,7 @@ describe('UnifiedTradingService', () => {
     it('delegates to marketDataService.searchTickers', async () => {
       const results = await service.searchAssets(TEST_USER_ID, 'AAPL');
 
-      expect(
-        (mockMarketData.searchTickers as Mock),
-      ).toHaveBeenCalledWith('AAPL');
+      expect(mockMarketData.searchTickers as Mock).toHaveBeenCalledWith('AAPL');
       expect(results).toBeDefined();
     });
   });

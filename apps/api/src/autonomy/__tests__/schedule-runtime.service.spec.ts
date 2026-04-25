@@ -17,12 +17,9 @@ describe('ScheduleRuntimeService.tick', () => {
     };
     trigger = { trigger: vi.fn().mockResolvedValue({ runId: 'run-x' }) };
     events = { append: vi.fn().mockResolvedValue({}) };
-    svc = new ScheduleRuntimeService(
-      schedules as never,
-      trigger as never,
-      events as never,
-      { enabled: true },
-    );
+    svc = new ScheduleRuntimeService(schedules as never, trigger as never, events as never, {
+      enabled: true,
+    });
   });
 
   it('triggers a run for every due schedule and advances nextRunAt', async () => {
@@ -48,12 +45,9 @@ describe('ScheduleRuntimeService.tick', () => {
   });
 
   it('is a no-op when disabled', async () => {
-    svc = new ScheduleRuntimeService(
-      schedules as never,
-      trigger as never,
-      events as never,
-      { enabled: false },
-    );
+    svc = new ScheduleRuntimeService(schedules as never, trigger as never, events as never, {
+      enabled: false,
+    });
     schedules.listDueSchedules.mockResolvedValue([{ id: 'x' }]);
     await svc.tick();
     expect(trigger.trigger).not.toHaveBeenCalled();

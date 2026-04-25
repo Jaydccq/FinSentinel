@@ -312,9 +312,7 @@ describe('PaperTradingEngine', () => {
   // ── 11. setCashAndSetPositions_restoreWalletState ───────────────────────
   it('setCash and setPositions restore wallet state', async () => {
     engine.setCash(50000);
-    engine.setPositions([
-      { ticker: 'AAPL', shares: 20, avgCost: 145, currentPrice: 150 },
-    ]);
+    engine.setPositions([{ ticker: 'AAPL', shares: 20, avgCost: 145, currentPrice: 150 }]);
 
     // Mock for getAccount → getPositions price lookup
     (mockMarketData.getQuote as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -340,9 +338,7 @@ describe('PaperTradingEngine', () => {
 
   // ── 12. getPositionMaps_returnsDeepCopy ─────────────────────────────────
   it('getPositionMaps returns a deep copy', () => {
-    engine.setPositions([
-      { ticker: 'AAPL', shares: 10, avgCost: 150, currentPrice: 155 },
-    ]);
+    engine.setPositions([{ ticker: 'AAPL', shares: 10, avgCost: 150, currentPrice: 155 }]);
 
     const copy1 = engine.getPositionMaps();
     const copy2 = engine.getPositionMaps();

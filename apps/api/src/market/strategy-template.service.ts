@@ -85,9 +85,11 @@ export class StrategyTemplateService {
     }
   }
 
-  private evaluateMeanReversion(
-    snapshot: StrategyIndicatorSnapshot,
-  ): { signal: StrategySignal; confidence: number; reasons: string[] } {
+  private evaluateMeanReversion(snapshot: StrategyIndicatorSnapshot): {
+    signal: StrategySignal;
+    confidence: number;
+    reasons: string[];
+  } {
     const { close, ema200, rsi14, stochasticK14 } = snapshot;
     if (rsi14 === null || stochasticK14 === null || ema200 === null) {
       return {
@@ -123,9 +125,11 @@ export class StrategyTemplateService {
     };
   }
 
-  private evaluateRsiMomentum(
-    snapshot: StrategyIndicatorSnapshot,
-  ): { signal: StrategySignal; confidence: number; reasons: string[] } {
+  private evaluateRsiMomentum(snapshot: StrategyIndicatorSnapshot): {
+    signal: StrategySignal;
+    confidence: number;
+    reasons: string[];
+  } {
     const { rsi14 } = snapshot;
     if (rsi14 === null) {
       return {
@@ -151,9 +155,11 @@ export class StrategyTemplateService {
     };
   }
 
-  private evaluateLongOnlyTrend(
-    snapshot: StrategyIndicatorSnapshot,
-  ): { signal: StrategySignal; confidence: number; reasons: string[] } {
+  private evaluateLongOnlyTrend(snapshot: StrategyIndicatorSnapshot): {
+    signal: StrategySignal;
+    confidence: number;
+    reasons: string[];
+  } {
     const { close, rsi14, sma50, sma200 } = snapshot;
     if (rsi14 === null || sma50 === null || sma200 === null) {
       return {
@@ -302,7 +308,9 @@ export class StrategyTemplateService {
     };
 
     if (parsedBar.h < parsedBar.l) {
-      throw new BadRequestException(`barsJson[${index}] high must be greater than or equal to low.`);
+      throw new BadRequestException(
+        `barsJson[${index}] high must be greater than or equal to low.`,
+      );
     }
 
     return parsedBar;

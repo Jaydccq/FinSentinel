@@ -1,9 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { RiskTeamService } from '../teams/risk-team.service';
-import {
-  AgentEventType,
-  strategyArchivePayloadSchema,
-} from '@finsentinel/shared';
+import { AgentEventType, strategyArchivePayloadSchema } from '@finsentinel/shared';
 
 const intelligenceArchive = strategyArchivePayloadSchema.parse({
   status: 'EVALUATED',
@@ -69,8 +66,7 @@ describe('RiskTeamService.execute', () => {
           allocationGuidance: { notes: '', targets: [] },
           riskLimits: { maxDrawdownPct: 10, stopLossTriggers: [] },
           alertTriggers: [],
-          strategyArchivePayload:
-            roleKey === 'PORTFOLIO_MANAGER' ? pmArchive : undefined,
+          strategyArchivePayload: roleKey === 'PORTFOLIO_MANAGER' ? pmArchive : undefined,
         },
         rawMarkdown: `${roleKey}-md`,
         durationMs: 75,
@@ -134,9 +130,7 @@ describe('RiskTeamService.execute', () => {
         }),
       }),
     );
-    expect(roleExec.run.mock.calls[0][0].systemPrompt).toContain(
-      'advisory evidence only',
-    );
+    expect(roleExec.run.mock.calls[0][0].systemPrompt).toContain('advisory evidence only');
     const eventTypes = events.append.mock.calls.map((c) => c[3]);
     expect(eventTypes).toContain(AgentEventType.RISK_TEAM_STARTED);
     expect(eventTypes).toContain(AgentEventType.RISK_TEAM_COMPLETED);
@@ -207,7 +201,9 @@ describe('RiskTeamService.execute', () => {
       },
       rawMarkdown: `${roleKey}-md`,
     }));
-    checkpoints.findByStage = vi.fn().mockResolvedValue({ structuredOutputJson: { summary: 'prior' } });
+    checkpoints.findByStage = vi
+      .fn()
+      .mockResolvedValue({ structuredOutputJson: { summary: 'prior' } });
 
     await svc.execute({ runId: 'r1', userId: 'u1' });
 

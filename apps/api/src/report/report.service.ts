@@ -77,7 +77,7 @@ export class ReportService {
 
     this.logger.log(
       `Created risk report ${report.id} for portfolio ${data.portfolioId} ` +
-      `(score=${data.riskScore}, level=${data.riskLevel})`,
+        `(score=${data.riskScore}, level=${data.riskLevel})`,
     );
 
     return report;
@@ -144,11 +144,25 @@ export class ReportService {
     }
 
     if (report.factorsJson) {
-      lines.push('## Risk Factors', '', '```json', JSON.stringify(report.factorsJson, null, 2), '```', '');
+      lines.push(
+        '## Risk Factors',
+        '',
+        '```json',
+        JSON.stringify(report.factorsJson, null, 2),
+        '```',
+        '',
+      );
     }
 
     if (report.adviceJson) {
-      lines.push('## Actionable Advice', '', '```json', JSON.stringify(report.adviceJson, null, 2), '```', '');
+      lines.push(
+        '## Actionable Advice',
+        '',
+        '```json',
+        JSON.stringify(report.adviceJson, null, 2),
+        '```',
+        '',
+      );
     }
 
     if (report.disclaimer) {
@@ -167,12 +181,7 @@ export class ReportService {
     const rows = await this.db
       .select({ id: portfolios.id })
       .from(portfolios)
-      .where(
-        and(
-          eq(portfolios.id, portfolioId),
-          eq(portfolios.userId, userId),
-        ),
-      )
+      .where(and(eq(portfolios.id, portfolioId), eq(portfolios.userId, userId)))
       .limit(1);
 
     if (rows.length === 0) {

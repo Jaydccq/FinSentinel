@@ -8,10 +8,17 @@ describe('TableChunker', () => {
     const small = '| h1 | h2 |\n|----|----|\n| a | b |';
     const doc: StructuredDocument = {
       sourceFormat: 'markdown',
-      chunks: [{
-        text: small, modality: 'table', title: 'Revenue',
-        sectionPath: ['Financials'], parentId: null, pageStart: null, pageEnd: null,
-      }],
+      chunks: [
+        {
+          text: small,
+          modality: 'table',
+          title: 'Revenue',
+          sectionPath: ['Financials'],
+          parentId: null,
+          pageStart: null,
+          pageEnd: null,
+        },
+      ],
     };
     const out = chunker.chunk(doc);
     expect(out).toHaveLength(1);
@@ -24,10 +31,17 @@ describe('TableChunker', () => {
     const big = `| h1 | h2 |\n|----|----|\n${rows}`;
     const doc: StructuredDocument = {
       sourceFormat: 'markdown',
-      chunks: [{
-        text: big, modality: 'table', title: 'Big',
-        sectionPath: ['Financials'], parentId: null, pageStart: null, pageEnd: null,
-      }],
+      chunks: [
+        {
+          text: big,
+          modality: 'table',
+          title: 'Big',
+          sectionPath: ['Financials'],
+          parentId: null,
+          pageStart: null,
+          pageEnd: null,
+        },
+      ],
     };
     const out = chunker.chunk(doc);
     expect(out.length).toBeGreaterThan(1);
@@ -43,15 +57,17 @@ describe('TableChunker', () => {
     const chunker = new TableChunker({ chunkSize: 500 });
     const doc: StructuredDocument = {
       sourceFormat: 'markdown',
-      chunks: [{
-        text: 'Some prose that is not a table.',
-        modality: 'text',
-        title: null,
-        sectionPath: [],
-        parentId: null,
-        pageStart: null,
-        pageEnd: null,
-      }],
+      chunks: [
+        {
+          text: 'Some prose that is not a table.',
+          modality: 'text',
+          title: null,
+          sectionPath: [],
+          parentId: null,
+          pageStart: null,
+          pageEnd: null,
+        },
+      ],
     };
     const out = chunker.chunk(doc);
     expect(out).toHaveLength(1);

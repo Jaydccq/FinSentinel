@@ -1,11 +1,11 @@
-'use client'
+'use client';
 
-import { useMemo, useState } from 'react'
-import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
-import { AnimatePresence, motion } from 'framer-motion'
-import { useI18n } from '../hooks/useI18n'
-import LanguageToggle from './LanguageToggle'
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useI18n } from '../hooks/useI18n';
+import LanguageToggle from './LanguageToggle';
 import {
   LayoutDashboard,
   MessageSquare,
@@ -22,8 +22,8 @@ import {
   TrendingUp,
   Bot,
   Bitcoin,
-} from 'lucide-react'
-import type { MessageKey } from '../i18n/messages'
+} from 'lucide-react';
+import type { MessageKey } from '../i18n/messages';
 
 const NAV = [
   { to: '/dashboard', labelKey: 'layout.nav.dashboard', icon: LayoutDashboard },
@@ -37,53 +37,79 @@ const NAV = [
   { to: '/news', labelKey: 'layout.nav.news', icon: Newspaper },
   { to: '/autonomy', labelKey: 'layout.nav.autonomy', icon: Bot },
   { to: '/settings', labelKey: 'layout.nav.settings', icon: Settings },
-] as const
+] as const;
 
-function routeMeta(pathname: string, searchTicker: string | null): {
-  titleKey: MessageKey
-  subtitleKey: MessageKey
-  params?: Record<string, string>
+function routeMeta(
+  pathname: string,
+  searchTicker: string | null,
+): {
+  titleKey: MessageKey;
+  subtitleKey: MessageKey;
+  params?: Record<string, string>;
 } {
   if (pathname === '/stock') {
-    const ticker = searchTicker?.toUpperCase() ?? 'Ticker'
+    const ticker = searchTicker?.toUpperCase() ?? 'Ticker';
     return {
       titleKey: 'layout.meta.stockSnapshot.title',
       subtitleKey: 'layout.meta.stockSnapshot.subtitle',
       params: { ticker },
-    }
+    };
   }
 
   const map: Record<string, { titleKey: MessageKey; subtitleKey: MessageKey }> = {
-    '/dashboard': { titleKey: 'layout.meta.dashboard.title', subtitleKey: 'layout.meta.dashboard.subtitle' },
+    '/dashboard': {
+      titleKey: 'layout.meta.dashboard.title',
+      subtitleKey: 'layout.meta.dashboard.subtitle',
+    },
     '/chat': { titleKey: 'layout.meta.chat.title', subtitleKey: 'layout.meta.chat.subtitle' },
-    '/portfolio': { titleKey: 'layout.meta.portfolio.title', subtitleKey: 'layout.meta.portfolio.subtitle' },
-    '/analysis': { titleKey: 'layout.meta.analysis.title', subtitleKey: 'layout.meta.analysis.subtitle' },
-    '/documents': { titleKey: 'layout.meta.documents.title', subtitleKey: 'layout.meta.documents.subtitle' },
-    '/reports': { titleKey: 'layout.meta.reports.title', subtitleKey: 'layout.meta.reports.subtitle' },
-    '/trading': { titleKey: 'layout.meta.trading.title', subtitleKey: 'layout.meta.trading.subtitle' },
+    '/portfolio': {
+      titleKey: 'layout.meta.portfolio.title',
+      subtitleKey: 'layout.meta.portfolio.subtitle',
+    },
+    '/analysis': {
+      titleKey: 'layout.meta.analysis.title',
+      subtitleKey: 'layout.meta.analysis.subtitle',
+    },
+    '/documents': {
+      titleKey: 'layout.meta.documents.title',
+      subtitleKey: 'layout.meta.documents.subtitle',
+    },
+    '/reports': {
+      titleKey: 'layout.meta.reports.title',
+      subtitleKey: 'layout.meta.reports.subtitle',
+    },
+    '/trading': {
+      titleKey: 'layout.meta.trading.title',
+      subtitleKey: 'layout.meta.trading.subtitle',
+    },
     '/crypto': { titleKey: 'layout.meta.crypto.title', subtitleKey: 'layout.meta.crypto.subtitle' },
     '/news': { titleKey: 'layout.meta.news.title', subtitleKey: 'layout.meta.news.subtitle' },
-    '/autonomy': { titleKey: 'layout.meta.autonomy.title', subtitleKey: 'layout.meta.autonomy.subtitle' },
-    '/settings': { titleKey: 'layout.meta.settings.title', subtitleKey: 'layout.meta.settings.subtitle' },
-  }
+    '/autonomy': {
+      titleKey: 'layout.meta.autonomy.title',
+      subtitleKey: 'layout.meta.autonomy.subtitle',
+    },
+    '/settings': {
+      titleKey: 'layout.meta.settings.title',
+      subtitleKey: 'layout.meta.settings.subtitle',
+    },
+  };
 
-  return map[pathname] ?? {
-    titleKey: 'layout.meta.default.title',
-    subtitleKey: 'layout.meta.default.subtitle',
-  }
+  return (
+    map[pathname] ?? {
+      titleKey: 'layout.meta.default.title',
+      subtitleKey: 'layout.meta.default.subtitle',
+    }
+  );
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  const { t } = useI18n()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const tickerParam = searchParams.get('ticker')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { t } = useI18n();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tickerParam = searchParams.get('ticker');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const meta = useMemo(
-    () => routeMeta(pathname, tickerParam),
-    [pathname, tickerParam],
-  )
+  const meta = useMemo(() => routeMeta(pathname, tickerParam), [pathname, tickerParam]);
 
   const sidebarContent = (
     <>
@@ -91,15 +117,19 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-2.5">
           <Shield size={18} className="text-blue-500 shrink-0" aria-hidden="true" />
           <div>
-            <p className="font-semibold text-lg leading-none tracking-tight text-[var(--text-primary)]">FinSentinel</p>
-            <p className="mt-0.5 text-[10px] tracking-[0.1em] uppercase text-[var(--text-muted)]">{t('layout.sidebar.riskIntelligence')}</p>
+            <p className="font-semibold text-lg leading-none tracking-tight text-[var(--text-primary)]">
+              FinSentinel
+            </p>
+            <p className="mt-0.5 text-[10px] tracking-[0.1em] uppercase text-[var(--text-muted)]">
+              {t('layout.sidebar.riskIntelligence')}
+            </p>
           </div>
         </div>
       </div>
 
       <nav className="flex-1 px-2 py-3 space-y-0.5" aria-label={t('layout.sidebar.mainNavigation')}>
         {NAV.map(({ to, labelKey, icon: Icon }) => {
-          const isActive = pathname === to || pathname.startsWith(to + '/')
+          const isActive = pathname === to || pathname.startsWith(to + '/');
           return (
             <Link
               key={to}
@@ -114,11 +144,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Icon
                 size={15}
                 aria-hidden="true"
-                className={isActive ? 'text-blue-400' : 'text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'}
+                className={
+                  isActive
+                    ? 'text-blue-400'
+                    : 'text-[var(--text-muted)] group-hover:text-[var(--text-secondary)]'
+                }
               />
               <span className="font-medium">{t(labelKey)}</span>
             </Link>
-          )
+          );
         })}
       </nav>
 
@@ -126,7 +160,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <LanguageToggle />
       </div>
     </>
-  )
+  );
 
   return (
     <div className="app-shell text-[var(--text-primary)]">
@@ -173,7 +207,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   <ChevronRight size={11} aria-hidden="true" />
                   <span>{t(meta.titleKey, meta.params)}</span>
                 </div>
-                <p className="text-xs text-[var(--text-secondary)] truncate">{t(meta.subtitleKey)}</p>
+                <p className="text-xs text-[var(--text-secondary)] truncate">
+                  {t(meta.subtitleKey)}
+                </p>
               </div>
 
               <LanguageToggle compact />
@@ -202,5 +238,5 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </div>
-  )
+  );
 }

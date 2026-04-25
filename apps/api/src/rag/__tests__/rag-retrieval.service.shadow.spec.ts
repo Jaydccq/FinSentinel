@@ -98,8 +98,9 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
     const mockEmbedding = {
       // First call: single-stage (primary) — succeeds
       // Subsequent calls: shadow's dense-fallback inside searchMultiStage — also fails
-      embedQuery: vi.fn()
-        .mockResolvedValueOnce([1, 0])  // single-stage primary call
+      embedQuery: vi
+        .fn()
+        .mockResolvedValueOnce([1, 0]) // single-stage primary call
         .mockRejectedValue(new Error('embed also fails in shadow')),
     };
 
@@ -124,7 +125,10 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
       providers: [
         RagRetrievalService,
         { provide: RagEmbeddingService, useValue: mockEmbedding },
-        { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([makeSingleStageChunk()]) } },
+        {
+          provide: RagChunkStoreService,
+          useValue: { search: vi.fn().mockResolvedValue([makeSingleStageChunk()]) },
+        },
         {
           provide: MetricsService,
           useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn() },
@@ -133,7 +137,7 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
           provide: ConfigService,
           useValue: {
             get: makeConfigGet({
-              'RAG_MULTI_STAGE_ENABLED': 'true',
+              RAG_MULTI_STAGE_ENABLED: 'true',
               'rag.rollout.mode': 'shadow',
               'rag.rollout.shadowSampleRate': 1.0,
             }),
@@ -149,7 +153,10 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
     }).compile();
 
     const svc = module.get(RagRetrievalService);
-    const results = await svc.search({ query: 'test query', queryClass: 'factoid' } as RagSearchOptions);
+    const results = await svc.search({
+      query: 'test query',
+      queryClass: 'factoid',
+    } as RagSearchOptions);
 
     // User gets single-stage results — no 5xx propagated
     expect(results).toHaveLength(1);
@@ -163,7 +170,10 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
 
     // Shadow ran and recorded a comparison row with multiStageError set
     expect(mockTrace.recordShadowComparison).toHaveBeenCalledOnce();
-    const arg = (mockTrace.recordShadowComparison as Mock).mock.calls[0][0] as Record<string, unknown>;
+    const arg = (mockTrace.recordShadowComparison as Mock).mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
     expect(arg['multiStageError']).not.toBeNull();
     expect(typeof arg['multiStageError']).toBe('string');
     // Single-stage chunks populated
@@ -186,8 +196,14 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
     const module = await Test.createTestingModule({
       providers: [
         RagRetrievalService,
-        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
-        { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([makeSingleStageChunk()]) } },
+        {
+          provide: RagEmbeddingService,
+          useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) },
+        },
+        {
+          provide: RagChunkStoreService,
+          useValue: { search: vi.fn().mockResolvedValue([makeSingleStageChunk()]) },
+        },
         {
           provide: MetricsService,
           useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn() },
@@ -196,7 +212,7 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
           provide: ConfigService,
           useValue: {
             get: makeConfigGet({
-              'RAG_MULTI_STAGE_ENABLED': 'true',
+              RAG_MULTI_STAGE_ENABLED: 'true',
               'rag.rollout.mode': 'shadow',
               'rag.rollout.shadowSampleRate': 1.0,
             }),
@@ -218,7 +234,10 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
 
     // Stub row must be written for timed_out
     expect(mockTrace.recordShadowComparison).toHaveBeenCalledOnce();
-    const arg = (mockTrace.recordShadowComparison as Mock).mock.calls[0][0] as Record<string, unknown>;
+    const arg = (mockTrace.recordShadowComparison as Mock).mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
     expect(arg['shadowTimedOut']).toBe(true);
     expect(arg['shadowDroppedBackpressure']).toBe(false);
     expect(arg['multiStageError']).toBe('timed_out');
@@ -239,8 +258,14 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
     const module = await Test.createTestingModule({
       providers: [
         RagRetrievalService,
-        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
-        { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([makeSingleStageChunk()]) } },
+        {
+          provide: RagEmbeddingService,
+          useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) },
+        },
+        {
+          provide: RagChunkStoreService,
+          useValue: { search: vi.fn().mockResolvedValue([makeSingleStageChunk()]) },
+        },
         {
           provide: MetricsService,
           useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn() },
@@ -249,7 +274,7 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
           provide: ConfigService,
           useValue: {
             get: makeConfigGet({
-              'RAG_MULTI_STAGE_ENABLED': 'true',
+              RAG_MULTI_STAGE_ENABLED: 'true',
               'rag.rollout.mode': 'shadow',
               'rag.rollout.shadowSampleRate': 1.0,
             }),
@@ -268,7 +293,10 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
     await svc.search({ query: 'test query' } as RagSearchOptions);
 
     expect(mockTrace.recordShadowComparison).toHaveBeenCalledOnce();
-    const arg = (mockTrace.recordShadowComparison as Mock).mock.calls[0][0] as Record<string, unknown>;
+    const arg = (mockTrace.recordShadowComparison as Mock).mock.calls[0][0] as Record<
+      string,
+      unknown
+    >;
     expect(arg['shadowDroppedBackpressure']).toBe(true);
     expect(arg['shadowTimedOut']).toBe(false);
     expect(arg['multiStageError']).toBe('dropped_backpressure');
@@ -282,7 +310,8 @@ describe('RagRetrievalService shadow mode (R7.3)', () => {
 
 describe('RagRetrievalService canary mode (R7.3)', () => {
   it('routes to multi_stage when gate picks multi_stage', async () => {
-    const { mockPlanner, mockOrchestrator, mockReranker, mockPacker } = makeMultiStageMocks('ms-chunk-1');
+    const { mockPlanner, mockOrchestrator, mockReranker, mockPacker } =
+      makeMultiStageMocks('ms-chunk-1');
 
     const mockGate = {
       decide: vi.fn().mockReturnValue({
@@ -296,8 +325,14 @@ describe('RagRetrievalService canary mode (R7.3)', () => {
     const module = await Test.createTestingModule({
       providers: [
         RagRetrievalService,
-        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
-        { provide: RagChunkStoreService, useValue: { search: vi.fn().mockResolvedValue([makeSingleStageChunk()]) } },
+        {
+          provide: RagEmbeddingService,
+          useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) },
+        },
+        {
+          provide: RagChunkStoreService,
+          useValue: { search: vi.fn().mockResolvedValue([makeSingleStageChunk()]) },
+        },
         {
           provide: MetricsService,
           useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn() },
@@ -306,7 +341,7 @@ describe('RagRetrievalService canary mode (R7.3)', () => {
           provide: ConfigService,
           useValue: {
             get: makeConfigGet({
-              'RAG_MULTI_STAGE_ENABLED': 'true',
+              RAG_MULTI_STAGE_ENABLED: 'true',
               'rag.rollout.mode': 'canary',
             }),
           },
@@ -351,7 +386,10 @@ describe('RagRetrievalService canary mode (R7.3)', () => {
     const module = await Test.createTestingModule({
       providers: [
         RagRetrievalService,
-        { provide: RagEmbeddingService, useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) } },
+        {
+          provide: RagEmbeddingService,
+          useValue: { embedQuery: vi.fn().mockResolvedValue([1, 0]) },
+        },
         { provide: RagChunkStoreService, useValue: mockChunkStore },
         {
           provide: MetricsService,
@@ -361,7 +399,7 @@ describe('RagRetrievalService canary mode (R7.3)', () => {
           provide: ConfigService,
           useValue: {
             get: makeConfigGet({
-              'RAG_MULTI_STAGE_ENABLED': 'true',
+              RAG_MULTI_STAGE_ENABLED: 'true',
               'rag.rollout.mode': 'canary',
             }),
           },

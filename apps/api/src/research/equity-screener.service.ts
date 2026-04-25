@@ -73,9 +73,7 @@ export class EquityScreenerService {
 
   // ── Market Movers ──────────────────────────────────────────────────────
 
-  async getMarketMovers(
-    type: 'gainers' | 'losers' | 'most_active',
-  ): Promise<ScreenerResult[]> {
+  async getMarketMovers(type: 'gainers' | 'losers' | 'most_active'): Promise<ScreenerResult[]> {
     const cacheKey = `research:movers:${type}`;
 
     const cached = await this.redis.get(cacheKey);
@@ -93,9 +91,7 @@ export class EquityScreenerService {
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(
-        `Polygon API error: ${response.status} ${response.statusText}`,
-      );
+      throw new Error(`Polygon API error: ${response.status} ${response.statusText}`);
     }
 
     const data = (await response.json()) as PolygonSnapshotResponse;
@@ -149,9 +145,7 @@ export class EquityScreenerService {
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(
-        `Polygon API error: ${response.status} ${response.statusText}`,
-      );
+      throw new Error(`Polygon API error: ${response.status} ${response.statusText}`);
     }
 
     const data = (await response.json()) as PolygonTickersResponse;
@@ -192,10 +186,7 @@ export class EquityScreenerService {
     });
   }
 
-  async searchStocks(
-    query: string,
-    limit: number = 10,
-  ): Promise<ScreenerResult[]> {
+  async searchStocks(query: string, limit: number = 10): Promise<ScreenerResult[]> {
     return this.screenTickers({
       search: query,
       limit,

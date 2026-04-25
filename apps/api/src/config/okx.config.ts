@@ -10,6 +10,5 @@ export const okxConfig = registerAs('okx', () => ({
   websocketEnabled: process.env['OKX_WEBSOCKET_ENABLED'] !== 'false',
   websocketUrl: process.env['OKX_WEBSOCKET_URL'],
   watchPairs: process.env['OKX_WATCH_PAIRS']?.split(',').filter(Boolean) ?? [],
-  rateLimitPerSecond:
-    Number(process.env['OKX_RATE_LIMIT_PER_SECOND']) || 10,
+  rateLimitPerSecond: Number(process.env['OKX_RATE_LIMIT_PER_SECOND']) || 10,
 }));

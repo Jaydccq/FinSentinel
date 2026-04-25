@@ -1,4 +1,4 @@
-import { apiFetch } from './client'
+import { apiFetch } from './client';
 import type {
   SaveWatchlistRequest,
   UpdateWatchlistCategoryRequest,
@@ -6,7 +6,7 @@ import type {
   WatchlistCategoryResponse,
   WatchlistItemResponse,
   WatchlistOverviewResponse,
-} from '@finsentinel/shared'
+} from '@finsentinel/shared';
 
 /**
  * Watchlist HTTP client. Backed by the NestJS WatchlistController which
@@ -25,10 +25,7 @@ export const watchlistApi = {
       body: JSON.stringify(body),
     }),
 
-  updateItem: (
-    id: string,
-    patch: UpdateWatchlistItemRequest,
-  ): Promise<WatchlistItemResponse> =>
+  updateItem: (id: string, patch: UpdateWatchlistItemRequest): Promise<WatchlistItemResponse> =>
     apiFetch(`/watchlist/items/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(patch),
@@ -48,7 +45,7 @@ export const watchlistApi = {
 
   deleteCategory: (id: string): Promise<void> =>
     apiFetch(`/watchlist/categories/${id}`, { method: 'DELETE' }),
-}
+};
 
 export type {
   SaveWatchlistRequest,
@@ -57,4 +54,4 @@ export type {
   WatchlistCategoryResponse,
   WatchlistItemResponse,
   WatchlistOverviewResponse,
-}
+};

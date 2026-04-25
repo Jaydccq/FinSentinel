@@ -1,9 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type {
-  MarketQuote,
-  MarketBar,
-  TickerSearchResult,
-} from '@finsentinel/shared';
+import type { MarketQuote, MarketBar, TickerSearchResult } from '@finsentinel/shared';
 import { Contract, SecurityType } from '@finsentinel/shared';
 import type { MarketDataProvider } from '../interfaces/market-data-provider';
 
@@ -91,9 +87,7 @@ export class PolygonMarketDataProvider implements MarketDataProvider {
 
     // Use UTC calendar math so CI and local machines produce the same Polygon range.
     const now = new Date();
-    const to = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
+    const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const from = new Date(to);
     from.setUTCDate(from.getUTCDate() - days);
 
@@ -109,9 +103,7 @@ export class PolygonMarketDataProvider implements MarketDataProvider {
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(
-        `Polygon API error: ${response.status} ${response.statusText}`,
-      );
+      throw new Error(`Polygon API error: ${response.status} ${response.statusText}`);
     }
 
     const data = (await response.json()) as PolygonAggResponse;
@@ -136,13 +128,8 @@ export class PolygonMarketDataProvider implements MarketDataProvider {
    *
    * See https://polygon.io/docs/stocks/get_v3_reference_tickers
    */
-  async searchTickers(
-    query: string,
-    limit: number,
-  ): Promise<TickerSearchResult[]> {
-    const url = new URL(
-      `${PolygonMarketDataProvider.BASE_URL}/v3/reference/tickers`,
-    );
+  async searchTickers(query: string, limit: number): Promise<TickerSearchResult[]> {
+    const url = new URL(`${PolygonMarketDataProvider.BASE_URL}/v3/reference/tickers`);
     url.searchParams.set('search', query);
     url.searchParams.set('active', 'true');
     url.searchParams.set('limit', String(limit));

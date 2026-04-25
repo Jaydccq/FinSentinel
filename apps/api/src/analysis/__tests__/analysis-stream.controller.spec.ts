@@ -48,7 +48,9 @@ describe('AnalysisStreamController', () => {
   });
 
   it('replays run events after the cursor before subscribing live', async () => {
-    const messages = await firstValueFrom(controller.stream('r1', '6', user).pipe(take(1), toArray()));
+    const messages = await firstValueFrom(
+      controller.stream('r1', '6', user).pipe(take(1), toArray()),
+    );
 
     expect(runs.getForUser).toHaveBeenCalledWith('u1', 'r1');
     expect(events.listByAggregateAfter).toHaveBeenCalledWith(

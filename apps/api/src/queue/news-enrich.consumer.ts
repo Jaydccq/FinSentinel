@@ -111,10 +111,7 @@ export class NewsEnrichConsumer implements OnModuleInit, OnModuleDestroy {
     }
 
     // 3. Classify sentiment
-    const sentiment = await this.sentimentService.classify(
-      item.title,
-      item.summary,
-    );
+    const sentiment = await this.sentimentService.classify(item.title, item.summary);
 
     // 4. Vectorize scraped content for RAG (if we got full text)
     let documentId: string | undefined;
@@ -123,21 +120,15 @@ export class NewsEnrichConsumer implements OnModuleInit, OnModuleDestroy {
         // News items carry no filename signal, so the R4.0 issuer/ticker
         // extractor relies on `title` as its docTitle input (no
         // `__originalFileName` sentinel is passed on this path).
-        const chunkCount = await this.vectorService.vectorize(
-          newsItemId,
-          fullContent,
-          {
-            doc_type: 'NEWS',
-            sector: '',
-            region_id: 'US',
-            source: item.source,
-            date: new Date().toISOString().split('T')[0]!,
-            title: item.title,
-          },
-        );
-        this.logger.log(
-          `News item ${newsItemId} vectorized: ${chunkCount} chunks`,
-        );
+        const chunkCount = await this.vectorService.vectorize(newsItemId, fullContent, {
+          doc_type: 'NEWS',
+          sector: '',
+          region_id: 'US',
+          source: item.source,
+          date: new Date().toISOString().split('T')[0]!,
+          title: item.title,
+        });
+        this.logger.log(`News item ${newsItemId} vectorized: ${chunkCount} chunks`);
       } catch (err) {
         this.logger.warn(
           `Vectorization failed for news item ${newsItemId}: ${err instanceof Error ? err.message : String(err)}`,
@@ -156,8 +147,6 @@ export class NewsEnrichConsumer implements OnModuleInit, OnModuleDestroy {
       })
       .where(eq(newsItems.id, newsItemId));
 
-    this.logger.log(
-      `News item ${newsItemId} enriched: sentiment=${sentiment}`,
-    );
+    this.logger.log(`News item ${newsItemId} enriched: sentiment=${sentiment}`);
   }
 }

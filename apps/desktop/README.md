@@ -49,6 +49,7 @@ Output: `src-tauri/target/release/bundle/` (format varies by host OS).
 ## Data location
 
 User DB lives at the OS app-data dir:
+
 - macOS: `~/Library/Application Support/com.finsentinel.desktop/finsentinel-private.db`
 - Windows: `%APPDATA%\com.finsentinel.desktop\finsentinel-private.db`
 - Linux: `~/.local/share/com.finsentinel.desktop/finsentinel-private.db`

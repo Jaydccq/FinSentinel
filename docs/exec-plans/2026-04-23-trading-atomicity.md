@@ -11,6 +11,7 @@
 ## Background
 
 Verified problems against `apps/api/src/trading/unified-trading.service.ts`:
+
 - Lines 156-172: `getStagingArea` (GET) and `clearStagingArea` (DEL) are separate Redis ops; concurrent `stage()` between them is silently lost.
 - Lines 218-220: `hashInput = ${message}|${ops}|${new Date().toISOString()}` — retries produce different hashes.
 - `commitRequestSchema` at `packages/shared/src/schemas/trading.ts:24` has no `idempotencyKey` field.
@@ -26,17 +27,17 @@ Codex consult (2026-04-23) decided: header-based `Idempotency-Key` (Stripe style
 
 ## File Map
 
-| Path | Role |
-|------|------|
-| `packages/shared/src/utils/stable-stringify.ts` | NEW — sort-keyed JSON stringify, used both at commit and re-verify. |
-| `packages/shared/src/utils/__tests__/stable-stringify.test.ts` | NEW — unit tests. |
-| `packages/shared/src/utils/index.ts` | MODIFY — export `stableStringify`. |
-| `packages/shared/src/schemas/trading.ts` | MODIFY — keep `commitRequestSchema` body unchanged; add `idempotencyKey` to internal `CommitInput` type only. |
-| `apps/api/src/common/decorators/idempotency-key.decorator.ts` | NEW — Nest param decorator that reads the `Idempotency-Key` header. |
-| `apps/api/src/trading/unified-trading.service.ts` | MODIFY — Lua atomic commit, canonical hash, idempotency cache, peek-not-getdel logic. |
-| `apps/api/src/trading/trading.controller.ts` | MODIFY — accept `Idempotency-Key` header for `commit` and `execute`. |
-| `apps/api/src/trading/__tests__/unified-trading.service.spec.ts` | MODIFY — add new test cases (concurrent stage, idempotent commit, different keys, cached execute). |
-| `apps/api/src/trading/__tests__/unified-trading.integration.spec.ts` | NEW — uses real Redis on :6379, in-memory Drizzle stub, full lifecycle. |
+| Path                                                                 | Role                                                                                                          |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `packages/shared/src/utils/stable-stringify.ts`                      | NEW — sort-keyed JSON stringify, used both at commit and re-verify.                                           |
+| `packages/shared/src/utils/__tests__/stable-stringify.test.ts`       | NEW — unit tests.                                                                                             |
+| `packages/shared/src/utils/index.ts`                                 | MODIFY — export `stableStringify`.                                                                            |
+| `packages/shared/src/schemas/trading.ts`                             | MODIFY — keep `commitRequestSchema` body unchanged; add `idempotencyKey` to internal `CommitInput` type only. |
+| `apps/api/src/common/decorators/idempotency-key.decorator.ts`        | NEW — Nest param decorator that reads the `Idempotency-Key` header.                                           |
+| `apps/api/src/trading/unified-trading.service.ts`                    | MODIFY — Lua atomic commit, canonical hash, idempotency cache, peek-not-getdel logic.                         |
+| `apps/api/src/trading/trading.controller.ts`                         | MODIFY — accept `Idempotency-Key` header for `commit` and `execute`.                                          |
+| `apps/api/src/trading/__tests__/unified-trading.service.spec.ts`     | MODIFY — add new test cases (concurrent stage, idempotent commit, different keys, cached execute).            |
+| `apps/api/src/trading/__tests__/unified-trading.integration.spec.ts` | NEW — uses real Redis on :6379, in-memory Drizzle stub, full lifecycle.                                       |
 
 ## Tasks
 
@@ -45,6 +46,7 @@ Codex consult (2026-04-23) decided: header-based `Idempotency-Key` (Stripe style
 ### Task 1: stableStringify utility
 
 **Files:**
+
 - Create: `packages/shared/src/utils/stable-stringify.ts`
 - Create: `packages/shared/src/utils/__tests__/stable-stringify.test.ts`
 - Modify: `packages/shared/src/utils/index.ts`
@@ -93,6 +95,7 @@ describe('stableStringify', () => {
 ```
 pnpm --filter @finsentinel/shared test -- stable-stringify
 ```
+
 Expected: FAIL with `Cannot find module '../stable-stringify'`.
 
 - [ ] **Step 1.3 — Write minimal implementation**
@@ -133,6 +136,7 @@ export { stableStringify } from './stable-stringify';
 ```
 pnpm --filter @finsentinel/shared test -- stable-stringify
 ```
+
 Expected: PASS, all 5 cases.
 
 - [ ] **Step 1.6 — Commit**
@@ -149,6 +153,7 @@ git commit -m "feat(shared): add stableStringify util for deterministic hashing"
 ### Task 2: IdempotencyKey decorator
 
 **Files:**
+
 - Create: `apps/api/src/common/decorators/idempotency-key.decorator.ts`
 - Create: `apps/api/src/common/decorators/__tests__/idempotency-key.decorator.test.ts`
 
@@ -191,6 +196,7 @@ describe('extractIdempotencyKey', () => {
 ```
 pnpm --filter @finsentinel/api test -- idempotency-key
 ```
+
 Expected: FAIL — module not found.
 
 - [ ] **Step 2.3 — Write decorator**
@@ -212,9 +218,7 @@ interface RequestLike {
  */
 export function extractIdempotencyKey(req: RequestLike): string | undefined {
   // Express lowercases header names; Fastify and others may not.
-  const raw =
-    req.headers[HEADER] ??
-    req.headers['Idempotency-Key' as keyof typeof req.headers];
+  const raw = req.headers[HEADER] ?? req.headers['Idempotency-Key' as keyof typeof req.headers];
   if (raw === undefined) return undefined;
   if (Array.isArray(raw)) {
     const first = raw.find((v) => typeof v === 'string' && v.length > 0);
@@ -240,6 +244,7 @@ export const IdempotencyKey = createParamDecorator(
 ```
 pnpm --filter @finsentinel/api test -- idempotency-key
 ```
+
 Expected: PASS, all 5 cases.
 
 - [ ] **Step 2.5 — Commit**
@@ -255,6 +260,7 @@ git commit -m "feat(api): add Idempotency-Key header decorator"
 ### Task 3: Internal CommitInput type with idempotencyKey
 
 **Files:**
+
 - Modify: `packages/shared/src/schemas/trading.ts`
 
 - [ ] **Step 3.1 — Read current schema**
@@ -286,6 +292,7 @@ export interface CommitInput {
 ```
 pnpm --filter @finsentinel/shared build
 ```
+
 Expected: build succeeds.
 
 - [ ] **Step 3.4 — Commit**
@@ -300,6 +307,7 @@ git commit -m "feat(shared): add internal CommitInput type for trading idempoten
 ### Task 4: Refactor commit() — Lua atomic + canonical hash + idempotencyKey
 
 **Files:**
+
 - Modify: `apps/api/src/trading/unified-trading.service.ts`
 
 - [ ] **Step 4.1 — Add a failing test (concurrent stage during commit)**
@@ -319,9 +327,18 @@ describe('atomic commit (Task 4)', () => {
     const fakeRedis = {
       ...createMockRedis(),
       get: vi.fn(async (k: string) => store.get(k) ?? null),
-      set: vi.fn(async (k: string, v: string) => { store.set(k, v); return 'OK'; }),
-      setex: vi.fn(async (k: string, _ttl: number, v: string) => { store.set(k, v); return 'OK'; }),
-      del: vi.fn(async (k: string) => { store.delete(k); return 1; }),
+      set: vi.fn(async (k: string, v: string) => {
+        store.set(k, v);
+        return 'OK';
+      }),
+      setex: vi.fn(async (k: string, _ttl: number, v: string) => {
+        store.set(k, v);
+        return 'OK';
+      }),
+      del: vi.fn(async (k: string) => {
+        store.delete(k);
+        return 1;
+      }),
       eval: vi.fn(async (_script: string, _numKeys: number, ...args: string[]) => {
         // Lua-style atomic: read staging, write pending, delete staging.
         const stagingKey = args[0];
@@ -361,6 +378,7 @@ describe('atomic commit (Task 4)', () => {
 ```
 pnpm --filter @finsentinel/api test -- unified-trading.service
 ```
+
 Expected: FAIL — current `commit()` doesn't use `eval`, the fake `eval` is never called, ordering not guaranteed.
 
 - [ ] **Step 4.3 — Add Lua script + canonical hash to service**
@@ -400,10 +418,8 @@ return staging
 ```ts
 const stagingKey = (userId: string) => `uta:staging:{${userId}}`;
 const pendingKey = (userId: string) => `uta:pending:{${userId}}`;
-const idempotencyKeyName = (userId: string, key: string) =>
-  `uta:idem:{${userId}}:${key}`;
-const executedKeyName = (userId: string, key: string) =>
-  `uta:executed:{${userId}}:${key}`;
+const idempotencyKeyName = (userId: string, key: string) => `uta:idem:{${userId}}:${key}`;
+const executedKeyName = (userId: string, key: string) => `uta:executed:{${userId}}:${key}`;
 ```
 
 Replace the four call sites in `stage`, `getStagingArea`, `clearStagingArea`, and `commit`/`execute` to use these helpers. Keep `STAGING_KEY_PREFIX` constant only as a fallback for any external migration; otherwise remove it.
@@ -511,6 +527,7 @@ interface CommitData {
 ```
 pnpm --filter @finsentinel/api test -- unified-trading.service
 ```
+
 Expected: the new test passes; existing tests still pass.
 
 If existing tests break because they expected timestamp in hash, update those expectations: hash is now deterministic from `(idempotencyKey ?? autoKey | ops | message)`.
@@ -528,6 +545,7 @@ git commit -m "feat(trading): atomic commit via Lua + canonical hash + idempoten
 ### Task 5: Idempotent execute() — peek + cache result
 
 **Files:**
+
 - Modify: `apps/api/src/trading/unified-trading.service.ts`
 - Modify: `apps/api/src/trading/__tests__/unified-trading.service.spec.ts`
 
@@ -622,6 +640,7 @@ async execute(userId: string, idempotencyKey?: string): Promise<ExecuteResult> {
 ```
 pnpm --filter @finsentinel/api test -- unified-trading.service
 ```
+
 Expected: cache-hit test passes, no broker re-call.
 
 - [ ] **Step 5.5 — Commit**
@@ -637,6 +656,7 @@ git commit -m "feat(trading): cache execute result by Idempotency-Key (no broker
 ### Task 6: Wire Idempotency-Key header through controller
 
 **Files:**
+
 - Modify: `apps/api/src/trading/trading.controller.ts`
 - Modify: `apps/api/src/trading/__tests__/trading.controller.spec.ts`
 
@@ -710,6 +730,7 @@ git commit -m "feat(trading): accept Idempotency-Key header on commit/execute"
 ### Task 7: Unit test — same idempotencyKey produces same hash
 
 **Files:**
+
 - Modify: `apps/api/src/trading/__tests__/unified-trading.service.spec.ts`
 
 - [ ] **Step 7.1 — Add test**
@@ -770,6 +791,7 @@ git commit -m "test(trading): idempotencyKey commit collision/distinctness"
 ### Task 8: Integration test against real Redis
 
 **Files:**
+
 - Create: `apps/api/src/trading/__tests__/unified-trading.integration.spec.ts`
 
 - [ ] **Step 8.1 — Verify Redis is up**
@@ -777,6 +799,7 @@ git commit -m "test(trading): idempotencyKey commit collision/distinctness"
 ```
 redis-cli -h localhost -p 6379 ping
 ```
+
 Expected: `PONG`. If not, `cd /Users/hongxichen/Desktop/FinSentinel && docker compose up -d redis`.
 
 - [ ] **Step 8.2 — Write integration spec**
@@ -812,28 +835,41 @@ describe('UnifiedTradingService integration (real Redis)', () => {
     if (keys.length) await redis.del(...keys);
 
     placeOrder = vi.fn().mockResolvedValue({
-      success: true, filledQty: '1', avgPrice: '100',
+      success: true,
+      filledQty: '1',
+      avgPrice: '100',
     });
 
     // Build minimal in-memory wallet store (mock Drizzle DB).
     let wallet = {
-      id: 'w1', userId: TEST_USER,
-      initialCapital: '100000.00', cashBalance: '100000.00',
-      tradingMode: TradingMode.PAPER, positions: [], commitHistory: [],
-      createdAt: new Date(), updatedAt: new Date(),
+      id: 'w1',
+      userId: TEST_USER,
+      initialCapital: '100000.00',
+      cashBalance: '100000.00',
+      tradingMode: TradingMode.PAPER,
+      positions: [],
+      commitHistory: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
     const db = {
-      select: () => ({ from: () => ({ where: () => ({ limit: () => Promise.resolve([wallet]) }) }) }),
+      select: () => ({
+        from: () => ({ where: () => ({ limit: () => Promise.resolve([wallet]) }) }),
+      }),
       insert: () => ({ values: () => ({ returning: () => Promise.resolve([wallet]) }) }),
-      update: () => ({ set: (patch: any) => ({ where: () => Promise.resolve(wallet = { ...wallet, ...patch }) }) }),
+      update: () => ({
+        set: (patch: any) => ({ where: () => Promise.resolve((wallet = { ...wallet, ...patch })) }),
+      }),
     } as any;
 
     const brokerRegistry = {
       resolve: () => ({
         placeOrder,
         engine: () => ({
-          setCash: vi.fn(), setPositions: vi.fn(),
-          getCash: () => 99900, getPositionMaps: () => [],
+          setCash: vi.fn(),
+          setPositions: vi.fn(),
+          getCash: () => 99900,
+          getPositionMaps: () => [],
         }),
       }),
     } as unknown as BrokerRegistry;
@@ -872,6 +908,7 @@ describe('UnifiedTradingService integration (real Redis)', () => {
 ```
 pnpm --filter @finsentinel/api test -- unified-trading.integration
 ```
+
 Expected: PASS.
 
 - [ ] **Step 8.4 — Commit**
@@ -890,6 +927,7 @@ git commit -m "test(trading): integration spec for atomic commit + cached execut
 ```
 pnpm --filter @finsentinel/api test
 ```
+
 Expected: green. If any pre-existing trading test broke because it asserted the old timestamp-in-hash behavior, update those expectations now (they were testing implementation, not behavior).
 
 - [ ] **Step 9.2 — Typecheck**

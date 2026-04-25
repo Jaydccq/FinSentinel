@@ -96,8 +96,7 @@ describe('RateLimiterService', () => {
     // Verify the eval call passes the correct key, args, etc.
     expect(mockRedis.eval).toHaveBeenCalledTimes(1);
 
-    const [script, keyCount, key, windowSecs, limit] =
-      mockRedis.eval.mock.calls[0]!;
+    const [script, keyCount, key, windowSecs, limit] = mockRedis.eval.mock.calls[0]!;
 
     expect(typeof script).toBe('string');
     expect(keyCount).toBe(1);

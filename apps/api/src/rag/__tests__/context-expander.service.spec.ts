@@ -41,7 +41,11 @@ describe('ContextExpanderService — flag off', () => {
     const service = new ContextExpanderService(db as any, makeConfigService(false) as any);
 
     const candidates = [makeCandidate({ chunkId: 'c1' })];
-    const result = await service.expand(candidates, { queryClass: 'analytical', neighborChunks: 1, fetchParentSection: true });
+    const result = await service.expand(candidates, {
+      queryClass: 'analytical',
+      neighborChunks: 1,
+      fetchParentSection: true,
+    });
 
     expect(result).toBe(candidates);
     expect(db.execute).not.toHaveBeenCalled();
@@ -59,8 +63,14 @@ describe('ContextExpanderService — expansion enabled', () => {
 
   it('returns input unchanged when DB returns empty expansion set', async () => {
     db.execute.mockResolvedValue([]);
-    const candidates = [makeCandidate({ chunkId: 'c1', metadata: { chunk_index: 5, section_path: '2.3 FX' } })];
-    const result = await service.expand(candidates, { queryClass: 'analytical', neighborChunks: 1, fetchParentSection: true });
+    const candidates = [
+      makeCandidate({ chunkId: 'c1', metadata: { chunk_index: 5, section_path: '2.3 FX' } }),
+    ];
+    const result = await service.expand(candidates, {
+      queryClass: 'analytical',
+      neighborChunks: 1,
+      fetchParentSection: true,
+    });
 
     // Original candidate still first, no expansion appended
     expect(result).toHaveLength(1);
@@ -90,7 +100,11 @@ describe('ContextExpanderService — expansion enabled', () => {
       }),
     ];
 
-    const result = await service.expand(candidates, { queryClass: 'analytical', neighborChunks: 1, fetchParentSection: true });
+    const result = await service.expand(candidates, {
+      queryClass: 'analytical',
+      neighborChunks: 1,
+      fetchParentSection: true,
+    });
 
     expect(result).toHaveLength(2);
     expect(result[0]!.chunkId).toBe('c1');
@@ -114,7 +128,11 @@ describe('ContextExpanderService — expansion enabled', () => {
     ]);
 
     const candidates = [makeCandidate({ chunkId: 'c1', metadata: { chunk_index: 5 } })];
-    const result = await service.expand(candidates, { queryClass: 'analytical', neighborChunks: 1, fetchParentSection: false });
+    const result = await service.expand(candidates, {
+      queryClass: 'analytical',
+      neighborChunks: 1,
+      fetchParentSection: false,
+    });
 
     expect(result).toHaveLength(1);
   });
@@ -126,7 +144,11 @@ describe('ContextExpanderService — expansion enabled', () => {
       makeCandidate({ chunkId: 'c1', metadata: { chunk_index: 3 } }), // no section_path
     ];
 
-    await service.expand(candidates, { queryClass: 'analytical', neighborChunks: 1, fetchParentSection: true });
+    await service.expand(candidates, {
+      queryClass: 'analytical',
+      neighborChunks: 1,
+      fetchParentSection: true,
+    });
 
     // One DB call made (chunk_index window fallback)
     expect(db.execute).toHaveBeenCalledTimes(1);
@@ -142,7 +164,11 @@ describe('ContextExpanderService — expansion enabled', () => {
       makeCandidate({ chunkId: 'c1', metadata: { chunk_index: 2, section_path: '1.2 Risk' } }),
     ];
 
-    await service.expand(candidates, { queryClass: 'analytical', neighborChunks: 1, fetchParentSection: true });
+    await service.expand(candidates, {
+      queryClass: 'analytical',
+      neighborChunks: 1,
+      fetchParentSection: true,
+    });
 
     expect(db.execute).toHaveBeenCalledTimes(1);
   });
@@ -162,7 +188,11 @@ describe('ContextExpanderService — expansion enabled', () => {
       makeCandidate({ chunkId: 'c4', metadata: { chunk_index: 4 }, sourceId: 'src-4' }),
     ];
 
-    await smallTopNService.expand(candidates, { queryClass: 'analytical', neighborChunks: 1, fetchParentSection: false });
+    await smallTopNService.expand(candidates, {
+      queryClass: 'analytical',
+      neighborChunks: 1,
+      fetchParentSection: false,
+    });
 
     // DB called twice (one per candidate in top-N=2)
     expect(db.execute).toHaveBeenCalledTimes(2);
@@ -173,7 +203,11 @@ describe('ContextExpanderService — expansion enabled', () => {
       makeCandidate({ chunkId: 'c1', metadata: {} }), // no chunk_index
     ];
 
-    const result = await service.expand(candidates, { queryClass: 'analytical', neighborChunks: 1, fetchParentSection: true });
+    const result = await service.expand(candidates, {
+      queryClass: 'analytical',
+      neighborChunks: 1,
+      fetchParentSection: true,
+    });
 
     // No DB call, returns originals unchanged
     expect(db.execute).not.toHaveBeenCalled();
@@ -183,12 +217,14 @@ describe('ContextExpanderService — expansion enabled', () => {
   it('gracefully handles DB errors on a candidate without propagating', async () => {
     db.execute.mockRejectedValue(new Error('DB connection lost'));
 
-    const candidates = [
-      makeCandidate({ chunkId: 'c1', metadata: { chunk_index: 1 } }),
-    ];
+    const candidates = [makeCandidate({ chunkId: 'c1', metadata: { chunk_index: 1 } })];
 
     // Should not throw
-    const result = await service.expand(candidates, { queryClass: 'analytical', neighborChunks: 1, fetchParentSection: false });
+    const result = await service.expand(candidates, {
+      queryClass: 'analytical',
+      neighborChunks: 1,
+      fetchParentSection: false,
+    });
     expect(result).toHaveLength(1);
     expect(result[0]!.chunkId).toBe('c1');
   });
@@ -208,10 +244,17 @@ describe('ContextExpanderService — expansion enabled', () => {
     ]);
 
     const candidates = [
-      makeCandidate({ chunkId: 'c1', metadata: { chunk_index: 3 }, fallbackReason: 'rerank_malformed' }),
+      makeCandidate({
+        chunkId: 'c1',
+        metadata: { chunk_index: 3 },
+        fallbackReason: 'rerank_malformed',
+      }),
     ];
 
-    const result = await service.expand(candidates, { queryClass: 'analytical', neighborChunks: 1 });
+    const result = await service.expand(candidates, {
+      queryClass: 'analytical',
+      neighborChunks: 1,
+    });
     const expandedChunk = result.find((r) => r.chunkId === 'c2')!;
     expect(expandedChunk.fallbackReason).toBe('rerank_malformed');
   });
@@ -229,7 +272,7 @@ describe('ContextExpanderService — expansion enabled', () => {
 function makeConfigForGate(opts: {
   enabled: boolean;
   topN?: number;
-  classes?: string[] | null;   // null = env unset -> service uses defaults
+  classes?: string[] | null; // null = env unset -> service uses defaults
   minDocTokens?: number | null;
 }) {
   const classesRaw =
@@ -240,10 +283,8 @@ function makeConfigForGate(opts: {
     get: vi.fn((key: string, defaultVal: unknown) => {
       if (key === 'RAG_CONTEXT_EXPANSION_ENABLED') return opts.enabled ? 'true' : 'false';
       if (key === 'RAG_CONTEXT_EXPANSION_TOP_N') return opts.topN ?? 10;
-      if (key === 'RAG_CONTEXT_EXPANSION_CLASSES')
-        return classesRaw ?? defaultVal;
-      if (key === 'RAG_CONTEXT_EXPANSION_MIN_DOC_TOKENS')
-        return opts.minDocTokens ?? defaultVal;
+      if (key === 'RAG_CONTEXT_EXPANSION_CLASSES') return classesRaw ?? defaultVal;
+      if (key === 'RAG_CONTEXT_EXPANSION_MIN_DOC_TOKENS') return opts.minDocTokens ?? defaultVal;
       return defaultVal;
     }),
   };
@@ -252,17 +293,27 @@ function makeConfigForGate(opts: {
 describe('ContextExpanderService — conditional gate (P5)', () => {
   it('expands for analytical even when the doc is short', async () => {
     const db = makeDb([
-      { id: 'c-exp', source_id: 'src-1', chunk_index: 1, content: 'neighbor',
-        metadata: {}, meta_title: null, section_path: null, parent_id: null },
+      {
+        id: 'c-exp',
+        source_id: 'src-1',
+        chunk_index: 1,
+        content: 'neighbor',
+        metadata: {},
+        meta_title: null,
+        section_path: null,
+        parent_id: null,
+      },
     ]);
     const service = new ContextExpanderService(
       db as any,
       makeConfigForGate({ enabled: true }) as any,
     );
-    const candidates = [makeCandidate({
-      chunkId: 'c1',
-      metadata: { chunk_index: 0, source_token_count: 200 },
-    })];
+    const candidates = [
+      makeCandidate({
+        chunkId: 'c1',
+        metadata: { chunk_index: 0, source_token_count: 200 },
+      }),
+    ];
 
     const result = await service.expand(candidates, { queryClass: 'analytical' });
     expect(result.length).toBeGreaterThan(1);
@@ -275,10 +326,12 @@ describe('ContextExpanderService — conditional gate (P5)', () => {
       db as any,
       makeConfigForGate({ enabled: true }) as any,
     );
-    const candidates = [makeCandidate({
-      chunkId: 'c1',
-      metadata: { chunk_index: 0, source_token_count: 200 },
-    })];
+    const candidates = [
+      makeCandidate({
+        chunkId: 'c1',
+        metadata: { chunk_index: 0, source_token_count: 200 },
+      }),
+    ];
 
     const result = await service.expand(candidates, { queryClass: 'exact_lookup' });
     expect(result).toBe(candidates);
@@ -291,10 +344,12 @@ describe('ContextExpanderService — conditional gate (P5)', () => {
       db as any,
       makeConfigForGate({ enabled: true }) as any,
     );
-    const candidates = [makeCandidate({
-      chunkId: 'c1',
-      metadata: { chunk_index: 0, source_token_count: 500 },
-    })];
+    const candidates = [
+      makeCandidate({
+        chunkId: 'c1',
+        metadata: { chunk_index: 0, source_token_count: 500 },
+      }),
+    ];
 
     const result = await service.expand(candidates, { queryClass: 'factoid' });
     expect(result).toBe(candidates);
@@ -302,17 +357,27 @@ describe('ContextExpanderService — conditional gate (P5)', () => {
 
   it('expands factoid when a candidate hits a long document (long_doc override)', async () => {
     const db = makeDb([
-      { id: 'c-exp', source_id: 'src-1', chunk_index: 1, content: 'n',
-        metadata: {}, meta_title: null, section_path: null, parent_id: null },
+      {
+        id: 'c-exp',
+        source_id: 'src-1',
+        chunk_index: 1,
+        content: 'n',
+        metadata: {},
+        meta_title: null,
+        section_path: null,
+        parent_id: null,
+      },
     ]);
     const service = new ContextExpanderService(
       db as any,
       makeConfigForGate({ enabled: true, minDocTokens: 8000 }) as any,
     );
-    const candidates = [makeCandidate({
-      chunkId: 'c1',
-      metadata: { chunk_index: 0, source_token_count: 20_000 },
-    })];
+    const candidates = [
+      makeCandidate({
+        chunkId: 'c1',
+        metadata: { chunk_index: 0, source_token_count: 20_000 },
+      }),
+    ];
 
     const result = await service.expand(candidates, { queryClass: 'factoid' });
     expect(result.length).toBeGreaterThan(1);
@@ -320,17 +385,27 @@ describe('ContextExpanderService — conditional gate (P5)', () => {
 
   it('relational is in the default allow-list', async () => {
     const db = makeDb([
-      { id: 'c-exp', source_id: 'src-1', chunk_index: 1, content: 'n',
-        metadata: {}, meta_title: null, section_path: null, parent_id: null },
+      {
+        id: 'c-exp',
+        source_id: 'src-1',
+        chunk_index: 1,
+        content: 'n',
+        metadata: {},
+        meta_title: null,
+        section_path: null,
+        parent_id: null,
+      },
     ]);
     const service = new ContextExpanderService(
       db as any,
       makeConfigForGate({ enabled: true, classes: null }) as any, // classes env unset
     );
-    const candidates = [makeCandidate({
-      chunkId: 'c1',
-      metadata: { chunk_index: 0, source_token_count: 100 },
-    })];
+    const candidates = [
+      makeCandidate({
+        chunkId: 'c1',
+        metadata: { chunk_index: 0, source_token_count: 100 },
+      }),
+    ];
 
     const result = await service.expand(candidates, { queryClass: 'relational' });
     expect(result.length).toBeGreaterThan(1);
@@ -338,17 +413,27 @@ describe('ContextExpanderService — conditional gate (P5)', () => {
 
   it('multi_part is in the default allow-list', async () => {
     const db = makeDb([
-      { id: 'c-exp', source_id: 'src-1', chunk_index: 1, content: 'n',
-        metadata: {}, meta_title: null, section_path: null, parent_id: null },
+      {
+        id: 'c-exp',
+        source_id: 'src-1',
+        chunk_index: 1,
+        content: 'n',
+        metadata: {},
+        meta_title: null,
+        section_path: null,
+        parent_id: null,
+      },
     ]);
     const service = new ContextExpanderService(
       db as any,
       makeConfigForGate({ enabled: true, classes: null }) as any,
     );
-    const candidates = [makeCandidate({
-      chunkId: 'c1',
-      metadata: { chunk_index: 0, source_token_count: 100 },
-    })];
+    const candidates = [
+      makeCandidate({
+        chunkId: 'c1',
+        metadata: { chunk_index: 0, source_token_count: 100 },
+      }),
+    ];
 
     const result = await service.expand(candidates, { queryClass: 'multi_part' });
     expect(result.length).toBeGreaterThan(1);
@@ -360,10 +445,12 @@ describe('ContextExpanderService — conditional gate (P5)', () => {
       db as any,
       makeConfigForGate({ enabled: true }) as any,
     );
-    const candidates = [makeCandidate({
-      chunkId: 'c1',
-      metadata: { chunk_index: 0, source_token_count: 200 },
-    })];
+    const candidates = [
+      makeCandidate({
+        chunkId: 'c1',
+        metadata: { chunk_index: 0, source_token_count: 200 },
+      }),
+    ];
 
     const result = await service.expand(candidates, {}); // no queryClass
     expect(result).toBe(candidates);
@@ -371,17 +458,27 @@ describe('ContextExpanderService — conditional gate (P5)', () => {
 
   it('undefined queryClass + long-doc signal STILL expands (doc signal overrides)', async () => {
     const db = makeDb([
-      { id: 'c-exp', source_id: 'src-1', chunk_index: 1, content: 'n',
-        metadata: {}, meta_title: null, section_path: null, parent_id: null },
+      {
+        id: 'c-exp',
+        source_id: 'src-1',
+        chunk_index: 1,
+        content: 'n',
+        metadata: {},
+        meta_title: null,
+        section_path: null,
+        parent_id: null,
+      },
     ]);
     const service = new ContextExpanderService(
       db as any,
       makeConfigForGate({ enabled: true }) as any,
     );
-    const candidates = [makeCandidate({
-      chunkId: 'c1',
-      metadata: { chunk_index: 0, source_token_count: 25_000 },
-    })];
+    const candidates = [
+      makeCandidate({
+        chunkId: 'c1',
+        metadata: { chunk_index: 0, source_token_count: 25_000 },
+      }),
+    ];
 
     const result = await service.expand(candidates, {});
     expect(result.length).toBeGreaterThan(1);
@@ -390,19 +487,29 @@ describe('ContextExpanderService — conditional gate (P5)', () => {
   it('missing source_token_count falls back to content.length/4 estimate', async () => {
     // 200-char content ~= 50 estimated tokens; threshold 30 -> long-doc triggers.
     const db = makeDb([
-      { id: 'c-exp', source_id: 'src-1', chunk_index: 1, content: 'n',
-        metadata: {}, meta_title: null, section_path: null, parent_id: null },
+      {
+        id: 'c-exp',
+        source_id: 'src-1',
+        chunk_index: 1,
+        content: 'n',
+        metadata: {},
+        meta_title: null,
+        section_path: null,
+        parent_id: null,
+      },
     ]);
     const service = new ContextExpanderService(
       db as any,
       makeConfigForGate({ enabled: true, minDocTokens: 30 }) as any,
     );
     const longContent = 'a'.repeat(200);
-    const candidates = [makeCandidate({
-      chunkId: 'c1',
-      content: longContent,
-      metadata: { chunk_index: 0 }, // no source_token_count
-    })];
+    const candidates = [
+      makeCandidate({
+        chunkId: 'c1',
+        content: longContent,
+        metadata: { chunk_index: 0 }, // no source_token_count
+      }),
+    ];
 
     const result = await service.expand(candidates, { queryClass: 'exact_lookup' });
     expect(result.length).toBeGreaterThan(1);
@@ -414,10 +521,12 @@ describe('ContextExpanderService — conditional gate (P5)', () => {
       db as any,
       makeConfigForGate({ enabled: false }) as any,
     );
-    const candidates = [makeCandidate({
-      chunkId: 'c1',
-      metadata: { chunk_index: 0, source_token_count: 50_000 },
-    })];
+    const candidates = [
+      makeCandidate({
+        chunkId: 'c1',
+        metadata: { chunk_index: 0, source_token_count: 50_000 },
+      }),
+    ];
 
     const result = await service.expand(candidates, { queryClass: 'analytical' });
     expect(result).toBe(candidates);

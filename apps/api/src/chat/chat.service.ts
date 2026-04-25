@@ -1,12 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import {
-  chatMessages,
-  and,
-  asc,
-  desc,
-  eq,
-} from '@finsentinel/db';
+import { chatMessages, and, asc, desc, eq } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import type {
   ChatMessageResponse,
@@ -112,11 +106,7 @@ export class ChatService {
 
     return {
       sessionId: resolvedSessionId,
-      stream: this.wrapAssistantPersistence(
-        sseStream,
-        userId,
-        resolvedSessionId,
-      ),
+      stream: this.wrapAssistantPersistence(sseStream, userId, resolvedSessionId),
     };
   }
 
@@ -133,12 +123,7 @@ export class ChatService {
       ? await this.assessPortfolio(message, userId, portfolioId)
       : this.assessPromptOnly(message);
 
-    await this.persistMessage(
-      userId,
-      resolvedSessionId,
-      'assistant',
-      JSON.stringify(report),
-    );
+    await this.persistMessage(userId, resolvedSessionId, 'assistant', JSON.stringify(report));
 
     return report;
   }
@@ -183,10 +168,7 @@ export class ChatService {
     );
   }
 
-  async getSessionMessages(
-    userId: string,
-    sessionId: string,
-  ): Promise<ChatMessageResponse[]> {
+  async getSessionMessages(userId: string, sessionId: string): Promise<ChatMessageResponse[]> {
     const rows = await this.getHistoryRows(userId, sessionId);
 
     return rows.map((row) => ({
@@ -203,14 +185,9 @@ export class ChatService {
     userId: string,
     portfolioId: string,
   ): Promise<RiskReport> {
-    const analytics = await this.portfolioService.getPortfolioAnalytics(
-      userId,
-      portfolioId,
-    );
+    const analytics = await this.portfolioService.getPortfolioAnalytics(userId, portfolioId);
     const topWeight = Math.max(
-      ...analytics.holdingWeights.map((holding) =>
-        parseFloat(holding.weightPercent),
-      ),
+      ...analytics.holdingWeights.map((holding) => parseFloat(holding.weightPercent)),
       0,
     );
     const sectorCount = Object.keys(analytics.sectorAllocation).length;
@@ -222,21 +199,13 @@ export class ChatService {
           : analytics.hhiIndex >= 1000
             ? 12
             : 4;
-    const topHoldingPenalty =
-      topWeight >= 40 ? 20 : topWeight >= 25 ? 12 : topWeight >= 15 ? 6 : 0;
-    const warningPenalty = Math.min(
-      analytics.concentrationWarnings.length * 8,
-      20,
-    );
+    const topHoldingPenalty = topWeight >= 40 ? 20 : topWeight >= 25 ? 12 : topWeight >= 15 ? 6 : 0;
+    const warningPenalty = Math.min(analytics.concentrationWarnings.length * 8, 20);
     const diversificationPenalty = sectorCount <= 2 ? 10 : 0;
     const riskScore = Math.min(
       100,
       Math.round(
-        20 +
-          concentrationPenalty +
-          topHoldingPenalty +
-          warningPenalty +
-          diversificationPenalty,
+        20 + concentrationPenalty + topHoldingPenalty + warningPenalty + diversificationPenalty,
       ),
     );
 
@@ -279,10 +248,10 @@ export class ChatService {
 
   private assessPromptOnly(message: string): RiskReport {
     const normalized = message.toLowerCase();
-    const highRiskSignals =
-      Number(/leverag|margin|options|short|all[- ]?in|crypto/.test(normalized));
-    const cautionSignals =
-      Number(/rebalance|diversif|hedge|drawdown|risk/.test(normalized));
+    const highRiskSignals = Number(
+      /leverag|margin|options|short|all[- ]?in|crypto/.test(normalized),
+    );
+    const cautionSignals = Number(/rebalance|diversif|hedge|drawdown|risk/.test(normalized));
     const riskScore = Math.max(20, Math.min(100, 35 + highRiskSignals * 30 - cautionSignals * 10));
 
     return {
@@ -294,14 +263,16 @@ export class ChatService {
         {
           category: 'INPUT_CONTEXT',
           score: 40,
-          description: 'Assessment is based on conversation context without direct portfolio holdings.',
+          description:
+            'Assessment is based on conversation context without direct portfolio holdings.',
         },
         {
           category: 'REQUEST_COMPLEXITY',
           score: highRiskSignals > 0 ? 70 : 35,
-          description: highRiskSignals > 0
-            ? 'The request mentions leveraged or fast-moving instruments.'
-            : 'The request does not explicitly mention leveraged or speculative positioning.',
+          description:
+            highRiskSignals > 0
+              ? 'The request mentions leveraged or fast-moving instruments.'
+              : 'The request does not explicitly mention leveraged or speculative positioning.',
         },
       ],
       actionableAdvice: [
@@ -374,19 +345,11 @@ export class ChatService {
     });
   }
 
-  private async getHistoryRows(
-    userId: string,
-    sessionId: string,
-  ): Promise<ChatMessageRow[]> {
+  private async getHistoryRows(userId: string, sessionId: string): Promise<ChatMessageRow[]> {
     return (await this.db
       .select()
       .from(chatMessages)
-      .where(
-        and(
-          eq(chatMessages.userId, userId),
-          eq(chatMessages.sessionId, sessionId),
-        ),
-      )
+      .where(and(eq(chatMessages.userId, userId), eq(chatMessages.sessionId, sessionId)))
       .orderBy(asc(chatMessages.createdAt))) as ChatMessageRow[];
   }
 

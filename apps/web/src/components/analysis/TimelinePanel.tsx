@@ -1,12 +1,12 @@
-'use client'
+'use client';
 
-import type { AnalysisRunTimelineEvent } from '../../api/analysis-runs'
-import type { AnalysisRunStreamStatus } from '../../hooks/useAnalysisRun'
+import type { AnalysisRunTimelineEvent } from '../../api/analysis-runs';
+import type { AnalysisRunStreamStatus } from '../../hooks/useAnalysisRun';
 
 export interface TimelinePanelProps {
-  events: AnalysisRunTimelineEvent[]
-  streamStatus: AnalysisRunStreamStatus
-  onRefresh: () => void
+  events: AnalysisRunTimelineEvent[];
+  streamStatus: AnalysisRunStreamStatus;
+  onRefresh: () => void;
 }
 
 const STREAM_LABEL: Record<AnalysisRunStreamStatus, string> = {
@@ -15,7 +15,7 @@ const STREAM_LABEL: Record<AnalysisRunStreamStatus, string> = {
   live: 'Live',
   fallback: 'Polling fallback',
   closed: 'Closed',
-}
+};
 
 const STREAM_STYLE: Record<AnalysisRunStreamStatus, string> = {
   idle: 'border-slate-700 bg-slate-800 text-slate-300',
@@ -23,30 +23,28 @@ const STREAM_STYLE: Record<AnalysisRunStreamStatus, string> = {
   live: 'border-green-300/40 bg-green-500/20 text-green-100',
   fallback: 'border-yellow-300/40 bg-yellow-500/20 text-yellow-100',
   closed: 'border-slate-600 bg-slate-800 text-slate-300',
-}
+};
 
 function getPayloadSummary(payload: Record<string, unknown>): string {
-  const stageKey = typeof payload.stageKey === 'string' ? payload.stageKey : null
-  const roleKey = typeof payload.roleKey === 'string' ? payload.roleKey : null
-  const status = typeof payload.status === 'string' ? payload.status : null
-  const retry = payload.retry === true ? 'retry' : null
-  const summary = [stageKey, roleKey, status, retry].filter(Boolean).join(' · ')
-  if (summary) return summary
-  const keys = Object.keys(payload)
-  return keys.length > 0 ? keys.slice(0, 4).join(', ') : 'No payload'
+  const stageKey = typeof payload.stageKey === 'string' ? payload.stageKey : null;
+  const roleKey = typeof payload.roleKey === 'string' ? payload.roleKey : null;
+  const status = typeof payload.status === 'string' ? payload.status : null;
+  const retry = payload.retry === true ? 'retry' : null;
+  const summary = [stageKey, roleKey, status, retry].filter(Boolean).join(' · ');
+  if (summary) return summary;
+  const keys = Object.keys(payload);
+  return keys.length > 0 ? keys.slice(0, 4).join(', ') : 'No payload';
 }
 
 export function TimelinePanel({ events, streamStatus, onRefresh }: TimelinePanelProps) {
-  const recentEvents = [...events].reverse().slice(0, 20)
+  const recentEvents = [...events].reverse().slice(0, 20);
 
   return (
     <section className="surface-panel rounded p-4 space-y-3">
       <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-base font-semibold">Operator Timeline</h2>
-          <p className="text-xs text-slate-400">
-            {events.length} events captured from run stream
-          </p>
+          <p className="text-xs text-slate-400">{events.length} events captured from run stream</p>
         </div>
         <div className="flex items-center gap-2">
           <span className={`status-chip border ${STREAM_STYLE[streamStatus]}`}>
@@ -86,5 +84,5 @@ export function TimelinePanel({ events, streamStatus, onRefresh }: TimelinePanel
         </ol>
       )}
     </section>
-  )
+  );
 }

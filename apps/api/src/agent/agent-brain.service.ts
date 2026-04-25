@@ -21,9 +21,7 @@ interface AgentBrainRow {
 
 @Injectable()
 export class AgentBrainService {
-  constructor(
-    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
-  ) {}
+  constructor(@Inject('DRIZZLE_DB') private readonly db: DrizzleDB) {}
 
   async getFrontalLobe(userId: string): Promise<string> {
     const brain = await this.getOrCreateBrain(userId);
@@ -50,11 +48,7 @@ export class AgentBrainService {
     return 'Strategy updated successfully.';
   }
 
-  async updateEmotion(
-    userId: string,
-    emotion: string,
-    reason: string,
-  ): Promise<string> {
+  async updateEmotion(userId: string, emotion: string, reason: string): Promise<string> {
     const brain = await this.getOrCreateBrain(userId);
     const history = this.prependHistory(brain.commitHistory, {
       timestamp: new Date().toISOString(),
@@ -102,18 +96,12 @@ export class AgentBrainService {
       return existing as AgentBrainRow;
     }
 
-    const [created] = await this.db
-      .insert(agentBrains)
-      .values({ userId })
-      .returning();
+    const [created] = await this.db.insert(agentBrains).values({ userId }).returning();
 
     return created as AgentBrainRow;
   }
 
-  private prependHistory(
-    existing: unknown[],
-    entry: BrainCommitEntry,
-  ): BrainCommitEntry[] {
+  private prependHistory(existing: unknown[], entry: BrainCommitEntry): BrainCommitEntry[] {
     return [entry, ...this.asHistory(existing)].slice(0, 100);
   }
 

@@ -13,12 +13,7 @@ export class CryptoToolsService {
     private readonly okxApiClient?: OkxApiClient | null,
   ) {}
 
-  async getCryptoNews(
-    keyword: string,
-    coin?: string,
-    minScore = 0,
-    limit = 10,
-  ): Promise<string> {
+  async getCryptoNews(keyword: string, coin?: string, minScore = 0, limit = 10): Promise<string> {
     const query = coin ? `${keyword} ${coin}`.trim() : keyword;
     const articles = await this.cryptoNewsApiClient.searchNews(query, Math.max(limit * 2, 20));
     const upperCoin = coin?.toUpperCase().trim();
@@ -172,6 +167,6 @@ export class CryptoToolsService {
     if (!Number.isFinite(mark) || !Number.isFinite(liq) || mark === 0) {
       return null;
     }
-    return `${(Math.abs(mark - liq) / mark * 100).toFixed(2)}%`;
+    return `${((Math.abs(mark - liq) / mark) * 100).toFixed(2)}%`;
   }
 }

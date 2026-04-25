@@ -167,7 +167,9 @@ export class MetadataPreFilterService {
     // been absorbed into hardFilter, so they must not also appear in
     // softFilter. Keep low-confidence tickers/issuers on the SOFT path
     // even under strict mode — those are never safe to HARD-filter.
-    let softFilter: (SparseSearchFilters & { tickers?: string[]; issuerName?: string[] }) | undefined;
+    let softFilter:
+      | (SparseSearchFilters & { tickers?: string[]; issuerName?: string[] })
+      | undefined;
     const softSector = strictMetadata ? undefined : topSector;
     const softRegion = strictMetadata ? undefined : topRegion;
     const hasSoftHint =

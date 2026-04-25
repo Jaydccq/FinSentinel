@@ -1,17 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mockApiFetch = vi.fn()
+const mockApiFetch = vi.fn();
 
 vi.mock('../client', () => ({
   apiFetch: mockApiFetch,
-}))
+}));
 
-const { marketApi } = await import('../market')
+const { marketApi } = await import('../market');
 
 describe('marketApi', () => {
   beforeEach(() => {
-    mockApiFetch.mockReset()
-  })
+    mockApiFetch.mockReset();
+  });
 
   it('normalizes string-based quote payloads into numbers', async () => {
     mockApiFetch.mockResolvedValueOnce({
@@ -24,9 +24,9 @@ describe('marketApi', () => {
         volume: 50000000,
         timestamp: 1700245600000,
       },
-    })
+    });
 
-    const result = await marketApi.batchQuotes(['AAPL'])
+    const result = await marketApi.batchQuotes(['AAPL']);
 
     expect(result.AAPL).toEqual({
       ticker: 'AAPL',
@@ -36,8 +36,8 @@ describe('marketApi', () => {
       close: 153.5,
       volume: 50000000,
       timestamp: 1700245600000,
-    })
-  })
+    });
+  });
 
   it('normalizes string-based history bars into chart-friendly numbers', async () => {
     mockApiFetch.mockResolvedValueOnce([
@@ -49,9 +49,9 @@ describe('marketApi', () => {
         volume: 50000000,
         timestamp: 1700000000000,
       },
-    ])
+    ]);
 
-    const result = await marketApi.history('AAPL', 30)
+    const result = await marketApi.history('AAPL', 30);
 
     expect(result).toEqual([
       {
@@ -62,6 +62,6 @@ describe('marketApi', () => {
         v: 50000000,
         t: 1700000000000,
       },
-    ])
-  })
-})
+    ]);
+  });
+});

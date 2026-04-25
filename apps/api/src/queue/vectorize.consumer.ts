@@ -1,4 +1,11 @@
-import { Injectable, Inject, Optional, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  Optional,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 import { documents, documentChunks, eq, and } from '@finsentinel/db';
@@ -37,19 +44,19 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
     private readonly vectorService: DocumentVectorService,
     private readonly storage: HybridStorageService,
     @Optional() @Inject(ParserSidecarClient) private readonly parserSidecar?: ParserSidecarClient,
-    @Optional() @Inject(GraphEnrichProducer) private readonly graphEnrichProducer?: GraphEnrichProducer,
-    @Optional() @Inject(RepresentationEnrichProducer) private readonly representationEnrichProducer?: RepresentationEnrichProducer,
+    @Optional()
+    @Inject(GraphEnrichProducer)
+    private readonly graphEnrichProducer?: GraphEnrichProducer,
+    @Optional()
+    @Inject(RepresentationEnrichProducer)
+    private readonly representationEnrichProducer?: RepresentationEnrichProducer,
   ) {}
 
   onModuleInit(): void {
-    this.worker = new Worker<VectorizeJobData>(
-      VECTORIZE_QUEUE,
-      async (job) => this.process(job),
-      {
-        connection: this.connection,
-        concurrency: 2,
-      },
-    );
+    this.worker = new Worker<VectorizeJobData>(VECTORIZE_QUEUE, async (job) => this.process(job), {
+      connection: this.connection,
+      concurrency: 2,
+    });
 
     this.worker.on('failed', (job, err) => {
       this.logger.error(
@@ -115,7 +122,9 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
     ]);
 
     let text: string;
-    let sidecarHints: { sourceMimeType: string; pageCount: number; parserVersion: string } | undefined;
+    let sidecarHints:
+      | { sourceMimeType: string; pageCount: number; parserVersion: string }
+      | undefined;
     try {
       if (SIDECAR_MIMES.has(mimeType) && this.parserSidecar) {
         const result = await this.parserSidecar.parse(content, mimeType, doc.originalFileName);
@@ -131,18 +140,12 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(`Document ${docId} parse failed: ${msg}`);
-      await this.db
-        .update(documents)
-        .set({ status: 'FAILED' })
-        .where(eq(documents.id, docId));
+      await this.db.update(documents).set({ status: 'FAILED' }).where(eq(documents.id, docId));
       throw err;
     }
 
     if (!text) {
-      await this.db
-        .update(documents)
-        .set({ status: 'EMPTY' })
-        .where(eq(documents.id, docId));
+      await this.db.update(documents).set({ status: 'EMPTY' }).where(eq(documents.id, docId));
       this.logger.warn(`Document ${docId} produced no text, marked as EMPTY`);
       return;
     }
@@ -155,11 +158,13 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
       source: doc.originalFileName,
       date: new Date().toISOString().split('T')[0]!,
       __originalFileName: doc.originalFileName,
-      ...(sidecarHints ? {
-        parser_page_count: String(sidecarHints.pageCount),
-        parser_version: sidecarHints.parserVersion,
-        parser_source_mime: sidecarHints.sourceMimeType,
-      } : {}),
+      ...(sidecarHints
+        ? {
+            parser_page_count: String(sidecarHints.pageCount),
+            parser_version: sidecarHints.parserVersion,
+            parser_source_mime: sidecarHints.sourceMimeType,
+          }
+        : {}),
     });
 
     // 6. Update status
@@ -185,10 +190,9 @@ export class VectorizeConsumer implements OnModuleInit, OnModuleDestroy {
         const chunks = await this.db
           .select({ id: documentChunks.id })
           .from(documentChunks)
-          .where(and(
-            eq(documentChunks.sourceType, 'document'),
-            eq(documentChunks.sourceId, docId),
-          ));
+          .where(
+            and(eq(documentChunks.sourceType, 'document'), eq(documentChunks.sourceId, docId)),
+          );
         const chunkIds = chunks.map((c) => c.id);
         await this.representationEnrichProducer.enqueueMany(chunkIds);
       } catch (error) {

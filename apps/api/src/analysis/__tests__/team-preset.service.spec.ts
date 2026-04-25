@@ -11,7 +11,13 @@ describe('TeamPresetService', () => {
 
   it('resolves EXECUTION_READY to full pipeline incl. HUMAN_APPROVAL', () => {
     const plan = service.resolve({ preset: 'EXECUTION_READY', researchDepth: 'STANDARD' });
-    expect(plan.stageKeys).toEqual(['INTELLIGENCE', 'THESIS', 'RISK', 'EXECUTION_PREP', 'HUMAN_APPROVAL']);
+    expect(plan.stageKeys).toEqual([
+      'INTELLIGENCE',
+      'THESIS',
+      'RISK',
+      'EXECUTION_PREP',
+      'HUMAN_APPROVAL',
+    ]);
   });
 
   it('increases maxParallelRoles for DEEP research depth', () => {

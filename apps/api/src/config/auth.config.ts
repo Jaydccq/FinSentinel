@@ -29,13 +29,10 @@ const DEFAULT_ORIGINS = ['http://localhost:3000', 'http://localhost:5173'];
  *   AUTH_COOKIE_SAMESITE=strict
  *   CORS_ORIGINS=https://your-host
  */
-export function authConfigFactory(
-  env: Record<string, string | undefined>,
-): AuthRuntimeConfig {
+export function authConfigFactory(env: Record<string, string | undefined>): AuthRuntimeConfig {
   const sameSiteRaw = (env.AUTH_COOKIE_SAMESITE ?? 'lax').toLowerCase();
   const sameSite = sameSiteSchema.parse(sameSiteRaw);
-  const secure =
-    (env.AUTH_COOKIE_SECURE ?? 'false').toLowerCase() === 'true';
+  const secure = (env.AUTH_COOKIE_SECURE ?? 'false').toLowerCase() === 'true';
   const maxAgeSec = Number(env.AUTH_COOKIE_MAX_AGE_SEC ?? '86400');
 
   const originsRaw = env.CORS_ORIGINS;
@@ -58,6 +55,7 @@ export function authConfigFactory(
   };
 }
 
-export const authConfig = registerAs('auth', (): AuthRuntimeConfig =>
-  authConfigFactory(process.env),
+export const authConfig = registerAs(
+  'auth',
+  (): AuthRuntimeConfig => authConfigFactory(process.env),
 );

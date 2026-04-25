@@ -37,6 +37,14 @@ const redisProvider = {
       useClass: MetricsInterceptor,
     },
   ],
-  exports: [RateLimiterService, RateLimitGuard, 'REDIS', EncryptionService, ApiKeyService, PdfService, MetricsService],
+  exports: [
+    RateLimiterService,
+    RateLimitGuard,
+    'REDIS',
+    EncryptionService,
+    ApiKeyService,
+    PdfService,
+    MetricsService,
+  ],
 })
 export class CommonModule {}

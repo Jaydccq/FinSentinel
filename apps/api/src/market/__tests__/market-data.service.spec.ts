@@ -132,9 +132,7 @@ describe('MarketDataService', () => {
     });
 
     it('throws BadRequestException on invalid ticker', async () => {
-      await expect(service.getQuote('INVALID TICKER!!')).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.getQuote('INVALID TICKER!!')).rejects.toThrow(BadRequestException);
       expect(mockProvider.getQuote).not.toHaveBeenCalled();
     });
 
@@ -179,9 +177,7 @@ describe('MarketDataService', () => {
     });
 
     it('throws BadRequestException on invalid ticker', async () => {
-      await expect(service.getHistoricalBars('$$$BAD$$$', 30)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(service.getHistoricalBars('$$$BAD$$$', 30)).rejects.toThrow(BadRequestException);
     });
   });
 

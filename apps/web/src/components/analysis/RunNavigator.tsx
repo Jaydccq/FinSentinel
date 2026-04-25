@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import type { AnalysisRunResponse } from '../../api/analysis-runs';
 

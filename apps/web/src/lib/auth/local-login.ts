@@ -1,7 +1,7 @@
-import { getApiBaseUrl } from '../api-base-url'
-import { isTauri } from '../tauri/is-tauri'
+import { getApiBaseUrl } from '../api-base-url';
+import { isTauri } from '../tauri/is-tauri';
 
-const TOKEN_KEY = 'fs_local_token'
+const TOKEN_KEY = 'fs_local_token';
 
 /**
  * Desktop session helper.
@@ -17,34 +17,31 @@ const TOKEN_KEY = 'fs_local_token'
  * `getCachedToken()` synchronous for `authHeaders()` callers.
  */
 
-let pendingKeychainRead: Promise<string | null> | null = null
-let memoryToken: string | null = null
-let legacyShimDone = false
+let pendingKeychainRead: Promise<string | null> | null = null;
+let memoryToken: string | null = null;
+let legacyShimDone = false;
 
-type KeychainError = { error: 'not_found' | 'session_only' | 'io' }
+type KeychainError = { error: 'not_found' | 'session_only' | 'io' };
 
-async function tauriInvoke<T>(
-  cmd: string,
-  args?: Record<string, unknown>,
-): Promise<T> {
-  const { invoke } = await import('@tauri-apps/api/core')
-  return args === undefined ? invoke<T>(cmd) : invoke<T>(cmd, args)
+async function tauriInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  const { invoke } = await import('@tauri-apps/api/core');
+  return args === undefined ? invoke<T>(cmd) : invoke<T>(cmd, args);
 }
 
 async function readKeychainToken(): Promise<string | null> {
   try {
-    const token = await tauriInvoke<string | null>('read_token')
-    return token ?? null
+    const token = await tauriInvoke<string | null>('read_token');
+    return token ?? null;
   } catch (err) {
-    const e = err as Partial<KeychainError>
-    if (e?.error === 'session_only' || e?.error === 'io') return null
-    return null
+    const e = err as Partial<KeychainError>;
+    if (e?.error === 'session_only' || e?.error === 'io') return null;
+    return null;
   }
 }
 
 async function writeKeychainToken(token: string): Promise<void> {
   try {
-    await tauriInvoke<void>('write_token', { token })
+    await tauriInvoke<void>('write_token', { token });
   } catch {
     // Session-only mode: memory copy only, no persistence.
   }
@@ -52,7 +49,7 @@ async function writeKeychainToken(token: string): Promise<void> {
 
 async function clearKeychainToken(): Promise<void> {
   try {
-    await tauriInvoke<void>('clear_token')
+    await tauriInvoke<void>('clear_token');
   } catch {
     // Rust side returns Ok on NoEntry; any other error means the slot is
     // already inaccessible.
@@ -66,41 +63,41 @@ async function clearKeychainToken(): Promise<void> {
  * function in the release after F-3 ships (see docs/runbooks/).
  */
 async function migrateLegacyTokenIfAny(): Promise<string | null> {
-  if (legacyShimDone) return null
-  legacyShimDone = true
-  if (typeof window === 'undefined') return null
-  const legacy = window.localStorage.getItem(TOKEN_KEY)
-  if (!legacy) return null
-  await writeKeychainToken(legacy)
-  window.localStorage.removeItem(TOKEN_KEY)
-  return legacy
+  if (legacyShimDone) return null;
+  legacyShimDone = true;
+  if (typeof window === 'undefined') return null;
+  const legacy = window.localStorage.getItem(TOKEN_KEY);
+  if (!legacy) return null;
+  await writeKeychainToken(legacy);
+  window.localStorage.removeItem(TOKEN_KEY);
+  return legacy;
 }
 
 export function getCachedToken(): string | null {
-  if (memoryToken) return memoryToken
-  if (typeof window === 'undefined') return null
-  if (isTauri()) return null
-  return window.localStorage.getItem(TOKEN_KEY)
+  if (memoryToken) return memoryToken;
+  if (typeof window === 'undefined') return null;
+  if (isTauri()) return null;
+  return window.localStorage.getItem(TOKEN_KEY);
 }
 
 export function clearCachedToken(): void {
-  memoryToken = null
-  if (typeof window === 'undefined') return
+  memoryToken = null;
+  if (typeof window === 'undefined') return;
   if (isTauri()) {
-    void clearKeychainToken()
-    return
+    void clearKeychainToken();
+    return;
   }
-  window.localStorage.removeItem(TOKEN_KEY)
+  window.localStorage.removeItem(TOKEN_KEY);
 }
 
 async function persistToken(token: string): Promise<void> {
-  memoryToken = token
-  if (typeof window === 'undefined') return
+  memoryToken = token;
+  if (typeof window === 'undefined') return;
   if (isTauri()) {
-    await writeKeychainToken(token)
-    return
+    await writeKeychainToken(token);
+    return;
   }
-  window.localStorage.setItem(TOKEN_KEY, token)
+  window.localStorage.setItem(TOKEN_KEY, token);
 }
 
 /**
@@ -113,8 +110,8 @@ export async function submitLogin(
   password: string,
   apiBase?: string,
 ): Promise<string | null> {
-  const base = apiBase ?? getApiBaseUrl()
-  const url = base ? `${base}/api/auth/login` : '/api/auth/login'
+  const base = apiBase ?? getApiBaseUrl();
+  const url = base ? `${base}/api/auth/login` : '/api/auth/login';
 
   const res = await fetch(url, {
     method: 'POST',
@@ -126,14 +123,14 @@ export async function submitLogin(
       'X-Client': 'desktop',
     },
     body: JSON.stringify({ username, password }),
-  })
-  if (!res.ok) return null
+  });
+  if (!res.ok) return null;
 
-  const body = (await res.json()) as { token?: string }
-  if (!body.token) return null
+  const body = (await res.json()) as { token?: string };
+  if (!body.token) return null;
 
-  await persistToken(body.token)
-  return body.token
+  await persistToken(body.token);
+  return body.token;
 }
 
 /**
@@ -146,39 +143,38 @@ export async function submitLogin(
  * longer used — kept to avoid churning `providers.tsx`.
  */
 export function ensureLocalToken(_apiBase?: string): Promise<string | null> {
-  void _apiBase
-  if (memoryToken) return Promise.resolve(memoryToken)
+  void _apiBase;
+  if (memoryToken) return Promise.resolve(memoryToken);
 
   if (typeof window !== 'undefined' && isTauri()) {
     if (!pendingKeychainRead) {
       pendingKeychainRead = (async () => {
-        const migrated = await migrateLegacyTokenIfAny()
+        const migrated = await migrateLegacyTokenIfAny();
         if (migrated) {
-          memoryToken = migrated
-          return migrated
+          memoryToken = migrated;
+          return migrated;
         }
-        const existing = await readKeychainToken()
-        if (existing) memoryToken = existing
-        return existing
+        const existing = await readKeychainToken();
+        if (existing) memoryToken = existing;
+        return existing;
       })().finally(() => {
-        pendingKeychainRead = null
-      })
+        pendingKeychainRead = null;
+      });
     }
-    return pendingKeychainRead
+    return pendingKeychainRead;
   }
 
-  const cached =
-    typeof window !== 'undefined' ? window.localStorage.getItem(TOKEN_KEY) : null
+  const cached = typeof window !== 'undefined' ? window.localStorage.getItem(TOKEN_KEY) : null;
   if (cached) {
-    memoryToken = cached
-    return Promise.resolve(cached)
+    memoryToken = cached;
+    return Promise.resolve(cached);
   }
-  return Promise.resolve(null)
+  return Promise.resolve(null);
 }
 
 /** Test-only: reset the in-memory cache and shim flag between cases. */
 export function __resetForTests(): void {
-  memoryToken = null
-  pendingKeychainRead = null
-  legacyShimDone = false
+  memoryToken = null;
+  pendingKeychainRead = null;
+  legacyShimDone = false;
 }

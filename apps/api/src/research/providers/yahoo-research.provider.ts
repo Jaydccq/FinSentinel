@@ -1,9 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type {
-  CompanyProfile,
-  FinancialMetrics,
-  AnalystConsensus,
-} from '@finsentinel/shared';
+import type { CompanyProfile, FinancialMetrics, AnalystConsensus } from '@finsentinel/shared';
 import type { ResearchDataProvider } from '../interfaces/research-data-provider';
 
 // ── Yahoo Finance API response shapes ────────────────────────────────────────
@@ -75,18 +71,14 @@ interface YahooQuoteSummaryResponse {
 @Injectable()
 export class YahooResearchProvider implements ResearchDataProvider {
   private readonly logger = new Logger(YahooResearchProvider.name);
-  private static readonly BASE_URL =
-    'https://query1.finance.yahoo.com/v10/finance/quoteSummary';
+  private static readonly BASE_URL = 'https://query1.finance.yahoo.com/v10/finance/quoteSummary';
 
   getName(): string {
     return 'yahoo';
   }
 
   async getCompanyProfile(ticker: string): Promise<CompanyProfile> {
-    const data = await this.fetchQuoteSummary(ticker, [
-      'assetProfile',
-      'price',
-    ]);
+    const data = await this.fetchQuoteSummary(ticker, ['assetProfile', 'price']);
 
     const profile = data.assetProfile ?? {};
     const price = data.price ?? {};
@@ -105,10 +97,7 @@ export class YahooResearchProvider implements ResearchDataProvider {
     };
   }
 
-  async getFinancialMetrics(
-    ticker: string,
-    periods = 4,
-  ): Promise<FinancialMetrics[]> {
+  async getFinancialMetrics(ticker: string, periods = 4): Promise<FinancialMetrics[]> {
     const data = await this.fetchQuoteSummary(ticker, [
       'financialData',
       'defaultKeyStatistics',
@@ -179,9 +168,7 @@ export class YahooResearchProvider implements ResearchDataProvider {
     const currentPrice = fd.currentPrice?.raw ?? 0;
     const targetMedian = fd.targetMedianPrice?.raw ?? 0;
     const upsidePotential =
-      currentPrice > 0
-        ? ((targetMedian - currentPrice) / currentPrice) * 100
-        : 0;
+      currentPrice > 0 ? ((targetMedian - currentPrice) / currentPrice) * 100 : 0;
 
     return {
       ticker,
@@ -201,9 +188,7 @@ export class YahooResearchProvider implements ResearchDataProvider {
     ticker: string,
     modules: string[],
   ): Promise<YahooQuoteSummaryResult> {
-    const url =
-      `${YahooResearchProvider.BASE_URL}/${ticker}` +
-      `?modules=${modules.join(',')}`;
+    const url = `${YahooResearchProvider.BASE_URL}/${ticker}` + `?modules=${modules.join(',')}`;
 
     this.logger.debug(`Yahoo request: ${url}`);
 
@@ -214,9 +199,7 @@ export class YahooResearchProvider implements ResearchDataProvider {
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Yahoo Finance API error: ${response.status} ${response.statusText}`,
-      );
+      throw new Error(`Yahoo Finance API error: ${response.status} ${response.statusText}`);
     }
 
     const data = (await response.json()) as YahooQuoteSummaryResponse;

@@ -23,15 +23,12 @@
 
 import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  documentChunks,
-  documentChunkRepresentations,
-  eq,
-  and,
-  sql,
-} from '@finsentinel/db';
+import { documentChunks, documentChunkRepresentations, eq, and, sql } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
-import { CURRENT_REPRESENTATION_VERSION, RAG_REPRESENTATION_BATCH_SIZE_DEFAULT } from '../chunk-representation.service';
+import {
+  CURRENT_REPRESENTATION_VERSION,
+  RAG_REPRESENTATION_BATCH_SIZE_DEFAULT,
+} from '../chunk-representation.service';
 import { RepresentationEnrichProducer } from '../../queue/representation-enrich.producer';
 
 // ── Cost estimate constants ────────────────────────────────────────────────────
@@ -159,10 +156,7 @@ export class RepresentationAdminService {
    * Uses string comparison: rep-v1.0 < rep-v1.1 < rep-v2.0.
    * Valid only for single-digit major/minor components. See module header.
    */
-  async listStaleVersionChunks(
-    fromVersion: string,
-    limit?: number,
-  ): Promise<ChunkRow[]> {
+  async listStaleVersionChunks(fromVersion: string, limit?: number): Promise<ChunkRow[]> {
     // MAX over the JSONB version string; using string comparison in Postgres.
     // We select chunks where their max representation version <= fromVersion.
     const staleSubquery = this.db

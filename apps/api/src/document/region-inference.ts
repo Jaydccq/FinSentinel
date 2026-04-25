@@ -39,7 +39,11 @@ const RULES: RegionRule[] = [
   // HKEX disclosure portal filenames + common CJK transliteration.
   { region: 'HK', label: 'hkex-marker', pattern: /(hkex|港股|港交所)/i },
   // Chinese A-share markers (CSRC filings, commonly numeric + 年报/季报/公告).
-  { region: 'CN', label: 'cn-report-zh', pattern: /(年报|季报|年度报告|半年报|招股说明书|公司公告)/ },
+  {
+    region: 'CN',
+    label: 'cn-report-zh',
+    pattern: /(年报|季报|年度报告|半年报|招股说明书|公司公告)/,
+  },
   // EU markets: MiFID/ESMA tagging often appears in filenames.
   {
     region: 'EU',

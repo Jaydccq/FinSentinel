@@ -88,7 +88,10 @@ describe('AuthService', () => {
       );
 
       // Verify the password stored is NOT plaintext
-      const insertedValues = mockDb._insertChain.values.mock.calls[0]![0] as Record<string, unknown>;
+      const insertedValues = mockDb._insertChain.values.mock.calls[0]![0] as Record<
+        string,
+        unknown
+      >;
       expect(insertedValues.password).not.toBe('Password1');
       // bcrypt hashes start with $2a$ or $2b$
       expect(insertedValues.password).toMatch(/^\$2[ab]\$/);
@@ -117,9 +120,7 @@ describe('AuthService', () => {
           email: 'alice@example.com',
           password: 'Password1',
         }),
-      ).rejects.toThrow(
-        new ConflictException('Username or email already exists'),
-      );
+      ).rejects.toThrow(new ConflictException('Username or email already exists'));
     });
 
     it('rethrows non-23505 DB errors unchanged', async () => {
@@ -142,8 +143,7 @@ describe('AuthService', () => {
 
   describe('login', () => {
     // Pre-computed bcrypt hash for 'Password1' (4 rounds for speed)
-    const HASHED_PASSWORD =
-      '$2b$04$F5ZKmcKJPeGcMr2ToeYQoeNlIiPDA2VB9O45uychu.6100m09eWIu';
+    const HASHED_PASSWORD = '$2b$04$F5ZKmcKJPeGcMr2ToeYQoeNlIiPDA2VB9O45uychu.6100m09eWIu';
 
     it('returns token for valid credentials', async () => {
       mockDb._selectChain.limit.mockResolvedValueOnce([
@@ -183,9 +183,9 @@ describe('AuthService', () => {
     it('throws UnauthorizedException on non-existent user', async () => {
       mockDb._selectChain.limit.mockResolvedValueOnce([]);
 
-      await expect(
-        authService.login({ username: 'ghost', password: 'Password1' }),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(authService.login({ username: 'ghost', password: 'Password1' })).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 });

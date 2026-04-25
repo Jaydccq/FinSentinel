@@ -45,9 +45,7 @@ export class BrokerRegistry {
    */
   resolve(contract: Contract, mode: TradingMode, initialCash: number): IBroker {
     if (mode === TradingMode.PAPER) {
-      return new PaperBroker(
-        new PaperTradingEngine(this.marketDataService, initialCash),
-      );
+      return new PaperBroker(new PaperTradingEngine(this.marketDataService, initialCash));
     }
 
     // LIVE mode: find first broker that can handle the contract
@@ -58,9 +56,7 @@ export class BrokerRegistry {
       }
     }
 
-    throw new Error(
-      `No live broker can handle ${contract.displayName()}`,
-    );
+    throw new Error(`No live broker can handle ${contract.displayName()}`);
   }
 
   /**
@@ -71,11 +67,7 @@ export class BrokerRegistry {
     const list: IBroker[] = [];
 
     // Paper broker is always available
-    list.push(
-      new PaperBroker(
-        new PaperTradingEngine(this.marketDataService, initialCash),
-      ),
-    );
+    list.push(new PaperBroker(new PaperTradingEngine(this.marketDataService, initialCash)));
 
     // Add live brokers in LIVE mode
     if (mode === TradingMode.LIVE) {
@@ -127,7 +119,7 @@ export class BrokerRegistry {
     if (brokers.length === 0) {
       this.logger.warn(
         'No live brokers registered. LIVE trading mode will fail. ' +
-        'Enable Alpaca (ALPACA_ENABLED=true) or OKX (APP_OKX_ENABLED=true) with valid credentials.',
+          'Enable Alpaca (ALPACA_ENABLED=true) or OKX (APP_OKX_ENABLED=true) with valid credentials.',
       );
     }
 

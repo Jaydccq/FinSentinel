@@ -16,12 +16,7 @@ export function createNewsAnalysisTools(service: NewsAnalysisService) {
         'Use this to understand current market sentiment and recent events for a stock.',
       inputSchema: z.object({
         ticker: z.string().describe('Stock ticker symbol, e.g. AAPL'),
-        days: z
-          .number()
-          .int()
-          .min(1)
-          .max(30)
-          .describe('Number of days back to search (1-30)'),
+        days: z.number().int().min(1).max(30).describe('Number of days back to search (1-30)'),
       }),
       execute: async ({ ticker, days }) => {
         try {

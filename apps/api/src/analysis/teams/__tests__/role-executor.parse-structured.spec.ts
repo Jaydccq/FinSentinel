@@ -3,9 +3,11 @@ import { extractStructuredJson } from '../role-executor.service';
 
 vi.mock('@finsentinel/ai-runtime', () => ({
   createOpenAICompatibleModel: vi.fn(() => 'mock-model'),
-  generateAgentText: vi.fn().mockResolvedValue(
-    '{"summary":"s","thesis":"t","risks":[],"openQuestions":[],"citations":[],"confidence":0.7}',
-  ),
+  generateAgentText: vi
+    .fn()
+    .mockResolvedValue(
+      '{"summary":"s","thesis":"t","risks":[],"openQuestions":[],"citations":[],"confidence":0.7}',
+    ),
 }));
 
 describe('extractStructuredJson', () => {

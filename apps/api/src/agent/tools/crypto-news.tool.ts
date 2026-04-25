@@ -17,31 +17,18 @@ export function createCryptoNewsTools(service: CryptoToolsService) {
         'Returns articles with AI-generated scores, grades, trading signals, and summaries. ' +
         'Use this to understand current crypto market sentiment and breaking news for a coin or topic.',
       inputSchema: z.object({
-        keyword: z
-          .string()
-          .describe(
-            "Search keyword, e.g. 'bitcoin ETF' or 'ethereum merge'",
-          ),
+        keyword: z.string().describe("Search keyword, e.g. 'bitcoin ETF' or 'ethereum merge'"),
         coin: z
           .string()
           .optional()
-          .describe(
-            "Coin symbol filter, e.g. 'BTC' or 'ETH', or omit for all coins",
-          ),
+          .describe("Coin symbol filter, e.g. 'BTC' or 'ETH', or omit for all coins"),
         minScore: z
           .number()
           .int()
           .min(0)
           .max(100)
-          .describe(
-            'Minimum AI rating score (0-100) to filter low-quality articles',
-          ),
-        limit: z
-          .number()
-          .int()
-          .min(1)
-          .max(20)
-          .describe('Number of articles to return (1-20)'),
+          .describe('Minimum AI rating score (0-100) to filter low-quality articles'),
+        limit: z.number().int().min(1).max(20).describe('Number of articles to return (1-20)'),
       }),
       execute: async ({ keyword, coin, minScore, limit }) => {
         try {
@@ -61,12 +48,7 @@ export function createCryptoNewsTools(service: CryptoToolsService) {
         signal: z
           .enum(['long', 'short', 'neutral'])
           .describe("Trading signal filter: 'long', 'short', or 'neutral'"),
-        limit: z
-          .number()
-          .int()
-          .min(1)
-          .max(10)
-          .describe('Number of articles to return (1-10)'),
+        limit: z.number().int().min(1).max(10).describe('Number of articles to return (1-10)'),
       }),
       execute: async ({ signal, limit }) => {
         try {

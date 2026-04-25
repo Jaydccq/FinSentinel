@@ -171,9 +171,7 @@ describe('PortfolioService', () => {
       // Portfolio lookup returns empty
       mockDb.enqueueSelect([]);
 
-      await expect(
-        service.getPortfolio(USER_ID, PORTFOLIO_ID),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.getPortfolio(USER_ID, PORTFOLIO_ID)).rejects.toThrow(NotFoundException);
     });
 
     it('throws ForbiddenException when userId does not match owner', async () => {
@@ -190,9 +188,7 @@ describe('PortfolioService', () => {
         },
       ]);
 
-      await expect(
-        service.getPortfolio(USER_ID, PORTFOLIO_ID),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.getPortfolio(USER_ID, PORTFOLIO_ID)).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -289,24 +285,52 @@ describe('PortfolioService', () => {
       // getPortfolio: holdings sub-query (reused by analytics — no separate fetch)
       const holdingsData = [
         {
-          id: 'h1', portfolioId: PORTFOLIO_ID, symbol: 'AAPL',
-          companyName: 'Apple Inc.', quantity: '100', averageCost: '150.00',
-          currentPrice: '150.00', sector: 'Technology', createdAt: NOW, updatedAt: NOW,
+          id: 'h1',
+          portfolioId: PORTFOLIO_ID,
+          symbol: 'AAPL',
+          companyName: 'Apple Inc.',
+          quantity: '100',
+          averageCost: '150.00',
+          currentPrice: '150.00',
+          sector: 'Technology',
+          createdAt: NOW,
+          updatedAt: NOW,
         },
         {
-          id: 'h2', portfolioId: PORTFOLIO_ID, symbol: 'JNJ',
-          companyName: 'Johnson & Johnson', quantity: '100', averageCost: '150.00',
-          currentPrice: '150.00', sector: 'Healthcare', createdAt: NOW, updatedAt: NOW,
+          id: 'h2',
+          portfolioId: PORTFOLIO_ID,
+          symbol: 'JNJ',
+          companyName: 'Johnson & Johnson',
+          quantity: '100',
+          averageCost: '150.00',
+          currentPrice: '150.00',
+          sector: 'Healthcare',
+          createdAt: NOW,
+          updatedAt: NOW,
         },
         {
-          id: 'h3', portfolioId: PORTFOLIO_ID, symbol: 'XOM',
-          companyName: 'Exxon Mobil', quantity: '100', averageCost: '150.00',
-          currentPrice: '150.00', sector: 'Energy', createdAt: NOW, updatedAt: NOW,
+          id: 'h3',
+          portfolioId: PORTFOLIO_ID,
+          symbol: 'XOM',
+          companyName: 'Exxon Mobil',
+          quantity: '100',
+          averageCost: '150.00',
+          currentPrice: '150.00',
+          sector: 'Energy',
+          createdAt: NOW,
+          updatedAt: NOW,
         },
         {
-          id: 'h4', portfolioId: PORTFOLIO_ID, symbol: 'JPM',
-          companyName: 'JPMorgan Chase', quantity: '100', averageCost: '150.00',
-          currentPrice: '150.00', sector: 'Financials', createdAt: NOW, updatedAt: NOW,
+          id: 'h4',
+          portfolioId: PORTFOLIO_ID,
+          symbol: 'JPM',
+          companyName: 'JPMorgan Chase',
+          quantity: '100',
+          averageCost: '150.00',
+          currentPrice: '150.00',
+          sector: 'Financials',
+          createdAt: NOW,
+          updatedAt: NOW,
         },
       ];
       mockDb.enqueueSelect(holdingsData);
@@ -335,14 +359,28 @@ describe('PortfolioService', () => {
       // getPortfolio: holdings sub-query (reused by analytics — no separate fetch)
       const holdingsData = [
         {
-          id: 'h1', portfolioId: PORTFOLIO_ID, symbol: 'AAPL',
-          companyName: 'Apple Inc.', quantity: '800', averageCost: '100.00',
-          currentPrice: '100.00', sector: 'Technology', createdAt: NOW, updatedAt: NOW,
+          id: 'h1',
+          portfolioId: PORTFOLIO_ID,
+          symbol: 'AAPL',
+          companyName: 'Apple Inc.',
+          quantity: '800',
+          averageCost: '100.00',
+          currentPrice: '100.00',
+          sector: 'Technology',
+          createdAt: NOW,
+          updatedAt: NOW,
         },
         {
-          id: 'h2', portfolioId: PORTFOLIO_ID, symbol: 'JNJ',
-          companyName: 'Johnson & Johnson', quantity: '200', averageCost: '100.00',
-          currentPrice: '100.00', sector: 'Healthcare', createdAt: NOW, updatedAt: NOW,
+          id: 'h2',
+          portfolioId: PORTFOLIO_ID,
+          symbol: 'JNJ',
+          companyName: 'Johnson & Johnson',
+          quantity: '200',
+          averageCost: '100.00',
+          currentPrice: '100.00',
+          sector: 'Healthcare',
+          createdAt: NOW,
+          updatedAt: NOW,
         },
       ];
       mockDb.enqueueSelect(holdingsData);
@@ -356,7 +394,9 @@ describe('PortfolioService', () => {
       // AAPL at 80% triggers warning
       expect(result.concentrationWarnings.length).toBeGreaterThan(0);
       expect(result.concentrationWarnings.some((w) => w.includes('AAPL'))).toBe(true);
-      expect(result.concentrationWarnings.some((w) => w.includes('highly concentrated'))).toBe(true);
+      expect(result.concentrationWarnings.some((w) => w.includes('highly concentrated'))).toBe(
+        true,
+      );
     });
   });
 });

@@ -81,18 +81,18 @@ User query
 
 ### 5.2 Component responsibilities
 
-| Component | Input | Output | Owns |
-|---|---|---|---|
-| `QueryClassifierService` | raw query | `{ class, confidence }` | Small LLM prompt + regex fallbacks. Sub-10 ms target. |
-| `QueryPlannerService` | query + class | `{ rewritten, hyde_doc?, sub_queries[] }` | Decides whether to run HyDE / decomposition based on class. |
-| `MetadataPreFilterService` | query + class | candidate doc_id set or SQL `WHERE` clause | Keyword → entity / sector mapping via lightweight LLM or rule table. |
-| `RetrievalOrchestratorService` | planned queries + pre-filter | merged candidate list | Dispatch lanes in parallel; already exists, extend to accept pre-filter. |
-| Dense / Sparse / Graph lanes | candidate query + pre-filter | scored chunk list | Dense lane searches `chunk_text` + `contextual` + `sample_questions` representations and inner-RRFs them. Summary is NOT a dense evidence representation by default — it is consumed by the routing / pre-filter path (see §5.3). |
-| `RetrievalFusionService` | lane results | fused ranking | RRF with configurable weights per class. |
-| `RerankService` | top-N chunks + original query | top-K scored chunks | BGE cross-encoder sidecar; graceful fallback. |
-| `ContextExpanderService` | top-K chunks | expanded passages | Pull parent section / neighbor chunks using `parent_id` / `section_path`. |
-| `ContextPackerService` | expanded passages | final context | Already exists; reuse. |
-| `RagEvalRunnerService` | golden set + pipeline version | recall / MRR / per-class report | New CLI + service; writes to `rag_eval_runs` table. |
+| Component                      | Input                         | Output                                     | Owns                                                                                                                                                                                                                              |
+| ------------------------------ | ----------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `QueryClassifierService`       | raw query                     | `{ class, confidence }`                    | Small LLM prompt + regex fallbacks. Sub-10 ms target.                                                                                                                                                                             |
+| `QueryPlannerService`          | query + class                 | `{ rewritten, hyde_doc?, sub_queries[] }`  | Decides whether to run HyDE / decomposition based on class.                                                                                                                                                                       |
+| `MetadataPreFilterService`     | query + class                 | candidate doc_id set or SQL `WHERE` clause | Keyword → entity / sector mapping via lightweight LLM or rule table.                                                                                                                                                              |
+| `RetrievalOrchestratorService` | planned queries + pre-filter  | merged candidate list                      | Dispatch lanes in parallel; already exists, extend to accept pre-filter.                                                                                                                                                          |
+| Dense / Sparse / Graph lanes   | candidate query + pre-filter  | scored chunk list                          | Dense lane searches `chunk_text` + `contextual` + `sample_questions` representations and inner-RRFs them. Summary is NOT a dense evidence representation by default — it is consumed by the routing / pre-filter path (see §5.3). |
+| `RetrievalFusionService`       | lane results                  | fused ranking                              | RRF with configurable weights per class.                                                                                                                                                                                          |
+| `RerankService`                | top-N chunks + original query | top-K scored chunks                        | BGE cross-encoder sidecar; graceful fallback.                                                                                                                                                                                     |
+| `ContextExpanderService`       | top-K chunks                  | expanded passages                          | Pull parent section / neighbor chunks using `parent_id` / `section_path`.                                                                                                                                                         |
+| `ContextPackerService`         | expanded passages             | final context                              | Already exists; reuse.                                                                                                                                                                                                            |
+| `RagEvalRunnerService`         | golden set + pipeline version | recall / MRR / per-class report            | New CLI + service; writes to `rag_eval_runs` table.                                                                                                                                                                               |
 
 ### 5.3 Chunk schema changes
 
@@ -100,34 +100,34 @@ User query
 
 **New table `document_chunk_representations`** (FK `chunk_id` → `document_chunks.id`, one row per representation per chunk):
 
-| Column | Type | Purpose | Population |
-|---|---|---|---|
-| `id` | uuid | PK | Generated |
-| `chunk_id` | uuid | FK to `document_chunks.id` (ON DELETE CASCADE) | Set at enrichment |
-| `representation_type` | enum | `contextual` \| `sample_question` \| `summary` \| `keyword_set` | Set at enrichment |
-| `text` | text | The representation text (one question per row if type=`sample_question`) | Generated |
-| `embedding` | vector(1536) | Embedding of `text`; nullable for `keyword_set` | Generated |
-| `version` | text | Enrichment pipeline version tag (e.g. model + prompt hash) | Set at enrichment |
-| `created_at` | timestamptz | default now() | — |
+| Column                | Type         | Purpose                                                                  | Population        |
+| --------------------- | ------------ | ------------------------------------------------------------------------ | ----------------- |
+| `id`                  | uuid         | PK                                                                       | Generated         |
+| `chunk_id`            | uuid         | FK to `document_chunks.id` (ON DELETE CASCADE)                           | Set at enrichment |
+| `representation_type` | enum         | `contextual` \| `sample_question` \| `summary` \| `keyword_set`          | Set at enrichment |
+| `text`                | text         | The representation text (one question per row if type=`sample_question`) | Generated         |
+| `embedding`           | vector(1536) | Embedding of `text`; nullable for `keyword_set`                          | Generated         |
+| `version`             | text         | Enrichment pipeline version tag (e.g. model + prompt hash)               | Set at enrichment |
+| `created_at`          | timestamptz  | default now()                                                            | —                 |
 
 Indexes: `(chunk_id, representation_type)`, HNSW/IVFFlat on `embedding` partitioned by `representation_type` if query planner filters by type.
 
 **New columns on `document_chunks`** (structural metadata only, not semantic duplicates):
 
-| Column | Type | Purpose |
-|---|---|---|
-| `parent_id` | uuid | Parent section chunk (null for top-level) |
-| `section_path` | text | e.g. `"2. Risk Factors / 2.3 Counterparty"` |
+| Column              | Type | Purpose                                               |
+| ------------------- | ---- | ----------------------------------------------------- |
+| `parent_id`         | uuid | Parent section chunk (null for top-level)             |
+| `section_path`      | text | e.g. `"2. Risk Factors / 2.3 Counterparty"`           |
 | `enrichment_status` | enum | `pending` \| `in_progress` \| `succeeded` \| `failed` |
 
 **Lane / representation mapping** (aligns with plan):
 
-| Lane | Representations consumed |
-|---|---|
-| DenseLane | `chunk_text` (via existing `document_chunks.embedding`) + `representation_type IN ('contextual','sample_question')`; inner-RRF across them |
-| SparseLane | Existing chunk text + `contextual` + `sample_question` text widened into `search_vector` at reduced weights (C/D in `setweight`) |
+| Lane              | Representations consumed                                                                                                                                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DenseLane         | `chunk_text` (via existing `document_chunks.embedding`) + `representation_type IN ('contextual','sample_question')`; inner-RRF across them                                                                                      |
+| SparseLane        | Existing chunk text + `contextual` + `sample_question` text widened into `search_vector` at reduced weights (C/D in `setweight`)                                                                                                |
 | SummaryRouterLane | `representation_type = 'summary'` embedding and/or `keyword_set` — used for coarse pre-filter and intent routing, **not** as primary evidence. Adding summary to the dense evidence merge is gated on eval proof (Phase 2 A/B). |
-| GraphLane | Unchanged; reads `knowledge_entities` / `knowledge_relations` / `chunk_entity_links` (Phase 3). |
+| GraphLane         | Unchanged; reads `knowledge_entities` / `knowledge_relations` / `chunk_entity_links` (Phase 3).                                                                                                                                 |
 
 ### 5.4 Ingestion upgrade
 
@@ -149,13 +149,13 @@ Indexes: `(chunk_id, representation_type)`, HNSW/IVFFlat on `embedding` partitio
 
 ### 5.6 Phasing
 
-| Phase | Duration | Exit criteria |
-|---|---|---|
-| **P0**: Eval baseline | Week 1 | Golden set live (N ≥ 50), eval runner produces report, `RAG_MULTI_STAGE_ENABLED=true` baseline numbers recorded in `docs/exec-plans/`. |
-| **P1**: Ingestion + multi-rep index | Weeks 2–3 | `document_chunk_representations` table migrated; structural columns (`parent_id`, `section_path`, `enrichment_status`) added to `document_chunks`; enrichment consumer live; reindex of existing docs complete; strict recall@10 ≥ +10 pp over P0 baseline. |
-| **P2**: Query layer + cascaded retrieval | Weeks 4–5 | Classifier + HyDE + decomposition + metadata pre-filter + context expansion live; targets in §2 met. |
-| **P3**: GraphRAG enrichment | Weeks 6–7 | Only run if P2 per-class data shows relational-query class ≥ 10 pp below mean. Otherwise mark deferred and exit. |
-| **P4**: Optional (late chunking, multimodal, PageIndex) | Deferred | Re-evaluate once P0–P3 are in production for one month. |
+| Phase                                                   | Duration  | Exit criteria                                                                                                                                                                                                                                               |
+| ------------------------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **P0**: Eval baseline                                   | Week 1    | Golden set live (N ≥ 50), eval runner produces report, `RAG_MULTI_STAGE_ENABLED=true` baseline numbers recorded in `docs/exec-plans/`.                                                                                                                      |
+| **P1**: Ingestion + multi-rep index                     | Weeks 2–3 | `document_chunk_representations` table migrated; structural columns (`parent_id`, `section_path`, `enrichment_status`) added to `document_chunks`; enrichment consumer live; reindex of existing docs complete; strict recall@10 ≥ +10 pp over P0 baseline. |
+| **P2**: Query layer + cascaded retrieval                | Weeks 4–5 | Classifier + HyDE + decomposition + metadata pre-filter + context expansion live; targets in §2 met.                                                                                                                                                        |
+| **P3**: GraphRAG enrichment                             | Weeks 6–7 | Only run if P2 per-class data shows relational-query class ≥ 10 pp below mean. Otherwise mark deferred and exit.                                                                                                                                            |
+| **P4**: Optional (late chunking, multimodal, PageIndex) | Deferred  | Re-evaluate once P0–P3 are in production for one month.                                                                                                                                                                                                     |
 
 Each phase ends with an eval run and a progress-log entry in `docs/exec-plans/2026-04-19-rag-redesign.md` (created by writing-plans skill next).
 
@@ -168,14 +168,14 @@ Each phase ends with an eval run and a progress-log entry in `docs/exec-plans/20
 
 ## 7. Error handling and degradation
 
-| Failure | Behavior |
-|---|---|
-| Enrichment LLM fails for a chunk | Canonical chunk is already persisted; `enrichment_status = 'failed'` on `document_chunks`; no rows inserted into `document_chunk_representations` for this chunk. Stream consumer retries up to 3×. Retrieval still works using base chunk embedding + sparse. |
-| Reranker sidecar down | Fall back to RRF-only order (current behavior). Log at WARN, surface in eval run metadata. |
-| Classifier LLM times out (> 500 ms) | Default to `class = "factoid"` and skip HyDE / decomposition. |
-| HyDE generation fails | Drop the HyDE lane contribution; continue with rewritten query only. |
-| Pre-filter returns empty candidate set | Skip pre-filter, run lanes on full index. Log at INFO. |
-| Golden set eval run fails mid-flight | Partial results are discarded; `rag_eval_runs.status = 'failed'`; CI gate treats as "no data", not "regression". |
+| Failure                                | Behavior                                                                                                                                                                                                                                                       |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Enrichment LLM fails for a chunk       | Canonical chunk is already persisted; `enrichment_status = 'failed'` on `document_chunks`; no rows inserted into `document_chunk_representations` for this chunk. Stream consumer retries up to 3×. Retrieval still works using base chunk embedding + sparse. |
+| Reranker sidecar down                  | Fall back to RRF-only order (current behavior). Log at WARN, surface in eval run metadata.                                                                                                                                                                     |
+| Classifier LLM times out (> 500 ms)    | Default to `class = "factoid"` and skip HyDE / decomposition.                                                                                                                                                                                                  |
+| HyDE generation fails                  | Drop the HyDE lane contribution; continue with rewritten query only.                                                                                                                                                                                           |
+| Pre-filter returns empty candidate set | Skip pre-filter, run lanes on full index. Log at INFO.                                                                                                                                                                                                         |
+| Golden set eval run fails mid-flight   | Partial results are discarded; `rag_eval_runs.status = 'failed'`; CI gate treats as "no data", not "regression".                                                                                                                                               |
 
 ## 8. Testing strategy
 
@@ -188,28 +188,28 @@ Each phase ends with an eval run and a progress-log entry in `docs/exec-plans/20
 
 Existing flags kept. New flags:
 
-| Flag | Default | Purpose |
-|---|---|---|
-| `RAG_ENRICHMENT_ENABLED` | `false` → `true` after P1 reindex | Controls whether enrichment consumer writes multi-rep columns. |
-| `RAG_QUERY_CLASSIFIER_ENABLED` | `false` → `true` at P2 | Gates classifier + routing. |
-| `RAG_HYDE_ENABLED` | `false` → `true` at P2 | Gates HyDE lane. |
-| `RAG_QUERY_DECOMPOSE_ENABLED` | `false` → `true` at P2 | Gates decomposition. |
-| `RAG_METADATA_PREFILTER_ENABLED` | `false` → `true` at P2 | Gates pre-filter. |
-| `RAG_CONTEXT_EXPANSION_ENABLED` | `false` → `true` at P2 | Gates parent/section rehydration. |
-| `RAG_EVAL_CI_GATE_ENABLED` | `false` → `true` at end of P0 | Turns on the CI regression gate. |
+| Flag                             | Default                           | Purpose                                                        |
+| -------------------------------- | --------------------------------- | -------------------------------------------------------------- |
+| `RAG_ENRICHMENT_ENABLED`         | `false` → `true` after P1 reindex | Controls whether enrichment consumer writes multi-rep columns. |
+| `RAG_QUERY_CLASSIFIER_ENABLED`   | `false` → `true` at P2            | Gates classifier + routing.                                    |
+| `RAG_HYDE_ENABLED`               | `false` → `true` at P2            | Gates HyDE lane.                                               |
+| `RAG_QUERY_DECOMPOSE_ENABLED`    | `false` → `true` at P2            | Gates decomposition.                                           |
+| `RAG_METADATA_PREFILTER_ENABLED` | `false` → `true` at P2            | Gates pre-filter.                                              |
+| `RAG_CONTEXT_EXPANSION_ENABLED`  | `false` → `true` at P2            | Gates parent/section rehydration.                              |
+| `RAG_EVAL_CI_GATE_ENABLED`       | `false` → `true` at end of P0     | Turns on the CI regression gate.                               |
 
 All flags default to the pre-change behavior so a rollback is a single env-var flip.
 
 ## 10. Risks and mitigations
 
-| Risk | Mitigation |
-|---|---|
-| Enrichment cost explodes (3 LLM calls + 3 embeddings per chunk) | Run as async consumer with configurable concurrency and rate limit. Benchmark cost on a 1 k-chunk sample in P1 before full reindex. Keep `RAG_ENRICHMENT_ENABLED=false` until cost is validated. |
-| Multi-representation embeddings inflate pgvector storage | Estimate: up to 3 extra embeddings per chunk at 1536 × 4 bytes ≈ 18 kB per chunk, stored in `document_chunk_representations` — canonical `document_chunks` unaffected. Monitor `pg_total_relation_size('document_chunk_representations')`; tune IVFFlat / HNSW lists if latency regresses; representations can be rebuilt or dropped without touching canonical chunks. |
-| Multi-rep dense recall makes dense swamp BM25 | Lane-level RRF inside the dense lane prevents double-counting; outer RRF weights are tunable per query class. Eval runner reports per-lane contribution. |
-| Golden set overfits the pipeline | Keep 20% of golden set as a frozen holdout that cannot be inspected when tuning. Rotate holdout quarterly. |
-| MinerU / new parser introduces supply chain / license concerns | Benchmark vs. simpler `pdf-parse` + heading heuristic in P1; pick whichever meets accuracy bar with lower operational footprint. Do not block P1 on this decision — start with the shim and upgrade only if needed. |
-| Desktop hybrid-search regression when cloud schema grows | Contract test in `apps/web` + compatibility column in cloud response DTO. Cloud DTO never returns fields desktop cannot parse; extra fields are opt-in via accept header or query param. |
+| Risk                                                            | Mitigation                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Enrichment cost explodes (3 LLM calls + 3 embeddings per chunk) | Run as async consumer with configurable concurrency and rate limit. Benchmark cost on a 1 k-chunk sample in P1 before full reindex. Keep `RAG_ENRICHMENT_ENABLED=false` until cost is validated.                                                                                                                                                                        |
+| Multi-representation embeddings inflate pgvector storage        | Estimate: up to 3 extra embeddings per chunk at 1536 × 4 bytes ≈ 18 kB per chunk, stored in `document_chunk_representations` — canonical `document_chunks` unaffected. Monitor `pg_total_relation_size('document_chunk_representations')`; tune IVFFlat / HNSW lists if latency regresses; representations can be rebuilt or dropped without touching canonical chunks. |
+| Multi-rep dense recall makes dense swamp BM25                   | Lane-level RRF inside the dense lane prevents double-counting; outer RRF weights are tunable per query class. Eval runner reports per-lane contribution.                                                                                                                                                                                                                |
+| Golden set overfits the pipeline                                | Keep 20% of golden set as a frozen holdout that cannot be inspected when tuning. Rotate holdout quarterly.                                                                                                                                                                                                                                                              |
+| MinerU / new parser introduces supply chain / license concerns  | Benchmark vs. simpler `pdf-parse` + heading heuristic in P1; pick whichever meets accuracy bar with lower operational footprint. Do not block P1 on this decision — start with the shim and upgrade only if needed.                                                                                                                                                     |
+| Desktop hybrid-search regression when cloud schema grows        | Contract test in `apps/web` + compatibility column in cloud response DTO. Cloud DTO never returns fields desktop cannot parse; extra fields are opt-in via accept header or query param.                                                                                                                                                                                |
 
 ## 11. Open questions (to resolve in writing-plans)
 

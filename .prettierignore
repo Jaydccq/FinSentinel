@@ -1,0 +1,39 @@
+# build + cache
+**/node_modules
+**/dist
+**/build
+**/.next
+**/.turbo
+**/.nuxt
+**/coverage
+**/out
+
+# native / generated
+apps/desktop/src-tauri/target
+apps/desktop/src-tauri/gen
+packages/db/drizzle
+**/*.d.ts
+**/generated
+**/__generated__
+
+# lockfiles + vendored
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+**/*.min.js
+**/*.min.css
+
+# data / fixtures we don't want reflowed
+**/*.snap
+**/fixtures/**/*.json
+**/__fixtures__/**/*.json
+
+# tool-managed
+.claude
+.vscode
+.idea
+
+# docs: allow-listed via .gitignore; prettier skipping keeps diffs readable
+# If you want to format docs later, remove these two lines
+docs/runbooks
+docs/superpowers

@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import CryptoTradingPage from '@/views/CryptoTradingPage'
+import CryptoTradingPage from '@/views/CryptoTradingPage';
 
 export default function Page() {
-  return <CryptoTradingPage />
+  return <CryptoTradingPage />;
 }

@@ -4,7 +4,10 @@ export { portfolios } from './portfolios';
 export { holdings } from './holdings';
 export { documents } from './documents';
 export { documentChunks } from './document-chunks';
-export { documentChunkRepresentations, REPRESENTATION_TYPES } from './document-chunk-representations';
+export {
+  documentChunkRepresentations,
+  REPRESENTATION_TYPES,
+} from './document-chunk-representations';
 export type { RepresentationType } from './document-chunk-representations';
 export { riskReports } from './risk-reports';
 export { chatMessages } from './chat-messages';

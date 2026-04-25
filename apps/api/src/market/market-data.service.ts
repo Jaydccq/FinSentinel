@@ -5,9 +5,9 @@ import { MarketDataProviderRegistry } from './market-data-provider.registry';
 
 /** Cache TTLs in seconds. */
 const CACHE_TTL = {
-  QUOTE: 300,       // 5 minutes
-  BARS: 1800,       // 30 minutes
-  SEARCH: 600,      // 10 minutes
+  QUOTE: 300, // 5 minutes
+  BARS: 1800, // 30 minutes
+  SEARCH: 600, // 10 minutes
 } as const;
 
 /** Ticker validation: 1-20 alphanumeric chars, dots, hyphens, forward-slashes, colons. */

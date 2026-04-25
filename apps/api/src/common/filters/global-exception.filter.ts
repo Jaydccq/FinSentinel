@@ -84,7 +84,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           const resp = exceptionResponse as Record<string, unknown>;
           if (typeof resp['retryAfterMs'] === 'number') {
             body.retryAfterMs = resp['retryAfterMs'];
-            const retryAfterSecs = Math.ceil(resp['retryAfterMs'] as number / 1000);
+            const retryAfterSecs = Math.ceil((resp['retryAfterMs'] as number) / 1000);
             response.setHeader('Retry-After', retryAfterSecs);
           }
           if (typeof resp['message'] === 'string') {
@@ -98,10 +98,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           body.message = exceptionResponse;
         } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
           const resp = exceptionResponse as Record<string, unknown>;
-          body.message =
-            typeof resp['message'] === 'string'
-              ? resp['message']
-              : exception.message;
+          body.message = typeof resp['message'] === 'string' ? resp['message'] : exception.message;
         }
       }
     } else {

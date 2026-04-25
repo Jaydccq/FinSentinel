@@ -11,9 +11,7 @@ interface RequestLike {
  * Express lowercases header names; some adapters do not, so check both shapes.
  */
 export function extractIdempotencyKey(req: RequestLike): string | undefined {
-  const raw =
-    req.headers[HEADER] ??
-    req.headers['Idempotency-Key' as keyof typeof req.headers];
+  const raw = req.headers[HEADER] ?? req.headers['Idempotency-Key' as keyof typeof req.headers];
   if (raw === undefined) return undefined;
   if (Array.isArray(raw)) {
     return raw.find((v) => typeof v === 'string' && v.length > 0);

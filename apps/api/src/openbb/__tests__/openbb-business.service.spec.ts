@@ -36,53 +36,39 @@ describe('OpenbbBusinessDataService', () => {
       const result = await service.getUsCpi();
 
       expect(result).toEqual({ ok: true });
-      expect(mockPublicService.queryPublicData).toHaveBeenCalledWith(
-        'economy/cpi',
-        'fred',
-        { series_id: 'CPIAUCSL' },
-      );
+      expect(mockPublicService.queryPublicData).toHaveBeenCalledWith('economy/cpi', 'fred', {
+        series_id: 'CPIAUCSL',
+      });
     });
 
     it('passes date range params when provided', async () => {
       await service.getUsCpi('2020-01-01', '2021-12-31');
 
-      expect(mockPublicService.queryPublicData).toHaveBeenCalledWith(
-        'economy/cpi',
-        'fred',
-        {
-          series_id: 'CPIAUCSL',
-          start_date: '2020-01-01',
-          end_date: '2021-12-31',
-        },
-      );
+      expect(mockPublicService.queryPublicData).toHaveBeenCalledWith('economy/cpi', 'fred', {
+        series_id: 'CPIAUCSL',
+        start_date: '2020-01-01',
+        end_date: '2021-12-31',
+      });
     });
 
     it('passes limit param when provided', async () => {
       await service.getUsCpi(undefined, undefined, 12);
 
-      expect(mockPublicService.queryPublicData).toHaveBeenCalledWith(
-        'economy/cpi',
-        'fred',
-        {
-          series_id: 'CPIAUCSL',
-          limit: '12',
-        },
-      );
+      expect(mockPublicService.queryPublicData).toHaveBeenCalledWith('economy/cpi', 'fred', {
+        series_id: 'CPIAUCSL',
+        limit: '12',
+      });
     });
 
     it('passes all params together', async () => {
       await service.getUsCpi('2020-01-01', '2021-12-31', 24);
 
-      expect(mockPublicService.queryPublicData).toHaveBeenCalledWith(
-        'economy/cpi',
-        'fred',
-        {
-          series_id: 'CPIAUCSL',
-          start_date: '2020-01-01',
-          end_date: '2021-12-31',
-          limit: '24',
-        },
-      );
+      expect(mockPublicService.queryPublicData).toHaveBeenCalledWith('economy/cpi', 'fred', {
+        series_id: 'CPIAUCSL',
+        start_date: '2020-01-01',
+        end_date: '2021-12-31',
+        limit: '24',
+      });
     });
   });
 
@@ -149,9 +135,7 @@ describe('OpenbbBusinessDataService', () => {
         new Error('OpenBB request failed (HTTP 500)'),
       );
 
-      await expect(service.getUsCpi()).rejects.toThrow(
-        'OpenBB request failed (HTTP 500)',
-      );
+      await expect(service.getUsCpi()).rejects.toThrow('OpenBB request failed (HTTP 500)');
     });
   });
 });

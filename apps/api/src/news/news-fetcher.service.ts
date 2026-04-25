@@ -59,29 +59,27 @@ export class NewsFetcherService {
     const existing = await this.db
       .select({ id: newsItems.id })
       .from(newsItems)
-      .where(
-        and(
-          eq(newsItems.source, item.source),
-          eq(newsItems.sourceId, item.sourceId),
-        ),
-      )
+      .where(and(eq(newsItems.source, item.source), eq(newsItems.sourceId, item.sourceId)))
       .limit(1);
 
     if (existing.length > 0) {
       return null;
     }
 
-    const [inserted] = await this.db.insert(newsItems).values({
-      sourceId: item.sourceId,
-      source: item.source,
-      title: item.title,
-      summary: item.summary,
-      articleUrl: item.articleUrl,
-      author: item.author,
-      publishedAt: new Date(item.publishedAt),
-      tickers: item.tickers,
-      tags: item.tags,
-    }).returning({ id: newsItems.id });
+    const [inserted] = await this.db
+      .insert(newsItems)
+      .values({
+        sourceId: item.sourceId,
+        source: item.source,
+        title: item.title,
+        summary: item.summary,
+        articleUrl: item.articleUrl,
+        author: item.author,
+        publishedAt: new Date(item.publishedAt),
+        tickers: item.tickers,
+        tags: item.tags,
+      })
+      .returning({ id: newsItems.id });
 
     return inserted?.id ?? null;
   }

@@ -22,27 +22,13 @@ describe('analysis schemas', () => {
 
   it('lists exactly the 7 run statuses', () => {
     expect(analysisRunStatusSchema.options.sort()).toEqual(
-      [
-        'QUEUED',
-        'RUNNING',
-        'WAITING_APPROVAL',
-        'PAUSED',
-        'FAILED',
-        'COMPLETED',
-        'CANCELED',
-      ].sort(),
+      ['QUEUED', 'RUNNING', 'WAITING_APPROVAL', 'PAUSED', 'FAILED', 'COMPLETED', 'CANCELED'].sort(),
     );
   });
 
   it('lists the v1 stage keys aligned to team topology', () => {
     expect(analysisStageKeySchema.options.sort()).toEqual(
-      [
-        'INTELLIGENCE',
-        'THESIS',
-        'RISK',
-        'EXECUTION_PREP',
-        'HUMAN_APPROVAL',
-      ].sort(),
+      ['INTELLIGENCE', 'THESIS', 'RISK', 'EXECUTION_PREP', 'HUMAN_APPROVAL'].sort(),
     );
   });
 
@@ -186,7 +172,12 @@ describe('analysis schemas', () => {
 
 describe('analysisPresetSchema', () => {
   it('parses all four presets', () => {
-    for (const value of ['FAST_RISK_CHECK', 'STANDARD_ANALYSIS', 'DEEP_THESIS', 'EXECUTION_READY']) {
+    for (const value of [
+      'FAST_RISK_CHECK',
+      'STANDARD_ANALYSIS',
+      'DEEP_THESIS',
+      'EXECUTION_READY',
+    ]) {
       expect(analysisPresetSchema.parse(value)).toBe(value);
     }
   });

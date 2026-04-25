@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type {
-  AnalysisDecisionObjectJson,
-  StrategyArchivePayload,
-} from '../analysis-runs';
+import type { AnalysisDecisionObjectJson, StrategyArchivePayload } from '../analysis-runs';
 
 // Stub fetch before importing the module so the internal json() helper picks it up.
 const fetchMock = vi.fn();
@@ -14,11 +11,8 @@ vi.mock('../client', () => ({
   authHeaders: () => ({}),
 }));
 
-const {
-  analysisRunsApi,
-  isStrategyArchivePayload,
-  sanitizeDecisionObjectJsonForDisplay,
-} = await import('../analysis-runs');
+const { analysisRunsApi, isStrategyArchivePayload, sanitizeDecisionObjectJsonForDisplay } =
+  await import('../analysis-runs');
 
 describe('analysisRunsApi', () => {
   beforeEach(() => {
@@ -135,9 +129,7 @@ describe('analysisRunsApi', () => {
       strategyArchivePayload: { snapshot: { secret: 'should-not-render' } },
     };
 
-    expect(sanitizeDecisionObjectJsonForDisplay(typedDecisionObject)).toEqual(
-      typedDecisionObject,
-    );
+    expect(sanitizeDecisionObjectJsonForDisplay(typedDecisionObject)).toEqual(typedDecisionObject);
 
     const sanitized = sanitizeDecisionObjectJsonForDisplay(legacyDecisionObject);
     expect(JSON.stringify(sanitized)).not.toContain('should-not-render');

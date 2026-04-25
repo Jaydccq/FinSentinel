@@ -24,11 +24,18 @@ async function buildMultiStageService(opts: {
   plannerResult: Record<string, unknown>;
   fused: Array<Record<string, unknown>>;
   reranked: Array<Record<string, unknown>>;
-  packed: Array<{ chunkId: string; sourceId: string; content: string; metadata: Record<string, unknown> }>;
+  packed: Array<{
+    chunkId: string;
+    sourceId: string;
+    content: string;
+    metadata: Record<string, unknown>;
+  }>;
 }) {
   const mockPlanner = { plan: vi.fn().mockResolvedValue(opts.plannerResult) };
   const mockOrchestrator = {
-    orchestrate: vi.fn().mockResolvedValue({ fused: opts.fused, laneCounts: { dense: opts.fused.length } }),
+    orchestrate: vi
+      .fn()
+      .mockResolvedValue({ fused: opts.fused, laneCounts: { dense: opts.fused.length } }),
   };
   const mockReranker = { rerank: vi.fn().mockResolvedValue(opts.reranked) };
   const mockPacker = {

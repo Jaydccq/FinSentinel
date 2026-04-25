@@ -13,14 +13,32 @@ describe('PortfolioInsight schema contract', () => {
         hhiIndex: 1300,
         hhiClassification: 'Well Diversified',
         holdingWeights: [
-          { symbol: 'AAPL', companyName: 'Apple', sector: 'Technology', marketValue: '30000.00', weightPercent: '60.00', unrealizedPnl: '3000.00', pnlPercent: '11.11' },
-          { symbol: 'JNJ', companyName: 'J&J', sector: 'Healthcare', marketValue: '20000.00', weightPercent: '40.00', unrealizedPnl: '1000.00', pnlPercent: '5.26' },
+          {
+            symbol: 'AAPL',
+            companyName: 'Apple',
+            sector: 'Technology',
+            marketValue: '30000.00',
+            weightPercent: '60.00',
+            unrealizedPnl: '3000.00',
+            pnlPercent: '11.11',
+          },
+          {
+            symbol: 'JNJ',
+            companyName: 'J&J',
+            sector: 'Healthcare',
+            marketValue: '20000.00',
+            weightPercent: '40.00',
+            unrealizedPnl: '1000.00',
+            pnlPercent: '5.26',
+          },
         ],
         concentrationWarnings: ['AAPL represents 60.00% of portfolio (>25% threshold)'],
       }),
     };
     const newsService = {
-      getRecentNews: vi.fn().mockResolvedValue('No recent news found for AAPL in the last 7 day(s).'),
+      getRecentNews: vi
+        .fn()
+        .mockResolvedValue('No recent news found for AAPL in the last 7 day(s).'),
     };
 
     const service = new PortfolioInsightsService(

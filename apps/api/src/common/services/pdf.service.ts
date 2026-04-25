@@ -22,16 +22,9 @@ export class PdfService {
    *
    * Converts markdown into a simple, text-forward PDF document.
    */
-  async markdownToPdf(
-    markdown: string,
-    options?: { title?: string },
-  ): Promise<Buffer> {
+  async markdownToPdf(markdown: string, options?: { title?: string }): Promise<Buffer> {
     const title = options?.title ?? 'FinSentinel Report';
-    const lines = this.wrapLines([
-      title,
-      '',
-      ...this.markdownToPlainText(markdown),
-    ]);
+    const lines = this.wrapLines([title, '', ...this.markdownToPlainText(markdown)]);
 
     if (lines.length === 0) {
       lines.push(title);
@@ -179,9 +172,6 @@ export class PdfService {
   }
 
   private escapePdfText(value: string): string {
-    return value
-      .replace(/\\/g, '\\\\')
-      .replace(/\(/g, '\\(')
-      .replace(/\)/g, '\\)');
+    return value.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
   }
 }

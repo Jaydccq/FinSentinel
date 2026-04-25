@@ -122,9 +122,7 @@ export class ApiKeyService {
    * @param name - the key identifier
    */
   async delete(userId: string, name: string): Promise<void> {
-    await this.db
-      .delete(apiKeys)
-      .where(and(eq(apiKeys.userId, userId), eq(apiKeys.keyName, name)));
+    await this.db.delete(apiKeys).where(and(eq(apiKeys.userId, userId), eq(apiKeys.keyName, name)));
 
     this.logger.log(`API key '${name}' deleted for user ${userId}`);
   }

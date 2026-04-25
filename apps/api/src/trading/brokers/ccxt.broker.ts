@@ -1,8 +1,4 @@
-import {
-  SecurityType,
-  BrokerCapability,
-  Contract,
-} from '@finsentinel/shared';
+import { SecurityType, BrokerCapability, Contract } from '@finsentinel/shared';
 import type { IBroker } from '../interfaces/broker';
 import type { CcxtTradingEngine } from '../engines/ccxt-trading.engine';
 import type {
@@ -16,9 +12,7 @@ import type {
 /**
  * CCXT broker capabilities — spot trading only (crypto exchanges).
  */
-const CCXT_CAPABILITIES: Set<BrokerCapability> = new Set([
-  BrokerCapability.SPOT_TRADING,
-]);
+const CCXT_CAPABILITIES: Set<BrokerCapability> = new Set([BrokerCapability.SPOT_TRADING]);
 
 /**
  * CcxtBroker — wraps CcxtTradingEngine with Contract-aware symbol conversion.
@@ -60,10 +54,7 @@ export class CcxtBroker implements IBroker {
 
   // -- Order execution --------------------------------------------------------
 
-  async placeOrder(
-    contract: Contract,
-    request: OrderRequest,
-  ): Promise<OrderResult> {
+  async placeOrder(contract: Contract, request: OrderRequest): Promise<OrderResult> {
     const adapted: OrderRequest = {
       ...request,
       symbol: contract.toEngineSymbol(),

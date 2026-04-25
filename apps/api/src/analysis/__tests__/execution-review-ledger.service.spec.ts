@@ -136,9 +136,7 @@ describe('ExecutionReviewLedgerService', () => {
       const svc = new ExecutionReviewLedgerService(db as never, tradingMock as never);
       await svc.dispatchManual(userId, ledgerId);
       expect(tradingMock.execute).toHaveBeenCalledWith(userId);
-      expect(db.setUpdate).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'EXECUTED' }),
-      );
+      expect(db.setUpdate).toHaveBeenCalledWith(expect.objectContaining({ status: 'EXECUTED' }));
     });
 
     it('throws BadRequestException when the ledger is not COMMITTED', async () => {

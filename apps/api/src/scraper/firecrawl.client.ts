@@ -26,10 +26,7 @@ export class FirecrawlClient {
 
   constructor(configService: ConfigService) {
     this.apiKey = configService.get<string>('firecrawl.apiKey', '');
-    this.baseUrl = configService.get<string>(
-      'firecrawl.baseUrl',
-      'https://api.firecrawl.dev/v2',
-    );
+    this.baseUrl = configService.get<string>('firecrawl.baseUrl', 'https://api.firecrawl.dev/v2');
   }
 
   /**
@@ -72,8 +69,7 @@ export class FirecrawlClient {
         const body = (await response.json()) as FirecrawlResponse;
         return body.data?.markdown ?? null;
       } catch (err) {
-        lastError =
-          err instanceof Error ? err : new Error(String(err));
+        lastError = err instanceof Error ? err : new Error(String(err));
         this.logger.warn(
           `Firecrawl attempt ${attempt}/${FirecrawlClient.MAX_RETRIES} error: ${lastError.message}`,
         );

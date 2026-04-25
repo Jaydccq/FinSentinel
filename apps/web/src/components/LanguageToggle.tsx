@@ -1,12 +1,12 @@
-import { Languages } from 'lucide-react'
-import { useI18n } from '../hooks/useI18n'
+import { Languages } from 'lucide-react';
+import { useI18n } from '../hooks/useI18n';
 
 interface LanguageToggleProps {
-  compact?: boolean
+  compact?: boolean;
 }
 
 export default function LanguageToggle({ compact = false }: LanguageToggleProps) {
-  const { locale, setLocale, t } = useI18n()
+  const { locale, setLocale, t } = useI18n();
 
   return (
     <div className="inline-flex items-center gap-1.5" aria-label={t('common.language')}>
@@ -30,5 +30,5 @@ export default function LanguageToggle({ compact = false }: LanguageToggleProps)
         </button>
       </div>
     </div>
-  )
+  );
 }

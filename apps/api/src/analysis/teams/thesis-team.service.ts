@@ -98,9 +98,27 @@ export class ThesisTeamService implements TeamService {
     });
 
     const roleSummaries: RoleSummary[] = [
-      { roleKey: 'POSITIVE_CASE', status: 'COMPLETED', durationMs: positive.durationMs, toolCallCount: positive.toolCallCount, summary: positive.structured.summary },
-      { roleKey: 'NEGATIVE_CASE', status: 'COMPLETED', durationMs: negative.durationMs, toolCallCount: negative.toolCallCount, summary: negative.structured.summary },
-      { roleKey: 'THESIS_LEAD',   status: 'COMPLETED', durationMs: lead.durationMs,     toolCallCount: lead.toolCallCount,     summary: lead.structured.summary },
+      {
+        roleKey: 'POSITIVE_CASE',
+        status: 'COMPLETED',
+        durationMs: positive.durationMs,
+        toolCallCount: positive.toolCallCount,
+        summary: positive.structured.summary,
+      },
+      {
+        roleKey: 'NEGATIVE_CASE',
+        status: 'COMPLETED',
+        durationMs: negative.durationMs,
+        toolCallCount: negative.toolCallCount,
+        summary: negative.structured.summary,
+      },
+      {
+        roleKey: 'THESIS_LEAD',
+        status: 'COMPLETED',
+        durationMs: lead.durationMs,
+        toolCallCount: lead.toolCallCount,
+        summary: lead.structured.summary,
+      },
     ];
 
     const teamOutput: StageStructuredOutput = {

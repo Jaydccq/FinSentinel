@@ -47,11 +47,13 @@ describe('RagReindexService', () => {
 
   it('queues only documents that are missing chunks', async () => {
     mockDb.select
-      .mockReturnValueOnce(withLimit([
-        { id: 'doc-1', status: 'VECTORIZED', storageKey: 'documents/u/doc-1.txt' },
-        { id: 'doc-2', status: 'VECTORIZED', storageKey: 'documents/u/doc-2.txt' },
-        { id: 'doc-3', status: 'EMPTY', storageKey: 'documents/u/doc-3.txt' },
-      ]))
+      .mockReturnValueOnce(
+        withLimit([
+          { id: 'doc-1', status: 'VECTORIZED', storageKey: 'documents/u/doc-1.txt' },
+          { id: 'doc-2', status: 'VECTORIZED', storageKey: 'documents/u/doc-2.txt' },
+          { id: 'doc-3', status: 'EMPTY', storageKey: 'documents/u/doc-3.txt' },
+        ]),
+      )
       .mockReturnValueOnce(withWhere([{ sourceId: 'doc-2' }]));
 
     const result = await service.reindexMissingDocumentsForUser('user-1', 100, false);
@@ -63,10 +65,12 @@ describe('RagReindexService', () => {
 
   it('queues globally missing documents across all users', async () => {
     mockDb.select
-      .mockReturnValueOnce(withLimit([
-        { id: 'doc-1', status: 'VECTORIZED', storageKey: 'documents/a/doc-1.txt' },
-        { id: 'doc-2', status: 'FAILED', storageKey: 'documents/b/doc-2.txt' },
-      ]))
+      .mockReturnValueOnce(
+        withLimit([
+          { id: 'doc-1', status: 'VECTORIZED', storageKey: 'documents/a/doc-1.txt' },
+          { id: 'doc-2', status: 'FAILED', storageKey: 'documents/b/doc-2.txt' },
+        ]),
+      )
       .mockReturnValueOnce(withWhere([{ sourceId: 'doc-2' }]));
 
     const result = await service.reindexMissingDocuments(100, false);
@@ -76,11 +80,13 @@ describe('RagReindexService', () => {
   });
 
   it('queues all eligible documents when force=true', async () => {
-    mockDb.select.mockReturnValueOnce(withLimit([
-      { id: 'doc-1', status: 'VECTORIZED', storageKey: 'documents/u/doc-1.txt' },
-      { id: 'doc-2', status: 'FAILED', storageKey: 'documents/u/doc-2.txt' },
-      { id: 'doc-3', status: 'EMPTY', storageKey: 'documents/u/doc-3.txt' },
-    ]));
+    mockDb.select.mockReturnValueOnce(
+      withLimit([
+        { id: 'doc-1', status: 'VECTORIZED', storageKey: 'documents/u/doc-1.txt' },
+        { id: 'doc-2', status: 'FAILED', storageKey: 'documents/u/doc-2.txt' },
+        { id: 'doc-3', status: 'EMPTY', storageKey: 'documents/u/doc-3.txt' },
+      ]),
+    );
 
     const result = await service.reindexMissingDocumentsForUser('user-1', 100, true);
 
@@ -91,10 +97,12 @@ describe('RagReindexService', () => {
 
   it('queues only news items missing chunks', async () => {
     mockDb.select
-      .mockReturnValueOnce(withLimit([
-        { id: 'news-1', articleUrl: 'https://example.com/1', enriched: true },
-        { id: 'news-2', articleUrl: 'https://example.com/2', enriched: false },
-      ]))
+      .mockReturnValueOnce(
+        withLimit([
+          { id: 'news-1', articleUrl: 'https://example.com/1', enriched: true },
+          { id: 'news-2', articleUrl: 'https://example.com/2', enriched: false },
+        ]),
+      )
       .mockReturnValueOnce(withWhere([{ sourceId: 'news-2' }]));
 
     const result = await service.reindexMissingNews(100, false);

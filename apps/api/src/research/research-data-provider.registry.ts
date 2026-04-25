@@ -31,9 +31,7 @@ export class ResearchDataProviderRegistry {
       ? configuredDefault
       : (providers[0]?.getName() ?? 'polygon');
 
-    this.logger.log(
-      `Default research data provider: ${this.defaultProviderName}`,
-    );
+    this.logger.log(`Default research data provider: ${this.defaultProviderName}`);
   }
 
   /** O(1) lookup by provider name. */

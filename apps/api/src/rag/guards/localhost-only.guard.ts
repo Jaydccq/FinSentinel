@@ -1,9 +1,4 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 
 /**
  * Localhost-only guard for the RAG eval endpoint.
@@ -22,11 +17,7 @@ import {
  * Decision recorded in:
  *   docs/exec-plans/2026-04-24-codebase-optimization-triage-prd.md §5 Q1.
  */
-const LOCALHOST_ADDRESSES = new Set<string>([
-  '127.0.0.1',
-  '::1',
-  '::ffff:127.0.0.1',
-]);
+const LOCALHOST_ADDRESSES = new Set<string>(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
 @Injectable()
 export class LocalhostOnlyGuard implements CanActivate {
@@ -43,9 +34,8 @@ export class LocalhostOnlyGuard implements CanActivate {
     }
 
     const remote =
-      (typeof request?.ip === 'string' && request.ip.length > 0
-        ? request.ip
-        : undefined) ?? request?.socket?.remoteAddress;
+      (typeof request?.ip === 'string' && request.ip.length > 0 ? request.ip : undefined) ??
+      request?.socket?.remoteAddress;
 
     if (!remote || !LOCALHOST_ADDRESSES.has(remote)) {
       throw new ForbiddenException('Eval endpoint is localhost-only');

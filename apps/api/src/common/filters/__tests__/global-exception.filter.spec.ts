@@ -1,10 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-  BadRequestException,
-  HttpException,
-  HttpStatus,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, NotFoundException } from '@nestjs/common';
 import { GlobalExceptionFilter } from '../global-exception.filter';
 import type { ErrorResponse } from '../global-exception.filter';
 

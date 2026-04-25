@@ -10,12 +10,7 @@ import {
 import { aiConfig } from '../../config/ai.config';
 import { ToolRegistry } from '../../agent/tool-registry';
 import { ROLE_TOOL_SCOPE } from '../contracts/role-tool-scope';
-import type {
-  RoleDefinition,
-  RoleInput,
-  RoleKey,
-  RoleOutput,
-} from '../contracts/role-contract';
+import type { RoleDefinition, RoleInput, RoleKey, RoleOutput } from '../contracts/role-contract';
 
 export function extractStructuredJson(text: string): unknown {
   const fencedJson = /```json\s*([\s\S]+?)\s*```/i.exec(text);
@@ -49,9 +44,18 @@ export function extractStructuredJson(text: string): unknown {
     let escape = false;
     for (let i = openIdx; i < text.length; i++) {
       const ch = text[i];
-      if (escape) { escape = false; continue; }
-      if (ch === '\\' && inString) { escape = true; continue; }
-      if (ch === '"') { inString = !inString; continue; }
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === '\\' && inString) {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = !inString;
+        continue;
+      }
       if (inString) continue;
       if (ch === '{') depth++;
       else if (ch === '}') {
@@ -94,9 +98,11 @@ export class RoleExecutorService {
 
   constructor(
     private readonly toolRegistry: ToolRegistry,
-    @Optional() @Inject(ROLE_EXECUTOR_LLM_TOKEN)
+    @Optional()
+    @Inject(ROLE_EXECUTOR_LLM_TOKEN)
     private readonly llm?: LlmRunner,
-    @Optional() @Inject(aiConfig.KEY)
+    @Optional()
+    @Inject(aiConfig.KEY)
     aiCfg?: ConfigType<typeof aiConfig>,
   ) {
     if (aiCfg) {
@@ -174,13 +180,7 @@ export class RoleExecutorService {
       }
     }
     if (input.extra) {
-      lines.push(
-        '',
-        '## Additional inputs (JSON)',
-        '```json',
-        JSON.stringify(input.extra),
-        '```',
-      );
+      lines.push('', '## Additional inputs (JSON)', '```json', JSON.stringify(input.extra), '```');
     }
     return lines.join('\n');
   }
@@ -206,9 +206,6 @@ export class RoleExecutorService {
   }
 }
 
-export function roleDefinition(
-  roleKey: RoleKey,
-  systemPrompt: string,
-): RoleDefinition {
+export function roleDefinition(roleKey: RoleKey, systemPrompt: string): RoleDefinition {
   return { roleKey, systemPrompt, allowedToolNames: ROLE_TOOL_SCOPE[roleKey] };
 }

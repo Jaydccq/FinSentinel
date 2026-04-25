@@ -1,14 +1,14 @@
-import type { ReactNode } from 'react'
-import { Shield, ChevronRight } from 'lucide-react'
-import { useI18n } from '../hooks/useI18n'
-import LanguageToggle from './LanguageToggle'
+import type { ReactNode } from 'react';
+import { Shield, ChevronRight } from 'lucide-react';
+import { useI18n } from '../hooks/useI18n';
+import LanguageToggle from './LanguageToggle';
 
 interface AuthShellProps {
-  heading: string
-  subheading: string
-  eyebrow?: string
-  children: ReactNode
-  footer: ReactNode
+  heading: string;
+  subheading: string;
+  eyebrow?: string;
+  children: ReactNode;
+  footer: ReactNode;
 }
 
 export default function AuthShell({
@@ -18,13 +18,13 @@ export default function AuthShell({
   children,
   footer,
 }: AuthShellProps) {
-  const { t } = useI18n()
+  const { t } = useI18n();
 
   const items = [
     t('auth.bullet.marketIntelligence'),
     t('auth.bullet.riskAssessment'),
     t('auth.bullet.secGuardrails'),
-  ]
+  ];
 
   return (
     <div className="relative min-h-screen overflow-hidden px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
@@ -36,13 +36,17 @@ export default function AuthShell({
             </div>
             <div>
               <h1 className="font-semibold text-xl tracking-tight leading-none">FinSentinel</h1>
-              <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">{eyebrow ?? t('auth.eyebrow')}</p>
+              <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-[var(--text-muted)]">
+                {eyebrow ?? t('auth.eyebrow')}
+              </p>
             </div>
           </div>
 
           <div className="mt-6 space-y-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-blue-400">{t('auth.secureWorkspace')}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-blue-400">
+                {t('auth.secureWorkspace')}
+              </p>
               <h2 className="mt-3 text-2xl font-semibold leading-[0.95] text-[var(--text-primary)]">
                 {t('auth.hero.line1')}
                 <br />
@@ -55,7 +59,10 @@ export default function AuthShell({
 
             <div className="space-y-3">
               {items.map((item) => (
-                <div key={item} className="surface-panel rounded px-3.5 py-2.5 text-sm text-[var(--text-secondary)] flex items-center gap-2.5">
+                <div
+                  key={item}
+                  className="surface-panel rounded px-3.5 py-2.5 text-sm text-[var(--text-secondary)] flex items-center gap-2.5"
+                >
                   <ChevronRight size={14} className="text-blue-400" aria-hidden="true" />
                   <span>{item}</span>
                 </div>
@@ -67,7 +74,9 @@ export default function AuthShell({
         <section className="glass-panel rounded border-[color:var(--border-subtle)] p-5 sm:p-6 lg:p-7 flex flex-col">
           <div>
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-blue-400">{t('auth.accountAccess')}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-blue-400">
+                {t('auth.accountAccess')}
+              </p>
               <LanguageToggle />
             </div>
             <h2 className="mt-2 page-title">{heading}</h2>
@@ -80,5 +89,5 @@ export default function AuthShell({
         </section>
       </div>
     </div>
-  )
+  );
 }

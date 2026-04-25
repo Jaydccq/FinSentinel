@@ -16,6 +16,7 @@ drives a real `InvokeRequest → InvokeResponse` through
 `get_ipc_response`. Asserts the deserialized body equals `"pong"`.
 
 Proves:
+
 - `tauri::generate_handler!` wiring in `lib.rs` includes `ping`.
 - Command dispatch survives the serde round-trip.
 - The crate links cleanly (keyring, sqlite-vec, fastembed, etc.) under
@@ -32,6 +33,7 @@ for 12 seconds, then SIGTERMs it. The script accepts both `rc=124`
 any `panicked at` string in stderr fails the job.
 
 Wired into `.github/workflows/desktop-smoke.yml`:
+
 - PR-time Ubuntu job: `apt-get install xvfb` + run the smoke after
   `cargo test`.
 - Nightly macOS job: skip xvfb (native WindowServer available) + run
@@ -42,8 +44,9 @@ setup hook completes without panic on a fresh CI host.
 
 ### Layer 3 (residual gap — documented, not blocking)
 
-Driving `invoke('ping')` from *outside* the webview on a real host
+Driving `invoke('ping')` from _outside_ the webview on a real host
 still requires:
+
 - A dev-only page script injected via Tauri's `initializationScript`
   or a custom protocol handler.
 - Process orchestration that waits for the webview-ready event before
@@ -59,11 +62,11 @@ multiple days of one-off DevOps infra.
 
 ## Verification
 
-| Check | Result |
-|-------|--------|
-| `cargo test --lib` (apps/desktop/src-tauri) | 14 passed / 0 failed |
-| `apps/desktop/scripts/runtime-smoke.sh` | ready for CI (Linux + macOS) |
-| `pnpm --filter @finsentinel/web test` | 85 passed / 0 failed |
+| Check                                       | Result                       |
+| ------------------------------------------- | ---------------------------- |
+| `cargo test --lib` (apps/desktop/src-tauri) | 14 passed / 0 failed         |
+| `apps/desktop/scripts/runtime-smoke.sh`     | ready for CI (Linux + macOS) |
+| `pnpm --filter @finsentinel/web test`       | 85 passed / 0 failed         |
 
 ## Progress log
 

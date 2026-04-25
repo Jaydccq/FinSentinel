@@ -43,8 +43,12 @@ describe('ExecutionPrepTeamService.execute', () => {
         .mockResolvedValueOnce({
           roleKey: 'TRADE_PLANNER',
           structured: {
-            summary: 's', thesis: 't', risks: [], openQuestions: [],
-            citations: [], confidence: 0.8,
+            summary: 's',
+            thesis: 't',
+            risks: [],
+            openQuestions: [],
+            citations: [],
+            confidence: 0.8,
           },
           rawMarkdown: 'plan',
           durationMs: 60,
@@ -53,8 +57,12 @@ describe('ExecutionPrepTeamService.execute', () => {
         .mockResolvedValueOnce({
           roleKey: 'EXECUTION_DRAFT_BUILDER',
           structured: {
-            summary: 's', thesis: 't', risks: [], openQuestions: [],
-            citations: [], confidence: 0.9,
+            summary: 's',
+            thesis: 't',
+            risks: [],
+            openQuestions: [],
+            citations: [],
+            confidence: 0.9,
             orderDrafts: [validDraft],
           },
           rawMarkdown: '```json\n{"orderDrafts":[...]}\n```',
@@ -106,7 +114,11 @@ describe('ExecutionPrepTeamService.execute', () => {
       }),
     );
     expect(approvals.request).toHaveBeenCalledWith(
-      expect.objectContaining({ runId: 'r1', userId: 'u1', orderDraftArtifactId: expect.any(String) }),
+      expect.objectContaining({
+        runId: 'r1',
+        userId: 'u1',
+        orderDraftArtifactId: expect.any(String),
+      }),
     );
     expect(checkpoints.commitStage).toHaveBeenCalledWith(
       expect.objectContaining({ stageKey: 'EXECUTION_PREP' }),
@@ -121,12 +133,26 @@ describe('ExecutionPrepTeamService.execute', () => {
       .fn()
       .mockResolvedValueOnce({
         roleKey: 'TRADE_PLANNER',
-        structured: { summary: '', thesis: '', risks: [], openQuestions: [], citations: [], confidence: 0 },
+        structured: {
+          summary: '',
+          thesis: '',
+          risks: [],
+          openQuestions: [],
+          citations: [],
+          confidence: 0,
+        },
         rawMarkdown: '',
       })
       .mockResolvedValueOnce({
         roleKey: 'EXECUTION_DRAFT_BUILDER',
-        structured: { summary: '', thesis: '', risks: [], openQuestions: [], citations: [], confidence: 0 },
+        structured: {
+          summary: '',
+          thesis: '',
+          risks: [],
+          openQuestions: [],
+          citations: [],
+          confidence: 0,
+        },
         rawMarkdown: '',
       });
     svc = new ExecutionPrepTeamService(

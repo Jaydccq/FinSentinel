@@ -18,7 +18,7 @@ export const REPRESENTATION_TYPES = [
   'keyword_entity',
 ] as const;
 
-export type RepresentationType = typeof REPRESENTATION_TYPES[number];
+export type RepresentationType = (typeof REPRESENTATION_TYPES)[number];
 
 const tsvectorType = customType<{
   data: string;
@@ -62,7 +62,10 @@ export const documentChunkRepresentations = pgTable(
     embedding: vector('embedding'),
     searchVector: tsvectorType('search_vector'),
     weight: real('weight').notNull().default(1.0),
-    metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    metadata: jsonb('metadata')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

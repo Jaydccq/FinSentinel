@@ -33,8 +33,7 @@ export class HumanApprovalGateService implements TeamService {
       runId: args.runId,
       stageKey: this.stageKey,
       structuredOutput: stageOutput,
-      humanReportMarkdown:
-        '# Human Approval Gate\nRun is paused waiting for user approval.',
+      humanReportMarkdown: '# Human Approval Gate\nRun is paused waiting for user approval.',
     });
 
     await this.runs.transitionToWaitingApproval(args.userId, args.runId);

@@ -147,7 +147,10 @@ describe('AgentEventService', () => {
       expect(result.payloadJson).toEqual({});
 
       // Verify the values passed to insert had empty object
-      const insertedValues = mockDb._insertChain.values.mock.calls[0]![0] as Record<string, unknown>;
+      const insertedValues = mockDb._insertChain.values.mock.calls[0]![0] as Record<
+        string,
+        unknown
+      >;
       expect(insertedValues.payloadJson).toEqual({});
     });
   });
@@ -237,11 +240,7 @@ describe('AgentEventService', () => {
     it('emits newly appended matching aggregate events', async () => {
       const nextEvent = firstValueFrom(
         service
-          .watchAggregate(
-            TEST_USER_ID,
-            AgentEventAggregateType.ANALYSIS_RUN,
-            TEST_AGGREGATE_ID,
-          )
+          .watchAggregate(TEST_USER_ID, AgentEventAggregateType.ANALYSIS_RUN, TEST_AGGREGATE_ID)
           .pipe(take(1)),
       );
 

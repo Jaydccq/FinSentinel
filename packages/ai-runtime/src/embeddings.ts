@@ -42,7 +42,10 @@ export class OpenAICompatibleEmbeddingClient {
     return this.embedValues(values, this.options.chunkInputType);
   }
 
-  private async embedValues(values: string[], inputType: EmbeddingInputType | undefined): Promise<number[][]> {
+  private async embedValues(
+    values: string[],
+    inputType: EmbeddingInputType | undefined,
+  ): Promise<number[][]> {
     if (values.length === 0) {
       return [];
     }
@@ -76,10 +79,14 @@ export class OpenAICompatibleEmbeddingClient {
       throw new Error('Embedding response is missing a data array');
     }
 
-    const embeddings = data.map((item, index) => this.parseEmbeddingItem(item as OpenRouterEmbeddingResponseItem, index));
+    const embeddings = data.map((item, index) =>
+      this.parseEmbeddingItem(item as OpenRouterEmbeddingResponseItem, index),
+    );
 
     if (embeddings.length !== values.length) {
-      throw new Error(`Embedding response expected ${values.length} embeddings, got ${embeddings.length}`);
+      throw new Error(
+        `Embedding response expected ${values.length} embeddings, got ${embeddings.length}`,
+      );
     }
 
     return embeddings;
@@ -105,7 +112,9 @@ export class OpenAICompatibleEmbeddingClient {
 
   private parseEmbeddingItem(item: OpenRouterEmbeddingResponseItem, index: number): number[] {
     if (!item || !Array.isArray(item.embedding)) {
-      throw new Error(`Embedding response item ${index} has invalid embedding: expected a numeric array`);
+      throw new Error(
+        `Embedding response item ${index} has invalid embedding: expected a numeric array`,
+      );
     }
 
     const embedding = item.embedding.map((value, dimension) => {

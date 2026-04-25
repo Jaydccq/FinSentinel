@@ -17,7 +17,15 @@ describe('VectorizeProducer', () => {
       providers: [
         VectorizeProducer,
         { provide: VECTORIZE_QUEUE_TOKEN, useValue: mockQueue },
-        { provide: MetricsService, useValue: { incrementCounter: vi.fn(), setGauge: vi.fn(), observeHistogram: vi.fn(), startHistogramTimer: vi.fn(() => vi.fn()) } },
+        {
+          provide: MetricsService,
+          useValue: {
+            incrementCounter: vi.fn(),
+            setGauge: vi.fn(),
+            observeHistogram: vi.fn(),
+            startHistogramTimer: vi.fn(() => vi.fn()),
+          },
+        },
       ],
     }).compile();
 

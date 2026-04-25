@@ -39,17 +39,24 @@ describe('QueryEntityExtractorService (regex path)', () => {
 
 describe('QueryEntityExtractorService (LLM fallback)', () => {
   it('invokes LLM when regex is empty and flag is on', async () => {
-    const llm = { complete: vi.fn().mockResolvedValue(JSON.stringify({
-      tickers: [],
-      issuerNames: [{ value: 'Nvidia', confidence: 0.9 }],
-      sectors: [{ value: 'Semiconductors', confidence: 0.85 }],
-      regions: [],
-      docType: null,
-      timeRange: null,
-    })) };
+    const llm = {
+      complete: vi.fn().mockResolvedValue(
+        JSON.stringify({
+          tickers: [],
+          issuerNames: [{ value: 'Nvidia', confidence: 0.9 }],
+          sectors: [{ value: 'Semiconductors', confidence: 0.85 }],
+          regions: [],
+          docType: null,
+          timeRange: null,
+        }),
+      ),
+    };
     const service = new QueryEntityExtractorService({
-      llmFallbackEnabled: true, llmClient: llm,
-      hardMinConfidence: 0.85, timeoutMs: 1500, concurrency: 4,
+      llmFallbackEnabled: true,
+      llmClient: llm,
+      hardMinConfidence: 0.85,
+      timeoutMs: 1500,
+      concurrency: 4,
     });
 
     const result = await service.extract('the chip supplier story');
@@ -62,8 +69,11 @@ describe('QueryEntityExtractorService (LLM fallback)', () => {
   it('opens the circuit after 3 consecutive failures', async () => {
     const llm = { complete: vi.fn().mockRejectedValue(new Error('429')) };
     const service = new QueryEntityExtractorService({
-      llmFallbackEnabled: true, llmClient: llm,
-      hardMinConfidence: 0.85, timeoutMs: 1500, concurrency: 4,
+      llmFallbackEnabled: true,
+      llmClient: llm,
+      hardMinConfidence: 0.85,
+      timeoutMs: 1500,
+      concurrency: 4,
     });
 
     // 3 triggering calls
@@ -79,10 +89,18 @@ describe('QueryEntityExtractorService (LLM fallback)', () => {
   });
 
   it('returns llm_timeout flag when LLM exceeds timeoutMs', async () => {
-    const llm = { complete: () => new Promise<string>(() => { /* never resolves */ }) };
+    const llm = {
+      complete: () =>
+        new Promise<string>(() => {
+          /* never resolves */
+        }),
+    };
     const service = new QueryEntityExtractorService({
-      llmFallbackEnabled: true, llmClient: llm,
-      hardMinConfidence: 0.85, timeoutMs: 50, concurrency: 4,
+      llmFallbackEnabled: true,
+      llmClient: llm,
+      hardMinConfidence: 0.85,
+      timeoutMs: 50,
+      concurrency: 4,
     });
 
     const result = await service.extract('plain query without regex hits');
@@ -92,8 +110,11 @@ describe('QueryEntityExtractorService (LLM fallback)', () => {
   it('returns llm_empty flag when LLM response fails zod parse', async () => {
     const llm = { complete: vi.fn().mockResolvedValue('{"tickers":"not-an-array"}') };
     const service = new QueryEntityExtractorService({
-      llmFallbackEnabled: true, llmClient: llm,
-      hardMinConfidence: 0.85, timeoutMs: 1500, concurrency: 4,
+      llmFallbackEnabled: true,
+      llmClient: llm,
+      hardMinConfidence: 0.85,
+      timeoutMs: 1500,
+      concurrency: 4,
     });
 
     const result = await service.extract('query without regex hits');
@@ -103,8 +124,11 @@ describe('QueryEntityExtractorService (LLM fallback)', () => {
   it('does NOT call LLM when regex already has a hit', async () => {
     const llm = { complete: vi.fn() };
     const service = new QueryEntityExtractorService({
-      llmFallbackEnabled: true, llmClient: llm,
-      hardMinConfidence: 0.85, timeoutMs: 1500, concurrency: 4,
+      llmFallbackEnabled: true,
+      llmClient: llm,
+      hardMinConfidence: 0.85,
+      timeoutMs: 1500,
+      concurrency: 4,
     });
 
     await service.extract('AAPL 10-K FY2024');
@@ -113,13 +137,18 @@ describe('QueryEntityExtractorService (LLM fallback)', () => {
 
   it('after cooldown, a single probe failure does NOT immediately re-open the circuit', async () => {
     let failCount = 0;
-    const llm = { complete: vi.fn().mockImplementation(async () => {
-      failCount++;
-      throw new Error('429');
-    }) };
+    const llm = {
+      complete: vi.fn().mockImplementation(async () => {
+        failCount++;
+        throw new Error('429');
+      }),
+    };
     const service = new QueryEntityExtractorService({
-      llmFallbackEnabled: true, llmClient: llm,
-      hardMinConfidence: 0.85, timeoutMs: 1500, concurrency: 4,
+      llmFallbackEnabled: true,
+      llmClient: llm,
+      hardMinConfidence: 0.85,
+      timeoutMs: 1500,
+      concurrency: 4,
     });
 
     // Open the circuit with 3 failures.

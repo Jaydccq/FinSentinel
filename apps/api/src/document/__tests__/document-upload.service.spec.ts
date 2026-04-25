@@ -35,8 +35,14 @@ function createMockStorage() {
 
 function createMockParseService() {
   return {
-    parseToCleanText: vi.fn().mockReturnValue('Parsed text content that is sufficiently long for testing purposes.'),
-    parseToMarkdown: vi.fn().mockResolvedValue('# Parsed markdown content that is sufficiently long for testing purposes.'),
+    parseToCleanText: vi
+      .fn()
+      .mockReturnValue('Parsed text content that is sufficiently long for testing purposes.'),
+    parseToMarkdown: vi
+      .fn()
+      .mockResolvedValue(
+        '# Parsed markdown content that is sufficiently long for testing purposes.',
+      ),
   };
 }
 
@@ -89,9 +95,7 @@ describe('DocumentUploadService', () => {
       originalname: 'empty.txt',
     };
 
-    await expect(service.upload(file, 'user-1', 'RESEARCH')).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(service.upload(file, 'user-1', 'RESEARCH')).rejects.toThrow(BadRequestException);
   });
 
   it('rejects files exceeding max size', async () => {
@@ -101,9 +105,7 @@ describe('DocumentUploadService', () => {
       originalname: 'huge.txt',
     };
 
-    await expect(service.upload(file, 'user-1', 'RESEARCH')).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(service.upload(file, 'user-1', 'RESEARCH')).rejects.toThrow(BadRequestException);
   });
 
   it('rejects unsupported MIME types', async () => {
@@ -113,9 +115,7 @@ describe('DocumentUploadService', () => {
       originalname: 'data.bin',
     };
 
-    await expect(service.upload(file, 'user-1', 'RESEARCH')).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(service.upload(file, 'user-1', 'RESEARCH')).rejects.toThrow(BadRequestException);
   });
 
   // ── Successful upload ───────────────────────────────────────────────────
@@ -147,10 +147,7 @@ describe('DocumentUploadService', () => {
     expect(mockDb.insert).toHaveBeenCalled();
 
     // Verify parse + vectorize were called
-    expect(mockParseService.parseToCleanText).toHaveBeenCalledWith(
-      file.buffer,
-      'text/plain',
-    );
+    expect(mockParseService.parseToCleanText).toHaveBeenCalledWith(file.buffer, 'text/plain');
     expect(mockVectorService.vectorize).toHaveBeenCalledWith(
       'doc-uuid-123',
       expect.any(String),
@@ -224,7 +221,11 @@ describe('DocumentUploadService', () => {
   // ── R5.3: PDF / DOC / DOCX MIME whitelist ──────────────────────────────
 
   it('accepts application/pdf MIME — sync path calls parseToMarkdown', async () => {
-    const file = { buffer: Buffer.alloc(1000), mimetype: 'application/pdf', originalname: 'sample.pdf' };
+    const file = {
+      buffer: Buffer.alloc(1000),
+      mimetype: 'application/pdf',
+      originalname: 'sample.pdf',
+    };
     const result = await service.upload(file as any, 'user-1', 'SEC_FILING');
     expect(result).toHaveProperty('id');
     expect(mockParseService.parseToMarkdown).toHaveBeenCalledWith(
@@ -256,15 +257,25 @@ describe('DocumentUploadService', () => {
 
   it('PDF upload lands as FAILED when parseToMarkdown throws (sidecar unavailable)', async () => {
     mockParseService.parseToMarkdown.mockRejectedValueOnce(new Error('PARSER_SIDECAR_UNAVAILABLE'));
-    const file = { buffer: Buffer.alloc(1000), mimetype: 'application/pdf', originalname: 'sample.pdf' };
+    const file = {
+      buffer: Buffer.alloc(1000),
+      mimetype: 'application/pdf',
+      originalname: 'sample.pdf',
+    };
     const result = await service.upload(file as any, 'user-1', 'SEC_FILING');
     expect(result.status).toBe('FAILED');
   });
 
   it('rejects oversized PDF before reaching storage', async () => {
     // 101 MiB > default 100 MiB cap
-    const file = { buffer: Buffer.alloc(101 * 1024 * 1024), mimetype: 'application/pdf', originalname: 'big.pdf' };
-    await expect(service.upload(file as any, 'user-1', 'SEC_FILING')).rejects.toThrow(/exceeds maximum size/);
+    const file = {
+      buffer: Buffer.alloc(101 * 1024 * 1024),
+      mimetype: 'application/pdf',
+      originalname: 'big.pdf',
+    };
+    await expect(service.upload(file as any, 'user-1', 'SEC_FILING')).rejects.toThrow(
+      /exceeds maximum size/,
+    );
   });
 
   // ── P1-1 / F-4: outbox order + regionId + async-vectorize gate ────────
@@ -277,9 +288,7 @@ describe('DocumentUploadService', () => {
         mimetype: 'text/plain',
         originalname: 'test.txt',
       };
-      await expect(
-        service.upload(file, 'user-1', 'RESEARCH'),
-      ).rejects.toThrow('db down');
+      await expect(service.upload(file, 'user-1', 'RESEARCH')).rejects.toThrow('db down');
       // Under the outbox order, storage is never touched when DB fails.
       expect(mockStorage.upload).not.toHaveBeenCalled();
       expect(mockStorage.delete).not.toHaveBeenCalled();
@@ -292,9 +301,7 @@ describe('DocumentUploadService', () => {
         mimetype: 'text/plain',
         originalname: 'test.txt',
       };
-      await expect(
-        service.upload(file, 'user-1', 'RESEARCH'),
-      ).rejects.toThrow('rustfs down');
+      await expect(service.upload(file, 'user-1', 'RESEARCH')).rejects.toThrow('rustfs down');
       // DB row was inserted first; update-to-FAILED fires.
       const updateSets = mockDb._mocks.updateSet.mock.calls.map(
         (c: unknown[]) => c[0] as Record<string, unknown>,

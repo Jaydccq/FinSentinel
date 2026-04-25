@@ -26,7 +26,9 @@ function makeAuthConfig(overrides: Partial<AuthRuntimeConfig['cookie']> = {}): A
   };
 }
 
-async function buildApp(authRuntimeConfig: AuthRuntimeConfig = makeAuthConfig()): Promise<INestApplication> {
+async function buildApp(
+  authRuntimeConfig: AuthRuntimeConfig = makeAuthConfig(),
+): Promise<INestApplication> {
   const module = await Test.createTestingModule({
     controllers: [AuthController],
     providers: [
@@ -177,9 +179,7 @@ describe('AuthController', () => {
     });
 
     it('Set-Cookie reflects secure=true + SameSite=Strict when env says so', async () => {
-      app = await buildApp(
-        makeAuthConfig({ secure: true, sameSite: 'strict', maxAgeMs: 60_000 }),
-      );
+      app = await buildApp(makeAuthConfig({ secure: true, sameSite: 'strict', maxAgeMs: 60_000 }));
       mockAuthService.login.mockResolvedValueOnce({
         token: 'tk',
         username: 'u',
@@ -204,9 +204,7 @@ describe('AuthController', () => {
 
   describe('POST /api/auth/logout', () => {
     it('returns 204 and clears FS_AUTH cookie', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/api/auth/logout')
-        .expect(204);
+      const res = await request(app.getHttpServer()).post('/api/auth/logout').expect(204);
 
       const cookies = res.headers['set-cookie'];
       expect(cookies).toBeDefined();

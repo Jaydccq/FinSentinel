@@ -6,7 +6,9 @@ import { aiConfig } from '../../config/ai.config';
 
 vi.mock('@finsentinel/ai-runtime', () => ({
   createOpenAICompatibleModel: vi.fn(() => 'mock-model'),
-  generateAgentText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => prompt.trim()),
+  generateAgentText: vi
+    .fn()
+    .mockImplementation(async ({ prompt }: { prompt: string }) => prompt.trim()),
 }));
 
 const mockAiConfig = {

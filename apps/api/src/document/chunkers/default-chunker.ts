@@ -24,7 +24,7 @@ export class DefaultChunker {
         if (inputChunk.text.length > truncateAt) {
           this.logger.warn(
             `Non-text chunk (modality=${inputChunk.modality}) exceeds 4x chunkSize ` +
-            `(${inputChunk.text.length} chars); truncating`,
+              `(${inputChunk.text.length} chars); truncating`,
           );
           output.push({
             ...inputChunk,
@@ -65,9 +65,7 @@ export class DefaultChunker {
       }
 
       if (output.length >= maxNumChunks) {
-        this.logger.warn(
-          `Structured chunk count reached max (${maxNumChunks}), truncating`,
-        );
+        this.logger.warn(`Structured chunk count reached max (${maxNumChunks}), truncating`);
         return output.slice(0, maxNumChunks);
       }
     }
@@ -161,9 +159,7 @@ export class DefaultChunker {
           chunks.push(current);
           // Build overlap prefix from the tail of the current chunk
           const overlapText =
-            chunkOverlap > 0 && current.length > chunkOverlap
-              ? current.slice(-chunkOverlap)
-              : '';
+            chunkOverlap > 0 && current.length > chunkOverlap ? current.slice(-chunkOverlap) : '';
           // Start new chunk with overlap + new segment
           if (overlapText && segment.length + overlapText.length + 1 <= chunkSize) {
             current = overlapText + ' ' + segment;

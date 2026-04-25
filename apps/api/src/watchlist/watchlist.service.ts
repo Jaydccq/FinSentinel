@@ -1,13 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import {
-  and,
-  asc,
-  desc,
-  eq,
-  inArray,
-  watchlistCategories,
-  watchlistItems,
-} from '@finsentinel/db';
+import { and, asc, desc, eq, inArray, watchlistCategories, watchlistItems } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import type {
   WatchlistCategoryResponse,
@@ -52,9 +44,7 @@ export interface UpdateWatchlistCategoryInput {
 
 @Injectable()
 export class WatchlistService {
-  constructor(
-    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
-  ) {}
+  constructor(@Inject('DRIZZLE_DB') private readonly db: DrizzleDB) {}
 
   async saveWatchlistItems(
     userId: string,
@@ -86,10 +76,7 @@ export class WatchlistService {
     return this.getCategoryById(category.id, userId);
   }
 
-  async getWatchlist(
-    userId: string,
-    categoryName?: string,
-  ): Promise<WatchlistOverviewResponse> {
+  async getWatchlist(userId: string, categoryName?: string): Promise<WatchlistOverviewResponse> {
     const categories = categoryName
       ? await this.db
           .select()
@@ -114,10 +101,12 @@ export class WatchlistService {
     const items = await this.db
       .select()
       .from(watchlistItems)
-      .where(inArray(
-        watchlistItems.categoryId,
-        categories.map((category) => category.id),
-      ))
+      .where(
+        inArray(
+          watchlistItems.categoryId,
+          categories.map((category) => category.id),
+        ),
+      )
       .orderBy(desc(watchlistItems.priority), asc(watchlistItems.symbol));
 
     const itemsByCategory = new Map<string, WatchlistItemResponse[]>();
@@ -145,12 +134,7 @@ export class WatchlistService {
     const [existing] = await this.db
       .select()
       .from(watchlistCategories)
-      .where(
-        and(
-          eq(watchlistCategories.userId, userId),
-          eq(watchlistCategories.key, key),
-        ),
-      )
+      .where(and(eq(watchlistCategories.userId, userId), eq(watchlistCategories.key, key)))
       .limit(1);
 
     const description = this.normalizeOptionalText(metadata.description);
@@ -206,15 +190,10 @@ export class WatchlistService {
       .select()
       .from(watchlistItems)
       .where(
-        and(
-          eq(watchlistItems.categoryId, categoryId),
-          inArray(watchlistItems.symbol, symbols),
-        ),
+        and(eq(watchlistItems.categoryId, categoryId), inArray(watchlistItems.symbol, symbols)),
       );
 
-    const existingBySymbol = new Map(
-      existingItems.map((item) => [item.symbol, item]),
-    );
+    const existingBySymbol = new Map(existingItems.map((item) => [item.symbol, item]));
 
     for (const item of items) {
       const existing = existingBySymbol.get(item.symbol);
@@ -234,8 +213,7 @@ export class WatchlistService {
       await this.db
         .update(watchlistItems)
         .set({
-          companyName:
-            this.normalizeOptionalText(item.companyName) ?? existing.companyName,
+          companyName: this.normalizeOptionalText(item.companyName) ?? existing.companyName,
           thesis: this.normalizeOptionalText(item.thesis) ?? existing.thesis,
           notes: this.normalizeOptionalText(item.notes) ?? existing.notes,
           priority: item.priority ?? existing.priority,
@@ -295,9 +273,7 @@ export class WatchlistService {
     };
   }
 
-  private toWatchlistItemResponse(
-    item: typeof watchlistItems.$inferSelect,
-  ): WatchlistItemResponse {
+  private toWatchlistItemResponse(item: typeof watchlistItems.$inferSelect): WatchlistItemResponse {
     return {
       id: item.id,
       symbol: item.symbol,
@@ -362,13 +338,8 @@ export class WatchlistService {
             ? existing.companyName
             : this.normalizeOptionalText(patch.companyName),
         thesis:
-          patch.thesis === undefined
-            ? existing.thesis
-            : this.normalizeOptionalText(patch.thesis),
-        notes:
-          patch.notes === undefined
-            ? existing.notes
-            : this.normalizeOptionalText(patch.notes),
+          patch.thesis === undefined ? existing.thesis : this.normalizeOptionalText(patch.thesis),
+        notes: patch.notes === undefined ? existing.notes : this.normalizeOptionalText(patch.notes),
         priority: patch.priority ?? existing.priority,
         updatedAt: new Date(),
       })
@@ -401,30 +372,18 @@ export class WatchlistService {
     const [existing] = await this.db
       .select()
       .from(watchlistCategories)
-      .where(
-        and(
-          eq(watchlistCategories.id, categoryId),
-          eq(watchlistCategories.userId, userId),
-        ),
-      )
+      .where(and(eq(watchlistCategories.id, categoryId), eq(watchlistCategories.userId, userId)))
       .limit(1);
     if (!existing) throw new NotFoundException(`Watchlist category ${categoryId} not found`);
 
-    const normalizedName = patch.name
-      ? this.normalizeCategoryName(patch.name)
-      : existing.name;
+    const normalizedName = patch.name ? this.normalizeCategoryName(patch.name) : existing.name;
     const newKey = this.toCategoryKey(normalizedName);
 
     if (newKey !== existing.key) {
       const [collision] = await this.db
         .select({ id: watchlistCategories.id })
         .from(watchlistCategories)
-        .where(
-          and(
-            eq(watchlistCategories.userId, userId),
-            eq(watchlistCategories.key, newKey),
-          ),
-        )
+        .where(and(eq(watchlistCategories.userId, userId), eq(watchlistCategories.key, newKey)))
         .limit(1);
       if (collision && collision.id !== existing.id) {
         throw new Error(`Watchlist category name already exists: ${normalizedName}`);
@@ -436,9 +395,7 @@ export class WatchlistService {
         ? existing.description
         : this.normalizeOptionalText(patch.description);
     const summary =
-      patch.summary === undefined
-        ? existing.summary
-        : this.normalizeOptionalText(patch.summary);
+      patch.summary === undefined ? existing.summary : this.normalizeOptionalText(patch.summary);
 
     await this.db
       .update(watchlistCategories)
@@ -458,12 +415,7 @@ export class WatchlistService {
     // FK to watchlist_items is ON DELETE CASCADE — children go with the parent.
     const deleted = await this.db
       .delete(watchlistCategories)
-      .where(
-        and(
-          eq(watchlistCategories.id, categoryId),
-          eq(watchlistCategories.userId, userId),
-        ),
-      )
+      .where(and(eq(watchlistCategories.id, categoryId), eq(watchlistCategories.userId, userId)))
       .returning({ id: watchlistCategories.id });
     if (deleted.length === 0) {
       throw new NotFoundException(`Watchlist category ${categoryId} not found`);

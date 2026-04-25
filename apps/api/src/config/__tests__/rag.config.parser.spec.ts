@@ -3,8 +3,12 @@ import { ragConfig } from '../rag.config';
 
 describe('ragConfig.parser', () => {
   const orig = { ...process.env };
-  beforeEach(() => { process.env = { ...orig }; });
-  afterEach(() => { process.env = { ...orig }; });
+  beforeEach(() => {
+    process.env = { ...orig };
+  });
+  afterEach(() => {
+    process.env = { ...orig };
+  });
 
   it('defaults match R5.3 spec', () => {
     delete process.env['PARSER_URL'];

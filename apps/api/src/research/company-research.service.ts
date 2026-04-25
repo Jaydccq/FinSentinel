@@ -1,10 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type Redis from 'ioredis';
-import type {
-  CompanyProfile,
-  FinancialMetrics,
-  AnalystConsensus,
-} from '@finsentinel/shared';
+import type { CompanyProfile, FinancialMetrics, AnalystConsensus } from '@finsentinel/shared';
 import { ResearchDataProviderRegistry } from './research-data-provider.registry';
 
 /** Cache TTLs in seconds. */
@@ -31,10 +27,7 @@ export class CompanyResearchService {
 
   // ── Company Profile ────────────────────────────────────────────────────
 
-  async getCompanyProfile(
-    ticker: string,
-    providerName?: string,
-  ): Promise<CompanyProfile> {
+  async getCompanyProfile(ticker: string, providerName?: string): Promise<CompanyProfile> {
     const provider = providerName
       ? this.registry.getProvider(providerName)
       : this.registry.getDefaultProvider();
@@ -52,11 +45,7 @@ export class CompanyResearchService {
     }
 
     const profile = await provider.getCompanyProfile(ticker.toUpperCase());
-    await this.redis.setex(
-      cacheKey,
-      CACHE_TTL.PROFILE,
-      JSON.stringify(profile),
-    );
+    await this.redis.setex(cacheKey, CACHE_TTL.PROFILE, JSON.stringify(profile));
 
     return profile;
   }
@@ -84,25 +73,15 @@ export class CompanyResearchService {
       return JSON.parse(cached) as FinancialMetrics[];
     }
 
-    const metrics = await provider.getFinancialMetrics(
-      ticker.toUpperCase(),
-      periods,
-    );
-    await this.redis.setex(
-      cacheKey,
-      CACHE_TTL.FINANCIALS,
-      JSON.stringify(metrics),
-    );
+    const metrics = await provider.getFinancialMetrics(ticker.toUpperCase(), periods);
+    await this.redis.setex(cacheKey, CACHE_TTL.FINANCIALS, JSON.stringify(metrics));
 
     return metrics;
   }
 
   // ── Analyst Consensus ──────────────────────────────────────────────────
 
-  async getAnalystConsensus(
-    ticker: string,
-    providerName?: string,
-  ): Promise<AnalystConsensus> {
+  async getAnalystConsensus(ticker: string, providerName?: string): Promise<AnalystConsensus> {
     const provider = providerName
       ? this.registry.getProvider(providerName)
       : this.registry.getDefaultProvider();
@@ -120,19 +99,12 @@ export class CompanyResearchService {
     }
 
     const consensus = await provider.getAnalystConsensus(ticker.toUpperCase());
-    await this.redis.setex(
-      cacheKey,
-      CACHE_TTL.CONSENSUS,
-      JSON.stringify(consensus),
-    );
+    await this.redis.setex(cacheKey, CACHE_TTL.CONSENSUS, JSON.stringify(consensus));
 
     return consensus;
   }
 
-  async getFinancialStatements(
-    ticker: string,
-    periods: number,
-  ): Promise<FinancialMetrics[]> {
+  async getFinancialStatements(ticker: string, periods: number): Promise<FinancialMetrics[]> {
     return this.getFinancialMetrics(ticker, periods);
   }
 

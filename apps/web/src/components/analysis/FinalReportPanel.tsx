@@ -1,42 +1,37 @@
-'use client'
+'use client';
 
 import {
   isStrategyArchivePayload,
   sanitizeDecisionObjectJsonForDisplay,
-} from '../../api/analysis-runs'
-import type {
-  AnalysisArtifactResponse,
-  AnalysisRunResponse,
-} from '../../api/analysis-runs'
-import { JsonTree } from './JsonTree'
+} from '../../api/analysis-runs';
+import type { AnalysisArtifactResponse, AnalysisRunResponse } from '../../api/analysis-runs';
+import { JsonTree } from './JsonTree';
 
 export interface FinalReportPanelProps {
-  run: AnalysisRunResponse | null
-  artifacts: AnalysisArtifactResponse[]
+  run: AnalysisRunResponse | null;
+  artifacts: AnalysisArtifactResponse[];
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
-    : null
+    : null;
 }
 
 export function FinalReportPanel({ run, artifacts }: FinalReportPanelProps) {
   if (!run || (run.status !== 'COMPLETED' && run.status !== 'WAITING_APPROVAL')) {
-    return null
+    return null;
   }
 
-  const executionPayload = artifacts.find((a) => a.artifactKind === 'EXECUTION_PAYLOAD')
-  const orderDrafts = artifacts.find((a) => a.artifactKind === 'ORDER_DRAFTS')
-  const materializedExecutionPayload = asRecord(run.decisionObjectJson?.executionPayload)
-  const decisionObjectJsonForDisplay = sanitizeDecisionObjectJsonForDisplay(
-    run.decisionObjectJson,
-  )
+  const executionPayload = artifacts.find((a) => a.artifactKind === 'EXECUTION_PAYLOAD');
+  const orderDrafts = artifacts.find((a) => a.artifactKind === 'ORDER_DRAFTS');
+  const materializedExecutionPayload = asRecord(run.decisionObjectJson?.executionPayload);
+  const decisionObjectJsonForDisplay = sanitizeDecisionObjectJsonForDisplay(run.decisionObjectJson);
   const strategyArchivePayload = isStrategyArchivePayload(
     run.decisionObjectJson?.strategyArchivePayload,
   )
     ? run.decisionObjectJson.strategyArchivePayload
-    : null
+    : null;
 
   return (
     <section className="surface-panel rounded p-4 space-y-3">
@@ -49,8 +44,7 @@ export function FinalReportPanel({ run, artifacts }: FinalReportPanelProps) {
           <h3 className="text-sm font-semibold">Strategy Archive</h3>
           <div className="grid grid-cols-1 gap-1 text-sm lg:grid-cols-2">
             <div>
-              <span className="text-slate-400">Status:</span>{' '}
-              {strategyArchivePayload.status}
+              <span className="text-slate-400">Status:</span> {strategyArchivePayload.status}
             </div>
             <div>
               <span className="text-slate-400">Selected:</span>{' '}
@@ -80,7 +74,14 @@ export function FinalReportPanel({ run, artifacts }: FinalReportPanelProps) {
         <div>
           <h3 className="text-sm font-semibold">Execution Payload</h3>
           <div className="rounded bg-slate-950/70 p-2 overflow-auto">
-            <JsonTree value={materializedExecutionPayload ?? executionPayload?.payload ?? orderDrafts?.payload ?? null} />
+            <JsonTree
+              value={
+                materializedExecutionPayload ??
+                executionPayload?.payload ??
+                orderDrafts?.payload ??
+                null
+              }
+            />
           </div>
         </div>
         <div>
@@ -91,5 +92,5 @@ export function FinalReportPanel({ run, artifacts }: FinalReportPanelProps) {
         </div>
       </div>
     </section>
-  )
+  );
 }

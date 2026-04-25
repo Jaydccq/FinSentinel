@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { RepresentationEnrichConsumer } from '../representation-enrich.consumer';
-import { ChunkRepresentationService, ChunkNotFoundError } from '../../rag/chunk-representation.service';
+import {
+  ChunkRepresentationService,
+  ChunkNotFoundError,
+} from '../../rag/chunk-representation.service';
 import type { Job } from 'bullmq';
 import type { RepresentationEnrichJobData } from '../representation-enrich.producer';
 

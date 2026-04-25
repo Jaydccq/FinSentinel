@@ -33,10 +33,7 @@ import { authConfig } from './auth.config';
       // pnpm --filter runs with cwd = apps/api/, so ../../.env is the
       // monorepo-root .env (single source of truth for dev credentials).
       // Local apps/api/.env wins if present (overrides).
-      envFilePath: [
-        join(process.cwd(), '.env'),
-        join(process.cwd(), '../../.env'),
-      ],
+      envFilePath: [join(process.cwd(), '.env'), join(process.cwd(), '../../.env')],
       validate: (config: Record<string, unknown>) => envSchema.parse(config),
       load: [
         databaseConfig,

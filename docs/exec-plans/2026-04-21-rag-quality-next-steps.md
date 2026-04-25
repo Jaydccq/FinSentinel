@@ -75,17 +75,17 @@ Out of scope for this next slice:
 
 ## Priority Evaluation
 
-| Proposed item | Verdict from current repo |
-| --- | --- |
-| P0 representation sparse | Correct priority, but already implemented. Next need is backfill + zero-null SQL assertion + live eval delta. |
-| P0 query rewrite guard | Correct and already implemented. Next need is live bucket measurement and canary-class plumbing audit. |
-| P0 metadata soft routing | Correct, partially implemented. Remaining gaps are now higher priority than new retrieval features. |
-| P0 PDF/Word parsing | Correct, but current sidecar is stub-only. Real parser quality is the actual remaining P0. |
-| P1 token-aware/doc-type chunking | Doc-type chunkers exist; token switch was benchmarked and rejected for Wave 2. Re-open only if eval data proves char chunking fails. |
-| P1 conditional context expansion | Still valid. Current expander is global-flag based; make it class/doc-type conditional after live eval exists. |
-| P1 evaluation gate | This is now the top blocker. Current gate is offline and synthetic; make it real before tuning more. |
-| P2 late chunking/missing-middle | Still defer. Only revisit after real long-doc bucket data. |
-| Do not prioritize GraphRAG/rewrite model/summary evidence | Agreed. Repository state supports deferral. |
+| Proposed item                                             | Verdict from current repo                                                                                                            |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| P0 representation sparse                                  | Correct priority, but already implemented. Next need is backfill + zero-null SQL assertion + live eval delta.                        |
+| P0 query rewrite guard                                    | Correct and already implemented. Next need is live bucket measurement and canary-class plumbing audit.                               |
+| P0 metadata soft routing                                  | Correct, partially implemented. Remaining gaps are now higher priority than new retrieval features.                                  |
+| P0 PDF/Word parsing                                       | Correct, but current sidecar is stub-only. Real parser quality is the actual remaining P0.                                           |
+| P1 token-aware/doc-type chunking                          | Doc-type chunkers exist; token switch was benchmarked and rejected for Wave 2. Re-open only if eval data proves char chunking fails. |
+| P1 conditional context expansion                          | Still valid. Current expander is global-flag based; make it class/doc-type conditional after live eval exists.                       |
+| P1 evaluation gate                                        | This is now the top blocker. Current gate is offline and synthetic; make it real before tuning more.                                 |
+| P2 late chunking/missing-middle                           | Still defer. Only revisit after real long-doc bucket data.                                                                           |
+| Do not prioritize GraphRAG/rewrite model/summary evidence | Agreed. Repository state supports deferral.                                                                                          |
 
 ## Simplest Viable Path
 
@@ -227,6 +227,7 @@ staging; weekly live-API workflow exists; per-PR offline gate swapped to
 `wave2-buckets.yaml` with populated thresholds.
 
 **Files:**
+
 - Modify: `services/evaluation-runner/datasets/golden.json`
 - Create: `services/evaluation-runner/datasets/golden.meta.json`
 - Create: `services/evaluation-runner/evaluators/api_retriever.py`
@@ -239,63 +240,63 @@ staging; weekly live-API workflow exists; per-PR offline gate swapped to
 - Create (if absent): `apps/api/src/rag/admin/rag-golden-export.cli.ts`
 
 - [ ] **P1.1 — Write the labeling SOP.** Document bucket taxonomy
-  (exact_lookup / factoid / relational / analytical / multi_part / long_doc /
-  cross_document), provenance preference order
-  (`rag_query_logs.queryPreview` → `chat_messages` role='user' last 30d →
-  `agent_events` aggregateType='RAG_QUERY' → reverse-engineered), target
-  distribution (30/20/15/15/10/5/5 = 100), and 20% second-reviewer spot-check
-  rule. Save to `docs/runbooks/2026-04-21-golden-set-labeling-sop.md`.
+      (exact_lookup / factoid / relational / analytical / multi_part / long_doc /
+      cross_document), provenance preference order
+      (`rag_query_logs.queryPreview` → `chat_messages` role='user' last 30d →
+      `agent_events` aggregateType='RAG_QUERY' → reverse-engineered), target
+      distribution (30/20/15/15/10/5/5 = 100), and 20% second-reviewer spot-check
+      rule. Save to `docs/runbooks/2026-04-21-golden-set-labeling-sop.md`.
 
 - [ ] **P1.2 — Export candidate queries.** Run
-  `pnpm --filter @finsentinel/api rag:golden:export --source rag_query_logs --limit 300 --output services/evaluation-runner/datasets/golden.draft.json`.
-  Verify ≥ 200 rows with `jq '.entries | length'`. If CLI missing, do P1.2a
-  first.
+      `pnpm --filter @finsentinel/api rag:golden:export --source rag_query_logs --limit 300 --output services/evaluation-runner/datasets/golden.draft.json`.
+      Verify ≥ 200 rows with `jq '.entries | length'`. If CLI missing, do P1.2a
+      first.
 
 - [ ] **P1.2a — (Fallback) Create the export CLI** at
-  `apps/api/src/rag/admin/rag-golden-export.cli.ts` that reads
-  `rag_query_logs.query_preview` or `chat_messages.content` via Drizzle and
-  writes a `{exported_at, source, entries: [{id, query, bucket: null,
-  expected_chunk_ids: [], expected_answer: ""}]}` JSON. Add
-  `"rag:golden:export": "tsx src/rag/admin/rag-golden-export.cli.ts"` to
-  `apps/api/package.json` scripts.
+      `apps/api/src/rag/admin/rag-golden-export.cli.ts` that reads
+      `rag_query_logs.query_preview` or `chat_messages.content` via Drizzle and
+      writes a `{exported_at, source, entries: [{id, query, bucket: null,
+expected_chunk_ids: [], expected_answer: ""}]}` JSON. Add
+      `"rag:golden:export": "tsx src/rag/admin/rag-golden-export.cli.ts"` to
+      `apps/api/package.json` scripts.
 
 - [ ] **P1.3 — Human-label 100 queries.** Follow SOP. Output
-  `golden.json` replacing the 25-entry synthetic set. Verify distribution and
-  `all(expected_chunk_ids | length >= 1)` via `jq`. Write
-  `golden.meta.json` recording labeler handles, reviewer-sample-pct, and
-  provenance_split counts.
+      `golden.json` replacing the 25-entry synthetic set. Verify distribution and
+      `all(expected_chunk_ids | length >= 1)` via `jq`. Write
+      `golden.meta.json` recording labeler handles, reviewer-sample-pct, and
+      provenance_split counts.
 
 - [ ] **P1.4 — Implement the live-API evaluator.** Create
-  `services/evaluation-runner/evaluators/api_retriever.py` exposing
-  `ApiRetriever(base_url, api_token, top_k)` with a `retrieve(query, bucket)`
-  method that POSTs `{query, topK, queryClass?}` to `<base_url>/rag/search`
-  and normalises the response to `[{chunk_id, source_id, score}]`. Score
-  preference: `rankScore ?? fusionScore ?? similarity`.
+      `services/evaluation-runner/evaluators/api_retriever.py` exposing
+      `ApiRetriever(base_url, api_token, top_k)` with a `retrieve(query, bucket)`
+      method that POSTs `{query, topK, queryClass?}` to `<base_url>/rag/search`
+      and normalises the response to `[{chunk_id, source_id, score}]`. Score
+      preference: `rankScore ?? fusionScore ?? similarity`.
 
 - [ ] **P1.5 — Test the evaluator.** Create
-  `evaluators/test_api_retriever.py` with two tests: shape normalisation from
-  a mocked `httpx.Client` response, and `queryClass` forwarding when
-  `bucket` is supplied. Run `pytest evaluators/test_api_retriever.py -v`.
+      `evaluators/test_api_retriever.py` with two tests: shape normalisation from
+      a mocked `httpx.Client` response, and `queryClass` forwarding when
+      `bucket` is supplied. Run `pytest evaluators/test_api_retriever.py -v`.
 
 - [ ] **P1.6 — Capture live-API baseline.** Against staging with current
-  `main`, run
-  `python services/evaluation-runner/run_evaluation.py run --dataset golden.json --retriever api --output reports/baseline-live.json`.
-  Extract per-bucket `recall@5` and `mrr@5` via `jq '.bucket_metrics'`.
-  Write `configs/live-api-staging.yaml` with `minimum_metrics = baseline -
-  0.03` per bucket (3% tolerance, 2dp).
+      `main`, run
+      `python services/evaluation-runner/run_evaluation.py run --dataset golden.json --retriever api --output reports/baseline-live.json`.
+      Extract per-bucket `recall@5` and `mrr@5` via `jq '.bucket_metrics'`.
+      Write `configs/live-api-staging.yaml` with `minimum_metrics = baseline -
+0.03` per bucket (3% tolerance, 2dp).
 
 - [ ] **P1.7 — Add the weekly live-API workflow** at
-  `.github/workflows/rag-eval-live.yml`. Triggers: weekly cron
-  `0 2 * * 1` and `workflow_dispatch`. Environment: `rag-eval-live` with
-  secrets `RAG_API_URL`, `RAG_API_TOKEN`. Uploads
-  `reports/live-<date>.json` artifact with 90d retention. Test via
-  `gh workflow run rag-eval-live.yml --ref <branch>` before committing.
+      `.github/workflows/rag-eval-live.yml`. Triggers: weekly cron
+      `0 2 * * 1` and `workflow_dispatch`. Environment: `rag-eval-live` with
+      secrets `RAG_API_URL`, `RAG_API_TOKEN`. Uploads
+      `reports/live-<date>.json` artifact with 90d retention. Test via
+      `gh workflow run rag-eval-live.yml --ref <branch>` before committing.
 
 - [ ] **P1.8 — Swap per-PR gate to bucketed thresholds.** Populate
-  `configs/wave2-buckets.yaml` from an offline baseline run
-  (`--retriever corpus`). Change line 144 of
-  `.github/workflows/rag-eval-gate.yml` from `ci-offline.yaml` to
-  `wave2-buckets.yaml`.
+      `configs/wave2-buckets.yaml` from an offline baseline run
+      (`--retriever corpus`). Change line 144 of
+      `.github/workflows/rag-eval-gate.yml` from `ci-offline.yaml` to
+      `wave2-buckets.yaml`.
 
 ### Phase P2 — Verify Sparse Backfill P0 in Staging
 
@@ -308,30 +309,30 @@ filed in the runbook.
 **Files:** Create: `docs/runbooks/2026-04-21-rag-sparse-backfill-verify.md`
 
 - [ ] **P2.1 — Snapshot pre-backfill state.** Run
-  `SELECT COUNT(*) AS null_count, COUNT(*) FILTER (WHERE search_vector IS NOT
-  NULL) AS populated FROM document_chunk_representations;` against staging.
-  Capture `exact_lookup` bucket via
-  `run_evaluation.py --bucket exact_lookup --output
-  reports/pre-backfill-exact-lookup.json`. Paste both into the runbook.
+      `SELECT COUNT(*) AS null_count, COUNT(*) FILTER (WHERE search_vector IS NOT
+NULL) AS populated FROM document_chunk_representations;` against staging.
+      Capture `exact_lookup` bucket via
+      `run_evaluation.py --bucket exact_lookup --output
+reports/pre-backfill-exact-lookup.json`. Paste both into the runbook.
 
 - [ ] **P2.2 — Run the wet backfill.**
-  `pnpm --filter @finsentinel/api rag:backfill:representation-sparse
-  --batch-size 500 --log-level info`. Paste tail output showing "N rows
-  updated, 0 errors" into the runbook.
+      `pnpm --filter @finsentinel/api rag:backfill:representation-sparse
+--batch-size 500 --log-level info`. Paste tail output showing "N rows
+      updated, 0 errors" into the runbook.
 
 - [ ] **P2.3 — Assert zero null.** Rerun the P2.1 count query; expect
-  `null_count = 0`. If non-zero, the CLI has a missing representation-type
-  branch — block P2.4 and file a follow-up.
+      `null_count = 0`. If non-zero, the CLI has a missing representation-type
+      branch — block P2.4 and file a follow-up.
 
 - [ ] **P2.4 — Confirm idempotency.** Re-run the backfill; expect
-  "0 rows updated". Paste the log into the runbook.
+      "0 rows updated". Paste the log into the runbook.
 
 - [ ] **P2.5 — Measure exact_lookup delta.** Rerun eval on
-  `--bucket exact_lookup`; compare to P2.1 baseline. Write a 1-paragraph
-  conclusion: if ≥ +0.05 gain, raise
-  `configs/live-api-staging.yaml` threshold for `exact_lookup` to
-  `post_value - 0.03`; else describe which queries regressed (check for
-  english-stemmer asymmetry per [RAG-TD-R4-02]) and open a follow-up.
+      `--bucket exact_lookup`; compare to P2.1 baseline. Write a 1-paragraph
+      conclusion: if ≥ +0.05 gain, raise
+      `configs/live-api-staging.yaml` threshold for `exact_lookup` to
+      `post_value - 0.03`; else describe which queries regressed (check for
+      english-stemmer asymmetry per [RAG-TD-R4-02]) and open a follow-up.
 
 ### Phase P3 — Close Metadata Routing Gaps
 
@@ -344,40 +345,40 @@ boost last because it depends on all three hard-filter paths).
 **Files:** `apps/api/src/rag/metadata-pre-filter.service.ts` + `.spec.ts`
 
 - [ ] **P3.1.1 — Write failing test.** Two cases: (a) high-confidence
-  docType '10-K' (conf 0.9) + timeRange '2024-01-01' (conf 0.95) land in
-  `hardFilter.docType` / `hardFilter.afterDate`; (b) explicit caller filter
-  wins on conflict (explicit `docType: '10-Q'` overrides extracted '10-K').
+      docType '10-K' (conf 0.9) + timeRange '2024-01-01' (conf 0.95) land in
+      `hardFilter.docType` / `hardFilter.afterDate`; (b) explicit caller filter
+      wins on conflict (explicit `docType: '10-Q'` overrides extracted '10-K').
 
 - [ ] **P3.1.2 — Run test, confirm FAIL** (`expected '10-K', got undefined`).
 
 - [ ] **P3.1.3 — Implement routing.** In `buildFilter`, compute
-  `extractedDocType` / `extractedAfterDate` above the hardFilter constructor,
-  only promote when `confidence >= hardMinConfidence`, and spread in this
-  order (later wins): extracted → explicitFilters → entity-extracted ticker /
-  issuer hints. This preserves the "explicit wins" guarantee protected by
-  the P3.1.1 test.
+      `extractedDocType` / `extractedAfterDate` above the hardFilter constructor,
+      only promote when `confidence >= hardMinConfidence`, and spread in this
+      order (later wins): extracted → explicitFilters → entity-extracted ticker /
+      issuer hints. This preserves the "explicit wins" guarantee protected by
+      the P3.1.1 test.
 
 - [ ] **P3.1.4 — Rerun tests + narrow typecheck.** Full `rag/` suite +
-  `pnpm --filter @finsentinel/api typecheck`.
+      `pnpm --filter @finsentinel/api typecheck`.
 
 - [ ] **P3.1.5 — Grep for [RAG-TD-R4-06] FIXME** in the file and remove
-  stale inline references.
+      stale inline references.
 
 #### P3.2 — Dense lane accepts tickers + issuerName ([RAG-TD-R4-03])
 
 **Files:** `apps/api/src/rag/rag-chunk-store.service.ts` + `.spec.ts`
 
 - [ ] **P3.2.1 — Write failing tests.** Two cases: filter `{tickers:
-  ['AAPL']}` restricts results to chunks with `metadata.tickers` including
-  'AAPL'; `{issuerName: ['Apple Inc.']}` restricts to that issuer.
+['AAPL']}` restricts results to chunks with `metadata.tickers` including
+      'AAPL'; `{issuerName: ['Apple Inc.']}` restricts to that issuer.
 
 - [ ] **P3.2.2 — Run test, confirm FAIL.**
 
 - [ ] **P3.2.3 — Extend `RagChunkSearchFilters`** with
-  `tickers?: string[]; issuerName?: string[];`.
+      `tickers?: string[]; issuerName?: string[];`.
 
 - [ ] **P3.2.4 — Mirror sparse-lane WHERE clauses** in
-  `searchRepresentations` using Drizzle `sql` tag:
+      `searchRepresentations` using Drizzle `sql` tag:
 
   ```typescript
   if (filters.tickers?.length) {
@@ -396,15 +397,15 @@ boost last because it depends on all three hard-filter paths).
 `apps/api/src/rag/retrieval-orchestrator.service.ts`
 
 - [ ] **P3.3.1 — Write failing test.** Fixture: two chunks with identical
-  base similarity, one whose `metadata.issuerName='Apple Inc.'`. Assert
-  that with `{softFilter: {issuerName: ['Apple Inc.']}}` the Apple chunk
-  ranks higher than without the soft hint.
+      base similarity, one whose `metadata.issuerName='Apple Inc.'`. Assert
+      that with `{softFilter: {issuerName: ['Apple Inc.']}}` the Apple chunk
+      ranks higher than without the soft hint.
 
 - [ ] **P3.3.2 — Extend `SparseSearchFilters`** with
-  `softFilter?: { tickers?: string[]; issuerName?: string[] }`.
+      `softFilter?: { tickers?: string[]; issuerName?: string[] }`.
 
 - [ ] **P3.3.3 — Add CASE multiplier to ts_rank_cd.** Wrap the ranking
-  expression:
+      expression:
 
   ```sql
   ts_rank_cd(...) * CASE
@@ -417,7 +418,7 @@ boost last because it depends on all three hard-filter paths).
   ```
 
 - [ ] **P3.3.4 — Remove the `_soft` discard** at
-  `retrieval-orchestrator.service.ts:75`:
+      `retrieval-orchestrator.service.ts:75`:
 
   ```diff
   - const { candidateDocIds: _unused, appliedMode: _appliedMode, softFilter: _soft, hardFilter } = preFilter;
@@ -431,8 +432,8 @@ boost last because it depends on all three hard-filter paths).
 - [ ] **P3.3.5 — Run tests + typecheck.**
 
 - [ ] **P3.3.6 — Measure bucket delta via live eval.** Expect
-  `relational` + `factoid` recall@5 to each gain ≥ +0.02. If no movement,
-  tune the multiplier to 1.25 and rerun before considering a redesign.
+      `relational` + `factoid` recall@5 to each gain ≥ +0.02. If no movement,
+      tune the multiplier to 1.25 and rerun before considering a redesign.
 
 #### P3.4 — V18 GIN index on document_chunks.metadata ([RAG-TD-R4-05])
 
@@ -449,11 +450,11 @@ boost last because it depends on all three hard-filter paths).
   ```
 
 - [ ] **P3.4.2 — Apply + verify locally.**
-  `pnpm --filter @finsentinel/db db:migrate`, then
-  `psql $DATABASE_URL -c "\d document_chunks" | grep document_chunks_metadata_gin_idx`.
+      `pnpm --filter @finsentinel/db db:migrate`, then
+      `psql $DATABASE_URL -c "\d document_chunks" | grep document_chunks_metadata_gin_idx`.
 
 - [ ] **P3.4.3 — EXPLAIN ANALYZE a ticker filter.** Confirm the plan uses
-  `Bitmap Index Scan on document_chunks_metadata_gin_idx`, not `Seq Scan`.
+      `Bitmap Index Scan on document_chunks_metadata_gin_idx`, not `Seq Scan`.
 
 ### Phase P4 — Replace the Parser Stub ([RAG-TD-R5-01], [RAG-TD-R6-01])
 
@@ -462,6 +463,7 @@ bakeoff documented; `long_doc` + `cross_document` recall@5 each gain ≥ +0.05
 vs post-P2 baseline.
 
 **Files:**
+
 - Modify: `services/parser/routers/parse.py`, `requirements.txt`, `Dockerfile`
 - Create: `services/parser/extractors/pdf_extractor.py`, `docx_extractor.py`
 - Create: `services/parser/tests/test_extractors.py` + `tests/fixtures/pdf-sample/*`
@@ -469,44 +471,44 @@ vs post-P2 baseline.
 - Modify: `services/parser/CLAUDE.md` (update stub declaration)
 
 - [ ] **P4.1 — Extractor bakeoff.** Collect 20 PDFs (10-K x3, 10-Q x3,
-  press release x4, research x5, news PDF x3, scanned x2) under
-  `tests/fixtures/pdf-sample/`. Score pdfplumber vs. MinerU on heading count
-  ±2 of manual labels, table presence detection, and OCR fallback on scanned
-  PDFs. Document the pick in `services/parser/CLAUDE.md`; default pdfplumber
-  if within 10% of MinerU (no commercial dependency).
+      press release x4, research x5, news PDF x3, scanned x2) under
+      `tests/fixtures/pdf-sample/`. Score pdfplumber vs. MinerU on heading count
+      ±2 of manual labels, table presence detection, and OCR fallback on scanned
+      PDFs. Document the pick in `services/parser/CLAUDE.md`; default pdfplumber
+      if within 10% of MinerU (no commercial dependency).
 
 - [ ] **P4.2 — Write failing integration test** at
-  `services/parser/tests/test_extractors.py`. Two cases: 10-K parse yields
-  ≥ 10 headings and pageCount > 10 with `parserVersion != "stub-0.1"`; DOCX
-  parse yields `len(markdown) > 200` and no "Stub parser output" substring.
+      `services/parser/tests/test_extractors.py`. Two cases: 10-K parse yields
+      ≥ 10 headings and pageCount > 10 with `parserVersion != "stub-0.1"`; DOCX
+      parse yields `len(markdown) > 200` and no "Stub parser output" substring.
 
 - [ ] **P4.3 — Implement extractor.** pdfplumber path for PDF:
-  heading heuristic (ALL CAPS short lines → h2, "PART "/"ITEM " prefix → h2,
-  else none), table extraction via `page.extract_tables()` rendered as
-  Markdown tables. python-docx path for DOCX: walk `document.paragraphs`
-  with `style.name` mapping to heading levels. Wire both into
-  `routers/parse.py` with MIME/extension dispatch; 400 response on
-  unsupported formats. Bump `PARSER_VERSION` to `"pdfplumber-1.0"`.
+      heading heuristic (ALL CAPS short lines → h2, "PART "/"ITEM " prefix → h2,
+      else none), table extraction via `page.extract_tables()` rendered as
+      Markdown tables. python-docx path for DOCX: walk `document.paragraphs`
+      with `style.name` mapping to heading levels. Wire both into
+      `routers/parse.py` with MIME/extension dispatch; 400 response on
+      unsupported formats. Bump `PARSER_VERSION` to `"pdfplumber-1.0"`.
 
 - [ ] **P4.4 — Rerun tests; confirm PASS.**
 
 - [ ] **P4.5 — Dockerfile native deps.** Add
-  `libjpeg62-turbo zlib1g poppler-utils` via apt; `docker build -t
-  finsentinel/parser:dev services/parser` to verify.
+      `libjpeg62-turbo zlib1g poppler-utils` via apt; `docker build -t
+finsentinel/parser:dev services/parser` to verify.
 
 - [ ] **P4.6 — Unblock doc-type reindex.** Find any short-circuit in
-  `rag-reindex-by-doctype.cli.ts` referencing [RAG-TD-R6-01] and remove it.
-  Dry-run against 10 PDFs to confirm real headings in log output.
+      `rag-reindex-by-doctype.cli.ts` referencing [RAG-TD-R6-01] and remove it.
+      Dry-run against 10 PDFs to confirm real headings in log output.
 
 - [ ] **P4.7 — Full staging reindex.** Run reindex for `10-K`, `10-Q`,
-  `research`. Wait for enrichment queue:
-  `SELECT COUNT(*) FILTER (WHERE enrichment_status = 'pending') FROM
-  document_chunks;` → 0 within 30 min.
+      `research`. Wait for enrichment queue:
+      `SELECT COUNT(*) FILTER (WHERE enrichment_status = 'pending') FROM
+document_chunks;` → 0 within 30 min.
 
 - [ ] **P4.8 — Measure long_doc + cross_document deltas.** Trigger
-  `gh workflow run rag-eval-live.yml`. Acceptance: each bucket gains ≥ +0.05
-  recall@5. If not, log failed extractions, consider OCR fallback as a
-  follow-up.
+      `gh workflow run rag-eval-live.yml`. Acceptance: each bucket gains ≥ +0.05
+      recall@5. If not, log failed extractions, consider OCR fallback as a
+      follow-up.
 
 ### Phase P5 — Conditional Context Expansion
 
@@ -518,24 +520,25 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
 `RAG_CONTEXT_EXPANSION_ENABLED` default to on.
 
 **Files:**
+
 - Modify: `apps/api/src/config/rag.config.ts`
 - Modify: `apps/api/src/rag/context-expander.service.ts` + `.spec.ts`
 - Modify: `apps/api/src/rag/rag-retrieval.service.ts` (thread
   `queryClass` through)
 
 - [ ] **P5.1 — Capture pre-expansion baseline** with
-  `RAG_CONTEXT_EXPANSION_ENABLED=false`. Save
-  `reports/pre-expansion-baseline.json`.
+      `RAG_CONTEXT_EXPANSION_ENABLED=false`. Save
+      `reports/pre-expansion-baseline.json`.
 
 - [ ] **P5.2 — Add config + failing tests.** New env vars
-  `RAG_CONTEXT_EXPANSION_CLASSES=analytical,relational,multi_part` and
-  `RAG_CONTEXT_EXPANSION_MIN_DOC_TOKENS=8000`. Tests: (a) `exact_lookup`
-  with `sourceTokenCount: 200` skips expansion; (b) `analytical` with short
-  doc still expands; (c) `factoid` with `sourceTokenCount: 20000` expands
-  via long-doc signal.
+      `RAG_CONTEXT_EXPANSION_CLASSES=analytical,relational,multi_part` and
+      `RAG_CONTEXT_EXPANSION_MIN_DOC_TOKENS=8000`. Tests: (a) `exact_lookup`
+      with `sourceTokenCount: 200` skips expansion; (b) `analytical` with short
+      doc still expands; (c) `factoid` with `sourceTokenCount: 20000` expands
+      via long-doc signal.
 
 - [ ] **P5.3 — Implement the gate** at the top of
-  `ContextExpanderService.expand`:
+      `ContextExpanderService.expand`:
 
   ```typescript
   const { classes, minDocTokens } = this.config;
@@ -554,10 +557,10 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
 - [ ] **P5.4 — Rerun tests + typecheck.**
 
 - [ ] **P5.5 — Staging A/B.** Flip `RAG_CONTEXT_EXPANSION_ENABLED=true` in
-  staging with the new defaults. Trigger live eval; compare to
-  `pre-expansion-baseline.json`. Must satisfy both gates (gains on target
-  buckets, no regression on exact_lookup/factoid). If a class regressed,
-  narrow `RAG_CONTEXT_EXPANSION_CLASSES`.
+      staging with the new defaults. Trigger live eval; compare to
+      `pre-expansion-baseline.json`. Must satisfy both gates (gains on target
+      buckets, no regression on exact_lookup/factoid). If a class regressed,
+      narrow `RAG_CONTEXT_EXPANSION_CLASSES`.
 
 - [ ] **P5.6 — Flip production default.**
 
@@ -572,11 +575,11 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
 
 - [ ] **V1 — All phase exit criteria signed off** in the progress log.
 - [ ] **V2 — Tech-debt tracker updated** — entries `[RAG-TD-R4-03, -05, -06,
-  -07]`, `[RAG-TD-R5-01]`, `[RAG-TD-R6-01]` marked `Resolved by <PR>` or
-  reopened with new justification.
+-07]`, `[RAG-TD-R5-01]`, `[RAG-TD-R6-01]` marked `Resolved by <PR>` or
+      reopened with new justification.
 - [ ] **V3 — Cumulative live-API delta documented** vs. P1.6 baseline.
 - [ ] **V4 — No `exact_lookup` regression** — recall@5 never drops below
-  P1.6 baseline − 0.03 across any merged phase.
+      P1.6 baseline − 0.03 across any merged phase.
 
 ## Key Execution Decisions
 
@@ -626,7 +629,7 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
     `docs/exec-plans/tech-debt-tracker.md`.
   - **Bucket taxonomy extended 7 → 9.** `wave2-buckets.yaml` already
     defined `exact_lookup / colloquial / cross_document / long_doc /
-    table_numeric`; the plan's four additional retrieval-shape buckets
+table_numeric`; the plan's four additional retrieval-shape buckets
     (`factoid / relational / analytical / multi_part`) layered on top of
     those, giving a 9-bucket union. Golden set + thresholds cover all 9.
 
@@ -718,10 +721,10 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
 - 2026-04-21: Phase P5 landed on `main` in one commit (534f826).
   Replaces the global `RAG_CONTEXT_EXPANSION_ENABLED` on/off flag with
   a conditional gate:
-    (enabled=true) AND
-    (queryClass ∈ RAG_CONTEXT_EXPANSION_CLASSES
-      OR any top-K candidate's source doc ≥
-      RAG_CONTEXT_EXPANSION_MIN_DOC_TOKENS).
+  (enabled=true) AND
+  (queryClass ∈ RAG_CONTEXT_EXPANSION_CLASSES
+  OR any top-K candidate's source doc ≥
+  RAG_CONTEXT_EXPANSION_MIN_DOC_TOKENS).
   Default classes = `analytical,relational,multi_part`; default
   long-doc threshold = 8000 tokens. `source_token_count` from
   metadata is preferred; `content.length / 4` is the estimator
@@ -760,48 +763,45 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
   **P4 closed (commit 0ea7a05 + earlier P4 commit).**
   `services/parser/routers/parse.py` swaps the fixed-Markdown stub for
   MIME-dispatched real extractors:
-    - **PDF** via `pdfplumber` with heading heuristics (ALL-CAPS short
-      lines, SEC-style `PART` / `ITEM`, numbered `1.2` prefixes) and
-      table-to-Markdown rendering.
-    - **DOCX** via `python-docx`, walking body in document order with
-      Heading 1..6 / Title mapped to Markdown heading levels.
-  Dockerfile updated with `libjpeg62-turbo + zlib1g + poppler-utils`
-  and a urllib-based HEALTHCHECK; Docker image build itself deferred
-  because the local Docker daemon was down during the session.
-  Fixtures (`aapl-sample.pdf`, `nvda-table.pdf`, `sample-memo.docx`)
-  generated from corpus.json via `tests/generate_fixtures.py`
-  committed for deterministic CI. 8 integration tests pass
-  (header/table extraction, 400 on unsupported MIME, 422 on malformed
-  PDF, /health reports real version).
+  - **PDF** via `pdfplumber` with heading heuristics (ALL-CAPS short
+    lines, SEC-style `PART` / `ITEM`, numbered `1.2` prefixes) and
+    table-to-Markdown rendering.
+  - **DOCX** via `python-docx`, walking body in document order with
+    Heading 1..6 / Title mapped to Markdown heading levels.
+    Dockerfile updated with `libjpeg62-turbo + zlib1g + poppler-utils`
+    and a urllib-based HEALTHCHECK; Docker image build itself deferred
+    because the local Docker daemon was down during the session.
+    Fixtures (`aapl-sample.pdf`, `nvda-table.pdf`, `sample-memo.docx`)
+    generated from corpus.json via `tests/generate_fixtures.py`
+    committed for deterministic CI. 8 integration tests pass
+    (header/table extraction, 400 on unsupported MIME, 422 on malformed
+    PDF, /health reports real version).
 
   **P1.6 closed (commit cec4be9 + b3b1714).** Three prerequisites had
   to land before the live-API baseline could be captured:
-    1. `chunk_id` remapping in `run_evaluation.py` so the evaluator can
-       match the golden set's `chunk-NNN` ids back to the seed-fixture
-       UUIDs via `metadata.corpus_chunk_id`. +3 tests.
-    2. `RagSearchController` in `apps/api/src/rag/` exposing
-       `POST /api/rag/search`, gated behind
-       `RAG_EVAL_ENDPOINT_ENABLED=true`. The existing service was
-       only reachable programmatically; `wave2-buckets.yaml` had
-       long referenced this endpoint with no implementation.
-    3. Two migrations that had been drifting silently:
-       - **V16 edit**: `embedding vector` → `embedding vector(2048)`
-         matching the canonical NVIDIA embedding provider
-         (`nvidia/llama-nemotron-embed-1b-v2`); HNSW is not created
-         (pgvector caps HNSW at 2000 dims), dense rep-lane uses
-         seq-scan. Closes the "V16 HNSW dimension bug" tech-debt
-         entry. (An earlier revision of this edit declared
-         `vector(1536)`; see V22 bridge.)
-       - **V21 new**: adds `meta_title / meta_source / meta_entities /
-         search_vector` + `idx_document_chunks_fts` that the Drizzle
-         schema referenced but no SQL created.
-       - **V22 new**: bridge migration for DBs that applied the
-         `vector(1536)` revision of V16 — drops the old HNSW index
-         and widens the column to `vector(2048)`. Idempotent on
-         fresh DBs that ran the current V16.
-  Live-off baseline: overall recall@5=0.732, recall@10=0.741,
-  mrr@10=0.733. See
-  `services/evaluation-runner/reports/wave2-baseline-live-expansion-off-2026-04-21.json`.
+  1. `chunk_id` remapping in `run_evaluation.py` so the evaluator can
+     match the golden set's `chunk-NNN` ids back to the seed-fixture
+     UUIDs via `metadata.corpus_chunk_id`. +3 tests.
+  2. `RagSearchController` in `apps/api/src/rag/` exposing
+     `POST /api/rag/search`, gated behind
+     `RAG_EVAL_ENDPOINT_ENABLED=true`. The existing service was
+     only reachable programmatically; `wave2-buckets.yaml` had
+     long referenced this endpoint with no implementation.
+  3. Two migrations that had been drifting silently: - **V16 edit**: `embedding vector` → `embedding vector(2048)`
+     matching the canonical NVIDIA embedding provider
+     (`nvidia/llama-nemotron-embed-1b-v2`); HNSW is not created
+     (pgvector caps HNSW at 2000 dims), dense rep-lane uses
+     seq-scan. Closes the "V16 HNSW dimension bug" tech-debt
+     entry. (An earlier revision of this edit declared
+     `vector(1536)`; see V22 bridge.) - **V21 new**: adds `meta_title / meta_source / meta_entities /
+       search_vector` + `idx_document_chunks_fts` that the Drizzle
+     schema referenced but no SQL created. - **V22 new**: bridge migration for DBs that applied the
+     `vector(1536)` revision of V16 — drops the old HNSW index
+     and widens the column to `vector(2048)`. Idempotent on
+     fresh DBs that ran the current V16.
+     Live-off baseline: overall recall@5=0.732, recall@10=0.741,
+     mrr@10=0.733. See
+     `services/evaluation-runner/reports/wave2-baseline-live-expansion-off-2026-04-21.json`.
 
   **P5 live A/B closed (commit b3b1714).** Paired run with
   `RAG_CONTEXT_EXPANSION_ENABLED=true` against the same 100 queries /
@@ -830,17 +830,17 @@ recall@5; `exact_lookup + factoid` do not regress by > 0.01. Flip
   captures every command + raw numbers for reproduction.
 
   **Known gaps still open (tech-debt):**
-    - `RepresentationAdminService` DI bug in the
-      `rag:backfill:representations` CLI bootstrap module (blocks the
-      production path to enrichment; P2 verification worked around it).
-    - Query rewrite / HyDE were disabled in eval to keep per-query
-      latency under the runner's 30s timeout; rewrite's quality
-      contribution is therefore not measured by this baseline.
-    - No reranker sidecar running during eval — all rerank calls fell
-      through to RRF. A real reranker would likely push mrr@10 even
-      higher. Sidecar exists in `services/reranker/`; separate workstream.
-    - Docker image build for the real parser is pending until the local
-      Docker daemon is running. Dockerfile itself is ready.
+  - `RepresentationAdminService` DI bug in the
+    `rag:backfill:representations` CLI bootstrap module (blocks the
+    production path to enrichment; P2 verification worked around it).
+  - Query rewrite / HyDE were disabled in eval to keep per-query
+    latency under the runner's 30s timeout; rewrite's quality
+    contribution is therefore not measured by this baseline.
+  - No reranker sidecar running during eval — all rerank calls fell
+    through to RRF. A real reranker would likely push mrr@10 even
+    higher. Sidecar exists in `services/reranker/`; separate workstream.
+  - Docker image build for the real parser is pending until the local
+    Docker daemon is running. Dockerfile itself is ready.
 
 ## Final Outcome
 

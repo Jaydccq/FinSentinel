@@ -317,15 +317,15 @@ GAPS: 34 paths need tests/checks during implementation
 
 ## Failure Modes
 
-| Path | Realistic failure | Required test | Error handling expectation | User impact if missed |
-| --- | --- | --- | --- | --- |
-| Streaming chat | Last user message is duplicated when using `Agent.prompt()` over existing history | `streamAgentTextFromMessages` starts from history and calls `continue()` | No duplicate prompt in context | Repeated or confused answers |
-| Tool execution | Tool throws but adapter returns success text | Tool failure test | Throw reaches `pi-agent-core` and becomes tool error | Model trusts failed data |
-| Tool schema | Zod schema converts to invalid JSON schema | Tool parameters test | Runtime package test fails before app migration | Tool calls rejected by provider |
-| Max turns | Model loops tool calls forever | max turn test | Agent aborts and surfaces error | Hung SSE request |
-| SSE stream | Runtime emits thinking/tool deltas to frontend as user-visible text | streaming event filter test | Only text deltas become chunks | Leaked internal reasoning/tool noise |
-| Embeddings | Provider returns fewer vectors than inputs | item-count mismatch test | Throw clear error | Chunks stored with wrong vectors |
-| Dependency cleanup | New code imports `ai` again | no-Vercel import check | CI/check fails | Migration silently regresses |
+| Path               | Realistic failure                                                                 | Required test                                                            | Error handling expectation                           | User impact if missed                |
+| ------------------ | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------- | ------------------------------------ |
+| Streaming chat     | Last user message is duplicated when using `Agent.prompt()` over existing history | `streamAgentTextFromMessages` starts from history and calls `continue()` | No duplicate prompt in context                       | Repeated or confused answers         |
+| Tool execution     | Tool throws but adapter returns success text                                      | Tool failure test                                                        | Throw reaches `pi-agent-core` and becomes tool error | Model trusts failed data             |
+| Tool schema        | Zod schema converts to invalid JSON schema                                        | Tool parameters test                                                     | Runtime package test fails before app migration      | Tool calls rejected by provider      |
+| Max turns          | Model loops tool calls forever                                                    | max turn test                                                            | Agent aborts and surfaces error                      | Hung SSE request                     |
+| SSE stream         | Runtime emits thinking/tool deltas to frontend as user-visible text               | streaming event filter test                                              | Only text deltas become chunks                       | Leaked internal reasoning/tool noise |
+| Embeddings         | Provider returns fewer vectors than inputs                                        | item-count mismatch test                                                 | Throw clear error                                    | Chunks stored with wrong vectors     |
+| Dependency cleanup | New code imports `ai` again                                                       | no-Vercel import check                                                   | CI/check fails                                       | Migration silently regresses         |
 
 Critical gaps before implementation:
 
@@ -524,7 +524,9 @@ export interface OpenRouterModelOptions {
   reasoning?: boolean;
 }
 
-export function createOpenRouterModel(options: OpenRouterModelOptions): Model<'openai-completions'> {
+export function createOpenRouterModel(
+  options: OpenRouterModelOptions,
+): Model<'openai-completions'> {
   return {
     id: options.modelId,
     name: options.modelId,
@@ -732,7 +734,12 @@ Create `packages/ai-runtime/src/text-runtime.spec.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { fauxAssistantMessage, fauxText, fauxToolCall, registerFauxProvider } from '@mariozechner/pi-ai';
+import {
+  fauxAssistantMessage,
+  fauxText,
+  fauxToolCall,
+  registerFauxProvider,
+} from '@mariozechner/pi-ai';
 import { z } from 'zod';
 import { defineZodTool } from './tools';
 import { collectAsyncText, generateAgentText, streamAgentTextFromMessages } from './text-runtime';
@@ -866,10 +873,7 @@ export async function* streamAgentTextFromMessages(
 
   const agent = createAgent(options, toAgentMessages(options.messages));
   agent.subscribe((event) => {
-    if (
-      event.type === 'message_update' &&
-      event.assistantMessageEvent.type === 'text_delta'
-    ) {
+    if (event.type === 'message_update' && event.assistantMessageEvent.type === 'text_delta') {
       queue.push(event.assistantMessageEvent.delta);
       notify?.();
     }
@@ -935,10 +939,7 @@ function toAgentMessages(messages: ChatMessageInput[]): AgentMessage[] {
 
 function attachTextCollector(agent: Agent, chunks: string[]): void {
   agent.subscribe((event) => {
-    if (
-      event.type === 'message_update' &&
-      event.assistantMessageEvent.type === 'text_delta'
-    ) {
+    if (event.type === 'message_update' && event.assistantMessageEvent.type === 'text_delta') {
       chunks.push(event.assistantMessageEvent.delta);
     }
   });
@@ -1014,9 +1015,11 @@ import { OpenRouterEmbeddingClient } from './embeddings';
 
 describe('OpenRouterEmbeddingClient', () => {
   it('embeds a single query', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ data: [{ embedding: [1, 2, 3] }] }), { status: 200 }),
-    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ data: [{ embedding: [1, 2, 3] }] }), { status: 200 }),
+      );
     const client = new OpenRouterEmbeddingClient({
       apiKey: 'key',
       model: 'text-embedding-3-small',
@@ -1057,9 +1060,11 @@ describe('OpenRouterEmbeddingClient', () => {
   });
 
   it('throws on provider item count mismatch', async () => {
-    const fetchImpl = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ data: [{ embedding: [1] }] }), { status: 200 }),
-    );
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ data: [{ embedding: [1] }] }), { status: 200 }),
+      );
     const client = new OpenRouterEmbeddingClient({
       apiKey: 'key',
       model: 'text-embedding-3-small',
@@ -1153,7 +1158,9 @@ export class OpenRouterEmbeddingClient {
     });
 
     if (embeddings.length !== values.length) {
-      throw new Error(`Embedding response expected ${values.length} embeddings, got ${embeddings.length}`);
+      throw new Error(
+        `Embedding response expected ${values.length} embeddings, got ${embeddings.length}`,
+      );
     }
 
     return embeddings;
@@ -1230,7 +1237,9 @@ In `query-rewrite.service.spec.ts`, replace `vi.mock('ai', ...)` and `vi.mock('@
 ```ts
 vi.mock('@finsentinel/ai-runtime', () => ({
   createOpenRouterModel: vi.fn(() => 'mock-model'),
-  generateAgentText: vi.fn().mockImplementation(async ({ prompt }: { prompt: string }) => prompt.trim()),
+  generateAgentText: vi
+    .fn()
+    .mockImplementation(async ({ prompt }: { prompt: string }) => prompt.trim()),
 }));
 ```
 
@@ -1410,9 +1419,7 @@ import { aiConfig } from '../config/ai.config';
 export class RagEmbeddingService {
   private readonly embeddingClient: OpenRouterEmbeddingClient;
 
-  constructor(
-    @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
-  ) {
+  constructor(@Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>) {
     this.embeddingClient = new OpenRouterEmbeddingClient({
       apiKey: this.aiCfg.openrouterApiKey,
       baseUrl: this.aiCfg.openrouterBaseUrl,
@@ -1727,7 +1734,9 @@ Where tests mock `ai` or `@ai-sdk/openai`, replace them with:
 ```ts
 vi.mock('@finsentinel/ai-runtime', () => ({
   createOpenRouterModel: vi.fn(() => 'mock-model'),
-  generateAgentText: vi.fn().mockResolvedValue('{"summary":"ok","confidence":0.8,"findings":[],"risks":[],"actions":[]}')
+  generateAgentText: vi
+    .fn()
+    .mockResolvedValue('{"summary":"ok","confidence":0.8,"findings":[],"risks":[],"actions":[]}'),
 }));
 ```
 
@@ -1809,12 +1818,7 @@ Create `scripts/check-no-vercel-ai-sdk.mjs`:
 ```js
 import { execFileSync } from 'node:child_process';
 
-const patterns = [
-  "from 'ai'",
-  'from "ai"',
-  "'@ai-sdk/openai'",
-  '"@ai-sdk/openai"',
-];
+const patterns = ["from 'ai'", 'from "ai"', "'@ai-sdk/openai'", '"@ai-sdk/openai"'];
 
 let failed = false;
 
@@ -1995,12 +1999,12 @@ Do not remove `ai` or `@ai-sdk/openai` until all application source imports have
 
 ## GSTACK REVIEW REPORT
 
-| Review | Trigger | Why | Runs | Status | Findings |
-|--------|---------|-----|------|--------|----------|
-| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | - | - |
-| Codex Review | `/codex review` | Independent 2nd opinion | 0 | - | - |
-| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | issues_open | 4 architecture/code risks, 34 test gaps captured before implementation |
-| Design Review | `/plan-design-review` | UI/UX gaps | 0 | - | Backend SDK migration; no UI scope |
+| Review        | Trigger               | Why                             | Runs | Status      | Findings                                                               |
+| ------------- | --------------------- | ------------------------------- | ---- | ----------- | ---------------------------------------------------------------------- |
+| CEO Review    | `/plan-ceo-review`    | Scope & strategy                | 0    | -           | -                                                                      |
+| Codex Review  | `/codex review`       | Independent 2nd opinion         | 0    | -           | -                                                                      |
+| Eng Review    | `/plan-eng-review`    | Architecture & tests (required) | 1    | issues_open | 4 architecture/code risks, 34 test gaps captured before implementation |
+| Design Review | `/plan-design-review` | UI/UX gaps                      | 0    | -           | Backend SDK migration; no UI scope                                     |
 
 **UNRESOLVED:** User still needs to confirm whether TypeBox-native tool schemas should be a follow-up after SDK removal.
 

@@ -1,9 +1,4 @@
-import {
-  SecurityType,
-  BrokerCapability,
-  isCrypto,
-  Contract,
-} from '@finsentinel/shared';
+import { SecurityType, BrokerCapability, isCrypto, Contract } from '@finsentinel/shared';
 import type { IBroker } from '../interfaces/broker';
 import type { PaperTradingEngine } from '../engines/paper-trading.engine';
 import type {
@@ -73,10 +68,7 @@ export class PaperBroker implements IBroker {
 
   // ── Order execution ────────────────────────────────────────────────────
 
-  async placeOrder(
-    contract: Contract,
-    request: OrderRequest,
-  ): Promise<OrderResult> {
+  async placeOrder(contract: Contract, request: OrderRequest): Promise<OrderResult> {
     // Convert contract to Polygon-native symbol for crypto: "X:{symbol}{currency}"
     const nativeSymbol = isCrypto(contract.secType)
       ? `X:${contract.symbol}${contract.currency}`

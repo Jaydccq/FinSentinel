@@ -21,14 +21,16 @@ function createMockRedis() {
   // with a realistic 0.05 ms delay per call (real Redis is ~0.1–0.3 ms)
   let counter = 0;
   return {
-    eval: vi.fn().mockImplementation(
-      (_script: string, _numKeys: number, _key: string, _window: number, limit: number) => {
-        counter++;
-        const remaining = Math.max(0, limit - counter);
-        const allowed = counter <= limit ? 1 : 0;
-        return Promise.resolve([allowed, remaining, 60000]);
-      },
-    ),
+    eval: vi
+      .fn()
+      .mockImplementation(
+        (_script: string, _numKeys: number, _key: string, _window: number, limit: number) => {
+          counter++;
+          const remaining = Math.max(0, limit - counter);
+          const allowed = counter <= limit ? 1 : 0;
+          return Promise.resolve([allowed, remaining, 60000]);
+        },
+      ),
     _resetCounter() {
       counter = 0;
     },
@@ -43,10 +45,7 @@ describe('RateLimiterService — throughput benchmark', () => {
     mockRedis = createMockRedis();
 
     const module = await Test.createTestingModule({
-      providers: [
-        RateLimiterService,
-        { provide: 'REDIS', useValue: mockRedis },
-      ],
+      providers: [RateLimiterService, { provide: 'REDIS', useValue: mockRedis }],
     }).compile();
 
     service = module.get(RateLimiterService);

@@ -1,9 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
-import {
-  createOpenAICompatibleModel,
-  streamAgentTextFromMessages,
-} from '@finsentinel/ai-runtime';
+import { createOpenAICompatibleModel, streamAgentTextFromMessages } from '@finsentinel/ai-runtime';
 import { ToolRegistry } from './tool-registry';
 import { getPersonaPrompt } from './personas';
 import { aiConfig } from '../config/ai.config';
@@ -53,9 +50,7 @@ export class AgentService {
 
     // 2. Compose system prompt: profile + persona
     const personaPrompt = getPersonaPrompt(this.persona.active);
-    const systemPrompt = profileSummary
-      ? `${profileSummary}\n\n${personaPrompt}`
-      : personaPrompt;
+    const systemPrompt = profileSummary ? `${profileSummary}\n\n${personaPrompt}` : personaPrompt;
 
     // 3. Build tools for this request
     const tools = this.toolRegistry.buildTools(userId, portfolioId);
@@ -112,21 +107,14 @@ export class AgentService {
         try {
           for await (const chunk of textStream) {
             const data = JSON.stringify({ content: chunk, sessionId });
-            controller.enqueue(
-              encoder.encode(`event: message\ndata: ${data}\n\n`),
-            );
+            controller.enqueue(encoder.encode(`event: message\ndata: ${data}\n\n`));
           }
-          controller.enqueue(
-            encoder.encode('event: done\ndata: [DONE]\n\n'),
-          );
+          controller.enqueue(encoder.encode('event: done\ndata: [DONE]\n\n'));
         } catch (err) {
-          const errorMessage =
-            err instanceof Error ? err.message : 'Unknown streaming error';
+          const errorMessage = err instanceof Error ? err.message : 'Unknown streaming error';
           logger.error('SSE stream error', err);
           const data = JSON.stringify({ error: errorMessage });
-          controller.enqueue(
-            encoder.encode(`event: error\ndata: ${data}\n\n`),
-          );
+          controller.enqueue(encoder.encode(`event: error\ndata: ${data}\n\n`));
         } finally {
           controller.close();
         }

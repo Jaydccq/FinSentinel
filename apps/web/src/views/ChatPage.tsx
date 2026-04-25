@@ -1,24 +1,35 @@
-'use client'
+'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Send, Bot, User, Sparkles, History, Plus, MessageSquare, PanelLeftClose, PanelLeft, Briefcase } from 'lucide-react'
-import { toast } from 'sonner'
-import { chatApi, type ChatSessionSummary } from '../api/chat'
-import { portfolioApi, type PortfolioResponse } from '../api/portfolio'
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Send,
+  Bot,
+  User,
+  Sparkles,
+  History,
+  Plus,
+  MessageSquare,
+  PanelLeftClose,
+  PanelLeft,
+  Briefcase,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { chatApi, type ChatSessionSummary } from '../api/chat';
+import { portfolioApi, type PortfolioResponse } from '../api/portfolio';
 
 interface Message {
-  role: 'user' | 'assistant'
-  content: string
-  streaming?: boolean
-  timestamp: string
+  role: 'user' | 'assistant';
+  content: string;
+  streaming?: boolean;
+  timestamp: string;
 }
 
-const CURSOR_STYLE_ID = 'finsentinel-cursor-style'
+const CURSOR_STYLE_ID = 'finsentinel-cursor-style';
 function ensureCursorStyle() {
   if (typeof document !== 'undefined' && !document.getElementById(CURSOR_STYLE_ID)) {
-    const style = document.createElement('style')
-    style.id = CURSOR_STYLE_ID
+    const style = document.createElement('style');
+    style.id = CURSOR_STYLE_ID;
     style.textContent = `
       @keyframes finsentinel-glow-pulse {
         0%, 100% { opacity: 1; box-shadow: 0 0 4px 2px rgba(59,130,246,0.42); }
@@ -39,187 +50,206 @@ function ensureCursorStyle() {
           animation: none;
         }
       }
-    `
-    document.head.appendChild(style)
+    `;
+    document.head.appendChild(style);
   }
 }
 
 function nowTime() {
-  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `${days}d ago`
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [streaming, setStreaming] = useState(false)
-  const [sessionId, setSessionId] = useState<string | undefined>(undefined)
-  const [sessions, setSessions] = useState<ChatSessionSummary[]>([])
-  const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [sessionsLoading, setSessionsLoading] = useState(true)
-  const [portfolios, setPortfolios] = useState<PortfolioResponse[]>([])
-  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>('')
-  const [upgradeRunId, setUpgradeRunId] = useState<string | null>(null)
-  const [upgradeReason, setUpgradeReason] = useState<string | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => { ensureCursorStyle() }, [])
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [streaming, setStreaming] = useState(false);
+  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
+  const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [portfolios, setPortfolios] = useState<PortfolioResponse[]>([]);
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>('');
+  const [upgradeRunId, setUpgradeRunId] = useState<string | null>(null);
+  const [upgradeReason, setUpgradeReason] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    ensureCursorStyle();
+  }, []);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   // Restore sessionId from localStorage after hydration
   useEffect(() => {
-    const stored = localStorage.getItem('chat_session_id')
-    if (stored) setSessionId(stored)
-  }, [])
+    const stored = localStorage.getItem('chat_session_id');
+    if (stored) setSessionId(stored);
+  }, []);
 
   // Persist sessionId to localStorage
   useEffect(() => {
     if (sessionId) {
-      localStorage.setItem('chat_session_id', sessionId)
+      localStorage.setItem('chat_session_id', sessionId);
     }
-  }, [sessionId])
+  }, [sessionId]);
 
   // Load sessions list
   const loadSessions = useCallback(() => {
-    chatApi.sessions()
+    chatApi
+      .sessions()
       .then(setSessions)
       .catch(() => {})
-      .finally(() => setSessionsLoading(false))
-  }, [])
-
-  useEffect(() => { loadSessions() }, [loadSessions])
+      .finally(() => setSessionsLoading(false));
+  }, []);
 
   useEffect(() => {
-    portfolioApi.list().then(setPortfolios).catch(() => {})
-  }, [])
+    loadSessions();
+  }, [loadSessions]);
+
+  useEffect(() => {
+    portfolioApi
+      .list()
+      .then(setPortfolios)
+      .catch(() => {});
+  }, []);
 
   // Restore session on mount if sessionId exists
   useEffect(() => {
-    if (!sessionId) return
-    chatApi.history(sessionId)
-      .then(history => {
-        const restored: Message[] = history.map(m => ({
+    if (!sessionId) return;
+    chatApi
+      .history(sessionId)
+      .then((history) => {
+        const restored: Message[] = history.map((m) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
-          timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }))
-        setMessages(restored)
+          timestamp: new Date(m.createdAt).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        }));
+        setMessages(restored);
       })
       .catch(() => {
         // Session might not exist anymore
-        setMessages([])
-      })
-  // Only run on mount — not when sessionId changes during conversation
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+        setMessages([]);
+      });
+    // Only run on mount — not when sessionId changes during conversation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadSession = (sid: string) => {
-    setSessionId(sid)
-    chatApi.history(sid)
-      .then(history => {
-        const loaded: Message[] = history.map(m => ({
+    setSessionId(sid);
+    chatApi
+      .history(sid)
+      .then((history) => {
+        const loaded: Message[] = history.map((m) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
-          timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }))
-        setMessages(loaded)
+          timestamp: new Date(m.createdAt).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        }));
+        setMessages(loaded);
       })
-      .catch(() => toast.error('Failed to load session history.'))
-  }
+      .catch(() => toast.error('Failed to load session history.'));
+  };
 
   const newChat = () => {
-    setSessionId(undefined)
-    setMessages([])
-    localStorage.removeItem('chat_session_id')
-  }
+    setSessionId(undefined);
+    setMessages([]);
+    localStorage.removeItem('chat_session_id');
+  };
 
   const send = async () => {
-    if (!input.trim() || streaming) return
-    const userMessage = input.trim()
+    if (!input.trim() || streaming) return;
+    const userMessage = input.trim();
 
-    setInput('')
-    setUpgradeRunId(null)
-    setUpgradeReason(null)
-    setMessages(prev => [...prev, { role: 'user', content: userMessage, timestamp: nowTime() }])
-    setStreaming(true)
+    setInput('');
+    setUpgradeRunId(null);
+    setUpgradeReason(null);
+    setMessages((prev) => [...prev, { role: 'user', content: userMessage, timestamp: nowTime() }]);
+    setStreaming(true);
 
-    setMessages(prev => [...prev, { role: 'assistant', content: '', streaming: true, timestamp: nowTime() }])
+    setMessages((prev) => [
+      ...prev,
+      { role: 'assistant', content: '', streaming: true, timestamp: nowTime() },
+    ]);
 
     try {
-    await chatApi.stream(
-      userMessage,
-      selectedPortfolioId || undefined,
-      sessionId,
-      (chunk, sid) => {
-        setSessionId(prev => prev ?? sid)
-        setMessages(prev => {
-          const copy = [...prev]
-          const last = copy[copy.length - 1]
-          if (last && last.streaming) {
-            copy[copy.length - 1] = { ...last, content: last.content + chunk }
-          }
-          return copy
-        })
-      },
-      () => {
-        setStreaming(false)
-        setMessages(prev => {
-          const copy = [...prev]
-          const last = copy[copy.length - 1]
-          if (last && last.streaming) {
-            copy[copy.length - 1] = { ...last, streaming: false }
-          }
-          return copy
-        })
-        // Refresh sessions list after completing a conversation turn
-        loadSessions()
-      },
-      (err) => {
-        setStreaming(false)
-        const friendly = err.includes('429')
-          ? 'Rate limit reached. Please wait a moment.'
-          : `Chat error: ${err}`
-        toast.error(friendly)
-        setMessages(prev => {
-          const copy = [...prev]
-          const last = copy[copy.length - 1]
-          if (last && last.streaming) {
-            copy[copy.length - 1] = { ...last, content: friendly, streaming: false }
-          }
-          return copy
-        })
-      },
-      (runId: string, reason?: string) => {
-        setUpgradeRunId(runId)
-        if (reason) setUpgradeReason(reason)
-      },
-    )
+      await chatApi.stream(
+        userMessage,
+        selectedPortfolioId || undefined,
+        sessionId,
+        (chunk, sid) => {
+          setSessionId((prev) => prev ?? sid);
+          setMessages((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last && last.streaming) {
+              copy[copy.length - 1] = { ...last, content: last.content + chunk };
+            }
+            return copy;
+          });
+        },
+        () => {
+          setStreaming(false);
+          setMessages((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last && last.streaming) {
+              copy[copy.length - 1] = { ...last, streaming: false };
+            }
+            return copy;
+          });
+          // Refresh sessions list after completing a conversation turn
+          loadSessions();
+        },
+        (err) => {
+          setStreaming(false);
+          const friendly = err.includes('429')
+            ? 'Rate limit reached. Please wait a moment.'
+            : `Chat error: ${err}`;
+          toast.error(friendly);
+          setMessages((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last && last.streaming) {
+              copy[copy.length - 1] = { ...last, content: friendly, streaming: false };
+            }
+            return copy;
+          });
+        },
+        (runId: string, reason?: string) => {
+          setUpgradeRunId(runId);
+          if (reason) setUpgradeReason(reason);
+        },
+      );
     } finally {
       // Belt-and-suspenders: guarantee streaming resets even if stream() throws unexpectedly
-      setStreaming(false)
-      setMessages(prev => {
-        const copy = [...prev]
-        const last = copy[copy.length - 1]
+      setStreaming(false);
+      setMessages((prev) => {
+        const copy = [...prev];
+        const last = copy[copy.length - 1];
         if (last && last.streaming) {
-          copy[copy.length - 1] = { ...last, streaming: false }
+          copy[copy.length - 1] = { ...last, streaming: false };
         }
-        return copy
-      })
+        return copy;
+      });
     }
-  }
+  };
 
   return (
     <div className="h-[calc(100vh-7.4rem)] min-h-[36rem] px-4 py-4 md:px-8 md:py-6">
@@ -256,9 +286,11 @@ export default function ChatPage() {
                     ))}
                   </div>
                 ) : sessions.length === 0 ? (
-                  <p className="text-xs text-[var(--text-muted)] px-2 py-4 text-center">No sessions yet.</p>
+                  <p className="text-xs text-[var(--text-muted)] px-2 py-4 text-center">
+                    No sessions yet.
+                  </p>
                 ) : (
-                  sessions.map(s => (
+                  sessions.map((s) => (
                     <button
                       key={s.sessionId}
                       onClick={() => loadSession(s.sessionId)}
@@ -269,7 +301,10 @@ export default function ChatPage() {
                       }`}
                     >
                       <div className="flex items-start gap-2">
-                        <MessageSquare size={12} className="text-[var(--text-muted)] mt-0.5 flex-shrink-0" />
+                        <MessageSquare
+                          size={12}
+                          className="text-[var(--text-muted)] mt-0.5 flex-shrink-0"
+                        />
                         <div className="min-w-0 flex-1">
                           <p className="text-xs text-[var(--text-primary)] truncate leading-snug">
                             {s.firstMessage}
@@ -300,8 +335,12 @@ export default function ChatPage() {
                   {sidebarOpen ? <PanelLeftClose size={15} /> : <PanelLeft size={15} />}
                 </button>
                 <div>
-                  <h1 className="text-xl md:text-2xl font-semibold text-[var(--text-primary)]">AI Risk Advisor</h1>
-                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">Streaming analysis powered by multi-tool AI agent</p>
+                  <h1 className="text-xl md:text-2xl font-semibold text-[var(--text-primary)]">
+                    AI Risk Advisor
+                  </h1>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                    Streaming analysis powered by multi-tool AI agent
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -314,12 +353,14 @@ export default function ChatPage() {
                     <Briefcase size={12} className="text-[var(--text-muted)]" />
                     <select
                       value={selectedPortfolioId}
-                      onChange={e => setSelectedPortfolioId(e.target.value)}
+                      onChange={(e) => setSelectedPortfolioId(e.target.value)}
                       className="bg-slate-800/60 border border-[color:var(--border-subtle)] rounded text-xs text-[var(--text-secondary)] py-1 px-2 max-w-[160px] focus:outline-none focus:border-blue-400/40"
                     >
                       <option value="">No portfolio context</option>
-                      {portfolios.map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
+                      {portfolios.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -332,9 +373,13 @@ export default function ChatPage() {
             {upgradeRunId && (
               <div className="glass-panel rounded p-3 my-2 flex items-center justify-between">
                 <span className="text-sm">
-                  This chat was upgraded to a tracked run{upgradeReason ? ` (${upgradeReason})` : ''}.
+                  This chat was upgraded to a tracked run
+                  {upgradeReason ? ` (${upgradeReason})` : ''}.
                 </span>
-                <a className="btn-primary px-3 py-1 text-xs" href={`/analysis?runId=${upgradeRunId}`}>
+                <a
+                  className="btn-primary px-3 py-1 text-xs"
+                  href={`/analysis?runId=${upgradeRunId}`}
+                >
                   Open Run
                 </a>
               </div>
@@ -348,8 +393,12 @@ export default function ChatPage() {
                 <div className="h-14 w-14 rounded bg-blue-400/12 border border-blue-400/25 flex items-center justify-center mb-3">
                   <Bot size={26} className="text-blue-200" aria-hidden="true" />
                 </div>
-                <p className="text-base font-semibold text-[var(--text-primary)]">Ask FinSentinel anything about your portfolio risk.</p>
-                <p className="mt-1 text-sm text-[var(--text-secondary)] max-w-md">Try: concentration risk, macro event exposure, or sector rotation strategies.</p>
+                <p className="text-base font-semibold text-[var(--text-primary)]">
+                  Ask FinSentinel anything about your portfolio risk.
+                </p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)] max-w-md">
+                  Try: concentration risk, macro event exposure, or sector rotation strategies.
+                </p>
               </motion.div>
             )}
 
@@ -367,7 +416,9 @@ export default function ChatPage() {
                     </div>
                   )}
 
-                  <div className={`max-w-[85%] md:max-w-[70%] ${message.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-0.5`}>
+                  <div
+                    className={`max-w-[85%] md:max-w-[70%] ${message.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-0.5`}
+                  >
                     <div
                       className={`rounded px-3 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
                         message.role === 'user'
@@ -399,8 +450,8 @@ export default function ChatPage() {
                 className="field-input"
                 placeholder="Ask about factor risk, scenario impact, sector concentration..."
                 value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
                 disabled={streaming}
               />
               <button
@@ -416,5 +467,5 @@ export default function ChatPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

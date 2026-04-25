@@ -62,9 +62,7 @@ describe('OkxWebSocketClient', () => {
     client.connect();
     mockPublicWs._trigger('open');
 
-    expect(mockPublicWs.send).toHaveBeenCalledWith(
-      expect.stringContaining('"op":"subscribe"'),
-    );
+    expect(mockPublicWs.send).toHaveBeenCalledWith(expect.stringContaining('"op":"subscribe"'));
 
     const msg = JSON.parse((mockPublicWs.send as ReturnType<typeof vi.fn>).mock.calls[0]![0]);
     expect(msg.args).toHaveLength(2);
@@ -76,9 +74,7 @@ describe('OkxWebSocketClient', () => {
     client.connect();
     mockPrivateWs._trigger('open');
 
-    expect(mockPrivateWs.send).toHaveBeenCalledWith(
-      expect.stringContaining('"op":"login"'),
-    );
+    expect(mockPrivateWs.send).toHaveBeenCalledWith(expect.stringContaining('"op":"login"'));
 
     const msg = JSON.parse((mockPrivateWs.send as ReturnType<typeof vi.fn>).mock.calls[0]![0]);
     expect(msg.args[0]).toHaveProperty('apiKey', 'test-api-key');

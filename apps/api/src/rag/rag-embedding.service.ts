@@ -7,12 +7,11 @@ import { aiConfig } from '../config/ai.config';
 export class RagEmbeddingService {
   private readonly embeddingClient: OpenAICompatibleEmbeddingClient;
 
-  constructor(
-    @Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>,
-  ) {
-    const nvidiaInputTypes = this.aiCfg.embeddingProvider === 'nvidia'
-      ? { queryInputType: 'query' as const, chunkInputType: 'passage' as const }
-      : {};
+  constructor(@Inject(aiConfig.KEY) private readonly aiCfg: ConfigType<typeof aiConfig>) {
+    const nvidiaInputTypes =
+      this.aiCfg.embeddingProvider === 'nvidia'
+        ? { queryInputType: 'query' as const, chunkInputType: 'passage' as const }
+        : {};
 
     this.embeddingClient = new OpenAICompatibleEmbeddingClient({
       apiKey: this.aiCfg.embeddingApiKey ?? this.aiCfg.openrouterApiKey,

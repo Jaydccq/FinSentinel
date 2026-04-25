@@ -44,8 +44,8 @@
 
 ```ts
 interface AuthCookieConfig {
-  name: string;          // FS_AUTH
-  secure: boolean;       // env: AUTH_COOKIE_SECURE
+  name: string; // FS_AUTH
+  secure: boolean; // env: AUTH_COOKIE_SECURE
   sameSite: 'lax' | 'strict' | 'none';
   domain?: string;
   maxAgeSec: number;

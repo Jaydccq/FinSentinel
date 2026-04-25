@@ -41,12 +41,12 @@ export class GoogleDriveStorageService implements StorageService {
     if (!this.configured) {
       this.logger.warn(
         'Google Drive storage is not configured — operations will be no-ops. ' +
-        'Set GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, and GOOGLE_DRIVE_REFRESH_TOKEN.',
+          'Set GOOGLE_DRIVE_CLIENT_ID, GOOGLE_DRIVE_CLIENT_SECRET, and GOOGLE_DRIVE_REFRESH_TOKEN.',
       );
     } else {
       this.logger.log(
         `Google Drive storage initialized: app=${this.applicationName}, ` +
-        `rootFolder=${this.rootFolderId ?? '(root)'}`,
+          `rootFolder=${this.rootFolderId ?? '(root)'}`,
       );
     }
   }
@@ -69,7 +69,7 @@ export class GoogleDriveStorageService implements StorageService {
     // 3. Upload file with drive.files.create({ media: { body, mimeType } })
     this.logger.debug(
       `[STUB] Would upload to Google Drive: key=${key}, ` +
-      `size=${content.length} bytes, type=${contentType}`,
+        `size=${content.length} bytes, type=${contentType}`,
     );
   }
 

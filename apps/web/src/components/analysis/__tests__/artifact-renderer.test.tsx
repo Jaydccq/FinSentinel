@@ -14,7 +14,14 @@ describe('ArtifactRenderer', () => {
   it('renders markdown payload as preformatted text', () => {
     render(
       <ArtifactRenderer
-        artifact={{ ...baseArtifact, artifactKind: 'STAGE_HUMAN_REPORT', mimeType: 'text/markdown', payload: { markdown: '# Risk' } } as never}
+        artifact={
+          {
+            ...baseArtifact,
+            artifactKind: 'STAGE_HUMAN_REPORT',
+            mimeType: 'text/markdown',
+            payload: { markdown: '# Risk' },
+          } as never
+        }
       />,
     );
     expect(screen.getByText(/# Risk/)).toBeTruthy();
@@ -23,7 +30,14 @@ describe('ArtifactRenderer', () => {
   it('renders empty markdown payload without crashing', () => {
     render(
       <ArtifactRenderer
-        artifact={{ ...baseArtifact, artifactKind: 'STAGE_HUMAN_REPORT', mimeType: 'text/markdown', payload: null } as never}
+        artifact={
+          {
+            ...baseArtifact,
+            artifactKind: 'STAGE_HUMAN_REPORT',
+            mimeType: 'text/markdown',
+            payload: null,
+          } as never
+        }
       />,
     );
     // Should render an empty pre block — query the surface-panel or just let it not crash.
@@ -34,7 +48,14 @@ describe('ArtifactRenderer', () => {
   it('renders json payload via JsonTree (keys + values)', () => {
     render(
       <ArtifactRenderer
-        artifact={{ ...baseArtifact, artifactKind: 'STAGE_STRUCTURED_OUTPUT', mimeType: 'application/json', payload: { confidence: 0.82 } } as never}
+        artifact={
+          {
+            ...baseArtifact,
+            artifactKind: 'STAGE_STRUCTURED_OUTPUT',
+            mimeType: 'application/json',
+            payload: { confidence: 0.82 },
+          } as never
+        }
       />,
     );
     expect(screen.getByText('confidence')).toBeTruthy();
@@ -44,7 +65,14 @@ describe('ArtifactRenderer', () => {
   it('shows an unsupported-format message for unknown mime types', () => {
     render(
       <ArtifactRenderer
-        artifact={{ ...baseArtifact, artifactKind: 'OTHER', mimeType: 'application/octet-stream', payload: null } as never}
+        artifact={
+          {
+            ...baseArtifact,
+            artifactKind: 'OTHER',
+            mimeType: 'application/octet-stream',
+            payload: null,
+          } as never
+        }
       />,
     );
     expect(screen.getByText(/Unsupported artifact format/i)).toBeTruthy();

@@ -13,9 +13,12 @@
     "test:all": "turbo run test",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "check:no-vercel-ai-sdk": "node scripts/check-no-vercel-ai-sdk.mjs"
   },
   "devDependencies": {
+    "prettier": "^3.8.3",
     "turbo": "^2.5.0",
     "typescript": "^5.8.0"
   },

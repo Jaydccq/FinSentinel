@@ -111,7 +111,8 @@ export class ContextJournalService {
     const runRows = await this.selectRunRows(userId, runId);
     const latestStageInput = this.findLatestStageInput(runRows);
     const referenceIds = this.getReferencedEntryIds(latestStageInput);
-    const referencedRows = referenceIds.length > 0 ? await this.selectRowsByIds(userId, referenceIds) : [];
+    const referencedRows =
+      referenceIds.length > 0 ? await this.selectRowsByIds(userId, referenceIds) : [];
     const rows = this.mergeRows(runRows, referencedRows);
     const hasStageInput = latestStageInput !== null;
     const contextEntryIds = this.getStringArray(latestStageInput?.payloadJson.contextEntryIds);
@@ -161,10 +162,7 @@ export class ContextJournalService {
         .select()
         .from(contextJournalEntries)
         .where(
-          and(
-            eq(contextJournalEntries.userId, userId),
-            eq(contextJournalEntries.runId, runId),
-          ),
+          and(eq(contextJournalEntries.userId, userId), eq(contextJournalEntries.runId, runId)),
         )
         .orderBy(asc(contextJournalEntries.createdAt))) as JournalRow[];
     } catch (error) {
@@ -179,10 +177,7 @@ export class ContextJournalService {
         .select()
         .from(contextJournalEntries)
         .where(
-          and(
-            eq(contextJournalEntries.userId, userId),
-            inArray(contextJournalEntries.id, ids),
-          ),
+          and(eq(contextJournalEntries.userId, userId), inArray(contextJournalEntries.id, ids)),
         )
         .orderBy(asc(contextJournalEntries.createdAt))) as JournalRow[];
     } catch (error) {
@@ -216,7 +211,9 @@ export class ContextJournalService {
       rowsById.set(row.id, row);
     }
 
-    return [...rowsById.values()].sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
+    return [...rowsById.values()].sort(
+      (left, right) => left.createdAt.getTime() - right.createdAt.getTime(),
+    );
   }
 
   private filterReferencedRows(
@@ -235,7 +232,10 @@ export class ContextJournalService {
     return rows.filter((row) => row.entryType === entryType);
   }
 
-  private layerFromRows(rows: JournalRow[], summaryFields: string[]): SharedContext['shortTermSessionContext'] {
+  private layerFromRows(
+    rows: JournalRow[],
+    summaryFields: string[],
+  ): SharedContext['shortTermSessionContext'] {
     if (rows.length === 0) {
       return this.emptyLayer();
     }

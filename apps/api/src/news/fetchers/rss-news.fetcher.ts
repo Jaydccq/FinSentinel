@@ -51,10 +51,7 @@ export class RssNewsFetcher implements NewsFetcher {
 
   // ── Internal ─────────────────────────────────────────────────────────────
 
-  private toRawNewsItem(
-    feedName: string,
-    entry: RssParser.Item,
-  ): RawNewsItem {
+  private toRawNewsItem(feedName: string, entry: RssParser.Item): RawNewsItem {
     const guid = entry.guid ?? entry.link ?? entry.title ?? '';
 
     return {

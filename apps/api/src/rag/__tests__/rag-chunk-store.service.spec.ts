@@ -28,10 +28,7 @@ describe('RagChunkStoreService', () => {
     db = makeDb();
 
     const module = await Test.createTestingModule({
-      providers: [
-        RagChunkStoreService,
-        { provide: 'DRIZZLE_DB', useValue: db },
-      ],
+      providers: [RagChunkStoreService, { provide: 'DRIZZLE_DB', useValue: db }],
     }).compile();
 
     service = module.get(RagChunkStoreService);
@@ -81,9 +78,7 @@ describe('RagChunkStoreService', () => {
       // This test asserts the delete is called unconditionally (the precondition for
       // CASCADE to fire) and that no explicit representation delete is issued by
       // replaceChunks itself -- the service intentionally delegates cleanup to the DB.
-      const chunksWithRepresentations = [
-        { content: 'original', embedding: [1, 0], metadata: {} },
-      ];
+      const chunksWithRepresentations = [{ content: 'original', embedding: [1, 0], metadata: {} }];
 
       await service.replaceChunks('document', 'doc-with-reps', chunksWithRepresentations);
 
@@ -114,8 +109,11 @@ describe('RagChunkStoreService', () => {
           { chunk_id: 'c2', source_id: 's2', content: 'ctx', metadata: {}, similarity: 0.85 },
         ]); // contextual_text
 
-      const results = await service.searchRepresentations([0.1, 0.2], {}, 5, ['canonical', 'contextual_text']);
-      const ctxHits = results.filter(r => r.representationType === 'contextual_text');
+      const results = await service.searchRepresentations([0.1, 0.2], {}, 5, [
+        'canonical',
+        'contextual_text',
+      ]);
+      const ctxHits = results.filter((r) => r.representationType === 'contextual_text');
       expect(ctxHits).toHaveLength(1);
       expect(ctxHits[0]!.chunkId).toBe('c2');
     });
@@ -147,8 +145,11 @@ describe('RagChunkStoreService', () => {
         ])
         .mockRejectedValueOnce(new Error('pg error'));
 
-      const results = await service.searchRepresentations([1, 0], {}, 5, ['canonical', 'contextual_text']);
-      const canonical = results.filter(r => r.representationType === 'canonical');
+      const results = await service.searchRepresentations([1, 0], {}, 5, [
+        'canonical',
+        'contextual_text',
+      ]);
+      const canonical = results.filter((r) => r.representationType === 'canonical');
       expect(canonical).toHaveLength(1);
     });
 
@@ -157,12 +158,10 @@ describe('RagChunkStoreService', () => {
     it('tickers filter injects a metadata->tickers ?| fragment in both canonical + rep SQL', async () => {
       db.execute.mockResolvedValue([]);
 
-      await service.searchRepresentations(
-        [1, 0],
-        { tickers: ['AAPL', 'TSLA'] },
-        5,
-        ['canonical', 'contextual_text'],
-      );
+      await service.searchRepresentations([1, 0], { tickers: ['AAPL', 'TSLA'] }, 5, [
+        'canonical',
+        'contextual_text',
+      ]);
 
       const sqlStrings = db.execute.mock.calls.map((c: any[]) => JSON.stringify(c[0]));
       // Both the canonical query (no alias) and the rep query (dc.) must
@@ -176,12 +175,10 @@ describe('RagChunkStoreService', () => {
     it('issuerName filter injects a metadata->>issuerName = ANY fragment in both SQLs', async () => {
       db.execute.mockResolvedValue([]);
 
-      await service.searchRepresentations(
-        [1, 0],
-        { issuerName: ['Apple Inc.'] },
-        5,
-        ['canonical', 'contextual_text'],
-      );
+      await service.searchRepresentations([1, 0], { issuerName: ['Apple Inc.'] }, 5, [
+        'canonical',
+        'contextual_text',
+      ]);
 
       const sqlStrings = db.execute.mock.calls.map((c: any[]) => JSON.stringify(c[0]));
       expect(sqlStrings.some((s: string) => s.includes("metadata->>'issuerName'"))).toBe(true);

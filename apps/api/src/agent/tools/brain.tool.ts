@@ -9,10 +9,7 @@ import { AgentBrainService } from '../agent-brain.service';
  *
  * Brain-state tool surface exposed to the agent.
  */
-export function createBrainTools(
-  service: AgentBrainService,
-  userId: string,
-) {
+export function createBrainTools(service: AgentBrainService, userId: string) {
   return {
     readStrategy: tool({
       description:
@@ -62,23 +59,14 @@ export function createBrainTools(
         'explaining what triggered the emotional shift.',
       inputSchema: z.object({
         emotion: z
-          .enum([
-            'neutral',
-            'confident',
-            'cautious',
-            'fearful',
-            'greedy',
-            'euphoric',
-            'anxious',
-          ])
+          .enum(['neutral', 'confident', 'cautious', 'fearful', 'greedy', 'euphoric', 'anxious'])
           .describe(
             'New emotional state: neutral, confident, cautious, fearful, greedy, euphoric, or anxious',
           ),
         reason: z
           .string()
           .describe(
-            "Reason for the emotional change, e.g. " +
-              "'Portfolio dropped 5% due to tech selloff'",
+            'Reason for the emotional change, e.g. ' + "'Portfolio dropped 5% due to tech selloff'",
           ),
       }),
       execute: async ({ emotion, reason }) => {

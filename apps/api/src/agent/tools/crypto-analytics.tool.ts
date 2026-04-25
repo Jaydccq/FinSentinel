@@ -10,9 +10,7 @@ import { CryptoToolsService } from '../crypto-tools.service';
  *
  * Crypto-analytics tool surface exposed to the agent.
  */
-export function createCryptoAnalyticsTools(
-  service: CryptoToolsService,
-) {
+export function createCryptoAnalyticsTools(service: CryptoToolsService) {
   return {
     getFundingRate: tool({
       description:
@@ -21,11 +19,7 @@ export function createCryptoAnalyticsTools(
         'Use this to assess carry cost before opening or keeping a perpetual position. ' +
         'Example instrument: BTC-USDT-SWAP, ETH-USDT-SWAP.',
       inputSchema: z.object({
-        instId: z
-          .string()
-          .describe(
-            "Perpetual swap instrument ID, e.g. 'BTC-USDT-SWAP'",
-          ),
+        instId: z.string().describe("Perpetual swap instrument ID, e.g. 'BTC-USDT-SWAP'"),
       }),
       execute: async ({ instId }) => {
         try {
@@ -43,11 +37,7 @@ export function createCryptoAnalyticsTools(
         'Calculates liquidation distance percentage and warns if < 5%. ' +
         'Use this to quickly assess a position before making trading recommendations.',
       inputSchema: z.object({
-        instId: z
-          .string()
-          .describe(
-            "Instrument ID to analyze, e.g. 'BTC-USDT-SWAP'",
-          ),
+        instId: z.string().describe("Instrument ID to analyze, e.g. 'BTC-USDT-SWAP'"),
       }),
       execute: async ({ instId }) => {
         try {
@@ -65,26 +55,13 @@ export function createCryptoAnalyticsTools(
         'CRITICAL: This is a LIVE money mutation that changes liquidation prices and margin requirements. ' +
         'You MUST call getConfirm BEFORE calling this tool. Do NOT set leverage without explicit user approval.',
       inputSchema: z.object({
-        instId: z
-          .string()
-          .describe("Instrument ID, e.g. 'BTC-USDT-SWAP'"),
-        leverage: z
-          .number()
-          .int()
-          .min(1)
-          .max(125)
-          .describe('Leverage multiplier, e.g. 5 for 5x'),
-        marginMode: z
-          .enum(['cross', 'isolated'])
-          .describe("Margin mode: 'cross' or 'isolated'"),
+        instId: z.string().describe("Instrument ID, e.g. 'BTC-USDT-SWAP'"),
+        leverage: z.number().int().min(1).max(125).describe('Leverage multiplier, e.g. 5 for 5x'),
+        marginMode: z.enum(['cross', 'isolated']).describe("Margin mode: 'cross' or 'isolated'"),
       }),
       execute: async ({ instId, leverage, marginMode }) => {
         try {
-          return await service.setLeverage(
-            instId.toUpperCase().trim(),
-            leverage,
-            marginMode,
-          );
+          return await service.setLeverage(instId.toUpperCase().trim(), leverage, marginMode);
         } catch (e) {
           return `Error setting leverage: ${e instanceof Error ? e.message : 'unknown'}`;
         }

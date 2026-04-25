@@ -9,10 +9,7 @@ import { HeartbeatController } from './heartbeat.controller';
 import { ScheduleService } from './schedule.service';
 import { HeartbeatService } from './heartbeat.service';
 import { AnalysisRuntimeTriggerService } from './analysis-runtime-trigger.service';
-import {
-  ScheduleRuntimeService,
-  ANALYSIS_RUNTIME_FLAG_TOKEN,
-} from './schedule-runtime.service';
+import { ScheduleRuntimeService, ANALYSIS_RUNTIME_FLAG_TOKEN } from './schedule-runtime.service';
 import { HeartbeatRuntimeService } from './heartbeat-runtime.service';
 
 /**

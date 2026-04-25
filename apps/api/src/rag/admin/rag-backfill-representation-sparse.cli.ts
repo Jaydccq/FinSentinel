@@ -68,9 +68,7 @@ export interface RepresentationRowForBackfill {
   chunkContent: string | null;
 }
 
-export type BackfillRowFetcher = (
-  limit: number,
-) => Promise<RepresentationRowForBackfill[]>;
+export type BackfillRowFetcher = (limit: number) => Promise<RepresentationRowForBackfill[]>;
 
 export type BackfillRowUpdater = (id: string, fragment: SQL<unknown>) => Promise<void>;
 
@@ -140,9 +138,7 @@ export function parseBackfillArgs(argv: string[]): BackfillCliArgs {
     } else if (a === '--progress-every' && argv[i + 1] !== undefined) {
       args.progressEveryBatches = parsePositiveInt('--progress-every', argv[++i]!);
     } else if (a.startsWith('--')) {
-      throw new Error(
-        `unrecognized flag: ${a}. Known flags: ${[...KNOWN_FLAGS].join(', ')}`,
-      );
+      throw new Error(`unrecognized flag: ${a}. Known flags: ${[...KNOWN_FLAGS].join(', ')}`);
     } else {
       throw new Error(`unrecognized positional argument: ${a}`);
     }
@@ -286,15 +282,17 @@ function buildDbFetcher(
       LIMIT ${limit}
     `);
 
-    const arr = Array.isArray(rows) ? rows : (rows as { rows?: unknown[] }).rows ?? [];
-    const mapped = (arr as Array<{
-      id: string;
-      representation_type: RepresentationType;
-      representation_content: string;
-      chunk_meta_title: string | null;
-      chunk_section_path: string | null;
-      chunk_content: string | null;
-    }>).map((r) => ({
+    const arr = Array.isArray(rows) ? rows : ((rows as { rows?: unknown[] }).rows ?? []);
+    const mapped = (
+      arr as Array<{
+        id: string;
+        representation_type: RepresentationType;
+        representation_content: string;
+        chunk_meta_title: string | null;
+        chunk_section_path: string | null;
+        chunk_content: string | null;
+      }>
+    ).map((r) => ({
       id: r.id,
       representationType: r.representation_type,
       representationContent: r.representation_content,

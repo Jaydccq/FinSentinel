@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { JwtGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -29,10 +23,7 @@ export class ReportController {
     const pdfBuffer = await this.reportService.getReportPdf(user.userId, id);
 
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="risk-report-${id}.pdf"`,
-    );
+    res.setHeader('Content-Disposition', `attachment; filename="risk-report-${id}.pdf"`);
     res.setHeader('Content-Length', pdfBuffer.length);
     res.end(pdfBuffer);
   }

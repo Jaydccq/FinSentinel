@@ -1,17 +1,8 @@
-import {
-  Injectable,
-  Inject,
-  ConflictException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable, Inject, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { hash, compare } from 'bcryptjs';
 import { users, eq } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
-import type {
-  RegisterRequest,
-  LoginRequest,
-  AuthResponse,
-} from '@finsentinel/shared';
+import type { RegisterRequest, LoginRequest, AuthResponse } from '@finsentinel/shared';
 import { JwtService } from './jwt.service';
 
 const BCRYPT_ROUNDS = 10;
@@ -44,19 +35,13 @@ export class AuthService {
       // is the authoritative race-free check. We deliberately do NOT pre-SELECT —
       // the previous read-then-insert pattern had a race window between the two
       // checks and the insert.
-      if (
-        err instanceof Error &&
-        (err as { code?: string }).code === '23505'
-      ) {
+      if (err instanceof Error && (err as { code?: string }).code === '23505') {
         throw new ConflictException('Username or email already exists');
       }
       throw err;
     }
 
-    const token = await this.jwtService.generateToken(
-      created.username,
-      created.id,
-    );
+    const token = await this.jwtService.generateToken(created.username, created.id);
 
     return { token, username: created.username, email: created.email };
   }

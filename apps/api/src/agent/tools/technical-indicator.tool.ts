@@ -17,9 +17,7 @@ export function createTechnicalIndicatorTools(
         'RSI > 70 = overbought (bearish signal), RSI < 30 = oversold (bullish signal). ' +
         'Input is JSON array of OHLCV bars from getHistoricalPrices.',
       inputSchema: z.object({
-        barsJson: z
-          .string()
-          .describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
+        barsJson: z.string().describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
         period: z.number().int().describe('RSI period, typically 14'),
       }),
       execute: async ({ barsJson, period }) => {
@@ -40,10 +38,7 @@ export function createTechnicalIndicatorTools(
         barsJson: z.string().describe('JSON array of price bars'),
         shortPeriod: z.number().int().describe('Short EMA period, typically 12'),
         longPeriod: z.number().int().describe('Long EMA period, typically 26'),
-        signalPeriod: z
-          .number()
-          .int()
-          .describe('Signal line EMA period, typically 9'),
+        signalPeriod: z.number().int().describe('Signal line EMA period, typically 9'),
       }),
       execute: async ({ barsJson, shortPeriod, longPeriod, signalPeriod }) => {
         try {
@@ -67,9 +62,7 @@ export function createTechnicalIndicatorTools(
       inputSchema: z.object({
         barsJson: z.string().describe('JSON array of price bars'),
         period: z.number().int().describe('SMA period, typically 20'),
-        stdDevMultiplier: z
-          .number()
-          .describe('Standard deviation multiplier, typically 2.0'),
+        stdDevMultiplier: z.number().describe('Standard deviation multiplier, typically 2.0'),
       }),
       execute: async ({ barsJson, period, stdDevMultiplier }) => {
         try {
@@ -92,9 +85,7 @@ export function createTechnicalIndicatorTools(
         'Useful for identifying trend direction and dynamic support/resistance levels. ' +
         'Input is JSON array of OHLCV bars from getHistoricalPrices.',
       inputSchema: z.object({
-        barsJson: z
-          .string()
-          .describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
+        barsJson: z.string().describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
         period: z
           .number()
           .int()
@@ -119,13 +110,8 @@ export function createTechnicalIndicatorTools(
         'Death Cross (SMA50 crosses below SMA200 = strong bearish) when enough data is available. ' +
         'Input is JSON array of OHLCV bars from getHistoricalPrices.',
       inputSchema: z.object({
-        barsJson: z
-          .string()
-          .describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
-        period: z
-          .number()
-          .int()
-          .describe('SMA period (common: 20, 50, 100, 200)'),
+        barsJson: z.string().describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
+        period: z.number().int().describe('SMA period (common: 20, 50, 100, 200)'),
       }),
       execute: async ({ barsJson, period }) => {
         try {
@@ -144,9 +130,7 @@ export function createTechnicalIndicatorTools(
         'High ATR = high risk/reward, Low ATR = stable/low risk. ' +
         'Input is JSON array of OHLCV bars from getHistoricalPrices.',
       inputSchema: z.object({
-        barsJson: z
-          .string()
-          .describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
+        barsJson: z.string().describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
         period: z.number().int().describe('ATR period, typically 14'),
       }),
       execute: async ({ barsJson, period }) => {
@@ -166,25 +150,13 @@ export function createTechnicalIndicatorTools(
         '%K crossing above %D = bullish, %K crossing below %D = bearish. ' +
         'Input is JSON array of OHLCV bars from getHistoricalPrices.',
       inputSchema: z.object({
-        barsJson: z
-          .string()
-          .describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
-        kPeriod: z
-          .number()
-          .int()
-          .describe('%K period (lookback window), typically 14'),
-        dPeriod: z
-          .number()
-          .int()
-          .describe('%D period (%K smoothing), typically 3'),
+        barsJson: z.string().describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
+        kPeriod: z.number().int().describe('%K period (lookback window), typically 14'),
+        dPeriod: z.number().int().describe('%D period (%K smoothing), typically 3'),
       }),
       execute: async ({ barsJson, kPeriod, dPeriod }) => {
         try {
-          return technicalIndicatorsService.calculateStochastic(
-            barsJson,
-            kPeriod,
-            dPeriod,
-          );
+          return technicalIndicatorsService.calculateStochastic(barsJson, kPeriod, dPeriod);
         } catch (e) {
           return `Error calculating Stochastic Oscillator: ${e instanceof Error ? e.message : 'unknown'}`;
         }
@@ -200,9 +172,7 @@ export function createTechnicalIndicatorTools(
         'Useful for risk assessment: strong trends are more predictable. ' +
         'Input is JSON array of OHLCV bars from getHistoricalPrices.',
       inputSchema: z.object({
-        barsJson: z
-          .string()
-          .describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
+        barsJson: z.string().describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
         period: z.number().int().describe('ADX period, typically 14'),
       }),
       execute: async ({ barsJson, period }) => {
@@ -224,9 +194,7 @@ export function createTechnicalIndicatorTools(
         'Falling OBV + falling price = confirmed downtrend (weak). ' +
         'Input is JSON array of OHLCV bars from getHistoricalPrices.',
       inputSchema: z.object({
-        barsJson: z
-          .string()
-          .describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
+        barsJson: z.string().describe('JSON array of price bars [{o,h,l,c,v,t}, ...]'),
       }),
       execute: async ({ barsJson }) => {
         try {

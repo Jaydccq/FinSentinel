@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Put,
-  Body,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Put, Body, UseGuards } from '@nestjs/common';
 import { heartbeatConfigRequestSchema } from '@finsentinel/shared';
 import type { HeartbeatConfigRequest } from '@finsentinel/shared';
 import { JwtGuard } from '../auth/jwt.guard';

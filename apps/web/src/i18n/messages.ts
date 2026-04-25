@@ -1,4 +1,4 @@
-export type Locale = 'en' | 'zh'
+export type Locale = 'en' | 'zh';
 
 export const messages = {
   en: {
@@ -59,7 +59,8 @@ export const messages = {
     'auth.secureWorkspace': 'Secure Finance Workspace',
     'auth.hero.line1': 'Trade smart.',
     'auth.hero.line2': 'Manage risk faster.',
-    'auth.hero.desc': 'Unified portfolio monitoring, compliance checks, and AI advisory designed for modern investment teams.',
+    'auth.hero.desc':
+      'Unified portfolio monitoring, compliance checks, and AI advisory designed for modern investment teams.',
     'auth.bullet.marketIntelligence': 'Cross-source market intelligence',
     'auth.bullet.riskAssessment': 'Structured risk assessment in seconds',
     'auth.bullet.secGuardrails': 'SEC-aware policy guardrails',
@@ -82,7 +83,8 @@ export const messages = {
     'register.username': 'Username',
     'register.email': 'Email Address',
     'register.password': 'Password',
-    'register.passwordHint': 'Password: min 8 chars, must include uppercase, lowercase, and a digit.',
+    'register.passwordHint':
+      'Password: min 8 chars, must include uppercase, lowercase, and a digit.',
     'register.submit': 'Create Account',
     'register.submitting': 'Creating account...',
     'register.failed': 'Registration failed.',
@@ -94,7 +96,8 @@ export const messages = {
     'settings.email': 'Email',
     'settings.watchlist': 'Watchlist',
     'settings.watchlistDesc': "Track tickers you're interested in. Saved locally in your browser.",
-    'settings.watchlistMovedToDashboard': 'Watchlist editing has moved to the Dashboard, where items are synced across devices and support notes, thesis, and priority.',
+    'settings.watchlistMovedToDashboard':
+      'Watchlist editing has moved to the Dashboard, where items are synced across devices and support notes, thesis, and priority.',
     'settings.goToDashboard': 'Open Dashboard',
     'settings.tickerPlaceholder': 'Enter ticker (e.g. AAPL)',
     'settings.add': 'Add',
@@ -199,7 +202,8 @@ export const messages = {
     'settings.email': '邮箱',
     'settings.watchlist': '自选列表',
     'settings.watchlistDesc': '追踪你关注的标的。数据保存在浏览器本地。',
-    'settings.watchlistMovedToDashboard': '自选列表编辑已迁移到 Dashboard，数据跨设备同步，并支持备注、思路与优先级。',
+    'settings.watchlistMovedToDashboard':
+      '自选列表编辑已迁移到 Dashboard，数据跨设备同步，并支持备注、思路与优先级。',
     'settings.goToDashboard': '打开 Dashboard',
     'settings.tickerPlaceholder': '输入代码（如 AAPL）',
     'settings.add': '添加',
@@ -211,6 +215,6 @@ export const messages = {
     'settings.toast.added': '{{ticker}} 已添加到自选列表。',
     'settings.toast.removed': '{{ticker}} 已从自选列表移除。',
   },
-} as const
+} as const;
 
-export type MessageKey = keyof typeof messages.en
+export type MessageKey = keyof typeof messages.en;

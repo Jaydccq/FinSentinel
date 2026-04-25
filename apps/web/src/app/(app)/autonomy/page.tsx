@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import AutonomyPage from '@/views/AutonomyPage'
+import AutonomyPage from '@/views/AutonomyPage';
 
 export default function Page() {
-  return <AutonomyPage />
+  return <AutonomyPage />;
 }

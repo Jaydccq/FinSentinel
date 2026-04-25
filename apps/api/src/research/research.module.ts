@@ -31,20 +31,16 @@ import { ResearchController } from './research.controller';
     // Aggregate all providers into a single DI token
     {
       provide: 'RESEARCH_PROVIDERS',
-      useFactory: (
-        polygon: PolygonResearchProvider,
-        yahoo: YahooResearchProvider,
-      ) => [polygon, yahoo],
+      useFactory: (polygon: PolygonResearchProvider, yahoo: YahooResearchProvider) => [
+        polygon,
+        yahoo,
+      ],
       inject: [PolygonResearchProvider, YahooResearchProvider],
     },
     ResearchDataProviderRegistry,
     CompanyResearchService,
     EquityScreenerService,
   ],
-  exports: [
-    CompanyResearchService,
-    EquityScreenerService,
-    ResearchDataProviderRegistry,
-  ],
+  exports: [CompanyResearchService, EquityScreenerService, ResearchDataProviderRegistry],
 })
 export class ResearchModule {}

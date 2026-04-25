@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import TradingPage from '@/views/TradingPage'
+import TradingPage from '@/views/TradingPage';
 
 export default function Page() {
-  return <TradingPage />
+  return <TradingPage />;
 }

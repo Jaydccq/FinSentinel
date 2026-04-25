@@ -6,4 +6,5 @@ export const AgentScheduleTaskType = {
   CRYPTO_HEALTH_CHECK: 'CRYPTO_HEALTH_CHECK',
 } as const;
 
-export type AgentScheduleTaskType = (typeof AgentScheduleTaskType)[keyof typeof AgentScheduleTaskType];
+export type AgentScheduleTaskType =
+  (typeof AgentScheduleTaskType)[keyof typeof AgentScheduleTaskType];

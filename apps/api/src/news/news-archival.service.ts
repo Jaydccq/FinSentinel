@@ -22,10 +22,7 @@ export class NewsArchivalService {
     @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
     configService: ConfigService,
   ) {
-    this.retentionDays = configService.get<number>(
-      'ARCHIVAL_RETENTION_DAYS',
-      7,
-    );
+    this.retentionDays = configService.get<number>('ARCHIVAL_RETENTION_DAYS', 7);
     this.batchSize = configService.get<number>('ARCHIVAL_BATCH_SIZE', 50);
   }
 
@@ -47,12 +44,7 @@ export class NewsArchivalService {
       const staleItems = await this.db
         .select({ id: newsItems.id })
         .from(newsItems)
-        .where(
-          and(
-            lt(newsItems.publishedAt, cutoffDate),
-            eq(newsItems.enriched, false),
-          ),
-        )
+        .where(and(lt(newsItems.publishedAt, cutoffDate), eq(newsItems.enriched, false)))
         .limit(this.batchSize);
 
       batchCount = staleItems.length;
@@ -63,17 +55,12 @@ export class NewsArchivalService {
 
       // Mark items as archived (enriched = true) in batch
       for (const id of ids) {
-        await this.db
-          .update(newsItems)
-          .set({ enriched: true })
-          .where(eq(newsItems.id, id));
+        await this.db.update(newsItems).set({ enriched: true }).where(eq(newsItems.id, id));
       }
 
       totalArchived += batchCount;
 
-      this.logger.log(
-        `Archived batch of ${batchCount} news items (total: ${totalArchived})`,
-      );
+      this.logger.log(`Archived batch of ${batchCount} news items (total: ${totalArchived})`);
     } while (batchCount === this.batchSize);
 
     if (totalArchived > 0) {

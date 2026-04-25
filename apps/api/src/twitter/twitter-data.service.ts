@@ -14,10 +14,7 @@ export class TwitterDataService {
   private readonly token: string;
 
   constructor(configService: ConfigService) {
-    this.baseUrl = configService.get<string>(
-      'TWITTER_6551_BASE_URL',
-      'https://api.6551.io',
-    );
+    this.baseUrl = configService.get<string>('TWITTER_6551_BASE_URL', 'https://api.6551.io');
     this.token = configService.get<string>('TWITTER_6551_TOKEN', '');
   }
 
@@ -63,10 +60,7 @@ export class TwitterDataService {
    * @param username   - Twitter handle (without @)
    * @param maxResults - Maximum followers to return (default 20)
    */
-  async getUserFollowers(
-    username: string,
-    maxResults = 20,
-  ): Promise<unknown> {
+  async getUserFollowers(username: string, maxResults = 20): Promise<unknown> {
     return this.post('/open/twitter/user_followers', {
       username,
       max_results: maxResults,
@@ -92,9 +86,7 @@ export class TwitterDataService {
       this.logger.error(
         `6551 Twitter API error: ${response.status} ${response.statusText} — ${text}`,
       );
-      throw new Error(
-        `6551 Twitter API returned ${response.status}: ${text}`,
-      );
+      throw new Error(`6551 Twitter API returned ${response.status}: ${text}`);
     }
 
     return response.json();

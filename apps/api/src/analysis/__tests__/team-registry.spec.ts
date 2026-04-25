@@ -23,10 +23,12 @@ describe('TeamRegistry.onModuleInit', () => {
 
     expect(orchestrator.registerStageExecutor).toHaveBeenCalledTimes(5);
     expect(orchestrator.registerStageExecutor).toHaveBeenCalledWith(
-      'INTELLIGENCE', expect.any(Function),
+      'INTELLIGENCE',
+      expect.any(Function),
     );
     expect(orchestrator.registerStageExecutor).toHaveBeenCalledWith(
-      'HUMAN_APPROVAL', expect.any(Function),
+      'HUMAN_APPROVAL',
+      expect.any(Function),
     );
   });
 });

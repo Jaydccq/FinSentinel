@@ -1,32 +1,32 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { apiFetch, ApiError, resolveBase } from '../client'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { apiFetch, ApiError, resolveBase } from '../client';
 
 describe('resolveBase', () => {
-  const original = { ...process.env }
+  const original = { ...process.env };
 
   afterEach(() => {
-    process.env = { ...original }
-  })
+    process.env = { ...original };
+  });
 
   it("returns '/api' (relative) when NEXT_PUBLIC_API_BASE_URL is unset (browser default)", () => {
-    delete process.env.NEXT_PUBLIC_API_BASE_URL
-    expect(resolveBase()).toBe('/api')
-  })
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+    expect(resolveBase()).toBe('/api');
+  });
 
   it('prepends a full origin when NEXT_PUBLIC_API_BASE_URL is set (Tauri build)', () => {
-    process.env.NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080'
-    expect(resolveBase()).toBe('http://127.0.0.1:8080/api')
-  })
+    process.env.NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080';
+    expect(resolveBase()).toBe('http://127.0.0.1:8080/api');
+  });
 
   it('strips a trailing slash before joining', () => {
-    process.env.NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080/'
-    expect(resolveBase()).toBe('http://127.0.0.1:8080/api')
-  })
-})
+    process.env.NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080/';
+    expect(resolveBase()).toBe('http://127.0.0.1:8080/api');
+  });
+});
 
 describe('apiFetch URL composition', () => {
-  const original = { ...process.env }
-  let fetchSpy: ReturnType<typeof vi.fn>
+  const original = { ...process.env };
+  let fetchSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     fetchSpy = vi.fn().mockResolvedValue(
@@ -34,62 +34,63 @@ describe('apiFetch URL composition', () => {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       }),
-    )
-    vi.stubGlobal('fetch', fetchSpy)
-    const localLogin = await import('../../lib/auth/local-login')
-    vi.spyOn(localLogin, 'ensureLocalToken').mockResolvedValue(null)
-  })
+    );
+    vi.stubGlobal('fetch', fetchSpy);
+    const localLogin = await import('../../lib/auth/local-login');
+    vi.spyOn(localLogin, 'ensureLocalToken').mockResolvedValue(null);
+  });
 
   afterEach(() => {
-    process.env = { ...original }
-    vi.unstubAllGlobals()
-    vi.restoreAllMocks()
-  })
+    process.env = { ...original };
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
 
   it("hits '/api<path>' under browser (no env override)", async () => {
-    delete process.env.NEXT_PUBLIC_API_BASE_URL
-    await apiFetch('/health')
-    expect(fetchSpy).toHaveBeenCalled()
-    const url = fetchSpy.mock.calls[0]![0] as string
-    expect(url).toBe('/api/health')
-  })
+    delete process.env.NEXT_PUBLIC_API_BASE_URL;
+    await apiFetch('/health');
+    expect(fetchSpy).toHaveBeenCalled();
+    const url = fetchSpy.mock.calls[0]![0] as string;
+    expect(url).toBe('/api/health');
+  });
 
   it('hits the full origin under Tauri build (env set)', async () => {
-    process.env.NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080'
-    await apiFetch('/health')
-    const url = fetchSpy.mock.calls[0]![0] as string
-    expect(url).toBe('http://127.0.0.1:8080/api/health')
-  })
-})
+    process.env.NEXT_PUBLIC_API_BASE_URL = 'http://127.0.0.1:8080';
+    await apiFetch('/health');
+    const url = fetchSpy.mock.calls[0]![0] as string;
+    expect(url).toBe('http://127.0.0.1:8080/api/health');
+  });
+});
 
 describe('apiFetch', () => {
-  const originalFetch = globalThis.fetch
+  const originalFetch = globalThis.fetch;
 
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+  });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch
-  })
+    globalThis.fetch = originalFetch;
+  });
 
   it('throws a short ApiError when backend returns HTML (unreachable rewrite target)', async () => {
     // Simulates what happens when NestJS at localhost:3001 is down and
     // Next.js rewrite proxy returns its own 404 HTML page.
-    const htmlBody = '<!DOCTYPE html><html><head><title>404</title></head><body>...</body></html>'
-    globalThis.fetch = vi.fn().mockImplementation(async () =>
-      new Response(htmlBody, {
-        status: 404,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
-      }),
-    )
+    const htmlBody = '<!DOCTYPE html><html><head><title>404</title></head><body>...</body></html>';
+    globalThis.fetch = vi.fn().mockImplementation(
+      async () =>
+        new Response(htmlBody, {
+          status: 404,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        }),
+    );
 
-    const err = await apiFetch('/portfolios').catch((e: unknown) => e)
-    expect(err).toBeInstanceOf(ApiError)
-    expect((err as ApiError).status).toBe(404)
-    expect((err as ApiError).message).not.toContain('<!DOCTYPE')
-    expect((err as ApiError).message).toMatch(/backend unreachable|http 404/i)
-  })
+    const err = await apiFetch('/portfolios').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).status).toBe(404);
+    expect((err as ApiError).message).not.toContain('<!DOCTYPE');
+    expect((err as ApiError).message).toMatch(/backend unreachable|http 404/i);
+  });
 
   it('preserves JSON error.message from backend responses', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
@@ -97,30 +98,26 @@ describe('apiFetch', () => {
         status: 404,
         headers: { 'Content-Type': 'application/json' },
       }),
-    )
+    );
 
-    await expect(apiFetch('/portfolios/missing')).rejects.toThrow(
-      'Portfolio not found',
-    )
-  })
+    await expect(apiFetch('/portfolios/missing')).rejects.toThrow('Portfolio not found');
+  });
 
   it('returns parsed JSON on 2xx', async () => {
-    const payload = { portfolios: [{ id: '1' }] }
+    const payload = { portfolios: [{ id: '1' }] };
     globalThis.fetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(payload), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       }),
-    )
+    );
 
-    await expect(apiFetch('/portfolios')).resolves.toEqual(payload)
-  })
+    await expect(apiFetch('/portfolios')).resolves.toEqual(payload);
+  });
 
   it('returns undefined on 204 No Content', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(
-      new Response(null, { status: 204 }),
-    )
+    globalThis.fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
 
-    await expect(apiFetch('/portfolios/1', { method: 'DELETE' })).resolves.toBeUndefined()
-  })
-})
+    await expect(apiFetch('/portfolios/1', { method: 'DELETE' })).resolves.toBeUndefined();
+  });
+});

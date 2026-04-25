@@ -8,23 +8,25 @@
 **Approach:** Tiny, additive changes in `main.ts`. Install `helmet` + `compression` (well-known, stable packages); use Node's `crypto.randomUUID` for the request-id middleware (no extra dep).
 
 ## Out of scope (defer to a follow-up slice)
+
 - Dynamic `Module.register()` refactor for OpenBB / OKX / Queue / News / Twitter optional integrations. Big surface change; ship as its own PRD.
 - Helmet CSP / HSTS — deferred until web + desktop QA passes; this slice ships with both disabled.
 - Replacing the built-in NestJS Logger with `nestjs-pino`. Different change-set.
 
 ## What we keep
+
 - The env-driven CORS allow-list landed in P0-3.
 - The existing `GlobalExceptionFilter` envelope; we just teach it to emit the request-id header + log field.
 
 ## File Map
 
-| Path | Role |
-|------|------|
-| `apps/api/package.json` | MODIFY — add `helmet` + `compression` (+ `@types/compression` dev). |
-| `apps/api/src/common/middleware/request-id.middleware.ts` | NEW — Express middleware that pulls/generates `x-request-id` and stashes on `req`. |
-| `apps/api/src/common/middleware/__tests__/request-id.middleware.spec.ts` | NEW — pure unit tests. |
-| `apps/api/src/main.ts` | MODIFY — wire helmet (minimal config), compression, request-id middleware before routes. |
-| `apps/api/src/common/filters/global-exception.filter.ts` | MODIFY — copy `req.id` into `X-Request-Id` response header + log line. |
+| Path                                                                     | Role                                                                                     |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `apps/api/package.json`                                                  | MODIFY — add `helmet` + `compression` (+ `@types/compression` dev).                      |
+| `apps/api/src/common/middleware/request-id.middleware.ts`                | NEW — Express middleware that pulls/generates `x-request-id` and stashes on `req`.       |
+| `apps/api/src/common/middleware/__tests__/request-id.middleware.spec.ts` | NEW — pure unit tests.                                                                   |
+| `apps/api/src/main.ts`                                                   | MODIFY — wire helmet (minimal config), compression, request-id middleware before routes. |
+| `apps/api/src/common/filters/global-exception.filter.ts`                 | MODIFY — copy `req.id` into `X-Request-Id` response header + log line.                   |
 
 ## Tasks
 

@@ -17,13 +17,13 @@ describe('RetrievalFusionService', () => {
 
   it('merges two lanes via RRF, deduplicating by chunkId', () => {
     const dense = candidates('a', 'b', 'c');
-    dense.forEach(c => c.lane = 'dense');
+    dense.forEach((c) => (c.lane = 'dense'));
     const sparse = candidates('b', 'd', 'a');
-    sparse.forEach(c => c.lane = 'sparse');
+    sparse.forEach((c) => (c.lane = 'sparse'));
 
     const result = service.fuse([dense, sparse], 60);
 
-    const ids = result.map(r => r.chunkId);
+    const ids = result.map((r) => r.chunkId);
     expect(ids).toContain('a');
     expect(ids).toContain('b');
     expect(ids).toContain('c');
@@ -33,9 +33,9 @@ describe('RetrievalFusionService', () => {
 
   it('ranks items appearing in multiple lanes higher', () => {
     const dense = candidates('shared', 'dense-only');
-    dense.forEach(c => c.lane = 'dense');
+    dense.forEach((c) => (c.lane = 'dense'));
     const sparse = candidates('shared', 'sparse-only');
-    sparse.forEach(c => c.lane = 'sparse');
+    sparse.forEach((c) => (c.lane = 'sparse'));
 
     const result = service.fuse([dense, sparse], 60);
     expect(result[0]!.chunkId).toBe('shared');
@@ -48,9 +48,9 @@ describe('RetrievalFusionService', () => {
 
   it('tracks which lanes contributed to each candidate', () => {
     const dense = candidates('a');
-    dense.forEach(c => c.lane = 'dense');
+    dense.forEach((c) => (c.lane = 'dense'));
     const sparse = candidates('a');
-    sparse.forEach(c => c.lane = 'sparse');
+    sparse.forEach((c) => (c.lane = 'sparse'));
 
     const result = service.fuse([dense, sparse], 60);
     expect(result[0]!.lanes).toContain('dense');
@@ -59,12 +59,22 @@ describe('RetrievalFusionService', () => {
 
   it('accumulates representationTypesSeen across multiple hits for same chunkId', () => {
     const canonical: RankedCandidate = {
-      chunkId: 'c1', sourceId: 's1', content: 'x', metadata: {},
-      score: 0.9, lane: 'dense', representationType: ['canonical'],
+      chunkId: 'c1',
+      sourceId: 's1',
+      content: 'x',
+      metadata: {},
+      score: 0.9,
+      lane: 'dense',
+      representationType: ['canonical'],
     };
     const contextual: RankedCandidate = {
-      chunkId: 'c1', sourceId: 's1', content: 'x', metadata: {},
-      score: 0.8, lane: 'dense', representationType: ['contextual_text'],
+      chunkId: 'c1',
+      sourceId: 's1',
+      content: 'x',
+      metadata: {},
+      score: 0.8,
+      lane: 'dense',
+      representationType: ['contextual_text'],
     };
 
     const result = service.fuse([[canonical, contextual]], 60);
@@ -75,12 +85,22 @@ describe('RetrievalFusionService', () => {
 
   it('accumulates variantKindsSeen across multiple variants for same chunkId', () => {
     const original: RankedCandidate = {
-      chunkId: 'c1', sourceId: 's1', content: 'x', metadata: {},
-      score: 0.9, lane: 'dense', variantKind: 'original',
+      chunkId: 'c1',
+      sourceId: 's1',
+      content: 'x',
+      metadata: {},
+      score: 0.9,
+      lane: 'dense',
+      variantKind: 'original',
     };
     const rewrite: RankedCandidate = {
-      chunkId: 'c1', sourceId: 's1', content: 'x', metadata: {},
-      score: 0.85, lane: 'dense', variantKind: 'rewrite',
+      chunkId: 'c1',
+      sourceId: 's1',
+      content: 'x',
+      metadata: {},
+      score: 0.85,
+      lane: 'dense',
+      variantKind: 'rewrite',
     };
 
     const result = service.fuse([[original], [rewrite]], 60);
@@ -91,16 +111,26 @@ describe('RetrievalFusionService', () => {
 
   it('deduplicates representationTypesSeen entries', () => {
     const a: RankedCandidate = {
-      chunkId: 'c1', sourceId: 's1', content: 'x', metadata: {},
-      score: 0.9, lane: 'dense', representationType: ['canonical'],
+      chunkId: 'c1',
+      sourceId: 's1',
+      content: 'x',
+      metadata: {},
+      score: 0.9,
+      lane: 'dense',
+      representationType: ['canonical'],
     };
     const b: RankedCandidate = {
-      chunkId: 'c1', sourceId: 's1', content: 'x', metadata: {},
-      score: 0.8, lane: 'sparse', representationType: ['canonical'],
+      chunkId: 'c1',
+      sourceId: 's1',
+      content: 'x',
+      metadata: {},
+      score: 0.8,
+      lane: 'sparse',
+      representationType: ['canonical'],
     };
 
     const result = service.fuse([[a], [b]], 60);
-    expect(result[0]!.representationTypesSeen.filter(t => t === 'canonical')).toHaveLength(1);
+    expect(result[0]!.representationTypesSeen.filter((t) => t === 'canonical')).toHaveLength(1);
   });
 
   it('empty provenance fields when no variant/rep type set', () => {
@@ -114,9 +144,9 @@ describe('RetrievalFusionService', () => {
 
   it('weighted RRF: weight=0 contributes nothing (lane is effectively muted)', () => {
     const dense = candidates('shared', 'dense-only');
-    dense.forEach(c => c.lane = 'dense');
+    dense.forEach((c) => (c.lane = 'dense'));
     const sparse = candidates('shared', 'sparse-only');
-    sparse.forEach(c => c.lane = 'sparse');
+    sparse.forEach((c) => (c.lane = 'sparse'));
 
     const result = service.fuse(
       [
@@ -135,7 +165,7 @@ describe('RetrievalFusionService', () => {
 
   it('weighted RRF: weight=2 doubles contribution per rank vs vanilla', () => {
     const dense = candidates('a');
-    dense.forEach(c => c.lane = 'dense');
+    dense.forEach((c) => (c.lane = 'dense'));
 
     const vanilla = service.fuse([dense], 60);
     const weighted = service.fuse([{ candidates: dense, weight: 2 }], 60);
@@ -145,12 +175,12 @@ describe('RetrievalFusionService', () => {
 
   it('legacy RankedCandidate[][] input still works (weight defaults to 1)', () => {
     const dense = candidates('a', 'b');
-    dense.forEach(c => c.lane = 'dense');
+    dense.forEach((c) => (c.lane = 'dense'));
 
     const legacy = service.fuse([dense], 60);
     const weighted = service.fuse([{ candidates: dense, weight: 1 }], 60);
 
     expect(legacy[0]!.rrfScore).toBeCloseTo(weighted[0]!.rrfScore, 8);
-    expect(legacy.map(r => r.chunkId)).toEqual(weighted.map(r => r.chunkId));
+    expect(legacy.map((r) => r.chunkId)).toEqual(weighted.map((r) => r.chunkId));
   });
 });

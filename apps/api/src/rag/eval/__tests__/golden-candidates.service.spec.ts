@@ -190,9 +190,7 @@ describe('GoldenCandidatesService.fromAgentEvents', () => {
 
   it('skips entries where payload_json is null', async () => {
     const db = makeDb();
-    db.limit.mockResolvedValueOnce([
-      { id: 'ev-1', payloadJson: null },
-    ]);
+    db.limit.mockResolvedValueOnce([{ id: 'ev-1', payloadJson: null }]);
 
     const svc = await buildService(db, makeLlm());
     const results = await svc.fromAgentEvents(5);
@@ -231,9 +229,7 @@ describe('GoldenCandidatesService.fromChunkReverse', () => {
     const db = makeDb();
     // First execute() returns strata
     db.execute
-      .mockResolvedValueOnce([
-        { doc_type: 'SEC_FILING', sector: 'Technology', cnt: '10' },
-      ])
+      .mockResolvedValueOnce([{ doc_type: 'SEC_FILING', sector: 'Technology', cnt: '10' }])
       // Second execute() returns sampled chunks from that stratum
       .mockResolvedValueOnce([
         { id: 'chunk-abc', content: 'Apple reported Q1 revenue of $120B for fiscal 2024.' },
@@ -262,7 +258,10 @@ describe('GoldenCandidatesService.fromChunkReverse', () => {
         { id: 'chunk-2', content: 'Bank earnings report for Q2 2024 finance sector.' },
       ]);
 
-    const svc = await buildService(db, makeLlm('What is the sector performance this quarter?\nrelational'));
+    const svc = await buildService(
+      db,
+      makeLlm('What is the sector performance this quarter?\nrelational'),
+    );
     const results = await svc.fromChunkReverse(4);
 
     // With 2 strata and limit 4: each gets 2
@@ -272,9 +271,7 @@ describe('GoldenCandidatesService.fromChunkReverse', () => {
   it('skips a chunk when LLM returns empty question but continues with others', async () => {
     const db = makeDb();
     db.execute
-      .mockResolvedValueOnce([
-        { doc_type: 'SEC_FILING', sector: 'Technology', cnt: '10' },
-      ])
+      .mockResolvedValueOnce([{ doc_type: 'SEC_FILING', sector: 'Technology', cnt: '10' }])
       .mockResolvedValueOnce([
         { id: 'chunk-1', content: 'First chunk content about technology revenue.' },
         { id: 'chunk-2', content: 'Second chunk content about market risk factors.' },
@@ -297,9 +294,7 @@ describe('GoldenCandidatesService.fromChunkReverse', () => {
   it('skips a chunk when LLM throws but continues with others', async () => {
     const db = makeDb();
     db.execute
-      .mockResolvedValueOnce([
-        { doc_type: 'SEC_FILING', sector: 'Technology', cnt: '10' },
-      ])
+      .mockResolvedValueOnce([{ doc_type: 'SEC_FILING', sector: 'Technology', cnt: '10' }])
       .mockResolvedValueOnce([
         { id: 'chunk-fail', content: 'Failing chunk technology content here.' },
         { id: 'chunk-ok', content: 'Successful chunk about quarterly earnings data.' },
@@ -320,14 +315,15 @@ describe('GoldenCandidatesService.fromChunkReverse', () => {
   it('falls back to unknown class when LLM returns unrecognised class label', async () => {
     const db = makeDb();
     db.execute
-      .mockResolvedValueOnce([
-        { doc_type: 'SEC_FILING', sector: 'Technology', cnt: '5' },
-      ])
+      .mockResolvedValueOnce([{ doc_type: 'SEC_FILING', sector: 'Technology', cnt: '5' }])
       .mockResolvedValueOnce([
         { id: 'chunk-1', content: 'Some chunk about technology investment.' },
       ]);
 
-    const svc = await buildService(db, makeLlm('What is the investment outlook here?\nweird_class'));
+    const svc = await buildService(
+      db,
+      makeLlm('What is the investment outlook here?\nweird_class'),
+    );
     const results = await svc.fromChunkReverse(5);
 
     expect(results[0]!.query_class).toBe('unknown');
@@ -347,9 +343,7 @@ describe('GoldenCandidatesService.fromChunkReverse', () => {
     const db = makeDb();
     // Single stratum, limit=100 → effectiveLimit=30, quota=30, overshoot=60
     db.execute
-      .mockResolvedValueOnce([
-        { doc_type: 'SEC_FILING', sector: 'Technology', cnt: '100' },
-      ])
+      .mockResolvedValueOnce([{ doc_type: 'SEC_FILING', sector: 'Technology', cnt: '100' }])
       // Return 60 chunks so we can verify at most 30 are processed
       .mockResolvedValueOnce(
         Array.from({ length: 60 }, (_, i) => ({
@@ -411,9 +405,7 @@ describe('GoldenCandidatesService.fromChunkReverse', () => {
   it('fromChunkReverse dry-run path does NOT call the LLM client', async () => {
     const db = makeDb();
     db.execute
-      .mockResolvedValueOnce([
-        { doc_type: 'SEC_FILING', sector: 'Technology', cnt: '10' },
-      ])
+      .mockResolvedValueOnce([{ doc_type: 'SEC_FILING', sector: 'Technology', cnt: '10' }])
       .mockResolvedValueOnce([
         { id: 'chunk-1', content: 'Apple reported strong Q1 2024 earnings results.' },
         { id: 'chunk-2', content: 'The Fed raised interest rates by 25 basis points.' },
@@ -494,9 +486,9 @@ describe('GoldenCandidatesService.buildDraft', () => {
     const db = makeDb();
     const svc = await buildService(db, makeLlm());
 
-    await expect(
-      svc.buildDraft({ outputPath: '/some/path/golden.json' }),
-    ).rejects.toThrow('Refusing to write to golden.json');
+    await expect(svc.buildDraft({ outputPath: '/some/path/golden.json' })).rejects.toThrow(
+      'Refusing to write to golden.json',
+    );
   });
 
   it('written JSON is a valid array of candidate objects', async () => {

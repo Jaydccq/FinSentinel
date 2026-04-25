@@ -1,43 +1,43 @@
-import { apiFetch } from './client'
+import { apiFetch } from './client';
 
 export interface QuoteData {
-  ticker: string
-  close: number
-  open: number
-  high: number
-  low: number
-  volume: number
-  timestamp: number
+  ticker: string;
+  close: number;
+  open: number;
+  high: number;
+  low: number;
+  volume: number;
+  timestamp: number;
 }
 
 export interface TickerSearchResult {
-  symbol: string
-  name: string
-  exchange: string
-  assetType: string // EQUITY, CRYPTOCURRENCY, ETF, MUTUALFUND
+  symbol: string;
+  name: string;
+  exchange: string;
+  assetType: string; // EQUITY, CRYPTOCURRENCY, ETF, MUTUALFUND
 }
 
 interface RawQuoteData {
-  ticker: string
-  close: number | string
-  open: number | string
-  high: number | string
-  low: number | string
-  volume: number
-  timestamp: number
+  ticker: string;
+  close: number | string;
+  open: number | string;
+  high: number | string;
+  low: number | string;
+  volume: number;
+  timestamp: number;
 }
 
 interface RawHistoryBar {
-  open: number | string
-  high: number | string
-  low: number | string
-  close: number | string
-  volume: number
-  timestamp: number
+  open: number | string;
+  high: number | string;
+  low: number | string;
+  close: number | string;
+  volume: number;
+  timestamp: number;
 }
 
 function toNumber(value: number | string): number {
-  return typeof value === 'number' ? value : Number(value)
+  return typeof value === 'number' ? value : Number(value);
 }
 
 function normalizeQuoteData(raw: RawQuoteData): QuoteData {
@@ -49,7 +49,7 @@ function normalizeQuoteData(raw: RawQuoteData): QuoteData {
     low: toNumber(raw.low),
     volume: raw.volume,
     timestamp: raw.timestamp,
-  }
+  };
 }
 
 export const marketApi = {
@@ -59,13 +59,13 @@ export const marketApi = {
     apiFetch<Record<string, RawQuoteData>>(`/market/batch-quotes`, {
       method: 'POST',
       body: JSON.stringify(tickers),
-    }).then(data =>
+    }).then((data) =>
       Object.fromEntries(
         Object.entries(data).map(([symbol, quote]) => [symbol, normalizeQuoteData(quote)]),
       ),
     ),
   history: async (ticker: string, days = 30) =>
-    (await apiFetch<RawHistoryBar[]>(`/market/history/${ticker}?days=${days}`)).map(bar => ({
+    (await apiFetch<RawHistoryBar[]>(`/market/history/${ticker}?days=${days}`)).map((bar) => ({
       t: bar.timestamp,
       o: toNumber(bar.open),
       h: toNumber(bar.high),
@@ -75,4 +75,4 @@ export const marketApi = {
     })),
   search: (query: string, limit = 8) =>
     apiFetch<TickerSearchResult[]>(`/market/search?q=${encodeURIComponent(query)}&limit=${limit}`),
-}
+};

@@ -8,24 +8,26 @@
 **Approach:** Wrap storage→DB in try/catch with compensating `storage.delete`; thread `regionId` through controller → service → vectorization metadata; add `documents.requireAsyncVectorize` typed config that throws when sync fallback is forbidden.
 
 ## What we keep
+
 - Existing 100 MB upload size cap (`rag.parser.uploadMaxBytes`).
 - Existing `FileInterceptor` + buffer-based upload (streaming/presigned is deferred).
 - Synchronous fallback path in dev (when no `VectorizeProducer` is bound).
 
 ## Out of scope (defer to follow-up slices)
+
 - Streaming/presigned-URL upload — meaningful refactor; not blocking.
 - Outbox pattern (DB-first PENDING_UPLOAD state + background reconciler) — bigger architecture; defer.
 - `documents` schema additions (status enum already covers PENDING / VECTORIZED / EMPTY / FAILED).
 
 ## File Map
 
-| Path | Role |
-|------|------|
-| `apps/api/src/document/document-upload.service.ts` | MODIFY — try/catch around storage+DB; accept `regionId`; honour `requireAsyncVectorize`. |
-| `apps/api/src/document/document.controller.ts` | MODIFY — accept `regionId` query/form param; pass to service. |
-| `apps/api/src/document/__tests__/document-upload.service.spec.ts` | NEW — unit tests for compensation, regionId pass-through, requireAsyncVectorize. |
-| `apps/api/src/config/rag.config.ts` | MODIFY — add `documents.requireAsyncVectorize: boolean` (default false). |
-| `apps/api/src/config/__tests__/rag.config.documents.spec.ts` | NEW — unit test the config field. |
+| Path                                                              | Role                                                                                     |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `apps/api/src/document/document-upload.service.ts`                | MODIFY — try/catch around storage+DB; accept `regionId`; honour `requireAsyncVectorize`. |
+| `apps/api/src/document/document.controller.ts`                    | MODIFY — accept `regionId` query/form param; pass to service.                            |
+| `apps/api/src/document/__tests__/document-upload.service.spec.ts` | NEW — unit tests for compensation, regionId pass-through, requireAsyncVectorize.         |
+| `apps/api/src/config/rag.config.ts`                               | MODIFY — add `documents.requireAsyncVectorize: boolean` (default false).                 |
+| `apps/api/src/config/__tests__/rag.config.documents.spec.ts`      | NEW — unit test the config field.                                                        |
 
 ## Tasks
 
@@ -34,6 +36,7 @@
 ### Task 1: typed `documents.requireAsyncVectorize` config
 
 **Files:**
+
 - Modify: `apps/api/src/config/rag.config.ts`
 - Create: `apps/api/src/config/__tests__/rag.config.documents.spec.ts`
 
@@ -72,7 +75,9 @@ describe('rag.documents config', () => {
     process.env.DOCUMENTS_REQUIRE_ASYNC_VECTORIZE = 'true';
     // Re-import to re-evaluate the registerAs factory.
     const mod = await import('../rag.config?bust=' + Date.now());
-    const cfg = (mod as { ragConfig: () => { documents: { requireAsyncVectorize: boolean } } }).ragConfig();
+    const cfg = (
+      mod as { ragConfig: () => { documents: { requireAsyncVectorize: boolean } } }
+    ).ragConfig();
     expect(cfg.documents.requireAsyncVectorize).toBe(true);
   });
 });
@@ -83,6 +88,7 @@ describe('rag.documents config', () => {
 ```
 pnpm --filter @finsentinel/api vitest run src/config/__tests__/rag.config.documents.spec.ts
 ```
+
 Expected: `requireAsyncVectorize` is undefined / cfg.documents missing.
 
 - [ ] **Step 1.4 — Add to rag.config.ts**
@@ -117,6 +123,7 @@ git commit -m "feat(config): add documents.requireAsyncVectorize gate"
 ### Task 2: compensation delete + regionId + requireAsyncVectorize in service
 
 **Files:**
+
 - Modify: `apps/api/src/document/document-upload.service.ts`
 - Create: `apps/api/src/document/__tests__/document-upload.service.spec.ts`
 
@@ -147,17 +154,25 @@ function makeFile(): UploadedFile {
 
 function buildService(opts: BuildOpts = {}) {
   const storage = {
-    upload: vi.fn(opts.storageUploadOk === false
-      ? async () => { throw new Error('storage down'); }
-      : async () => undefined),
+    upload: vi.fn(
+      opts.storageUploadOk === false
+        ? async () => {
+            throw new Error('storage down');
+          }
+        : async () => undefined,
+    ),
     delete: vi.fn(async () => undefined),
   };
   const db = {
     insert: vi.fn().mockReturnValue({
       values: vi.fn().mockReturnValue({
-        returning: vi.fn(opts.dbInsertOk === false
-          ? async () => { throw new Error('db down'); }
-          : async () => [{ id: 'doc-1' }]),
+        returning: vi.fn(
+          opts.dbInsertOk === false
+            ? async () => {
+                throw new Error('db down');
+              }
+            : async () => [{ id: 'doc-1' }],
+        ),
       }),
     }),
     update: vi.fn().mockReturnValue({
@@ -196,9 +211,7 @@ describe('DocumentUploadService — compensation + regionId + async gate (P1-1)'
 
   it('deletes the storage object when DB insert fails (no orphans)', async () => {
     const { svc, storage } = buildService({ dbInsertOk: false });
-    await expect(
-      svc.upload(makeFile(), TEST_USER, 'GENERAL'),
-    ).rejects.toThrow();
+    await expect(svc.upload(makeFile(), TEST_USER, 'GENERAL')).rejects.toThrow();
     expect(storage.upload).toHaveBeenCalledTimes(1);
     expect(storage.delete).toHaveBeenCalledTimes(1);
     const deletedKey = (storage.delete as Mock).mock.calls[0]![0] as string;
@@ -231,9 +244,9 @@ describe('DocumentUploadService — compensation + regionId + async gate (P1-1)'
 
   it('refuses sync fallback when requireAsyncVectorize=true and no producer is bound', async () => {
     const { svc } = buildService({ configOverrides: { requireAsyncVectorize: true } });
-    await expect(
-      svc.upload(makeFile(), TEST_USER, 'GENERAL'),
-    ).rejects.toThrow(/async vectorization required/i);
+    await expect(svc.upload(makeFile(), TEST_USER, 'GENERAL')).rejects.toThrow(
+      /async vectorization required/i,
+    );
   });
 
   it('uses the queue when requireAsyncVectorize=true and a producer is bound', async () => {
@@ -254,6 +267,7 @@ describe('DocumentUploadService — compensation + regionId + async gate (P1-1)'
 ```
 pnpm --filter @finsentinel/api vitest run src/document/__tests__/document-upload.service.spec.ts
 ```
+
 Expected: signature mismatch (no regionId param) and orphan-not-deleted on DB failure.
 
 - [ ] **Step 2.3 — Refactor `document-upload.service.ts`**
@@ -387,6 +401,7 @@ async upload(
 ```
 pnpm --filter @finsentinel/api vitest run src/document/__tests__/document-upload.service.spec.ts
 ```
+
 Expected: 6 tests PASS.
 
 - [ ] **Step 2.5 — Commit**
@@ -402,6 +417,7 @@ git commit -m "feat(documents): compensation delete + regionId + async-vectorize
 ### Task 3: thread regionId through controller
 
 **Files:**
+
 - Modify: `apps/api/src/document/document.controller.ts`
 
 - [ ] **Step 3.1 — Edit `upload` signature**
@@ -459,6 +475,7 @@ git commit -m "feat(documents): accept regionId query param on upload"
 pnpm --filter @finsentinel/api typecheck
 pnpm --filter @finsentinel/api vitest run
 ```
+
 Expected: green (modulo the pre-existing `cli-import-env` flake noted in the auth PRD progress log).
 
 - [ ] **Step 4.2 — Append progress log to PRD**

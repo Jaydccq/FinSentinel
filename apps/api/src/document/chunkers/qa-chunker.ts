@@ -4,7 +4,7 @@ const QUESTION_RE = /^(?:Q\s*[:.]?|Question\s*[:.]?|#{1,3}\s*Q\d+)\s*/i;
 const ANSWER_RE = /^(?:A\s*[:.]?|Answer\s*[:.]?)\s*/i;
 
 export interface QaChunkerConfig {
-  chunkSize: number;  // unused for hard limit today; Q/A pairs stay whole
+  chunkSize: number; // unused for hard limit today; Q/A pairs stay whole
   minChunkChars?: number; // default 20
 }
 

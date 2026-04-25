@@ -1,8 +1,4 @@
-import type {
-  CompanyProfile,
-  FinancialMetrics,
-  AnalystConsensus,
-} from '@finsentinel/shared';
+import type { CompanyProfile, FinancialMetrics, AnalystConsensus } from '@finsentinel/shared';
 
 /**
  * Contract for research-data providers (Polygon, Yahoo, etc.).
@@ -17,10 +13,7 @@ export interface ResearchDataProvider {
   getCompanyProfile(ticker: string): Promise<CompanyProfile>;
 
   /** Fetch financial metrics for a ticker over a number of periods. */
-  getFinancialMetrics(
-    ticker: string,
-    periods?: number,
-  ): Promise<FinancialMetrics[]>;
+  getFinancialMetrics(ticker: string, periods?: number): Promise<FinancialMetrics[]>;
 
   /** Fetch analyst consensus for a ticker. */
   getAnalystConsensus(ticker: string): Promise<AnalystConsensus>;
