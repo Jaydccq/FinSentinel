@@ -26,6 +26,12 @@ const mockAiConfig = {
   openrouterBaseUrl: 'https://openrouter.example/v1',
   model: 'google/gemini-3-flash-preview',
   embeddingModel: 'text-embedding-3-small',
+  // Reliability tuning — these are forwarded to the runtime client and
+  // therefore appear in the toHaveBeenCalledWith assertions below.
+  embeddingTimeoutMs: 30_000,
+  embeddingMaxRetries: 3,
+  embeddingConcurrency: 8,
+  embeddingDimension: undefined,
 };
 
 describe('RagEmbeddingService', () => {
@@ -40,6 +46,10 @@ describe('RagEmbeddingService', () => {
       apiKey: 'test-key',
       baseUrl: 'https://openrouter.example/v1',
       model: 'text-embedding-3-small',
+      timeoutMs: 30_000,
+      maxRetries: 3,
+      concurrency: 8,
+      dimension: undefined,
     });
   });
 
@@ -56,6 +66,10 @@ describe('RagEmbeddingService', () => {
       apiKey: 'nvapi-test',
       baseUrl: 'https://integrate.api.nvidia.com/v1',
       model: 'nvidia/llama-nemotron-embed-1b-v2',
+      timeoutMs: 30_000,
+      maxRetries: 3,
+      concurrency: 8,
+      dimension: undefined,
       queryInputType: 'query',
       chunkInputType: 'passage',
     });
