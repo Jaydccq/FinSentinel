@@ -285,9 +285,36 @@ export function createMockRedis() {
       }
       return Promise.resolve(store.get(key) ?? null);
     },
-    set(key: string, value: string): Promise<'OK'> {
+    /**
+     * ioredis `set` supports an `EX <secs>` flag form. Mirror it so callers
+     * (e.g. LoginProtectionService) can `redis.set(key, val, 'EX', secs)`.
+     */
+    set(key: string, value: string, ...rest: unknown[]): Promise<'OK'> {
       store.set(key, value);
+      // Look for `EX, <secs>` pattern.
+      for (let i = 0; i < rest.length - 1; i++) {
+        const flag = rest[i];
+        if (typeof flag === 'string' && flag.toUpperCase() === 'EX') {
+          const secs = Number(rest[i + 1]);
+          if (Number.isFinite(secs)) {
+            expiries.set(key, Date.now() + secs * 1000);
+          }
+        }
+      }
       return Promise.resolve('OK');
+    },
+    /**
+     * ioredis `exists` accepts one or more keys; we only need the single-key
+     * branch (LoginProtectionService.checkLocked).
+     */
+    exists(key: string): Promise<number> {
+      const exp = expiries.get(key);
+      if (exp && Date.now() > exp) {
+        store.delete(key);
+        expiries.delete(key);
+        return Promise.resolve(0);
+      }
+      return Promise.resolve(store.has(key) ? 1 : 0);
     },
     setex(key: string, seconds: number, value: string): Promise<'OK'> {
       store.set(key, value);
@@ -413,6 +440,10 @@ export function createMockRedis() {
       store.clear();
       expiries.clear();
     },
+    // Test-only handle for inspecting/manipulating raw keys (e.g. wiping
+    // login lockout keys to simulate TTL expiry).
+    _store: store,
+    _expiries: expiries,
   };
 
   // Alias 'eval' to luaEval — ioredis uses .eval() for server-side Lua

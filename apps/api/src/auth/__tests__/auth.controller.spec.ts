@@ -6,6 +6,9 @@ import request from 'supertest';
 import cookieParser from 'cookie-parser';
 import { AuthController } from '../auth.controller';
 import { AuthService } from '../auth.service';
+import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
+import { RateLimiterService } from '../../common/services/rate-limiter.service';
+import { MetricsService } from '../../common/services/metrics.service';
 import type { AuthRuntimeConfig } from '../../config/auth.config';
 
 const mockAuthService = {
@@ -26,6 +29,18 @@ function makeAuthConfig(overrides: Partial<AuthRuntimeConfig['cookie']> = {}): A
   };
 }
 
+// Permissive rate-limiter stub so the @UseGuards(RateLimitGuard) on /login
+// doesn't block tests. Per-IP throttling is exercised in the integration
+// tests where a real Redis-backed limiter is wired up.
+const permissiveRateLimiter = {
+  check: vi.fn().mockResolvedValue({ allowed: true, remaining: 19, retryAfterMs: 0 }),
+};
+const noopMetrics = {
+  startHistogramTimer: () => () => {},
+  incrementCounter: () => {},
+  setGauge: () => {},
+};
+
 async function buildApp(
   authRuntimeConfig: AuthRuntimeConfig = makeAuthConfig(),
 ): Promise<INestApplication> {
@@ -33,6 +48,9 @@ async function buildApp(
     controllers: [AuthController],
     providers: [
       { provide: AuthService, useValue: mockAuthService },
+      RateLimitGuard,
+      { provide: RateLimiterService, useValue: permissiveRateLimiter },
+      { provide: MetricsService, useValue: noopMetrics },
       {
         provide: ConfigService,
         useValue: {
