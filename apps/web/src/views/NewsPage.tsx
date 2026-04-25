@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { newsApi, type NewsItemResponse, type NewsFeedStats } from '../api/news';
 import { NewsListSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
+import { FreshnessBadge } from '../components/freshness/FreshnessBadge';
 
 const SOURCE_LABELS: Record<string, string> = {
   POLYGON: 'Polygon',
@@ -124,6 +125,10 @@ function NewsCard({ item }: { item: NewsItemResponse }) {
             </span>
             <SentimentBadge sentiment={item.sentiment} />
             <EnrichedDot enriched={item.enriched} />
+            <FreshnessBadge
+              surface="news"
+              sourceTimestampMs={Date.parse(item.publishedAt)}
+            />
             <h3 className="text-sm font-semibold text-[var(--text-primary)] leading-snug">
               {item.title}
             </h3>
