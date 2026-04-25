@@ -61,8 +61,11 @@ describe('CcxtTradingEngine', () => {
     expect(result.symbol).toBe('BTC/USDT');
     expect(result.side).toBe('buy');
     expect(result.status).toBe('filled'); // "closed" -> "filled"
-    expect(result.filledQty).toBe('0.5');
-    expect(result.avgPrice).toBe('42000.5');
+    // M4 canonical decimal-string contract: outputs are normalized to
+    // .toFixed(8) so small magnitudes never surface as scientific notation
+    // and downstream `decimalString` validation always passes.
+    expect(result.filledQty).toBe('0.50000000');
+    expect(result.avgPrice).toBe('42000.50000000');
     expect(result.errorMessage).toBeNull();
     expect(result.timestamp).toBe('2026-03-31T10:00:00Z');
 
@@ -195,7 +198,8 @@ describe('CcxtTradingEngine', () => {
       qty: '1',
     });
 
-    expect(result.avgPrice).toBe('3200.5');
+    // M4 canonical .toFixed(8) form.
+    expect(result.avgPrice).toBe('3200.50000000');
   });
 
   // ── 8. getPositions_mapsExchangePositions ─────────────────────────────────
@@ -282,6 +286,7 @@ describe('CcxtTradingEngine', () => {
     const orders = await engine.getOrders();
 
     expect(orders).toHaveLength(2);
+    // M4 canonical decimal-string contract: outputs are .toFixed(8).
     expect(orders[0]).toEqual(
       expect.objectContaining({
         success: true,
@@ -289,8 +294,8 @@ describe('CcxtTradingEngine', () => {
         symbol: 'BTC/USDT',
         side: 'buy',
         status: 'filled',
-        filledQty: '0.5',
-        avgPrice: '42000',
+        filledQty: '0.50000000',
+        avgPrice: '42000.00000000',
       }),
     );
     expect(orders[1]).toEqual(
@@ -298,7 +303,7 @@ describe('CcxtTradingEngine', () => {
         success: true,
         orderId: 'order-101',
         status: 'cancelled',
-        filledQty: '0',
+        filledQty: '0.00000000',
       }),
     );
 

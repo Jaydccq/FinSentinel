@@ -6,6 +6,7 @@ import type {
   AccountInfo,
   MarketClock,
 } from '../interfaces/types';
+import { toDecimalString } from '../brokers/decimal-normalize';
 
 // ── Minimal CCXT exchange interface (DI-friendly, no ccxt import) ────────────
 
@@ -202,13 +203,14 @@ export class CcxtTradingEngine implements TradingEngine {
   // ---------------------------------------------------------------------------
 
   private mapOrderResult(order: CcxtOrder): OrderResult {
-    const avgPrice =
-      order.average != null
-        ? String(order.average)
-        : order.price != null
-          ? String(order.price)
-          : '0';
-    const filledQty = order.filled != null ? String(order.filled) : '0';
+    // Item 4 M4: normalize broker outputs to canonical decimal strings so
+    // small magnitudes (e.g., 1e-8 satoshi-scale qty) don't surface as
+    // scientific notation through `String(number)`. `decimalString`
+    // downstream rejects scientific notation; without normalization a
+    // valid filled order with a tiny qty would fail validation.
+    const rawAvg = order.average ?? order.price ?? 0;
+    const avgPrice = toDecimalString(rawAvg) ?? '0';
+    const filledQty = toDecimalString(order.filled ?? 0) ?? '0';
 
     return {
       success: true,
