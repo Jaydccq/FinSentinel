@@ -7,7 +7,7 @@
  * but every subsequent request hit 401. This file pins the configurable
  * read path so the regression cannot recur.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Controller, Get, UseGuards, type ExecutionContext } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
@@ -16,19 +16,45 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { JwtGuard } from '../jwt.guard';
 import { JwtService } from '../jwt.service';
+import { RevocationService } from '../revocation.service';
 import type { AuthRuntimeConfig } from '../../config/auth.config';
 
 const VALID_TOKEN = 'valid.jwt.token';
-const VALID_PAYLOAD = { username: 'alice', userId: 'u-1' };
+const VALID_PAYLOAD = {
+  username: 'alice',
+  userId: 'u-1',
+  jti: '11111111-1111-4111-8111-111111111111',
+};
 
 const stubJwtService = {
   validateToken: async (token: string) => (token === VALID_TOKEN ? VALID_PAYLOAD : null),
 } as unknown as JwtService;
 
-function makeAuthConfig(name = 'FS_AUTH'): AuthRuntimeConfig {
+const noopRevocationService = {
+  isRevoked: vi.fn(async () => false),
+  revoke: vi.fn(async () => undefined),
+} as unknown as RevocationService;
+
+function makeAuthConfig(
+  name = 'FS_AUTH',
+  flagOverrides: Partial<
+    Pick<
+      AuthRuntimeConfig,
+      | 'refreshTokensEnabled'
+      | 'jtiRevocationEnabled'
+      | 'accessTokenTtlMsWhenRefreshOn'
+      | 'refreshTokenTtlMs'
+    >
+  > = {},
+): AuthRuntimeConfig {
   return {
     cookie: { name, secure: false, sameSite: 'lax', maxAgeMs: 86_400_000 },
     corsOrigins: ['http://localhost:3000'],
+    refreshTokensEnabled: false,
+    jtiRevocationEnabled: false,
+    accessTokenTtlMsWhenRefreshOn: 15 * 60 * 1000,
+    refreshTokenTtlMs: 7 * 24 * 60 * 60 * 1000,
+    ...flagOverrides,
   };
 }
 
@@ -59,7 +85,7 @@ describe('JwtGuard.canActivate (unit)', () => {
   let guard: JwtGuard;
 
   beforeEach(() => {
-    guard = new JwtGuard(stubJwtService, configServiceFor(makeAuthConfig()));
+    guard = new JwtGuard(stubJwtService, configServiceFor(makeAuthConfig()), noopRevocationService);
   });
 
   it('accepts Authorization: Bearer header', async () => {
@@ -78,6 +104,7 @@ describe('JwtGuard.canActivate (unit)', () => {
     const customGuard = new JwtGuard(
       stubJwtService,
       configServiceFor(makeAuthConfig('CUSTOM_AUTH')),
+      noopRevocationService,
     );
     const ctx = makeContext({ cookies: { CUSTOM_AUTH: VALID_TOKEN } });
     await expect(customGuard.canActivate(ctx)).resolves.toBe(true);
@@ -87,6 +114,7 @@ describe('JwtGuard.canActivate (unit)', () => {
     const customGuard = new JwtGuard(
       stubJwtService,
       configServiceFor(makeAuthConfig('CUSTOM_AUTH')),
+      noopRevocationService,
     );
     const ctx = makeContext({ cookies: { FS_AUTH: VALID_TOKEN } });
     await expect(customGuard.canActivate(ctx)).rejects.toThrow();
@@ -103,11 +131,52 @@ describe('JwtGuard.canActivate (unit)', () => {
   });
 
   it('falls back to FS_AUTH if config returns undefined', async () => {
-    const looseGuard = new JwtGuard(stubJwtService, {
-      get: () => undefined,
-    } as unknown as ConfigService);
+    const looseGuard = new JwtGuard(
+      stubJwtService,
+      {
+        get: () => undefined,
+      } as unknown as ConfigService,
+      noopRevocationService,
+    );
     const ctx = makeContext({ cookies: { FS_AUTH: VALID_TOKEN } });
     await expect(looseGuard.canActivate(ctx)).resolves.toBe(true);
+  });
+
+  // ── M4: jti revocation gate ─────────────────────────────────────────
+  it('flag OFF (default): does NOT consult revocation service even if a jti exists', async () => {
+    const isRevoked = vi.fn(async () => true); // would reject if consulted
+    const guardSilent = new JwtGuard(
+      stubJwtService,
+      configServiceFor(makeAuthConfig()),
+      { isRevoked, revoke: vi.fn() } as unknown as RevocationService,
+    );
+    const ctx = makeContext({ cookies: { FS_AUTH: VALID_TOKEN } });
+    await expect(guardSilent.canActivate(ctx)).resolves.toBe(true);
+    expect(isRevoked).not.toHaveBeenCalled();
+  });
+
+  it('flag ON + jti revoked → rejects with 401', async () => {
+    const isRevoked = vi.fn(async () => true);
+    const guardOn = new JwtGuard(
+      stubJwtService,
+      configServiceFor(makeAuthConfig('FS_AUTH', { jtiRevocationEnabled: true })),
+      { isRevoked, revoke: vi.fn() } as unknown as RevocationService,
+    );
+    const ctx = makeContext({ cookies: { FS_AUTH: VALID_TOKEN } });
+    await expect(guardOn.canActivate(ctx)).rejects.toThrow();
+    expect(isRevoked).toHaveBeenCalledWith(VALID_PAYLOAD.jti);
+  });
+
+  it('flag ON + jti NOT revoked → admits as 200', async () => {
+    const isRevoked = vi.fn(async () => false);
+    const guardOn = new JwtGuard(
+      stubJwtService,
+      configServiceFor(makeAuthConfig('FS_AUTH', { jtiRevocationEnabled: true })),
+      { isRevoked, revoke: vi.fn() } as unknown as RevocationService,
+    );
+    const ctx = makeContext({ cookies: { FS_AUTH: VALID_TOKEN } });
+    await expect(guardOn.canActivate(ctx)).resolves.toBe(true);
+    expect(isRevoked).toHaveBeenCalledWith(VALID_PAYLOAD.jti);
   });
 });
 
@@ -133,6 +202,7 @@ async function buildAppWithCookieName(name: string): Promise<INestApplication> {
       JwtGuard,
       { provide: JwtService, useValue: stubJwtService },
       { provide: ConfigService, useValue: configServiceFor(makeAuthConfig(name)) },
+      { provide: RevocationService, useValue: noopRevocationService },
     ],
   }).compile();
   const app = moduleRef.createNestApplication();

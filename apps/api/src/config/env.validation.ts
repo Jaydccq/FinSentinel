@@ -61,6 +61,27 @@ const baseEnvSchema = z.object({
   JWT_ISSUER: z.string().optional(),
   JWT_AUDIENCE: z.string().optional(),
 
+  // ── Auth refresh + access split (item 2 M3) ────────────────────────
+  // Default OFF — when false, the system behavior is byte-identical to
+  // today (one FS_AUTH cookie, single JWT_EXPIRATION-lived token, no
+  // refresh endpoint). When true: 15-min access + 7-day refresh family
+  // with rolling rotation.
+  AUTH_REFRESH_TOKENS_ENABLED: envBoolean.default(false),
+  // Item 2 M4: jti revocation on logout. Default OFF — when false, JwtGuard
+  // does NOT consult the revocation store and logout does NOT write to it.
+  // When true, logout writes `revoked_jti:<jti>` to Redis (TTL = exp - now)
+  // and JwtGuard rejects any token whose jti is present.
+  AUTH_JTI_REVOCATION_ENABLED: envBoolean.default(false),
+  // Access-token lifetime ONLY applies when AUTH_REFRESH_TOKENS_ENABLED=true.
+  // Default 15 min in ms.
+  AUTH_ACCESS_TOKEN_TTL_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  // Refresh-token lifetime. Default 7 days in ms.
+  AUTH_REFRESH_TOKEN_TTL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(7 * 24 * 60 * 60 * 1000),
+
   // ── AI / LLM ─────────────────────────────────────────────────────
   AI_PROVIDER: aiProvider.default('openrouter'),
   AI_EMBEDDING_PROVIDER: optionalAiProvider,

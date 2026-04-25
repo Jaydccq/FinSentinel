@@ -121,3 +121,72 @@ describe('apiFetch', () => {
     await expect(apiFetch('/portfolios/1', { method: 'DELETE' })).resolves.toBeUndefined();
   });
 });
+
+// ── Item 2 M3: silent-refresh on 401 ─────────────────────────────────────
+describe('apiFetch silent refresh on 401', () => {
+  const originalFetch = globalThis.fetch;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+    vi.restoreAllMocks();
+  });
+
+  it('on 401 → calls /auth/refresh exactly once, then retries original request', async () => {
+    const calls: Array<{ url: string; method: string }> = [];
+    globalThis.fetch = vi.fn(async (url: unknown, init?: RequestInit) => {
+      const u = String(url);
+      const method = (init?.method ?? 'GET').toUpperCase();
+      calls.push({ url: u, method });
+      if (u.endsWith('/auth/refresh') && method === 'POST') {
+        return new Response(null, { status: 204 });
+      }
+      // First original call → 401, second → 200.
+      const originalCalls = calls.filter((c) => c.url.endsWith('/portfolios')).length;
+      if (originalCalls === 1) {
+        return new Response(JSON.stringify({ message: 'expired' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as unknown as typeof fetch;
+
+    await expect(apiFetch('/portfolios')).resolves.toEqual({ ok: true });
+
+    const refreshCalls = calls.filter((c) => c.url.endsWith('/auth/refresh'));
+    expect(refreshCalls).toHaveLength(1);
+    const portfolioCalls = calls.filter((c) => c.url.endsWith('/portfolios'));
+    expect(portfolioCalls).toHaveLength(2);
+  });
+
+  it('on 401 + refresh fails → does NOT loop, surfaces final 401 to caller', async () => {
+    const calls: Array<{ url: string; method: string }> = [];
+    globalThis.fetch = vi.fn(async (url: unknown, init?: RequestInit) => {
+      const u = String(url);
+      const method = (init?.method ?? 'GET').toUpperCase();
+      calls.push({ url: u, method });
+      if (u.endsWith('/auth/refresh')) {
+        return new Response(null, { status: 401 });
+      }
+      return new Response(JSON.stringify({ message: 'expired' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as unknown as typeof fetch;
+
+    const err = await apiFetch('/portfolios').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).status).toBe(401);
+
+    // Refresh attempted exactly once. Original called twice (initial + retry).
+    const refreshCalls = calls.filter((c) => c.url.endsWith('/auth/refresh'));
+    expect(refreshCalls).toHaveLength(1);
+  });
+});

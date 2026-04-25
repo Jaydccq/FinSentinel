@@ -2,6 +2,7 @@ import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from
 import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import { JwtService } from './jwt.service';
+import { RevocationService } from './revocation.service';
 import type { CurrentUserPayload } from './decorators/current-user.decorator';
 import type { AuthRuntimeConfig } from '../config/auth.config';
 
@@ -10,6 +11,7 @@ export class JwtGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly revocationService: RevocationService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -23,6 +25,19 @@ export class JwtGuard implements CanActivate {
     const payload = await this.jwtService.validateToken(token);
     if (!payload) {
       throw new UnauthorizedException();
+    }
+
+    // ── M4: jti revocation gate ─────────────────────────────────────────
+    // When AUTH_JTI_REVOCATION_ENABLED=true, every authenticated request
+    // costs one Redis EXISTS lookup against `revoked_jti:<jti>`. When OFF
+    // (the default), this block is fully skipped — byte-identical to the
+    // pre-M4 admit-on-signature-valid behavior.
+    const cfg = this.config.get<AuthRuntimeConfig>('auth');
+    if (cfg?.jtiRevocationEnabled && payload.jti) {
+      const revoked = await this.revocationService.isRevoked(payload.jti);
+      if (revoked) {
+        throw new UnauthorizedException();
+      }
     }
 
     // Attach user to request for @CurrentUser() decorator
