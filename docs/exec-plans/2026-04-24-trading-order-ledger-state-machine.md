@@ -211,3 +211,44 @@ Tests: 195 unified-trading cases green (was 186; +9 new in commit `4fccae4`):
 - M3 reconciler not yet built. Stuck EXECUTING rows would persist indefinitely until M3 lands. Acceptable while flag is off.
 - Hydration of cached `ExecuteResult` from ledger rows on Redis cache-miss: still 400s on retry, mirroring the legacy `commitHistory`-hash-check 400. M3 territory.
 - Reading paths (history endpoints, audit trails) still consult `wallet.commitHistory`. M4 swaps them.
+
+### 2026-04-25 — M3 reconciler (DONE on main, merged via PR landing in `cecc8b7` series)
+
+Branch: `feat/2026-04-25-trading-ledger-reconciler-m3` (merged to main).
+
+Shipped:
+- `packages/db/migrations/V24__order_ledger_unknown_status.sql` — extends status CHECK with `UNKNOWN_REQUIRES_OPERATOR_REVIEW`. Idempotent ALTER (DROP CONSTRAINT IF EXISTS, then ADD).
+- `packages/db/src/schema/order-ledger.ts` — appends new status to `ORDER_LEDGER_STATUSES`.
+- `apps/api/src/trading/interfaces/broker.ts` — optional `IBroker.queryOrderStatus(brokerOrderId): Promise<{filled|rejected|pending|unknown, ...}>`. Brokers without it default to "ask operator".
+- `apps/api/src/trading/broker-registry.service.ts` — new `findLiveBrokerById(brokerId)`. Paper intentionally not served here.
+- `apps/api/src/trading/order-ledger/order-ledger.service.ts` — `findStuckExecuting(staleAfterMs, limit)` + `applyReconcilerOutcome(rowId, outcome)` for the four outcome kinds.
+- `apps/api/src/trading/reconciler/ledger-reconciler.service.ts` — `@Cron(EVERY_30_SECONDS)` tick reads the flag once, short-circuits if off. `scan()` exposed publicly for operator one-off runs.
+
+Resolution rules per stuck row (from service header):
+- `broker='paper'`: UNKNOWN_REQUIRES_OPERATOR_REVIEW (no broker-side status)
+- `broker_order_id IS NULL`: UNKNOWN (process crashed before placeOrder returned an id)
+- live broker not registered: leave EXECUTING, log WARN, count as `skippedNoBroker`
+- broker.queryOrderStatus undefined: UNKNOWN
+- broker says filled → EXECUTED with response
+- broker says rejected → FAILED with errorReason
+- broker says pending → leave EXECUTING but bump updated_at
+- broker throws or returns 'unknown' → UNKNOWN
+
+Feature flags (env-validated, both default OFF):
+- `TRADING_LEDGER_RECONCILER_ENABLED`
+- `TRADING_LEDGER_RECONCILER_STALE_AFTER_MS` (default 60_000)
+
+**Required-ON precondition:** do NOT flip `TRADING_STATE_MACHINE_ENABLED` in production until this reconciler is on, otherwise stuck rows pile up indefinitely with no automatic recovery.
+
+Tests: 11 cases for the reconciler covering every resolution branch + a mixed-batch summary case. Trading suite 207/207 green at land time. typecheck clean. Flag-off path is byte-identical to today's main.
+
+### Still deferred — M4 (legacy commitHistory removal)
+
+**Status:** PREMATURE. Per PRD §6 dual-write contract, `wallet.commitHistory` stays as the system of record until M2 + M3 have soaked in production. We have the M3 reconciler in code but ZERO production hours of operation. Removing the legacy path now would leave us blind if M2's state machine has an undiscovered bug.
+
+**Required before M4 can land:**
+- M2 + M3 soak in staging with real broker traffic for ≥ 1 week with no UNKNOWN_REQUIRES_OPERATOR_REVIEW pile-up.
+- Reading paths (history endpoints, audit trails) audited and migrated to read from `order_ledger` instead of `wallet.commitHistory`.
+- Operator-facing dashboard for stuck-row review (currently no UI for UNKNOWN_REQUIRES_OPERATOR_REVIEW rows).
+
+**Owner:** TBD when above preconditions clear.
