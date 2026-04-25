@@ -1,6 +1,7 @@
 export * from './enums';
 export * from './schemas';
 export * from './trading';
+export { Decimal, decimalStringRegex, type DecimalValue } from './money';
 // NOTE: './utils' is intentionally NOT re-exported from the package root.
 // `utils/hash.ts` uses `node:crypto`, which breaks Next.js client-side
 // webpack bundling when the barrel pulls it in via consumer imports from

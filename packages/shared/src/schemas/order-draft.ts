@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { decimalString } from './decimal-string';
 
 export const portfolioIntentSchema = z.enum([
   'OPEN',
@@ -56,3 +57,33 @@ export const orderDraftsPayloadSchema = z.object({
   orderDrafts: z.array(orderDraftSchema),
 });
 export type OrderDraftsPayload = z.infer<typeof orderDraftsPayloadSchema>;
+
+// ---------------------------------------------------------------------------
+// Decimal-money M1 schema (decimal-string boundary)
+//
+// New schema shape required by the decimal-money migration PRD
+// (`docs/exec-plans/2026-04-24-decimal-money-migration.md`). Replaces the
+// `quantity` object + `limitPrice`/`stopPrice` numbers with the decimal-string
+// boundary fields `qty` / `amount` / `percentNav` / `price`. Exactly one of
+// qty / amount / percentNav must be set per draft. `price` is independently
+// optional (limit price).
+//
+// The legacy `orderDraftSchema` above is intentionally untouched in M1 — only
+// the new schema enforces the decimal-string boundary. M2/M3/M4 (broker
+// arithmetic, unified service, broker adapters) will migrate consumers to
+// this schema.
+// ---------------------------------------------------------------------------
+export const decimalOrderDraftSchema = z
+  .object({
+    symbol: z.string().min(1).max(40),
+    side: orderDraftSideSchema,
+    qty: decimalString.optional(),
+    amount: decimalString.optional(),
+    percentNav: decimalString.optional(),
+    price: decimalString.optional(),
+  })
+  .refine(
+    (o) => [o.qty, o.amount, o.percentNav].filter(Boolean).length === 1,
+    { message: 'exactly one of qty / amount / percentNav must be set' },
+  );
+export type DecimalOrderDraft = z.infer<typeof decimalOrderDraftSchema>;
