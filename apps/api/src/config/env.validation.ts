@@ -56,6 +56,12 @@ const baseEnvSchema = z.object({
   // ── JWT ───────────────────────────────────────────────────────────
   JWT_SECRET: z.string().min(32),
   JWT_EXPIRATION: z.coerce.number().default(86400000),
+  // Optional issuer/audience claims. Defaults applied in jwt.config.ts so that
+  // an unset env still produces tokens with the standard iss/aud values —
+  // existing tokens without iss/aud will fail validation by design (forces
+  // re-login as part of the security hardening).
+  JWT_ISSUER: z.string().optional(),
+  JWT_AUDIENCE: z.string().optional(),
 
   // ── AI / LLM ─────────────────────────────────────────────────────
   AI_PROVIDER: aiProvider.default('openrouter'),
