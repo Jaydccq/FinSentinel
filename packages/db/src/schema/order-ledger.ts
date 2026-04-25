@@ -66,9 +66,8 @@ export type OrderLedgerRow = typeof orderLedger.$inferSelect;
 export type NewOrderLedgerRow = typeof orderLedger.$inferInsert;
 
 /**
- * Status enum kept in sync with the SQL CHECK constraint in V23.
- * See packages/shared/src/enums/order-ledger-status.ts for the runtime
- * constant exposed to API and shared consumers.
+ * Status enum kept in sync with the SQL CHECK constraint in V23 + V24.
+ * V24 adds UNKNOWN_REQUIRES_OPERATOR_REVIEW for the M3 reconciler.
  */
 export const ORDER_LEDGER_STATUSES = [
   'STAGED',
@@ -78,6 +77,10 @@ export const ORDER_LEDGER_STATUSES = [
   'PARTIALLY_FAILED',
   'FAILED',
   'CANCELLED',
+  // V24: reconciler terminal status for rows where the broker could not
+  // give a definitive answer (e.g., no broker_order_id, or broker says
+  // 'unknown'/404). Operator must resolve manually.
+  'UNKNOWN_REQUIRES_OPERATOR_REVIEW',
 ] as const;
 
 export type OrderLedgerStatus = (typeof ORDER_LEDGER_STATUSES)[number];

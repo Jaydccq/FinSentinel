@@ -60,6 +60,21 @@ export class BrokerRegistry {
   }
 
   /**
+   * Lookup a live broker by its `brokerId()` ('alpaca' / 'okx' / 'ccxt').
+   * Returns null when the broker is not registered (disabled in env, missing
+   * credentials, etc.) — caller decides what to do. Used by the M3 ledger
+   * reconciler so it can call `queryOrderStatus()` against the same broker
+   * the original execute() routed to.
+   *
+   * Paper broker is intentionally NOT served here: paper rows that crash
+   * have no broker-side status to query, so the reconciler short-circuits
+   * to UNKNOWN_REQUIRES_OPERATOR_REVIEW for `broker='paper'` rows.
+   */
+  findLiveBrokerById(brokerId: string): IBroker | null {
+    return this.getLiveBrokers().find((b) => b.brokerId() === brokerId) ?? null;
+  }
+
+  /**
    * List all available brokers for the given mode.
    * Always includes a PaperBroker. In LIVE mode, also includes enabled live brokers.
    */

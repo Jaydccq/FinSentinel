@@ -10,6 +10,7 @@ import { TradingController } from './trading.controller';
 import { OrderDraftValidator } from './order-draft-validator.service';
 import { OrderDraftMapper } from './order-draft-mapper.service';
 import { OrderLedgerService } from './order-ledger/order-ledger.service';
+import { LedgerReconcilerService } from './reconciler/ledger-reconciler.service';
 
 /**
  * Trading module — Phase 5 + Phase 12 controllers.
@@ -32,6 +33,7 @@ import { OrderLedgerService } from './order-ledger/order-ledger.service';
     OrderDraftValidator,
     OrderDraftMapper,
     OrderLedgerService,
+    LedgerReconcilerService,
     {
       provide: 'MarketDataService',
       useExisting: MarketDataService,
@@ -43,6 +45,7 @@ import { OrderLedgerService } from './order-ledger/order-ledger.service';
     OrderDraftValidator,
     OrderDraftMapper,
     OrderLedgerService,
+    LedgerReconcilerService,
   ],
 })
 export class TradingModule {}

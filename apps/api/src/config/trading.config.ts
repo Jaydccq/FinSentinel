@@ -13,6 +13,11 @@ export const tradingConfig = registerAs('trading', () => ({
   decimalExecuteEnabled: process.env['TRADING_DECIMAL_EXECUTE_ENABLED'] === 'true',
   stateMachineEnabled: process.env['TRADING_STATE_MACHINE_ENABLED'] === 'true',
 
+  // Item 3 M3 — ledger reconciler. Default OFF; required ON before flipping
+  // stateMachineEnabled in production.
+  reconcilerEnabled: process.env['TRADING_LEDGER_RECONCILER_ENABLED'] === 'true',
+  reconcilerStaleAfterMs: Number(process.env['TRADING_LEDGER_RECONCILER_STALE_AFTER_MS'] ?? 60_000),
+
   alpaca: {
     apiKey: process.env['ALPACA_API_KEY'],
     secretKey: process.env['ALPACA_SECRET_KEY'],

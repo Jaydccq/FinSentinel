@@ -129,6 +129,18 @@ const baseEnvSchema = z.object({
   // See docs/exec-plans/2026-04-24-trading-order-ledger-state-machine.md.
   TRADING_STATE_MACHINE_ENABLED: envBoolean.default(false),
 
+  // Item 3 M3: when true, the LedgerReconcilerService cron tick scans
+  // order_ledger for stuck EXECUTING rows and resolves each via the
+  // broker's queryOrderStatus or transitions to UNKNOWN_REQUIRES_OPERATOR_REVIEW.
+  // Default OFF — required to be ON before flipping TRADING_STATE_MACHINE_ENABLED
+  // in production, otherwise stuck rows pile up indefinitely.
+  TRADING_LEDGER_RECONCILER_ENABLED: envBoolean.default(false),
+
+  // Reconciler tuning. A row is treated as stuck if updated_at is older
+  // than this threshold. Smaller = faster recovery, more spurious queries
+  // against still-in-flight broker calls.
+  TRADING_LEDGER_RECONCILER_STALE_AFTER_MS: z.coerce.number().int().positive().default(60_000),
+
   // Alpaca (optional — US equities broker)
   ALPACA_API_KEY: z.string().optional(),
   ALPACA_SECRET_KEY: z.string().optional(),
