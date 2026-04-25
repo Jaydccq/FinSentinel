@@ -114,6 +114,21 @@ const baseEnvSchema = z.object({
   // ── Trading ──────────────────────────────────────────────────────
   APP_TRADING_DEFAULT_MODE: z.enum(['PAPER', 'LIVE']).default('PAPER'),
 
+  // Item 4 M3: when true, UnifiedTradingService.execute() persists wallet
+  // via the engine's Decimal-precision string boundary instead of the
+  // number round-trip. Default OFF — flag-off behavior is byte-identical
+  // to the M2 baseline.
+  // See docs/exec-plans/2026-04-24-decimal-money-migration.md.
+  TRADING_DECIMAL_EXECUTE_ENABLED: envBoolean.default(false),
+
+  // Item 3 M2: when true, execute() uses the order_ledger-backed state
+  // machine (STAGED → COMMITTED → EXECUTING → EXECUTED / PARTIALLY_FAILED
+  // / FAILED) and stops appending to wallet.commitHistory. Default OFF —
+  // flipping this changes the system of record and needs explicit signoff
+  // before flag-on rollout.
+  // See docs/exec-plans/2026-04-24-trading-order-ledger-state-machine.md.
+  TRADING_STATE_MACHINE_ENABLED: envBoolean.default(false),
+
   // Alpaca (optional — US equities broker)
   ALPACA_API_KEY: z.string().optional(),
   ALPACA_SECRET_KEY: z.string().optional(),
