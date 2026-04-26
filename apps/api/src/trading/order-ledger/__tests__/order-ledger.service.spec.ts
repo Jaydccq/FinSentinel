@@ -1,21 +1,28 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { OrderLedgerService } from '../order-ledger.service';
+import { AgentEventService } from '../../../events/agent-event.service';
 
 const TEST_USER = '11111111-1111-1111-1111-111111111111';
+const OTHER_USER = '22222222-2222-2222-2222-222222222222';
 
 function createMockDb() {
   const insertChain = {
     values: vi.fn().mockResolvedValue(undefined),
   };
+  // The select chain handles both `.orderBy()` (terminal) and
+  // `.orderBy().limit()` (M4 prereq pending list path).
   const selectChain = {
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
-    orderBy: vi.fn().mockResolvedValue([]),
+    orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue([]),
   };
   const updateChain = {
     set: vi.fn().mockReturnThis(),
-    where: vi.fn().mockResolvedValue(undefined),
+    where: vi.fn().mockReturnThis(),
+    returning: vi.fn().mockResolvedValue([]),
   };
   return {
     insert: vi.fn().mockReturnValue(insertChain),
@@ -27,16 +34,23 @@ function createMockDb() {
   };
 }
 
+function createMockAgentEvents() {
+  return { append: vi.fn().mockResolvedValue(undefined) };
+}
+
 describe('OrderLedgerService', () => {
   let service: OrderLedgerService;
   let mockDb: ReturnType<typeof createMockDb>;
+  let mockAgentEvents: ReturnType<typeof createMockAgentEvents>;
 
   beforeEach(async () => {
     mockDb = createMockDb();
+    mockAgentEvents = createMockAgentEvents();
     const module = await Test.createTestingModule({
       providers: [
         OrderLedgerService,
         { provide: 'DRIZZLE_DB', useValue: mockDb },
+        { provide: AgentEventService, useValue: mockAgentEvents },
       ],
     }).compile();
     service = module.get(OrderLedgerService);
@@ -259,6 +273,120 @@ describe('OrderLedgerService', () => {
     it('transitionAll is a no-op for empty rowIds', async () => {
       await service.transitionAll([], 'FAILED', 'never reached');
       expect(mockDb.update).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── M4 prereq (2): operator surface for UNKNOWN_REQUIRES_OPERATOR_REVIEW ──
+  describe('findUnknownPending', () => {
+    it('queries owner-scoped UNKNOWN rows that are not yet acknowledged, newest first', async () => {
+      const rows = [
+        { id: 'lg-2', updatedAt: new Date('2026-04-26T01:00:00Z') },
+        { id: 'lg-1', updatedAt: new Date('2026-04-25T01:00:00Z') },
+      ];
+      mockDb._selectChain.limit.mockResolvedValueOnce(rows);
+      const out = await service.findUnknownPending(TEST_USER, 25);
+      expect(out).toEqual(rows);
+      expect(mockDb.select).toHaveBeenCalledTimes(1);
+      // The where + orderBy + limit chain was exercised (not just returnThis).
+      expect(mockDb._selectChain.where).toHaveBeenCalledTimes(1);
+      expect(mockDb._selectChain.orderBy).toHaveBeenCalledTimes(1);
+      expect(mockDb._selectChain.limit).toHaveBeenCalledWith(25);
+    });
+
+    it('caps the limit at 50 and floors at 1', async () => {
+      mockDb._selectChain.limit.mockResolvedValue([]);
+      await service.findUnknownPending(TEST_USER, 9999);
+      expect(mockDb._selectChain.limit).toHaveBeenLastCalledWith(50);
+      await service.findUnknownPending(TEST_USER, 0);
+      expect(mockDb._selectChain.limit).toHaveBeenLastCalledWith(1);
+      await service.findUnknownPending(TEST_USER, -3);
+      expect(mockDb._selectChain.limit).toHaveBeenLastCalledWith(1);
+    });
+  });
+
+  describe('acknowledge', () => {
+    const ROW_ID = 'lg-ack-1';
+
+    it('updates row + emits AgentEvent when row matches predicate', async () => {
+      const updatedRow = {
+        id: ROW_ID,
+        userId: TEST_USER,
+        commitHash: 'h'.repeat(64),
+        status: 'UNKNOWN_REQUIRES_OPERATOR_REVIEW',
+        symbol: 'AAPL',
+        acknowledgedAt: new Date('2026-04-26T02:00:00Z'),
+        acknowledgementNote: 'verified with broker',
+      };
+      mockDb._updateChain.returning.mockResolvedValueOnce([updatedRow]);
+
+      const result = await service.acknowledge(ROW_ID, TEST_USER, '  verified with broker  ');
+
+      expect(result).toEqual(updatedRow);
+      const setCall = mockDb._updateChain.set.mock.calls[0]![0] as Record<string, unknown>;
+      // Note is trimmed before persistence.
+      expect(setCall.acknowledgementNote).toBe('verified with broker');
+      expect(setCall.acknowledgedBy).toBe(TEST_USER);
+      expect(setCall.acknowledgedAt).toBeInstanceOf(Date);
+      // Status is metadata-only — must NOT be in the SET.
+      expect(setCall.status).toBeUndefined();
+
+      expect(mockAgentEvents.append).toHaveBeenCalledTimes(1);
+      const appendArgs = mockAgentEvents.append.mock.calls[0]!;
+      expect(appendArgs[0]).toBe(TEST_USER);
+      expect(appendArgs[1]).toBe('TRADE_WALLET');
+      expect(appendArgs[2]).toBe(ROW_ID);
+      expect(appendArgs[3]).toBe('LEDGER_UNKNOWN_ACKNOWLEDGED');
+      expect(appendArgs[4]).toMatchObject({ note: 'verified with broker' });
+    });
+
+    it('throws NotFoundException when no row matches (wrong status / wrong user / already acked)', async () => {
+      mockDb._updateChain.returning.mockResolvedValueOnce([]);
+      await expect(service.acknowledge(ROW_ID, TEST_USER, 'note')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(mockAgentEvents.append).not.toHaveBeenCalled();
+    });
+
+    it('the WHERE clause filters by id, user, status=UNKNOWN, and acknowledged_at IS NULL', async () => {
+      mockDb._updateChain.returning.mockResolvedValueOnce([
+        { id: ROW_ID, userId: TEST_USER, commitHash: 'x', symbol: 'AAPL' },
+      ]);
+      await service.acknowledge(ROW_ID, TEST_USER, 'verified');
+      // The drizzle and(...) call produces one composite WHERE arg. We pin
+      // that exactly one update was issued through the predicated chain so
+      // the concurrent-ack race is impossible at the SQL level.
+      expect(mockDb.update).toHaveBeenCalledTimes(1);
+      expect(mockDb._updateChain.where).toHaveBeenCalledTimes(1);
+      expect(mockDb._updateChain.returning).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects empty / whitespace-only notes (BadRequestException, no DB write)', async () => {
+      await expect(service.acknowledge(ROW_ID, TEST_USER, '')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      await expect(service.acknowledge(ROW_ID, TEST_USER, '    ')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      await expect(service.acknowledge(ROW_ID, TEST_USER, '\n\t')).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(mockDb.update).not.toHaveBeenCalled();
+      expect(mockAgentEvents.append).not.toHaveBeenCalled();
+    });
+
+    it('rejects notes longer than 1000 chars', async () => {
+      await expect(
+        service.acknowledge(ROW_ID, TEST_USER, 'a'.repeat(1001)),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
+    it('does not emit AgentEvent if the DB update returns nothing (race-loser path)', async () => {
+      mockDb._updateChain.returning.mockResolvedValueOnce([]);
+      await expect(service.acknowledge(ROW_ID, OTHER_USER, 'note')).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
+      expect(mockAgentEvents.append).not.toHaveBeenCalled();
     });
   });
 });
