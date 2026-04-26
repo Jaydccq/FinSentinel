@@ -12,6 +12,8 @@ import {
   portfolioRequestSchema,
   portfolioResponseSchema,
   orderLedgerListResponseSchema,
+  orderLedgerRowResponseSchema,
+  acknowledgeLedgerRequestSchema,
 } from '@finsentinel/shared';
 
 /**
@@ -104,13 +106,32 @@ export const routes = {
   trading: {
     /**
      * Read-only ledger surface backing the phase-1 trading-status UI.
-     * Operator actions (retry / acknowledge) land with item 3 M4.
      */
     ledger: defineRoute({
       path: '/trading/ledger',
       method: 'GET',
       requestSchema: undefined,
       responseSchema: orderLedgerListResponseSchema,
+    }),
+    /**
+     * Operator-pending list — UNKNOWN_REQUIRES_OPERATOR_REVIEW rows that have
+     * not yet been acknowledged. Drives the Acknowledge modal flow.
+     */
+    ledgerUnknown: defineRoute({
+      path: '/trading/ledger/unknown',
+      method: 'GET',
+      requestSchema: undefined,
+      responseSchema: orderLedgerListResponseSchema,
+    }),
+    /**
+     * Operator acknowledgement of an UNKNOWN row. The path's `:id` is
+     * substituted at the call site (`tradingLedgerApi.acknowledge`).
+     */
+    ledgerAcknowledge: defineRoute({
+      path: '/trading/ledger/:id/acknowledge',
+      method: 'POST',
+      requestSchema: acknowledgeLedgerRequestSchema,
+      responseSchema: orderLedgerRowResponseSchema,
     }),
   },
   portfolio: {

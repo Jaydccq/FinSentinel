@@ -1,7 +1,11 @@
 import { apiFetch } from './client';
 import { routes } from './registry';
 import { typedFetch } from './typed-client';
-import type { OrderLedgerListResponse } from '@finsentinel/shared';
+import type {
+  OrderLedgerListResponse,
+  OrderLedgerRowResponse,
+  AcknowledgeLedgerRequest,
+} from '@finsentinel/shared';
 
 export interface TradeOperation {
   action: string;
@@ -140,5 +144,29 @@ export const tradingLedgerApi = {
     typedFetch({
       ...routes.trading.ledger,
       query: { limit },
+    }),
+  /**
+   * UNKNOWN_REQUIRES_OPERATOR_REVIEW rows that need operator attention.
+   * Powers the Acknowledge flow's confirmation list and the ack-pending
+   * SWR cache invalidation.
+   */
+  unknown: (): Promise<OrderLedgerListResponse> =>
+    typedFetch({ ...routes.trading.ledgerUnknown }),
+  /**
+   * Operator acknowledgement. Substitutes `:id` into the path before the
+   * fetch — the typed registry leaves the placeholder in place because
+   * route descriptors are static.
+   */
+  acknowledge: (
+    id: string,
+    body: AcknowledgeLedgerRequest,
+  ): Promise<OrderLedgerRowResponse> =>
+    typedFetch({
+      ...routes.trading.ledgerAcknowledge,
+      path: routes.trading.ledgerAcknowledge.path.replace(
+        ':id',
+        encodeURIComponent(id),
+      ),
+      body,
     }),
 };
