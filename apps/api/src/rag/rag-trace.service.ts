@@ -1,9 +1,28 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'node:crypto';
-import { sql } from 'drizzle-orm';
+import { sql, type SQL } from 'drizzle-orm';
 import { MetricsService } from '../common/services/metrics.service';
 import type { DrizzleDB } from '@finsentinel/db';
+
+/**
+ * Build a typed Postgres array fragment from a JS string[] for inlining inside
+ * a `sql\`...\`` template. Empty arrays MUST be emitted as the literal
+ * `ARRAY[]::<type>[]` because binding an empty JS array as a parameter
+ * (`${[]}::uuid[]`) leaves postgres unable to infer the element type and the
+ * INSERT errors out at runtime — which is what was silently dropping
+ * rag_query_logs rows when search returned zero hits.
+ */
+function pgArray(arr: string[], pgType: 'uuid' | 'varchar' | 'text'): SQL {
+  if (arr.length === 0) {
+    if (pgType === 'uuid') return sql`ARRAY[]::uuid[]`;
+    if (pgType === 'varchar') return sql`ARRAY[]::varchar[]`;
+    return sql`ARRAY[]::text[]`;
+  }
+  if (pgType === 'uuid') return sql`${arr}::uuid[]`;
+  if (pgType === 'varchar') return sql`${arr}::varchar[]`;
+  return sql`${arr}::text[]`;
+}
 
 export interface ShadowComparisonInput {
   queryHash: string;
@@ -126,17 +145,22 @@ export class RagTraceService {
           ${input.queryClass ?? null},
           ${JSON.stringify(variantRows)}::jsonb,
           ${JSON.stringify(input.filters)}::jsonb,
-          ${input.lanes}::varchar[],
-          ${input.resultChunkIds}::uuid[],
+          ${pgArray(input.lanes, 'varchar')},
+          ${pgArray(input.resultChunkIds, 'uuid')},
           ${JSON.stringify(laneCountsPayload)}::jsonb,
           ${JSON.stringify(input.timingsMs)}::jsonb,
-          ${input.fallbackFlags}::varchar[],
+          ${pgArray(input.fallbackFlags, 'varchar')},
           ${input.rerankReason ?? null},
           ${input.totalMs ?? null},
           now()
         )
       `);
     } catch (err) {
+      this.metrics?.incrementCounter(
+        'rag_trace_writes_failed_total',
+        'Total RAG query trace rows that failed to persist',
+        { reason: err instanceof Error ? err.name : 'unknown' },
+      );
       this.logger.warn(`RagTraceService.recordTrace failed: ${err}`);
     }
   }
@@ -154,8 +178,8 @@ export class RagTraceService {
           gen_random_uuid(),
           ${input.queryHash},
           ${input.queryClass},
-          ${input.singleStageChunkIds}::text[],
-          ${input.multiStageChunkIds}::text[],
+          ${pgArray(input.singleStageChunkIds, 'text')},
+          ${pgArray(input.multiStageChunkIds, 'text')},
           ${input.singleStageLatencyMs},
           ${input.multiStageLatencyMs},
           ${input.shadowTimedOut},
@@ -165,6 +189,11 @@ export class RagTraceService {
         )
       `);
     } catch (err) {
+      this.metrics?.incrementCounter(
+        'rag_trace_writes_failed_total',
+        'Total RAG query trace rows that failed to persist',
+        { reason: err instanceof Error ? err.name : 'unknown' },
+      );
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Failed to persist shadow comparison: ${msg}`);
     }

@@ -245,6 +245,97 @@ describe('RagTraceService — error handling', () => {
     const svc = new RagTraceService(makeDb() as any, makeConfigService() as any);
     await expect(svc.recordTrace(baseInput())).resolves.toBeUndefined();
   });
+
+  it('increments rag_trace_writes_failed_total when recordTrace catch fires', async () => {
+    const executeFn = vi.fn().mockRejectedValue(new TypeError('bind failed'));
+    const metrics = makeMetrics();
+    const svc = new RagTraceService(
+      makeDb(executeFn) as any,
+      makeConfigService() as any,
+      metrics as any,
+    );
+    await svc.recordTrace(baseInput());
+    expect(metrics.incrementCounter).toHaveBeenCalledWith(
+      'rag_trace_writes_failed_total',
+      expect.any(String),
+      { reason: 'TypeError' },
+    );
+  });
+});
+
+describe('RagTraceService — empty array handling (regression: empty result_chunk_ids)', () => {
+  // Reproduces the bug where local API search with zero results caused
+  // INSERT INTO rag_query_logs to fail with "cannot determine type of empty
+  // array" because postgres.js bound `[]::uuid[]` parametrically and Postgres
+  // could not infer the element type. Fix: emit ARRAY[]::<type>[] literal.
+
+  it('emits ARRAY[]::uuid[] literal for empty resultChunkIds', async () => {
+    const executeFn = vi.fn().mockResolvedValue([]);
+    const svc = new RagTraceService(
+      makeDb(executeFn) as any,
+      makeConfigService() as any,
+      makeMetrics() as any,
+    );
+    await svc.recordTrace(baseInput({ resultChunkIds: [] }));
+    const serialised = JSON.stringify(executeFn.mock.calls[0]);
+    expect(serialised).toContain('ARRAY[]::uuid[]');
+  });
+
+  it('emits ARRAY[]::varchar[] literal for empty lanes and fallbackFlags', async () => {
+    const executeFn = vi.fn().mockResolvedValue([]);
+    const svc = new RagTraceService(
+      makeDb(executeFn) as any,
+      makeConfigService() as any,
+      makeMetrics() as any,
+    );
+    await svc.recordTrace(baseInput({ lanes: [], fallbackFlags: [] }));
+    const serialised = JSON.stringify(executeFn.mock.calls[0]);
+    expect(serialised).toContain('ARRAY[]::varchar[]');
+  });
+
+  it('keeps parametric binding for non-empty arrays', async () => {
+    const executeFn = vi.fn().mockResolvedValue([]);
+    const svc = new RagTraceService(
+      makeDb(executeFn) as any,
+      makeConfigService() as any,
+      makeMetrics() as any,
+    );
+    await svc.recordTrace(
+      baseInput({
+        resultChunkIds: ['11111111-2222-3333-4444-555555555555'],
+        lanes: ['dense'],
+        fallbackFlags: ['hyde_failed'],
+      }),
+    );
+    const serialised = JSON.stringify(executeFn.mock.calls[0]);
+    // Non-empty arrays must NOT be emitted as the empty literal — they must
+    // route through the parametric `${arr}::<type>[]` arm.
+    expect(serialised).not.toContain('ARRAY[]::uuid[]');
+    expect(serialised).not.toContain('ARRAY[]::varchar[]');
+    expect(serialised).toContain('11111111-2222-3333-4444-555555555555');
+  });
+
+  it('recordShadowComparison emits ARRAY[]::text[] literal for empty stage chunk ids', async () => {
+    const executeFn = vi.fn().mockResolvedValue([]);
+    const svc = new RagTraceService(
+      makeDb(executeFn) as any,
+      makeConfigService() as any,
+      makeMetrics() as any,
+    );
+    await svc.recordShadowComparison({
+      queryHash: 'abc',
+      queryClass: 'factoid',
+      singleStageChunkIds: [],
+      multiStageChunkIds: [],
+      singleStageLatencyMs: 12,
+      multiStageLatencyMs: null,
+      shadowTimedOut: false,
+      shadowDroppedBackpressure: false,
+      multiStageError: null,
+    });
+    const serialised = JSON.stringify(executeFn.mock.calls[0]);
+    expect(serialised).toContain('ARRAY[]::text[]');
+  });
 });
 
 describe('RagTraceService — representationTypesSeen __reps sub-key', () => {
