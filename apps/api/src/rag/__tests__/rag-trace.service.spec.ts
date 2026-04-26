@@ -293,7 +293,7 @@ describe('RagTraceService — empty array handling (regression: empty result_chu
     expect(serialised).toContain('ARRAY[]::varchar[]');
   });
 
-  it('keeps parametric binding for non-empty arrays', async () => {
+  it('emits ARRAY[$1,...]::<type>[] (NOT a SQL tuple cast) for non-empty arrays', async () => {
     const executeFn = vi.fn().mockResolvedValue([]);
     const svc = new RagTraceService(
       makeDb(executeFn) as any,
@@ -308,11 +308,15 @@ describe('RagTraceService — empty array handling (regression: empty result_chu
       }),
     );
     const serialised = JSON.stringify(executeFn.mock.calls[0]);
-    // Non-empty arrays must NOT be emitted as the empty literal — they must
-    // route through the parametric `${arr}::<type>[]` arm.
+    // Non-empty arrays must NOT use the empty literal — they must use ARRAY[...]
+    // construction (regression: drizzle previously expanded `${arr}::uuid[]`
+    // to `(elem1, elem2)::uuid[]` which Postgres rejected as a tuple cast).
     expect(serialised).not.toContain('ARRAY[]::uuid[]');
     expect(serialised).not.toContain('ARRAY[]::varchar[]');
+    // The chunk uuid is bound as a parameter; queryChunks must contain the value
     expect(serialised).toContain('11111111-2222-3333-4444-555555555555');
+    // The serialised SQL must include "ARRAY[" (the explicit array constructor).
+    expect(serialised).toMatch(/ARRAY\[/);
   });
 
   it('recordShadowComparison emits ARRAY[]::text[] literal for empty stage chunk ids', async () => {

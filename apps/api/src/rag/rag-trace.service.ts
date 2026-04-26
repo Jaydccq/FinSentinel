@@ -7,11 +7,19 @@ import type { DrizzleDB } from '@finsentinel/db';
 
 /**
  * Build a typed Postgres array fragment from a JS string[] for inlining inside
- * a `sql\`...\`` template. Empty arrays MUST be emitted as the literal
- * `ARRAY[]::<type>[]` because binding an empty JS array as a parameter
- * (`${[]}::uuid[]`) leaves postgres unable to infer the element type and the
- * INSERT errors out at runtime — which is what was silently dropping
- * rag_query_logs rows when search returned zero hits.
+ * a `sql\`...\`` template.
+ *
+ * Why this exists: drizzle's `sql\`${arr}::uuid[]\`` expands a JS array to a
+ * SQL tuple literal `($1, $2, ...)::uuid[]`. Postgres rejects that because
+ * a row tuple is not the same as `ARRAY[...]` — you cannot cast a tuple to
+ * a typed array. Both empty and non-empty arrays were failing before this
+ * helper landed; INSERTs were silently caught and `rag_query_logs` stayed
+ * empty.
+ *
+ * Fix: build the array explicitly.
+ *  - Empty:    `ARRAY[]::<type>[]`  (literal, no parameters)
+ *  - Non-empty: `ARRAY[$1, $2, ...]::<type>[]`  (each element bound separately
+ *               via drizzle's `sql.join`)
  */
 function pgArray(arr: string[], pgType: 'uuid' | 'varchar' | 'text'): SQL {
   if (arr.length === 0) {
@@ -19,9 +27,11 @@ function pgArray(arr: string[], pgType: 'uuid' | 'varchar' | 'text'): SQL {
     if (pgType === 'varchar') return sql`ARRAY[]::varchar[]`;
     return sql`ARRAY[]::text[]`;
   }
-  if (pgType === 'uuid') return sql`${arr}::uuid[]`;
-  if (pgType === 'varchar') return sql`${arr}::varchar[]`;
-  return sql`${arr}::text[]`;
+  const elements = arr.map((v) => sql`${v}`);
+  const joined = sql.join(elements, sql`, `);
+  if (pgType === 'uuid') return sql`ARRAY[${joined}]::uuid[]`;
+  if (pgType === 'varchar') return sql`ARRAY[${joined}]::varchar[]`;
+  return sql`ARRAY[${joined}]::text[]`;
 }
 
 export interface ShadowComparisonInput {
