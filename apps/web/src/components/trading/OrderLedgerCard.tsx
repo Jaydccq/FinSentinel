@@ -1,25 +1,24 @@
+'use client';
+
+import { useState } from 'react';
+import { mutate } from 'swr';
 import type { OrderLedgerRowResponse } from '@finsentinel/shared';
+import { tradingLedgerApi } from '../../api/trading';
+import { useOrderLedgerUnknown } from '../../hooks/api/use-order-ledger-unknown';
 import { OrderStatusBadge } from './OrderStatusBadge';
+import { AcknowledgeUnknownModal } from './AcknowledgeUnknownModal';
 
 /**
- * Render-side action affordance for a ledger row. Phase 1 ships a
- * disabled button for the two states that need operator intervention,
- * with a tooltip that says when the action becomes live. The wiring
- * lands with item 3 M4.
+ * Render-side action affordance for a ledger row.
  *
- * Status values not listed here intentionally have no action button —
- * EXECUTED / EXECUTING / STAGED / COMMITTED / CANCELLED don't expose
- * an operator action in this phase.
+ * - FAILED still ships disabled (Retry wires in a later phase).
+ * - UNKNOWN_REQUIRES_OPERATOR_REVIEW now opens the AcknowledgeUnknownModal
+ *   when the row has not yet been acknowledged. Once `acknowledgedAt` is
+ *   set, no button renders — the row shows an "acknowledged at <time>"
+ *   note instead.
  */
-function actionForStatus(status: string): { label: string } | null {
-  switch (status) {
-    case 'FAILED':
-      return { label: 'Retry' };
-    case 'UNKNOWN_REQUIRES_OPERATOR_REVIEW':
-      return { label: 'Acknowledge' };
-    default:
-      return null;
-  }
+function isAcknowledgeable(row: OrderLedgerRowResponse): boolean {
+  return row.status === 'UNKNOWN_REQUIRES_OPERATOR_REVIEW' && row.acknowledgedAt == null;
 }
 
 function formatFillRatio(qty: string | null, filledQty: string | null | undefined): string | null {
@@ -39,13 +38,33 @@ export interface OrderLedgerCardProps {
 }
 
 /**
- * Single-row presentation of an order_ledger entry. Phase 1 is read-only
- * — action buttons render disabled with a tooltip noting that wiring
- * lands in phase 2 alongside the operator-action backend (item 3 M4).
+ * Single-row presentation of an order_ledger entry. UNKNOWN rows expose an
+ * Acknowledge action that opens a modal capturing an audit note. FAILED
+ * rows still render a disabled Retry placeholder until that flow lands.
  */
 export function OrderLedgerCard({ row, filledQty }: OrderLedgerCardProps) {
-  const action = actionForStatus(row.status);
+  const [isAckOpen, setIsAckOpen] = useState(false);
   const fillDisplay = formatFillRatio(row.qty, filledQty ?? row.qty);
+  const acknowledged = row.acknowledgedAt != null;
+
+  const onConfirmAck = async (note: string) => {
+    await tradingLedgerApi.acknowledge(row.id, { note });
+    // Invalidate both SWR caches:
+    // - useOrderLedgerUnknown: the row drops off the pending list.
+    // - useOrderLedger (any limit slot): the row re-renders with the
+    //   ack suffix in the Recent Orders feed.
+    await Promise.all([
+      mutate(useOrderLedgerUnknown.key),
+      mutate(
+        (key) => Array.isArray(key) && key[0] === 'trading' && key[1] === 'ledger',
+        undefined,
+        { revalidate: true },
+      ),
+    ]);
+  };
+
+  const ackable = isAcknowledgeable(row);
+  const showRetryStub = row.status === 'FAILED';
 
   return (
     <div
@@ -57,7 +76,7 @@ export function OrderLedgerCard({ row, filledQty }: OrderLedgerCardProps) {
           <span className="font-medium">{row.symbol}</span>
           <span className="text-xs uppercase text-slate-400">{row.side}</span>
           <span className="text-xs text-slate-500">{row.broker}</span>
-          <OrderStatusBadge status={row.status} />
+          <OrderStatusBadge status={row.status} acknowledged={acknowledged} />
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
           {fillDisplay != null && <span>{fillDisplay}</span>}
@@ -67,17 +86,43 @@ export function OrderLedgerCard({ row, filledQty }: OrderLedgerCardProps) {
         {row.errorReason != null && row.errorReason.length > 0 && (
           <div className="text-xs text-red-300">{row.errorReason}</div>
         )}
+        {acknowledged && row.acknowledgedAt != null && (
+          <div data-testid="ack-meta" className="text-xs text-slate-400">
+            acknowledged {new Date(row.acknowledgedAt).toLocaleString()}
+            {row.acknowledgedBy != null && (
+              <> by {row.acknowledgedBy.slice(0, 8)}…</>
+            )}
+            {row.acknowledgementNote != null && row.acknowledgementNote.length > 0 && (
+              <> — “{row.acknowledgementNote}”</>
+            )}
+          </div>
+        )}
       </div>
-      {action != null && (
+      {ackable && (
+        <button
+          type="button"
+          className="rounded bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-500"
+          onClick={() => setIsAckOpen(true)}
+        >
+          Acknowledge
+        </button>
+      )}
+      {showRetryStub && (
         <button
           type="button"
           disabled
           title="Coming in phase 2"
           className="rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 opacity-50"
         >
-          {action.label}
+          Retry
         </button>
       )}
+      <AcknowledgeUnknownModal
+        ledgerId={row.id}
+        isOpen={isAckOpen}
+        onClose={() => setIsAckOpen(false)}
+        onConfirm={onConfirmAck}
+      />
     </div>
   );
 }
