@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { portfolios, holdings, riskReports, eq, and, inArray, desc } from '@finsentinel/db';
 import type { DrizzleDB } from '@finsentinel/db';
 import type {
@@ -9,10 +9,43 @@ import type {
   PortfolioAnalyticsResponse,
   HoldingWeight,
 } from '@finsentinel/shared';
+import { MarketDataService } from '../market/market-data.service';
+
+/**
+ * Hard cap on the number of quote fetches issued per portfolio response.
+ * Real portfolios rarely exceed 20 holdings; the cap exists to prevent
+ * pathological cases from amplifying market-data load.
+ */
+const QUOTE_FETCH_CAP = 50;
 
 @Injectable()
 export class PortfolioService {
-  constructor(@Inject('DRIZZLE_DB') private readonly db: DrizzleDB) {}
+  private readonly logger = new Logger(PortfolioService.name);
+
+  constructor(
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
+    private readonly marketData: MarketDataService,
+  ) {}
+
+  /**
+   * Fetch quote timestamps for the given holdings via MarketDataService.
+   * Returns one entry per input holding, in input order. Failures degrade
+   * to `null` rather than rejecting — `computeValuedAt` already tolerates
+   * missing entries, and a degraded market service should not break the
+   * portfolio response.
+   */
+  private async fetchQuoteTimestamps(
+    holdingRows: Array<typeof holdings.$inferSelect>,
+  ): Promise<Array<number | null>> {
+    if (holdingRows.length === 0) return [];
+    const tickers = holdingRows.slice(0, QUOTE_FETCH_CAP).map((h) => h.symbol);
+    const results = await Promise.allSettled(tickers.map((t) => this.marketData.getQuote(t)));
+    return results.map((r) => {
+      if (r.status === 'fulfilled') return r.value.timestamp;
+      this.logger.debug(`Quote fetch failed during portfolio response build: ${String(r.reason)}`);
+      return null;
+    });
+  }
 
   // ── Portfolio CRUD ─────────────────────────────────────────────────────
 
@@ -52,7 +85,17 @@ export class PortfolioService {
       holdingsByPortfolio.get(pid)!.push(h);
     }
 
-    return rows.map((row) => this.toPortfolioResponse(row, holdingsByPortfolio.get(row.id) ?? []));
+    // Fetch quote timestamps per portfolio in parallel. MarketDataService
+    // already caches per-symbol quotes (5-min Redis TTL), so duplicate
+    // symbols across portfolios coalesce naturally.
+    const responses = await Promise.all(
+      rows.map(async (row) => {
+        const portfolioHoldings = holdingsByPortfolio.get(row.id) ?? [];
+        const quoteTimestamps = await this.fetchQuoteTimestamps(portfolioHoldings);
+        return this.toPortfolioResponse(row, portfolioHoldings, quoteTimestamps);
+      }),
+    );
+    return responses;
   }
 
   async getPortfolio(userId: string, portfolioId: string): Promise<PortfolioResponse> {
@@ -75,7 +118,8 @@ export class PortfolioService {
       .from(holdings)
       .where(eq(holdings.portfolioId, portfolioId));
 
-    return this.toPortfolioResponse(row, holdingRows);
+    const quoteTimestamps = await this.fetchQuoteTimestamps(holdingRows);
+    return this.toPortfolioResponse(row, holdingRows, quoteTimestamps);
   }
 
   async updatePortfolio(
@@ -361,11 +405,11 @@ export class PortfolioService {
     if (!row) {
       throw new NotFoundException('Portfolio record missing');
     }
-    // TODO(pl-7-phase2): plumb quote.timestamp from MarketDataService through
-    // the read paths (getPortfolio / getPortfolios / createPortfolio /
-    // updatePortfolio) so callers can populate `quoteTimestamps`. Today no
-    // caller fetches quotes at response build time — `currentPrice` comes
-    // straight from the holdings row — so `valuedAt` is always null.
+    // Read paths (getPortfolio / getPortfolios) populate `quoteTimestamps`
+    // via MarketDataService. Mutation paths (create / update / addHolding /
+    // updateHolding / deleteHolding) intentionally pass an empty list so
+    // `valuedAt` stays null — the response reflects the new holdings row,
+    // not a refreshed market state.
     return {
       id: row.id,
       name: row.name,
