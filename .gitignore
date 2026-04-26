@@ -141,6 +141,7 @@ docs/exec-plans/*
 !docs/exec-plans/2026-04-25-pl7-phase2-frontend.md
 !docs/exec-plans/2026-04-25-citations-panel-and-lint-tracker-cleanup.md
 !docs/exec-plans/2026-04-26-local-rag-eval-promotion.md
+!docs/exec-plans/2026-04-26-query-classifier-shadow-phase1.md
 !docs/technical-guides/
 !docs/technical-guides/autonomous-investment-platform-interview-guide.md
 !docs/technical-guides/autonomous-investment-platform-interview-guide-print.css
