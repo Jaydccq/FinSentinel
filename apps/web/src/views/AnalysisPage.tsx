@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { RunSetupPanel } from '../components/analysis/RunSetupPanel';
 import { LiveProgressPanel } from '../components/analysis/LiveProgressPanel';
 import { ArtifactsPanel } from '../components/analysis/ArtifactsPanel';
+import { CitationsPanel } from '../components/analysis/CitationsPanel';
 import { FinalReportPanel } from '../components/analysis/FinalReportPanel';
 import { HumanApprovalRail } from '../components/analysis/HumanApprovalRail';
 import { TimelinePanel } from '../components/analysis/TimelinePanel';
@@ -65,6 +66,7 @@ export default function AnalysisPage() {
             />
             <ContextPanel context={context} />
             <ArtifactsPanel artifacts={artifacts} />
+            <CitationsPanel stages={stages} />
             <FinalReportPanel run={run} artifacts={artifacts} />
           </>
         ) : null}
