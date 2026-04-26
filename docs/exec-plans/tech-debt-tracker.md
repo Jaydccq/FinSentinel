@@ -488,6 +488,70 @@ embed-1b-v2` going forward. V16 rewritten to declare
   - No de-duplication across stages in v1 — phase 2 may dedupe.
 - **Status:** Closed.
 
+### `cli-import-env.spec.ts` is flaky in the full api suite
+
+- **Observed:** 2026-04-26 during the M4 prereq (2) verification — the
+  full `pnpm --filter @finsentinel/api test` run reported one test
+  failure in `apps/api/src/rag/__tests__/cli-import-env.spec.ts`. The
+  same file passes deterministically when run in isolation.
+- **Impact:** Full-suite runs occasionally show 1 false-positive
+  failure. People reading CI output have to know which file to ignore.
+  Worse, a real future regression in this file would be assumed
+  flaky.
+- **Likely fix path:** Read the spec, identify the source of order
+  dependence (most likely a shared `process.env` mutation, vitest
+  globals, or a module-cache effect from CLI bootstrap). Either reset
+  the polluted state in `beforeEach`, or move the spec into its own
+  vitest project so it cannot interleave with other tests.
+- **Status:** Open.
+
+### `TRADING_STATE_MACHINE_ENABLED=false` legacy execute path retirement
+
+- **Observed:** 2026-04-26 in
+  `docs/exec-plans/2026-04-26-trading-m4-readiness-audit.md` — the
+  flag-off path in `apps/api/src/trading/unified-trading.service.ts`
+  (lines 562-568, 832-844) is the load-bearing reason `wallet.commitHistory`
+  cannot be removed. Until the flag is permanently retired, M4 cannot
+  land.
+- **Impact:** Two coupled paths exist for execute idempotency and
+  history append. Anyone touching `unified-trading.service.ts` has to
+  reason about both. The flag-off branch is the one with legacy
+  semantics; flag-on is the future.
+- **Likely fix path:**
+  1. Confirm production / staging traffic has been on `flag=true` for a
+     soak window (the same staging soak that gates M4 prereq 1).
+  2. Delete the flag-off branches in `execute()` and the legacy
+     `commitHistory` append. Update the unit tests that pin legacy
+     behavior.
+  3. Drop the `TRADING_STATE_MACHINE_ENABLED` config key.
+- **Status:** Open. Coupled to M4 prereq (1) staging soak — they should
+  retire together so the soak is the same evidence for both.
+
+### `agent_events` SQL CHECK constraint vs TS `AgentEventType` enum drift
+
+- **Observed:** 2026-04-26 while writing migration V26 for
+  `LEDGER_UNKNOWN_ACKNOWLEDGED`. The latest prior migration that owns
+  the `agent_events_event_type_check` constraint (V12) was replicated
+  verbatim plus the new value, but the in-memory TS enum
+  `packages/shared/src/enums/agent-event-type.ts` carries four values
+  the SQL CHECK has never had: `ROLE_STARTED`, `ROLE_COMPLETED`,
+  `ROLE_FAILED`, `STAGE_SKIPPED`.
+- **Impact:** If any code path emits one of those four event types, the
+  INSERT will fail at the database layer with a CHECK violation. The
+  enum claims they are valid; reality says they are not.
+- **Likely fix path:**
+  1. Audit emission sites for the four values via
+     `rg -n "ROLE_STARTED|ROLE_COMPLETED|ROLE_FAILED|STAGE_SKIPPED" apps/api/src`.
+  2. If any are emitted: write a migration that widens the CHECK to
+     include them. Re-run `pnpm --filter @finsentinel/api test --run`
+     to ensure the SQL matches the enum.
+  3. If none are emitted (forward-looking enum keys): either delete
+     them from the TS enum until needed, OR add them to the CHECK
+     constraint preemptively to avoid the future surprise.
+- **Status:** Open. Not blocking M4 prereq (2) — V26 preserved the V12
+  IN-list verbatim plus the one new value, deliberately not widening
+  scope.
+
 ## 2026-04-17 — carried over from v1.1 hardening
 
 - **[RUNTIME-TD-01] Staging deploy for analysis runtime.** Blocked on credentials.
