@@ -1,0 +1,309 @@
+{
+  "schema": "classifier-shadow-v2",
+  "schema_version": "v2",
+  "phase": "1.5",
+  "dataset": "services/evaluation-runner/datasets/golden.json",
+  "dataset_version": "2.2",
+  "n_total": 200,
+  "n_evaluated": 200,
+  "classes_emitted_by_rules": [
+    "exact_lookup",
+    "factoid",
+    "relational",
+    "analytical",
+    "multi_part",
+    "numeric",
+    "summary",
+    "colloquial"
+  ],
+  "classes_in_golden": [
+    "analytical",
+    "exact_lookup",
+    "factoid",
+    "multi_part",
+    "numeric",
+    "relational",
+    "summary"
+  ],
+  "rules": {
+    "accuracy_overall": 0.415,
+    "correct": 83,
+    "n": 200,
+    "per_class_precision": {
+      "exact_lookup": 0.4545,
+      "factoid": 0.3846,
+      "relational": 0.6923,
+      "analytical": 0.1081,
+      "multi_part": 0.5278,
+      "numeric": 0.6667,
+      "summary": null,
+      "colloquial": null
+    },
+    "per_class_recall": {
+      "exact_lookup": 0.7895,
+      "factoid": 0.641,
+      "relational": 0.2857,
+      "analytical": 0.1739,
+      "multi_part": 0.6786,
+      "numeric": 0.2857,
+      "summary": 0,
+      "colloquial": null
+    },
+    "confusion": {
+      "factoid__to__exact_lookup": 12,
+      "factoid__to__numeric": 1,
+      "factoid__to__analytical": 1,
+      "relational__to__multi_part": 8,
+      "relational__to__factoid": 21,
+      "relational__to__analytical": 15,
+      "exact_lookup__to__factoid": 1,
+      "analytical__to__multi_part": 5,
+      "multi_part__to__factoid": 1,
+      "analytical__to__factoid": 8,
+      "summary__to__analytical": 13,
+      "summary__to__relational": 1,
+      "summary__to__multi_part": 2,
+      "summary__to__factoid": 5,
+      "numeric__to__factoid": 4,
+      "analytical__to__relational": 6,
+      "relational__to__exact_lookup": 1,
+      "numeric__to__analytical": 1,
+      "exact_lookup__to__relational": 1,
+      "multi_part__to__analytical": 3,
+      "exact_lookup__to__multi_part": 2,
+      "multi_part__to__exact_lookup": 5
+    },
+    "vocabulary_gap": {
+      "missing_in_rules": [],
+      "blast_radius_n": 0
+    },
+    "top_confusion_pairs": [
+      {
+        "pair": "relational__to__factoid",
+        "count": 21
+      },
+      {
+        "pair": "relational__to__analytical",
+        "count": 15
+      },
+      {
+        "pair": "summary__to__analytical",
+        "count": 13
+      },
+      {
+        "pair": "factoid__to__exact_lookup",
+        "count": 12
+      },
+      {
+        "pair": "relational__to__multi_part",
+        "count": 8
+      }
+    ]
+  },
+  "llm": {
+    "model": "openai/gpt-4o-mini",
+    "accuracy_overall": 0.405,
+    "correct": 81,
+    "n": 200,
+    "per_class_precision": {
+      "exact_lookup": 0.3684,
+      "factoid": 0.7778,
+      "relational": 0.8889,
+      "analytical": 0.225,
+      "multi_part": 0.5,
+      "numeric": 0.1818,
+      "summary": 0.8333,
+      "colloquial": null
+    },
+    "per_class_recall": {
+      "exact_lookup": 0.7368,
+      "factoid": 0.1795,
+      "relational": 0.254,
+      "analytical": 0.7826,
+      "multi_part": 0.6786,
+      "numeric": 0.2857,
+      "summary": 0.2381,
+      "colloquial": null
+    },
+    "confusion": {
+      "factoid__to__exact_lookup": 16,
+      "factoid__to__numeric": 9,
+      "factoid__to__analytical": 7,
+      "relational__to__analytical": 41,
+      "exact_lookup__to__factoid": 1,
+      "multi_part__to__exact_lookup": 6,
+      "analytical__to__multi_part": 3,
+      "analytical__to__summary": 1,
+      "summary__to__analytical": 10,
+      "summary__to__multi_part": 5,
+      "numeric__to__multi_part": 5,
+      "summary__to__factoid": 1,
+      "exact_lookup__to__relational": 1,
+      "analytical__to__relational": 1,
+      "multi_part__to__analytical": 3,
+      "relational__to__multi_part": 4,
+      "exact_lookup__to__multi_part": 2,
+      "relational__to__exact_lookup": 2,
+      "exact_lookup__to__analytical": 1
+    },
+    "parse_fallback_count": 0,
+    "sample_reasoning_first_20": [
+      {
+        "id": "gs-001",
+        "class": "factoid",
+        "confidence": 1,
+        "reasoning_truncated": "This is a short factual question seeking a specific answer about Apple's revenue."
+      },
+      {
+        "id": "gs-002",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "the query specifies a literal section related to AAPL's revenue for a specific fiscal year."
+      },
+      {
+        "id": "gs-003",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "the query specifies a literal section and time for AAPL revenue"
+      },
+      {
+        "id": "gs-004",
+        "class": "numeric",
+        "confidence": 1,
+        "reasoning_truncated": "The query asks for a specific numeric metric related to Apple's cash generation."
+      },
+      {
+        "id": "gs-005",
+        "class": "numeric",
+        "confidence": 1,
+        "reasoning_truncated": "The query asks for a specific numeric metric related to NVIDIA's sales."
+      },
+      {
+        "id": "gs-006",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "The query specifies a literal section related to NVIDIA's revenue for a specific fiscal year."
+      },
+      {
+        "id": "gs-007",
+        "class": "numeric",
+        "confidence": 1,
+        "reasoning_truncated": "The query specifically asks for a numeric metric related to NVIDIA's financial performance."
+      },
+      {
+        "id": "gs-008",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "the query specifies a literal financial metric for a specific fiscal year"
+      },
+      {
+        "id": "gs-009",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "the query specifies a literal section related to Tesla's vehicle deliveries for a specific fiscal year."
+      },
+      {
+        "id": "gs-010",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "the query specifies a literal financial metric for a specific fiscal year."
+      },
+      {
+        "id": "gs-011",
+        "class": "numeric",
+        "confidence": 0.9,
+        "reasoning_truncated": "The query asks for a specific growth metric related to Azure for Microsoft in FY2025."
+      },
+      {
+        "id": "gs-012",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "the query seeks a specific numeric value related to a financial metric."
+      },
+      {
+        "id": "gs-013",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "the query specifies a literal section related to economic indicators and specific time frames."
+      },
+      {
+        "id": "gs-014",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "few-shot exemplar"
+      },
+      {
+        "id": "gs-015",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "The query specifies a literal financial metric for a specific company and fiscal year."
+      },
+      {
+        "id": "gs-016",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "the query specifies a literal financial metric for a specific company and time period."
+      },
+      {
+        "id": "gs-017",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "the query specifies a literal financial metric for a specific company and fiscal year."
+      },
+      {
+        "id": "gs-018",
+        "class": "numeric",
+        "confidence": 1,
+        "reasoning_truncated": "The query asks for a specific numeric metric related to oil prices."
+      },
+      {
+        "id": "gs-019",
+        "class": "exact_lookup",
+        "confidence": 1,
+        "reasoning_truncated": "the query specifies a specific company's revenue for a future year."
+      },
+      {
+        "id": "gs-020",
+        "class": "numeric",
+        "confidence": 1,
+        "reasoning_truncated": "The query asks for a specific numeric metric related to industry revenue."
+      }
+    ],
+    "top_confusion_pairs": [
+      {
+        "pair": "relational__to__analytical",
+        "count": 41
+      },
+      {
+        "pair": "factoid__to__exact_lookup",
+        "count": 16
+      },
+      {
+        "pair": "summary__to__analytical",
+        "count": 10
+      },
+      {
+        "pair": "factoid__to__numeric",
+        "count": 9
+      },
+      {
+        "pair": "factoid__to__analytical",
+        "count": 7
+      }
+    ],
+    "usage_totals": {
+      "prompt_tokens": 96914,
+      "completion_tokens": 5686,
+      "total_tokens": 102600
+    },
+    "agreement_with_rules": 0.54
+  },
+  "wall_clock_ms": 214626,
+  "ran_at": "2026-04-26T06:00:53.227Z",
+  "notes": [
+    "Phase 1.5 offline shadow eval — rule logic is duplicated inline in this script.",
+    "See apps/api/src/rag/__tests__/query-classifier-rules.spec.ts for the canonical behavioural test.",
+    "Vocabulary closed: numeric + summary now emitted by rules.",
+    "exact_lookup triple-gate fallback (ticker + time anchor + doc-type) was tightened — only whitelisted-ticker single-gate or section/numeric/quoted-phrase paths fire now."
+  ]
+}

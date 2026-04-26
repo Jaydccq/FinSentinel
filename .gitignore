@@ -180,6 +180,9 @@ __pycache__/
 services/evaluation-runner/reports/*.json
 # Exception: committed baselines used as reference points by Wave 2 phases.
 !services/evaluation-runner/reports/wave2-baseline-*.json
+# Exception: classifier-shadow phase 1.5 report kept in tree for trend
+# comparison against future runs (small, ~14 KB, cited by tech-debt tracker).
+!services/evaluation-runner/reports/classifier-shadow-2026-04-26*.json
 
 ### Local runtime scratch (ephemeral — never commit) ###
 # Redis dump, generated while the API is running locally.
