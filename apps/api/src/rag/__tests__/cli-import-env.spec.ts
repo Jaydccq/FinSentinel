@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const REQUIRED_RUNTIME_ENV = [
   'DATABASE_URL',
@@ -28,34 +28,47 @@ function restoreRuntimeEnv(): void {
   }
 }
 
+// Each CLI is a heavy transitive-import surface (NestFactory + decorators +
+// drizzle + bullmq + ai-runtime). Per-import wall clock under full-suite
+// worker load measured at 5–6.6s — exceeds vitest's default 5s testTimeout.
+// Splitting into per-module cases gives each CLI its own budget AND points
+// the failure at the exact module if a regression ever lands; the bumped
+// 15s per-case timeout absorbs the transitive-import cost without hiding a
+// real hang (the longest observed import is 6.6s and isolated runs finish
+// in <1s — so 15s is "twice the worst observed plus headroom").
+const CLI_MODULES: ReadonlyArray<readonly [name: string, load: () => Promise<unknown>]> = [
+  ['admin/rag-backfill-chunk-issuer-tickers', () => import('../admin/rag-backfill-chunk-issuer-tickers.cli')],
+  ['admin/rag-backfill-representation-sparse', () => import('../admin/rag-backfill-representation-sparse.cli')],
+  ['admin/rag-backfill-representations', () => import('../admin/rag-backfill-representations.cli')],
+  ['admin/rag-reindex-by-doctype', () => import('../admin/rag-reindex-by-doctype.cli')],
+  ['admin/rag-repr-reindex', () => import('../admin/rag-repr-reindex.cli')],
+  ['eval/golden-candidates', () => import('../eval/golden-candidates.cli')],
+  ['eval/seed-fixture', () => import('../eval/seed-fixture.cli')],
+];
+
 describe('RAG CLI module imports', () => {
+  let exitSpy: ReturnType<typeof vi.spyOn> | null = null;
+
+  beforeEach(() => {
+    clearRuntimeEnv();
+    exitSpy = vi.spyOn(process, 'exit').mockImplementation(((
+      code?: string | number | null,
+    ) => {
+      throw new Error(`process.exit(${String(code)}) during CLI import`);
+    }) as typeof process.exit);
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     restoreRuntimeEnv();
   });
 
-  it('do not bootstrap config or exit when helper modules are imported without runtime env', async () => {
-    clearRuntimeEnv();
-    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(((
-      code?: string | number | null,
-    ) => {
-      throw new Error(`process.exit(${String(code)}) during CLI import`);
-    }) as typeof process.exit);
-
-    const cliModules = [
-      () => import('../admin/rag-backfill-chunk-issuer-tickers.cli'),
-      () => import('../admin/rag-backfill-representation-sparse.cli'),
-      () => import('../admin/rag-backfill-representations.cli'),
-      () => import('../admin/rag-reindex-by-doctype.cli'),
-      () => import('../admin/rag-repr-reindex.cli'),
-      () => import('../eval/golden-candidates.cli'),
-      () => import('../eval/seed-fixture.cli'),
-    ];
-
-    for (const loadCliModule of cliModules) {
+  it.each(CLI_MODULES)(
+    'imports %s without bootstrapping config or calling process.exit',
+    async (_name, loadCliModule) => {
       await expect(loadCliModule()).resolves.toBeDefined();
-    }
-
-    expect(exitSpy).not.toHaveBeenCalled();
-  });
+      expect(exitSpy).not.toHaveBeenCalled();
+    },
+    15_000,
+  );
 });
