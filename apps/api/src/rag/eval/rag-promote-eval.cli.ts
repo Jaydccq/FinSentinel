@@ -82,6 +82,18 @@ function defaultSinceIso(now: Date = new Date()): string {
   return d.toISOString();
 }
 
+/**
+ * Derive a sibling meta path from a golden-output path:
+ *   /tmp/foo.json  →  /tmp/foo.meta.json
+ *   /tmp/foo       →  /tmp/foo.meta.json (no extension)
+ * Prevents canonical-meta leak when the operator passes `--out /tmp/...`
+ * without an explicit `--meta`.
+ */
+export function deriveSiblingMetaPath(outPath: string): string {
+  if (outPath.endsWith('.json')) return outPath.replace(/\.json$/, '.meta.json');
+  return `${outPath}.meta.json`;
+}
+
 export function parsePromoteArgs(argv: string[], now: Date = new Date()): PromoteCliArgs {
   const args: PromoteCliArgs = {
     perClass: 10,
@@ -90,6 +102,8 @@ export function parsePromoteArgs(argv: string[], now: Date = new Date()): Promot
     metaPath: DEFAULT_META_PATH,
     dryRun: false,
   };
+  let outExplicit = false;
+  let metaExplicit = false;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!;
     if (a === '--') {
@@ -112,8 +126,10 @@ export function parsePromoteArgs(argv: string[], now: Date = new Date()): Promot
       args.since = raw;
     } else if (a === '--out' && argv[i + 1] !== undefined) {
       args.outputPath = argv[++i]!;
+      outExplicit = true;
     } else if (a === '--meta' && argv[i + 1] !== undefined) {
       args.metaPath = argv[++i]!;
+      metaExplicit = true;
     } else if (a.startsWith('--')) {
       throw new Error(
         `unrecognized flag: ${a}. Known flags: ${[...KNOWN_FLAGS].join(', ')}`,
@@ -121,6 +137,11 @@ export function parsePromoteArgs(argv: string[], now: Date = new Date()): Promot
     } else {
       throw new Error(`unrecognized positional argument: ${a}`);
     }
+  }
+  // If --out was explicit but --meta was not, derive a sibling meta path so
+  // the canonical golden.meta.json is never silently mutated by a /tmp run.
+  if (outExplicit && !metaExplicit) {
+    args.metaPath = deriveSiblingMetaPath(args.outputPath);
   }
   return args;
 }

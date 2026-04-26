@@ -61,6 +61,32 @@ describe('parsePromoteArgs', () => {
   it('rejects unknown flags', () => {
     expect(() => parsePromoteArgs(['--unknown'])).toThrow(/unrecognized flag/);
   });
+
+  it('derives sibling meta path when --out is explicit but --meta is not', () => {
+    const args = parsePromoteArgs(['--out', '/tmp/local-promote.json']);
+    expect(args.outputPath).toBe('/tmp/local-promote.json');
+    // Must NOT default to the canonical meta path (which would silently mutate
+    // services/evaluation-runner/datasets/golden.meta.json on a /tmp run).
+    expect(args.metaPath).toBe('/tmp/local-promote.meta.json');
+    expect(args.metaPath).not.toMatch(/services\/evaluation-runner/);
+  });
+
+  it('respects explicit --meta when both --out and --meta are provided', () => {
+    const args = parsePromoteArgs([
+      '--out',
+      '/tmp/local-promote.json',
+      '--meta',
+      '/tmp/custom.meta.json',
+    ]);
+    expect(args.metaPath).toBe('/tmp/custom.meta.json');
+  });
+
+  it('keeps the canonical meta path when neither --out nor --meta is provided', () => {
+    const args = parsePromoteArgs([]);
+    expect(args.metaPath).toMatch(
+      /services\/evaluation-runner\/datasets\/golden\.meta\.json$/,
+    );
+  });
 });
 
 describe('runPromotePipeline', () => {
