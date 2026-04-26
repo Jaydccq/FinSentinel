@@ -4,6 +4,7 @@ import {
   Get,
   Put,
   Body,
+  Param,
   Query,
   UseGuards,
   HttpCode,
@@ -14,6 +15,7 @@ import {
   unifiedStageRequestSchema,
   commitRequestSchema,
   switchModeRequestSchema,
+  acknowledgeLedgerRequestSchema,
   TradingMode,
 } from '@finsentinel/shared';
 import type {
@@ -21,9 +23,11 @@ import type {
   UnifiedStageRequest,
   CommitRequest,
   SwitchModeRequest,
+  AcknowledgeLedgerRequest,
   V2WalletResponse,
   V2CommitResponse,
   V2StagedResponse,
+  OrderLedgerRowResponse,
 } from '@finsentinel/shared';
 import { JwtGuard } from '../auth/jwt.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -248,20 +252,78 @@ export class TradingController {
   ): Promise<OrderLedgerListResponse> {
     const limit = parseIntParam(limitParam, 25, 1, 50);
     const rows = await this.orderLedgerService.findRecentByUser(user.userId, limit);
-    return rows.map((r) => ({
-      id: r.id,
-      commitHash: r.commitHash,
-      status: r.status as OrderLedgerListResponse[number]['status'],
-      symbol: r.symbol,
-      side: r.side,
-      qty: r.qty ?? null,
-      amount: r.amount ?? null,
-      price: r.price ?? null,
-      broker: r.broker,
-      brokerOrderId: r.brokerOrderId ?? null,
-      errorReason: r.errorReason ?? null,
-      createdAt: r.createdAt.toISOString(),
-      updatedAt: r.updatedAt.toISOString(),
-    }));
+    return rows.map((r) => toLedgerWireRow(r));
   }
+
+  /**
+   * Operator-pending list — UNKNOWN_REQUIRES_OPERATOR_REVIEW rows that have
+   * not yet been acknowledged. Drives the Acknowledge modal's confirmation
+   * flow and the SWR cache invalidation post-ack.
+   */
+  @Get('ledger/unknown')
+  async getLedgerUnknown(
+    @CurrentUser() user: CurrentUserPayload,
+  ): Promise<OrderLedgerListResponse> {
+    const rows = await this.orderLedgerService.findUnknownPending(user.userId, 50);
+    return rows.map((r) => toLedgerWireRow(r));
+  }
+
+  /**
+   * Operator acknowledgement of an UNKNOWN row. Owner-scoped — non-owners
+   * see 404 (same as wrong id / already ack'd, which is fine for v1). Empty
+   * notes are rejected at the Zod layer here AND by the service for
+   * defense-in-depth.
+   */
+  @Post('ledger/:id/acknowledge')
+  @HttpCode(HttpStatus.OK)
+  async acknowledgeLedger(
+    @CurrentUser() user: CurrentUserPayload,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(acknowledgeLedgerRequestSchema))
+    body: AcknowledgeLedgerRequest,
+  ): Promise<OrderLedgerRowResponse> {
+    const updated = await this.orderLedgerService.acknowledge(id, user.userId, body.note);
+    return toLedgerWireRow(updated);
+  }
+}
+
+/**
+ * Map an OrderLedger DB row to the wire format. Includes V25 ack columns.
+ */
+function toLedgerWireRow(r: {
+  id: string;
+  commitHash: string;
+  status: string;
+  symbol: string;
+  side: string;
+  qty: string | null;
+  amount: string | null;
+  price: string | null;
+  broker: string;
+  brokerOrderId: string | null;
+  errorReason: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  acknowledgedAt: Date | null;
+  acknowledgedBy: string | null;
+  acknowledgementNote: string | null;
+}): OrderLedgerRowResponse {
+  return {
+    id: r.id,
+    commitHash: r.commitHash,
+    status: r.status as OrderLedgerRowResponse['status'],
+    symbol: r.symbol,
+    side: r.side,
+    qty: r.qty ?? null,
+    amount: r.amount ?? null,
+    price: r.price ?? null,
+    broker: r.broker,
+    brokerOrderId: r.brokerOrderId ?? null,
+    errorReason: r.errorReason ?? null,
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+    acknowledgedAt: r.acknowledgedAt ? r.acknowledgedAt.toISOString() : null,
+    acknowledgedBy: r.acknowledgedBy ?? null,
+    acknowledgementNote: r.acknowledgementNote ?? null,
+  };
 }

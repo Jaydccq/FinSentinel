@@ -22,6 +22,10 @@ export type OrderLedgerStatus = z.infer<typeof orderLedgerStatusSchema>;
  * Wire-format row returned by `GET /trading/ledger`. Decimal columns are
  * strings (decimal-money convention) and may be null when the broker did
  * not report a value.
+ *
+ * V25 adds `acknowledged*` operator-action metadata. The fields are nullable
+ * because the vast majority of rows (everything that isn't an
+ * UNKNOWN_REQUIRES_OPERATOR_REVIEW that has been ack'd) leaves them unset.
  */
 export const orderLedgerRowResponseSchema = z.object({
   id: z.string(),
@@ -37,8 +41,22 @@ export const orderLedgerRowResponseSchema = z.object({
   errorReason: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  // V25 — operator acknowledgement metadata for UNKNOWN_REQUIRES_OPERATOR_REVIEW.
+  acknowledgedAt: z.string().nullable(),
+  acknowledgedBy: z.string().nullable(),
+  acknowledgementNote: z.string().nullable(),
 });
 export type OrderLedgerRowResponse = z.infer<typeof orderLedgerRowResponseSchema>;
 
 export const orderLedgerListResponseSchema = z.array(orderLedgerRowResponseSchema);
 export type OrderLedgerListResponse = z.infer<typeof orderLedgerListResponseSchema>;
+
+/**
+ * Body for `POST /trading/ledger/:id/acknowledge`. The note is required —
+ * an empty ack provides no audit value. Trim happens server-side; the
+ * frontend modal additionally disables submit on whitespace-only input.
+ */
+export const acknowledgeLedgerRequestSchema = z.object({
+  note: z.string().min(1).max(1000),
+});
+export type AcknowledgeLedgerRequest = z.infer<typeof acknowledgeLedgerRequestSchema>;
