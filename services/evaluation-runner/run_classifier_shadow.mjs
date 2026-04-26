@@ -52,6 +52,7 @@ const allEntries = dataset.entries;
 const entries = limit ? allEntries.slice(0, limit) : allEntries;
 
 // ── Rule classifier (inlined mirror of query-classifier-rules.ts) ──────────
+// Phase 1.5 (2026-04-26): vocabulary closed against golden v2.2.
 
 const RELATION_CUES =
   /\b(competitor|supplier|partner|acquired|subsidiary|related|connected|supply chain|board member|invested in|CEO of)\b/i;
@@ -62,10 +63,16 @@ const ANALYTICAL_KEYWORDS =
 const ANALYTICAL_LENGTH_THRESHOLD = 120;
 const TICKER_CANDIDATE = /\b[A-Z]{2,5}\b/g;
 const TIME_ANCHOR = /\b(?:Q[1-4]|FY\d{2,4}|20\d{2})\b/;
-const SECTION_IDENTIFIER = /\b(?:Item\s+\d+[A-Z]?|Section\s+\d+(?:\.\d+)*|Note\s+\d+)\b/i;
+const SECTION_IDENTIFIER = /\b(?:Item\s+\d+[A-Z]?|Section\s+\d+(?:\.\d+)*|Note\s+\d+|Part\s+[IVX]+)\b/i;
 const NUMERIC_IDENTIFIER = /\bISIN\s+[A-Z0-9]{12}\b|\bCUSIP\s+[A-Z0-9]{9}\b|\bEPS\b|\bP\/E\b/;
 const QUOTED_PHRASE = /"[^"]{3,}"/;
+// DOC_TYPE_KEYWORDS retained for diagnostic use; no longer fires the
+// triple-gate fallback after phase 1.5 tightening.
 const DOC_TYPE_KEYWORDS = /\b(revenue|earnings|10-?K|10-?Q|8-?K|filing|report|guidance)\b/i;
+const NUMERIC_QUERY =
+  /\b(EPS|earnings per share|P\/?E ratio|diluted EPS|revenue per share|growth rate|operating margin|gross margin|net margin|price target|market cap)\b/i;
+const SUMMARY_INTENT =
+  /\b(summary of|give me a (quick )?rundown|tldr|tl;dr|brief overview|short summary|what does .{1,80} do\??|tell me about|explain in (one|short))\b/i;
 const COLLOQUIAL_OPENERS =
   /^\s*(hi|hello|hey|yo|sup|thanks?|thank\s+you|ty|tysm|bye|goodbye|ok(ay)?|cool|lol|nice|got\s+it|sounds\s+good|help(?:\s+me)?)[\s!?.,]*$/i;
 
@@ -96,12 +103,14 @@ function isKnownTicker(t) {
 function classifyByRules(query) {
   if (isExactLookup(query)) return { class: 'exact_lookup', confidence: 1, rule: 'exact_lookup' };
   if (isMultiPart(query)) return { class: 'multi_part', confidence: 1, rule: 'multi_part' };
+  if (NUMERIC_QUERY.test(query)) return { class: 'numeric', confidence: 1, rule: 'numeric' };
+  if (SUMMARY_INTENT.test(query)) return { class: 'summary', confidence: 1, rule: 'summary' };
+  if (RELATION_CUES.test(query) || GRAPH_QUERY_PATTERNS.test(query))
+    return { class: 'relational', confidence: 1, rule: 'relational' };
   if (ANALYTICAL_KEYWORDS.test(query))
     return { class: 'analytical', confidence: 1, rule: 'analytical_keyword' };
   if (query.length > ANALYTICAL_LENGTH_THRESHOLD)
     return { class: 'analytical', confidence: 0.5, rule: 'analytical_length' };
-  if (RELATION_CUES.test(query) || GRAPH_QUERY_PATTERNS.test(query))
-    return { class: 'relational', confidence: 1, rule: 'relational' };
   if (COLLOQUIAL_OPENERS.test(query)) return { class: 'colloquial', confidence: 1, rule: 'colloquial' };
   return { class: 'factoid', confidence: 0.4, rule: 'fallback' };
 }
@@ -114,7 +123,8 @@ function isExactLookup(query) {
   const candidates = Array.from(query.matchAll(TICKER_CANDIDATE), (m) => m[0]);
   if (candidates.length === 0) return false;
   if (candidates.some(isKnownTicker)) return true;
-  return DOC_TYPE_KEYWORDS.test(query);
+  // Phase 1.5: tightened — doc-type keyword alone is no longer enough.
+  return false;
 }
 
 function isMultiPart(query) {
@@ -130,8 +140,10 @@ const LLM_SYSTEM_PROMPT = `Classify each financial-research query into exactly o
 - exact_lookup: literal section / ticker+time / quoted phrase / numeric id (ISIN, CUSIP, EPS, P/E)
 - factoid: short factual question with a single answer
 - relational: about relationships between companies / entities (competitors, suppliers, partners, board members, CEO of)
-- analytical: requires analysis, compare, explain, summarize, impact, risk, driver, outlook
+- analytical: requires analysis, compare, explain, impact, risk, driver, outlook
 - multi_part: contains multiple distinct sub-questions joined with "and" / "?"
+- numeric: question about a specific numeric metric (EPS, P/E, operating margin, gross margin, growth rate, price target, market cap)
+- summary: request for a company / topic overview without deep analysis (summary of, tldr, tell me about, give me a rundown)
 - colloquial: chitchat / non-research (hi, thanks, bye, ok, etc.)
 
 Respond with ONLY a single-line JSON object: {"class":"<class>","confidence":<0..1>,"reasoning":"<one short sentence>"}`;
@@ -142,6 +154,8 @@ const LLM_FEW_SHOT = [
   { q: 'who are competitors of Tesla?', class: 'relational' },
   { q: 'compare Apple and Microsoft margin trends', class: 'analytical' },
   { q: 'What is Tesla revenue and what is the operating margin?', class: 'multi_part' },
+  { q: 'What is AAPL diluted EPS in FY2024?', class: 'numeric' },
+  { q: 'Tell me about Tesla', class: 'summary' },
   { q: 'hi can you help me out?', class: 'colloquial' },
 ];
 
@@ -151,6 +165,8 @@ const VALID_CLASSES = new Set([
   'relational',
   'analytical',
   'multi_part',
+  'numeric',
+  'summary',
   'colloquial',
 ]);
 
@@ -289,7 +305,16 @@ function topConfusion(confusion, k = 3) {
 async function main() {
   const startedAt = Date.now();
 
-  const ruleClasses = ['exact_lookup', 'factoid', 'relational', 'analytical', 'multi_part', 'colloquial'];
+  const ruleClasses = [
+    'exact_lookup',
+    'factoid',
+    'relational',
+    'analytical',
+    'multi_part',
+    'numeric',
+    'summary',
+    'colloquial',
+  ];
   const goldenClassSet = new Set(entries.map((e) => e.query_class).filter(Boolean));
   const allClasses = Array.from(new Set([...ruleClasses, ...goldenClassSet]));
 
@@ -374,7 +399,9 @@ async function main() {
 
   const ranAtMs = Date.now();
   const report = {
-    schema: 'classifier-shadow-v1',
+    schema: 'classifier-shadow-v2',
+    schema_version: 'v2',
+    phase: '1.5',
     dataset: datasetPath,
     dataset_version: meta?.version ?? dataset?.version ?? 'unknown',
     n_total: allEntries.length,
@@ -398,9 +425,10 @@ async function main() {
     wall_clock_ms: ranAtMs - startedAt,
     ran_at: new Date(ranAtMs).toISOString(),
     notes: [
-      'Phase 1 offline shadow eval — rule logic is duplicated inline in this script.',
+      'Phase 1.5 offline shadow eval — rule logic is duplicated inline in this script.',
       'See apps/api/src/rag/__tests__/query-classifier-rules.spec.ts for the canonical behavioural test.',
-      'Vocabulary gap is reported, not patched — see plan key decision #4.',
+      'Vocabulary closed: numeric + summary now emitted by rules.',
+      'exact_lookup triple-gate fallback (ticker + time anchor + doc-type) was tightened — only whitelisted-ticker single-gate or section/numeric/quoted-phrase paths fire now.',
     ],
   };
 
