@@ -250,14 +250,18 @@ embed-1b-v2` going forward. V16 rewritten to declare
     `pnpm --filter @finsentinel/api typecheck` PASS,
     `pnpm --filter @finsentinel/api test` 1752/1752 PASS (1 skipped).
 
-### `apps/web` full lint is blocked by pre-existing violations
+### `apps/web` full lint — RESOLVED 2026-04-25
 
-- **Observed:** 2026-04-18 while verifying the Operator Console Timeline UI.
-- **Command:** `pnpm --filter @finsentinel/web lint`
-- **Failure:** `apps/web/src/context/AuthContext.tsx` violates `react-hooks/set-state-in-effect`; `apps/web/src/lib/rag/__tests__/hybrid-search.test.ts` has an unused `HybridHit` import; `apps/web/src/lib/tauri/__tests__/is-tauri.test.ts` uses explicit `any`.
-- **Impact:** Full package lint cannot be used as a clean PR gate for unrelated web UI changes until these files are fixed.
-- **Likely fix path:** Fix each lint violation directly and keep future UI PRs using full package lint as the default gate.
-- **Status:** Open.
+- **Originally observed:** 2026-04-18 while verifying the Operator Console Timeline UI.
+- **Cited violations:**
+  - `apps/web/src/context/AuthContext.tsx` `react-hooks/set-state-in-effect`
+  - `apps/web/src/lib/rag/__tests__/hybrid-search.test.ts` unused `HybridHit`
+  - `apps/web/src/lib/tauri/__tests__/is-tauri.test.ts` explicit `any`
+- **Audit 2026-04-25:** `pnpm --filter @finsentinel/web lint` exits 0 with
+  zero output. `HybridHit` is actively consumed by `assertHybridHitShape` in
+  the rag hybrid-search test. The other two violations were quietly fixed
+  by intermediate PRs without updating this entry. No code change needed.
+- **Status:** Closed.
 
 ### `packages/db` build config blocks workspace typecheck
 
@@ -332,25 +336,30 @@ embed-1b-v2` going forward. V16 rewritten to declare
 - **Status:** Closed. Backend prerequisites + Holdings frontend wiring
   all in. Citation badge tracked separately below.
 
-### PL-7 Citation badge — blocked on web rendering surface
+### PL-7 Citation badge — RESOLVED 2026-04-25
 
-- **Observed:** 2026-04-25 during PL-7 phase 2 frontend audit.
-- **Evidence:** Citation backend (`citationSchema.publishedAt`) is ready
-  via commit `c265be6`. The web has no per-citation rendering surface
-  today: `apps/web/src/views/AnalysisPage.tsx` mounts only
-  `ArtifactsPanel` and `FinalReportPanel`; neither lists individual
-  citations.
-- **Impact:** Citation badge cannot ship without a UI surface to attach
-  to. Backend timestamp plumbing is wasted bytes until then.
-- **Unblock path:** When the analysis UI gains a citations panel
-  (whatever form it takes — sidebar, footnote list, inline reference
-  popover), add `<FreshnessBadge surface="citation" sourceTimestampMs={
-  publishedAt ? Date.parse(publishedAt) : null } />` per citation row.
-  The `citation` surface is already configured in
-  `apps/web/src/lib/freshness/freshness-config.ts` (24 h fresh / 7 d
-  stale).
-- **Status:** Open. Awaiting a citations rendering surface in the
-  analysis UI.
+- **Originally observed:** 2026-04-25 during PL-7 phase 2 frontend audit.
+- **Backend prerequisite:** `citationSchema.publishedAt` landed via
+  commit `c265be6`.
+- **Frontend landing:** `feat/2026-04-25-citations-panel` adds a
+  `CitationsPanel` that lists citations grouped by stage with a
+  `<FreshnessBadge surface="citation" />` per row. Mounted on
+  `AnalysisPage.tsx` between `ArtifactsPanel` and `FinalReportPanel`.
+  - `apps/web/src/components/analysis/CitationsPanel.tsx` (new)
+    — commit `621cd5a`.
+  - `apps/web/src/views/AnalysisPage.tsx` mount + render-test
+    — commit `5ffefde`.
+  - `apps/web/src/api/analysis-runs.ts` tightened
+    `AnalysisStageResponse.structuredOutput` to the shared
+    `StageStructuredOutput` shape so the panel can read
+    `stage.structuredOutput?.citations` without a cast
+    — commit `e649373`.
+- **Surface decisions:**
+  - Per-stage grouping (matches the analysis page mental model).
+  - Always-render badge: missing `publishedAt` → `Unknown` badge so the
+    trust signal is never silently dropped.
+  - No de-duplication across stages in v1 — phase 2 may dedupe.
+- **Status:** Closed.
 
 ## 2026-04-17 — carried over from v1.1 hardening
 

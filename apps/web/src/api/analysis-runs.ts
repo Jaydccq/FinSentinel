@@ -3,6 +3,7 @@ import {
   type StrategyArchivePayload as SharedStrategyArchivePayload,
   type RoleSummary,
   type AnalysisPreset,
+  type StageStructuredOutput,
 } from '@finsentinel/shared';
 
 import { resolveBase, authHeaders, withCsrfHeader } from './client';
@@ -101,7 +102,7 @@ export interface AnalysisStageResponse {
   humanReportMarkdown: string | null;
   startedAt: string | null;
   completedAt: string | null;
-  structuredOutput?: { roleSummaries?: RoleSummary[]; [key: string]: unknown };
+  structuredOutput?: StageStructuredOutput;
 }
 
 export interface AnalysisArtifactResponse {
