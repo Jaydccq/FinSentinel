@@ -292,7 +292,8 @@ embed-1b-v2` going forward. V16 rewritten to declare
 - **Observed:** 2026-04-25 during the PL-7 source-timestamp audit (see plan
   background section).
 - **Plan:** `docs/exec-plans/2026-04-25-pl7-phase2-backend.md` (drafted and
-  shipped 2026-04-25).
+  shipped 2026-04-25); `docs/exec-plans/2026-04-25-pl7-phase2-frontend.md`
+  (drafted and shipped 2026-04-25).
 - **Citation gap:** ~~`citationSchema` has no timestamp field~~ → CLOSED 2026-04-25
   via commit `c265be6`. `citationSchema` now has optional
   `publishedAt: z.string().datetime().optional()`. Citation builders propagate
@@ -300,15 +301,19 @@ embed-1b-v2` going forward. V16 rewritten to declare
   `flatMap` into team output; LLM-emitted `publishedAt` flows through
   without per-team plumbing changes.
 - **Holdings gap:** ~~`portfolioResponseSchema` lacks a snapshot timestamp~~ →
-  PARTIALLY CLOSED 2026-04-25 via commit `132d944`. `portfolioResponseSchema`
-  now has nullable `valuedAt: z.string().datetime().nullable()`.
-  `PortfolioService.computeValuedAt(timestamps[])` helper landed with
-  defensive seconds→ms coerce, freshest-of min, null on empty.
-  **Remaining sub-gap:** the wire population currently sets `valuedAt: null`
-  with a `TODO(pl-7-phase2)` because `PortfolioService` does not depend on
-  `MarketDataService` today. Plumbing `quote.timestamp` from quote fetches
-  into the response builder is a separate change; until it lands, the
-  Holdings badge will degrade to Unknown for all responses.
+  CLOSED 2026-04-25 via commits `132d944` (schema + helper) and `e78de9f`
+  (wire-side plumbing). `portfolioResponseSchema` has nullable
+  `valuedAt: z.string().datetime().nullable()`.
+  `PortfolioService.computeValuedAt(timestamps[])` helper has defensive
+  seconds→ms coerce, freshest-of min, null on empty.
+  Read paths (`getPortfolio`, `getPortfolios`) now call
+  `MarketDataService.getQuote` per holding via `Promise.allSettled`
+  (capped at 50 symbols) and pass the timestamps into
+  `toPortfolioResponse`. Failed quotes degrade to null without breaking
+  the response. Mutation paths intentionally keep `valuedAt: null` —
+  those responses reflect the new holdings row, not refreshed market
+  state, and the badge will briefly show Unknown until the next SWR
+  revalidation.
 - **Provider-side timestamp normalization:** ~~`fmp.provider.ts:90` emits
   seconds~~ → CLOSED 2026-04-25 via commit `b58838d`. FMP now multiplies
   upstream timestamp by 1000 at the provider boundary; all providers emit
@@ -316,12 +321,36 @@ embed-1b-v2` going forward. V16 rewritten to declare
   `apps/web/src/lib/freshness/quote-timestamp.ts` stays for now (cheap
   belt-and-braces) and can be removed in a later cleanup once we trust
   the provider contract has held.
-- **Frontend wiring:** Citation badge can ship now. Holdings badge ships
-  whenever `valuedAt` is wired to real quote timestamps; until then the
-  badge will render Unknown — acceptable, but means phase-2 frontend
-  work for Holdings is gated on the quote-timestamp plumbing follow-up.
-- **Status:** Backend prerequisites mostly closed; Holdings wire-side
-  population is the remaining sub-gap.
+- **Frontend wiring:** Holdings badge landed 2026-04-25 via commit
+  `c4b2b66` on `apps/web/src/views/PortfolioPage.tsx` — renders inline
+  with the per-portfolio "Holdings" header on the expanded view, sourced
+  from `PortfolioResponse.valuedAt`. DashboardPage was intentionally
+  skipped: it shows aggregate per-portfolio data (totalValue, holdings
+  count) but does not render holdings rows, so the spec target ("the
+  holdings summary header") does not exist there. Citation badge stays
+  deferred — see next entry.
+- **Status:** Closed. Backend prerequisites + Holdings frontend wiring
+  all in. Citation badge tracked separately below.
+
+### PL-7 Citation badge — blocked on web rendering surface
+
+- **Observed:** 2026-04-25 during PL-7 phase 2 frontend audit.
+- **Evidence:** Citation backend (`citationSchema.publishedAt`) is ready
+  via commit `c265be6`. The web has no per-citation rendering surface
+  today: `apps/web/src/views/AnalysisPage.tsx` mounts only
+  `ArtifactsPanel` and `FinalReportPanel`; neither lists individual
+  citations.
+- **Impact:** Citation badge cannot ship without a UI surface to attach
+  to. Backend timestamp plumbing is wasted bytes until then.
+- **Unblock path:** When the analysis UI gains a citations panel
+  (whatever form it takes — sidebar, footnote list, inline reference
+  popover), add `<FreshnessBadge surface="citation" sourceTimestampMs={
+  publishedAt ? Date.parse(publishedAt) : null } />` per citation row.
+  The `citation` surface is already configured in
+  `apps/web/src/lib/freshness/freshness-config.ts` (24 h fresh / 7 d
+  stale).
+- **Status:** Open. Awaiting a citations rendering surface in the
+  analysis UI.
 
 ## 2026-04-17 — carried over from v1.1 hardening
 
