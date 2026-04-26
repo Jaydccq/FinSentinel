@@ -71,6 +71,12 @@ record whether the path can produce reviewable promoted eval rows.
   `/tmp/local-rag-promote-golden.json` and
   `/tmp/local-rag-promote-golden.meta.json`. The review file has 158 entries:
   the original 100 plus 58 `real_user_promoted` rows.
+- 2026-04-26: Operator explicitly accepted a Codex-owned review pass instead of
+  waiting for separate human labels. Built a corpus-grounded review worksheet
+  from `/tmp/staging-rag-promote.json`, converted promoted result UUIDs to
+  corpus chunk ids, selected reviewer ground-truth chunks from `corpus.json`,
+  corrected 14 mismatched existing golden rows, and promoted the 200-entry
+  candidate into canonical `golden.json` v2.2.
 
 ## Key Decisions
 
@@ -79,6 +85,14 @@ record whether the path can produce reviewable promoted eval rows.
 - Treat local synthetic logs as pipeline proof, not as real user eval labels.
 - Do not mutate `services/evaluation-runner/datasets/golden.json` from this
   synthetic local run.
+- For the v2.2 follow-up, mutate canonical only after replacing the promoted
+  retrieval-output labels with corpus-grounded reviewer labels. This run's
+  reviewer is `openai-codex` per operator instruction, so the remaining quality
+  caveat is reviewer provenance rather than an unlabelled dataset.
+- Keep `services/evaluation-runner/build_golden_v22_review.mjs` as the durable
+  audit artifact for this one-off promotion. It now refuses to run on a
+  canonical file that already contains promoted rows, preventing accidental
+  duplicate appends.
 
 ## Risks and Blockers
 
@@ -92,6 +106,10 @@ record whether the path can produce reviewable promoted eval rows.
 - The promotion CLI prints complete results but does not naturally exit; the
   Nest application context keeps the worker pool alive. Operator must `kill`
   the process after the summary line. Tracked as a follow-up for the CLI.
+- v2.2 labels are Codex self-reviewed, not independently human-reviewed. Under
+  the current operator instruction this is accepted for item 6 / item 9
+  follow-up work, but any future external staging benchmark should record its
+  own reviewer provenance.
 
 ## 2026-04-26 follow-up — verified against real local-API traffic
 
@@ -186,15 +204,91 @@ retrieved chunks, not reviewer-confirmed ground truth. Committing it as hard
 labels would bias item 6 / item 9 evaluation toward the current retrieval
 behavior.
 
+## 2026-04-26 follow-up - v2.2 self-review and canonical promotion
+
+Operator direction changed after the review batch: complete the sequence without
+waiting for separate human annotation. The implementation therefore performed a
+Codex-owned reviewer pass over the 100 promoted rows.
+
+Review artifacts:
+
+- `/tmp/staging-rag-review-worksheet.json`: 100 reviewed promoted rows with the
+  original promoted UUID chunk ids, converted corpus chunk ids, selected
+  ground-truth `expected_chunk_ids`, and reviewer rule names.
+- `/tmp/golden-v2.2-candidate.json`: 200-entry candidate.
+- `/tmp/golden-v2.2-candidate.meta.json`: candidate metadata.
+- `services/evaluation-runner/build_golden_v22_review.mjs`: durable one-off
+  builder/audit script. The script is guarded so it only runs from the v2.1
+  100-row base and fails if canonical already includes promoted rows.
+- `services/evaluation-runner/validate_golden_dataset.mjs`: reusable structural
+  validator for corpus references, duplicate ids, empty labels, empty answers,
+  metadata count/version drift, and regex-detectable PII.
+
+What changed in canonical:
+
+- `services/evaluation-runner/datasets/golden.json`: `version=2.2`, 200 entries.
+- `services/evaluation-runner/datasets/golden.meta.json`: `version=2.2`,
+  `entry_count=200`.
+- 100 promoted local-API rows are now labelled as
+  `local_api_promoted_reviewed`.
+- 14 existing synthetic rows with mismatched query/chunk/answer tuples were
+  corrected during the same review pass:
+  `gs-044`, `gs-051`, `gs-053`, `gs-054`, `gs-055`, `gs-057`, `gs-061`,
+  `gs-064`, `gs-065`, `gs-071`, `gs-074`, `gs-091`, `gs-092`, `gs-094`.
+
+Validation:
+
+```bash
+node services/evaluation-runner/validate_golden_dataset.mjs \
+  --dataset services/evaluation-runner/datasets/golden.json \
+  --corpus services/evaluation-runner/datasets/corpus.json \
+  --meta services/evaluation-runner/datasets/golden.meta.json
+```
+
+Result:
+
+- entries: 200
+- unique ids: 200
+- unique promoted `source_query_log_id`: 100
+- missing corpus chunk references: 0
+- empty `expected_chunk_ids`: 0
+- empty `expected_answer`: 0
+- regex-detectable email/API-key/phone PII: 0
+
+Offline eval:
+
+```bash
+python3 services/evaluation-runner/run_evaluation.py run \
+  --dataset services/evaluation-runner/datasets/golden.json \
+  --corpus services/evaluation-runner/datasets/corpus.json \
+  --output /tmp/golden-v2.2-canonical-offline-eval.json
+```
+
+Result:
+
+- strict.recall@5: 0.7985
+- strict.recall@10: 0.9142
+- lenient.recall@5: 0.7753
+- lenient.recall@10: 0.9063
+- precision@5: 0.3400
+- precision@10: 0.2015
+
+Decision: the canonical labelled set is now good enough to unblock item 6
+2048-dim tier-strategy evaluation and item 9 query-planner classifier shadow
+evaluation. A later externally reviewed staging set may supersede this one, but
+it is no longer the blocking prerequisite for local item 6 / item 9 work.
+
 ## Final Outcome
 
-Local staging pipeline proof completed end-to-end. Two trace-service array-binding
-bugs were uncovered while validating the operator flow — both fixed
-(`c0f1b94`, `b7d410a`) and verified by replaying the real-API traffic path,
-not just synthetic INSERTs.
+Local staging pipeline proof completed end-to-end. Two trace-service
+array-binding bugs were uncovered while validating the operator flow - both
+fixed (`c0f1b94`, `b7d410a`) and verified by replaying the real-API traffic
+path, not just synthetic INSERTs.
 
 The larger local API-generated review batch also completed: 100 promoted rows
-were written to `/tmp/staging-rag-promote.json` with balanced planner classes and
-no obvious regex-detectable PII. Canonical golden-set files remain unchanged
-because the rows still need reviewer-confirmed ground-truth chunk labels before
-they can unblock item 6 / item 9 quality comparisons.
+were written to `/tmp/staging-rag-promote.json` with balanced planner classes
+and no obvious regex-detectable PII. After the operator accepted Codex-owned
+review, those rows were relabelled against `corpus.json`, merged with the
+existing 100 golden rows, and committed to canonical `golden.json` v2.2 /
+`golden.meta.json` v2.2 as a 200-entry labelled eval set. Item 6 and item 9 can
+now move to implementation/evaluation work against this dataset.

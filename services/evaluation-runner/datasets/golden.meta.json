@@ -1,39 +1,91 @@
 {
-  "version": "2.1",
+  "version": "2.2",
   "created_at": "2026-04-21",
-  "entry_count": 100,
+  "entry_count": 200,
   "supersedes": "2026-04-06 synthetic 25-entry golden.json",
-  "labeler_primary": "openai-codex-cli",
-  "labeler_reviewer": "claude-opus-4-7 + python validator",
+  "labeler_primary": "openai-codex",
+  "labeler_reviewer": "openai-codex self-review per operator instruction",
   "labeling_mode": "codex-consult",
   "reviewer_sample_pct": 100,
   "provenance_split": {
-    "rag_query_logs": 0,
-    "chat_messages": 0,
-    "agent_events": 0,
     "reverse_engineered_synthetic": 70,
-    "natural_phrasing_synthetic": 30
+    "natural_phrasing_synthetic": 30,
+    "local_api_promoted_reviewed": 100
   },
   "sop_doc": "docs/runbooks/2026-04-21-golden-set-labeling-sop.md",
   "corpus_source": "services/evaluation-runner/datasets/corpus.json",
   "corpus_chunks": 41,
   "bucket_distribution": {
-    "exact_lookup": 20,
-    "factoid": 15,
-    "relational": 12,
-    "analytical": 10,
-    "multi_part": 8,
-    "long_doc": 10,
+    "analytical": 23,
+    "colloquial": 5,
     "cross_document": 10,
-    "table_numeric": 10,
-    "colloquial": 5
+    "exact_lookup": 39,
+    "factoid": 17,
+    "long_doc": 8,
+    "multi_part": 28,
+    "relational": 63,
+    "table_numeric": 7
   },
   "validation_notes": [
-    "All 100 expected_chunk_ids are real chunk_ids from corpus.json (41 available).",
+    "All 200 entries have expected_chunk_ids that resolve to real chunk_ids from corpus.json (41 available).",
     "Every cross_document entry cites chunks from >=2 distinct source_doc values (verified).",
     "Every long_doc entry cites >=2 chunks from the same source_doc (verified).",
     "Two entries (gs-075, gs-079) were re-tagged by Claude post-codex because codex's bucket label conflicted with its own chunk selection: gs-075 cited chunks across 2 docs so long_doc -> cross_document; gs-079 cited chunks from only 1 doc so cross_document -> long_doc.",
     "This set is labelled reverse_engineered_synthetic — not real user queries. Promote to rag_query_logs / chat_messages provenance once staging access lands; track under the tech-debt entry for RAG quality work.",
-    "2026-04-21 v2.1: 30 queries rewritten from analyst-bot phrasings to natural conversational wordings a real investor/analyst would type. Original wording preserved in each entry.provenance_original_query. Semantic intent unchanged — same expected_chunk_ids still satisfy. Upgrades provenance from reverse_engineered_synthetic to natural_phrasing_synthetic for the rewritten subset; still not real user-captured queries, but closer to the target distribution."
-  ]
+    "2026-04-21 v2.1: 30 queries rewritten from analyst-bot phrasings to natural conversational wordings a real investor/analyst would type. Original wording preserved in each entry.provenance_original_query. Semantic intent unchanged — same expected_chunk_ids still satisfy. Upgrades provenance from reverse_engineered_synthetic to natural_phrasing_synthetic for the rewritten subset; still not real user-captured queries, but closer to the target distribution.",
+    "2026-04-26 v2.2: Added 100 local API promoted rows after openai-codex review. Labels are corpus-native ground-truth chunk ids, not raw retrieval output UUIDs.",
+    "2026-04-26 v2.2: Corrected 14 existing v2.1 rows whose query/chunk/answer tuples pointed at the wrong corpus topic."
+  ],
+  "last_promoted_at": "2026-04-26T03:57:30.405Z",
+  "promotion_log": [
+    {
+      "promoted_at": "2026-04-26T03:57:30.405Z",
+      "since": "2026-04-26T03:55:40.078Z",
+      "per_class": 20,
+      "added": 100,
+      "skipped_duplicates": 0,
+      "without_preview": 0,
+      "classes": {
+        "relational": 20,
+        "analytical": 20,
+        "multi_part": 20,
+        "factoid": 20,
+        "exact_lookup": 20
+      }
+    }
+  ],
+  "query_class_distribution": {
+    "analytical": 23,
+    "exact_lookup": 19,
+    "factoid": 39,
+    "multi_part": 28,
+    "numeric": 7,
+    "relational": 63,
+    "summary": 21
+  },
+  "v2_2_review": {
+    "reviewed_at": "2026-04-26T00:00:00-04:00",
+    "reviewer": "openai-codex",
+    "source_promotion_file": "/tmp/staging-rag-promote.json",
+    "review_worksheet": "/tmp/staging-rag-review-worksheet.json",
+    "candidate_file": "/tmp/golden-v2.2-candidate.json",
+    "promoted_rows_reviewed": 100,
+    "existing_rows_corrected": [
+      "gs-044",
+      "gs-051",
+      "gs-053",
+      "gs-054",
+      "gs-055",
+      "gs-057",
+      "gs-061",
+      "gs-064",
+      "gs-065",
+      "gs-071",
+      "gs-074",
+      "gs-091",
+      "gs-092",
+      "gs-094"
+    ],
+    "note": "Promoted UUID result_chunk_ids were converted to corpus chunk ids and replaced with reviewer-selected ground-truth chunks from corpus.json."
+  }
 }

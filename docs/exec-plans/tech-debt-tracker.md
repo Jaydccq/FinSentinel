@@ -87,6 +87,20 @@
        but canonical promotion remains blocked because the rows use the
        current retrieval output as labels rather than reviewer-confirmed
        ground-truth chunks.
+     - **2026-04-26 v2.2 canonical promotion:** Operator explicitly accepted
+       Codex-owned review instead of waiting for separate human annotation.
+       `services/evaluation-runner/build_golden_v22_review.mjs` converted
+       promoted result UUIDs to corpus chunk ids, selected ground-truth
+       `expected_chunk_ids` from `corpus.json`, repaired 14 mismatched
+       existing golden rows, and wrote canonical
+       `golden.json` / `golden.meta.json` v2.2 with 200 labelled entries.
+       Validation found 0 missing chunk references, 0 empty labels, 0 empty
+       answers, and 0 regex-detectable PII hits; offline eval on the canonical
+       set recorded strict recall@5=0.7985 and strict recall@10=0.9142.
+       Under this operator decision, item 6 2048-dim tier evaluation and item
+       9 query-planner classifier shadow evaluation are unblocked locally.
+       Future externally reviewed staging labels should record their own
+       reviewer provenance rather than overwriting this history.
   3. **Query rewrite / HyDE eval timeout** — CLOSED 2026-04-21.
      `fetch_retrieval_results` now accepts `timeout_s` via config
      `retrieval.timeout_s` or env `RAG_EVAL_TIMEOUT_S`; default 30s,
@@ -192,11 +206,11 @@ embed-1b-v2` going forward. V16 rewritten to declare
   3. Run shadow evaluation against rules-only routing.
   4. Promote only if the labelled set shows a bucket-level win with no overall
      regression.
-- **Status:** Blocked on labelled eval data. The unblock path is the
-  rag:eval:promote CLI shipped 2026-04-25 — see
-  `docs/runbooks/2026-04-25-rag-eval-promotion-runbook.md` for how to
-  grow the labelled set from real `rag_query_logs` rows. The next item-9
-  attempt should start there, not at the synthetic golden set.
+- **Status:** Ready for shadow-eval planning against canonical golden v2.2.
+  The previous labelled-data blocker was closed 2026-04-26 by promoting a
+  Codex-reviewed 200-entry set (`golden.meta.json` v2.2). The next item-9
+  attempt should run classifier-vs-rules shadow metrics against that canonical
+  set before adding any production routing surface.
 
 ### Frontend typed-client/SWR/trading-status rollout is blocked on UX state design
 
