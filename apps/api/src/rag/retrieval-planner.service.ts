@@ -2,17 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { QueryRewriteService } from './query-rewrite.service';
 import { QueryVariantService } from './query-variant.service';
-import { isKnownTicker } from './ticker-whitelist';
+import { classifyByRules, type QueryClass } from './query-classifier-rules';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type QueryClass =
-  | 'exact_lookup'
-  | 'factoid'
-  | 'relational'
-  | 'analytical'
-  | 'multi_part'
-  | 'colloquial';
+export type { QueryClass };
 export type VariantKind = 'original' | 'rewrite' | 'hyde' | 'subquery';
 
 export interface QueryVariant {
@@ -46,59 +40,10 @@ export interface RetrievalPlan {
   fallbackFlags: string[];
 }
 
-// ── Classifiers ───────────────────────────────────────────────────────────────
-
-const RELATION_CUES =
-  /\b(competitor|supplier|partner|acquired|subsidiary|related|connected|supply chain|board member|invested in|CEO of)\b/i;
-
-const GRAPH_QUERY_PATTERNS =
-  /\b(who|which companies|what companies|competitors of|suppliers of|partners of|how .* connected|how .* related)\b/i;
-
-const ANALYTICAL_KEYWORDS =
-  /\b(compare|analyze|analyse|explain|summarize|summarise|impact|risk|driver|outlook)\b/i;
-
-const ANALYTICAL_LENGTH_THRESHOLD = 120;
-
-// ── exact_lookup heuristics (R3.1) ────────────────────────────────────────────
-
-/** ALLCAPS token that could be a ticker (2-5 uppercase letters). Case-sensitive. */
-const TICKER_CANDIDATE = /\b[A-Z]{2,5}\b/g;
-
-/** Time anchor: Q1-Q4, FY, or a 4-digit 2000-series year. */
-const TIME_ANCHOR = /\b(?:Q[1-4]|FY\d{2,4}|20\d{2})\b/;
-
-/**
- * Section / item / note identifiers commonly used in filings and legal text
- * (e.g. "Item 1A", "Section 2.1", "Note 15"). Case-insensitive.
- */
-const SECTION_IDENTIFIER = /\b(?:Item\s+\d+[A-Z]?|Section\s+\d+(?:\.\d+)*|Note\s+\d+)\b/i;
-
-/**
- * Numeric / structured identifiers: ISIN, CUSIP, and precise financial
- * metric tokens (EPS, P/E). ISIN and CUSIP are case-sensitive by standard.
- */
-const NUMERIC_IDENTIFIER = /\bISIN\s+[A-Z0-9]{12}\b|\bCUSIP\s+[A-Z0-9]{9}\b|\bEPS\b|\bP\/E\b/;
-
-/** Double-quoted phrase with at least 3 chars inside. */
-const QUOTED_PHRASE = /"[^"]{3,}"/;
-
-/**
- * Document-type keywords used by the triple-gate fallback when a ticker
- * candidate is not in the curated whitelist. Requiring one of these next
- * to a ticker + time-anchor blocks false positives like "THE Q4 2025"
- * while still covering long-tail ticker queries like "XYZ Q4 2025 revenue".
- */
-const DOC_TYPE_KEYWORDS = /\b(revenue|earnings|10-?K|10-?Q|8-?K|filing|report|guidance)\b/i;
-
-/**
- * Chat/greeting openers with no retrieval intent. Distinct from `factoid`
- * so callers can short-circuit candidate thresholds (colloquial traffic
- * shouldn't trip the metadata-prefilter "insufficient candidates" guard).
- */
-const COLLOQUIAL_OPENERS =
-  /^\s*(hi|hello|hey|yo|sup|thanks?|thank\s+you|ty|tysm|bye|goodbye|ok(ay)?|cool|lol|nice|got\s+it|sounds\s+good|help(?:\s+me)?)[\s!?.,]*$/i;
-
 // ── Service ───────────────────────────────────────────────────────────────────
+//
+// Rule-based classification lives in `query-classifier-rules.ts`. The planner
+// is a thin caller; behavior-preserving refactor (2026-04-26).
 
 @Injectable()
 export class RetrievalPlannerService {
@@ -238,64 +183,11 @@ export class RetrievalPlannerService {
   /**
    * Classify the query using regex rules only (no LLM).
    *
-   * Precedence: exact_lookup > multi_part > analytical > relational > colloquial > factoid.
-   * `colloquial` sits below structural checks so a one-word ticker like "AAPL"
-   * still lands in `exact_lookup`.
+   * Delegates to the pure module {@link classifyByRules}. Kept as a thin
+   * private wrapper to preserve the planner's public surface and to make
+   * future swaps (e.g. shadow LLM classifier) localised.
    */
   private classifyQuery(query: string): QueryClass {
-    if (this.isExactLookup(query)) return 'exact_lookup';
-    if (this.isMultiPart(query)) return 'multi_part';
-    if (this.isAnalytical(query)) return 'analytical';
-    if (RELATION_CUES.test(query) || GRAPH_QUERY_PATTERNS.test(query)) return 'relational';
-    if (COLLOQUIAL_OPENERS.test(query)) return 'colloquial';
-    return 'factoid';
-  }
-
-  /**
-   * Heuristic test for `exact_lookup` — deterministic, regex-only, no LLM.
-   *
-   * Any of these fires:
-   *   1. A ticker candidate that PASSES the curated whitelist + a time anchor.
-   *   2. A section / item / note identifier (filings pattern).
-   *   3. A numeric identifier (ISIN, CUSIP, EPS, P/E).
-   *   4. A double-quoted phrase with 3+ chars inside.
-   *   5. Triple-gate fallback: ticker candidate + time anchor + doc-type
-   *      keyword, for long-tail tickers not in the curated whitelist.
-   *      This covers "XYZ Q4 2025 revenue" while blocking "THE Q4 2025".
-   */
-  private isExactLookup(query: string): boolean {
-    if (SECTION_IDENTIFIER.test(query)) return true;
-    if (NUMERIC_IDENTIFIER.test(query)) return true;
-    if (QUOTED_PHRASE.test(query)) return true;
-
-    const hasTimeAnchor = TIME_ANCHOR.test(query);
-    if (!hasTimeAnchor) return false;
-
-    // Collect ALLCAPS candidates. `matchAll` with a /g regex gives each
-    // match; we inspect them against the curated whitelist first (Option C),
-    // then against the triple-gate fallback (Option B) for long-tail symbols.
-    const candidates = Array.from(query.matchAll(TICKER_CANDIDATE), (m) => m[0]);
-    if (candidates.length === 0) return false;
-
-    const whitelisted = candidates.some((c) => isKnownTicker(c));
-    if (whitelisted) return true;
-
-    // Triple-gate fallback: any ticker candidate + doc-type keyword next to
-    // the already-confirmed time anchor. Blocks false positives from ALLCAPS
-    // English words (THE, ANY, FOR, YOU, ...) without a financial context.
-    return DOC_TYPE_KEYWORDS.test(query);
-  }
-
-  private isMultiPart(query: string): boolean {
-    // Multiple question marks
-    const questionMarkCount = (query.match(/\?/g) ?? []).length;
-    if (questionMarkCount >= 2) return true;
-    // "and" adjacent to a question mark (before or after)
-    if (/\?\s*and\b|\band\b[^?]*\?/i.test(query)) return true;
-    return false;
-  }
-
-  private isAnalytical(query: string): boolean {
-    return query.length > ANALYTICAL_LENGTH_THRESHOLD || ANALYTICAL_KEYWORDS.test(query);
+    return classifyByRules(query).class;
   }
 }
