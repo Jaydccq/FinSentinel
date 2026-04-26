@@ -488,22 +488,27 @@ embed-1b-v2` going forward. V16 rewritten to declare
   - No de-duplication across stages in v1 — phase 2 may dedupe.
 - **Status:** Closed.
 
-### `cli-import-env.spec.ts` is flaky in the full api suite
+### `cli-import-env.spec.ts` is flaky in the full api suite — RESOLVED 2026-04-26
 
 - **Observed:** 2026-04-26 during the M4 prereq (2) verification — the
   full `pnpm --filter @finsentinel/api test` run reported one test
   failure in `apps/api/src/rag/__tests__/cli-import-env.spec.ts`. The
-  same file passes deterministically when run in isolation.
-- **Impact:** Full-suite runs occasionally show 1 false-positive
-  failure. People reading CI output have to know which file to ignore.
-  Worse, a real future regression in this file would be assumed
-  flaky.
-- **Likely fix path:** Read the spec, identify the source of order
-  dependence (most likely a shared `process.env` mutation, vitest
-  globals, or a module-cache effect from CLI bootstrap). Either reset
-  the polluted state in `beforeEach`, or move the spec into its own
-  vitest project so it cannot interleave with other tests.
-- **Status:** Open.
+  same file passed deterministically when run in isolation.
+- **Diagnosis (2026-04-26):** Not env pollution and not module-cache.
+  The original single-`it()` looped over 7 dynamic imports; vitest's
+  default `testTimeout` is 5000ms; under full-suite worker load each
+  CLI's transitive-import wall clock (NestFactory + decorators +
+  drizzle + bullmq + ai-runtime) measured 5–6.6s by itself. Splitting
+  into `it.each` first to isolate per-CLI timing made this visible
+  (4-of-7 cases all flagged at 5009–6637ms, well above the 5s budget).
+- **Resolution:** `apps/api/src/rag/__tests__/cli-import-env.spec.ts`
+  rewritten to use `it.each` over 7 named modules with a per-case
+  timeout of `15_000ms` (twice the worst observed plus headroom).
+  Failures now point at the exact module if any CLI ever regresses;
+  isolated runs still finish each case in <1s. Verified by 4
+  consecutive full-suite runs — `1867 passed | 1 skipped`, 0
+  cli-import-env failures.
+- **Status:** Closed (commit `bf584e8`).
 
 ### `TRADING_STATE_MACHINE_ENABLED=false` legacy execute path retirement
 
