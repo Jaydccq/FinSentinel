@@ -370,7 +370,21 @@ git commit -m "docs(tech-debt): close item-9 phase 1 shadow eval; gate phase 2 o
   exact_lookup=19, factoid=39, multi_part=28, numeric=7, relational=63,
   summary=21 (200 total). Rule classifier vocabulary structurally caps
   agreement at 86% before any other error.
+- 2026-04-26: Tasks 1-4 shipped on
+  `feat/2026-04-26-query-classifier-shadow-phase1`. Verifications:
+  `pnpm --filter @finsentinel/api typecheck` PASS;
+  `pnpm --filter @finsentinel/api test --run` 1834 passed / 1 skipped;
+  rules-only eval against golden v2.2 produced a non-zero report;
+  `--llm --yes` full run against real OpenRouter (200 entries) completed
+  in ~196s using 79,885 tokens.
 
 ## Final outcome
 
-(Filled after merge.)
+Phase 1 shipped. Headline numbers (200 entries, golden v2.2):
+
+- Rules-only: accuracy 0.385; vocabulary gap blast radius 28
+  (`summary`, `numeric`); top confusion `relational→factoid` (21).
+- LLM (`openai/gpt-4o-mini`): accuracy 0.385 (TIE). Precision wins on
+  `factoid` (0.86 vs 0.36) and `relational` (0.87 vs 0.73); recall losses
+  elsewhere. Single run; phase 2 promotion gate (see tracker entry) not
+  met. Phase 2 (runtime shadow) remains open.
