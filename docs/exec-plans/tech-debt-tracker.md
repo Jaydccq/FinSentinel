@@ -206,11 +206,34 @@ embed-1b-v2` going forward. V16 rewritten to declare
   3. Run shadow evaluation against rules-only routing.
   4. Promote only if the labelled set shows a bucket-level win with no overall
      regression.
-- **Status:** Ready for shadow-eval planning against canonical golden v2.2.
-  The previous labelled-data blocker was closed 2026-04-26 by promoting a
-  Codex-reviewed 200-entry set (`golden.meta.json` v2.2). The next item-9
-  attempt should run classifier-vs-rules shadow metrics against that canonical
-  set before adding any production routing surface.
+- **Status:** Phase 1 (offline shadow eval) closed 2026-04-26.
+  - Plan: `docs/exec-plans/2026-04-26-query-classifier-shadow-phase1.md`.
+  - Shipped: pure rule classifier extracted to
+    `apps/api/src/rag/query-classifier-rules.ts`; sibling
+    `LlmQueryClassifierService` in
+    `apps/api/src/rag/query-classifier-llm.ts`; offline runner
+    `services/evaluation-runner/run_classifier_shadow.mjs` against golden v2.2.
+  - First shadow numbers (rules-only, 200 entries):
+    accuracy_overall=0.385; vocabulary_gap blast radius 28
+    (`summary`, `numeric` not emitted by rules); top confusion
+    `relational→factoid` (21), `relational→analytical` (17),
+    `factoid→exact_lookup` (14). Report path
+    `services/evaluation-runner/reports/classifier-shadow-<ISO>.json`
+    (gitignored — regenerate locally).
+  - First LLM numbers (`openai/gpt-4o-mini`, 200 entries, single full run):
+    accuracy_overall=0.385 (TIE with rules); LLM gains precision on
+    `factoid` (0.86 vs 0.36) and `relational` (0.87 vs 0.73), but loses
+    recall on `relational` and trades into `analytical` heavily.
+    Total tokens 79,885; ~$0.02 at gpt-4o-mini list.
+  - Phase 2 still OPEN: runtime shadow path under
+    `RAG_QUERY_CLASSIFIER_SHADOW_ENABLED`. Promotion gates (locked in
+    here so the next attempt is mechanical):
+    - ≥ 5 pp absolute precision improvement on at least one bucket, OR
+    - ≥ 2 pp overall accuracy with no per-bucket regression > 1 pp.
+    The current single LLM run does NOT meet either gate; either tune the
+    prompt / model OR extend rule vocabulary to include `numeric` /
+    `summary` (a deliberate planner-policy decision, not a Phase 2
+    shortcut) before re-running shadow.
 
 ### Frontend typed-client/SWR/trading-status rollout is blocked on UX state design
 
