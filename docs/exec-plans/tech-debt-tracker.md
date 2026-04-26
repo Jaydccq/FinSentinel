@@ -250,14 +250,18 @@ embed-1b-v2` going forward. V16 rewritten to declare
     `pnpm --filter @finsentinel/api typecheck` PASS,
     `pnpm --filter @finsentinel/api test` 1752/1752 PASS (1 skipped).
 
-### `apps/web` full lint is blocked by pre-existing violations
+### `apps/web` full lint — RESOLVED 2026-04-25
 
-- **Observed:** 2026-04-18 while verifying the Operator Console Timeline UI.
-- **Command:** `pnpm --filter @finsentinel/web lint`
-- **Failure:** `apps/web/src/context/AuthContext.tsx` violates `react-hooks/set-state-in-effect`; `apps/web/src/lib/rag/__tests__/hybrid-search.test.ts` has an unused `HybridHit` import; `apps/web/src/lib/tauri/__tests__/is-tauri.test.ts` uses explicit `any`.
-- **Impact:** Full package lint cannot be used as a clean PR gate for unrelated web UI changes until these files are fixed.
-- **Likely fix path:** Fix each lint violation directly and keep future UI PRs using full package lint as the default gate.
-- **Status:** Open.
+- **Originally observed:** 2026-04-18 while verifying the Operator Console Timeline UI.
+- **Cited violations:**
+  - `apps/web/src/context/AuthContext.tsx` `react-hooks/set-state-in-effect`
+  - `apps/web/src/lib/rag/__tests__/hybrid-search.test.ts` unused `HybridHit`
+  - `apps/web/src/lib/tauri/__tests__/is-tauri.test.ts` explicit `any`
+- **Audit 2026-04-25:** `pnpm --filter @finsentinel/web lint` exits 0 with
+  zero output. `HybridHit` is actively consumed by `assertHybridHitShape` in
+  the rag hybrid-search test. The other two violations were quietly fixed
+  by intermediate PRs without updating this entry. No code change needed.
+- **Status:** Closed.
 
 ### `packages/db` build config blocks workspace typecheck
 
