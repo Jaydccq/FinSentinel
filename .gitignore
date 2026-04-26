@@ -144,6 +144,7 @@ docs/exec-plans/*
 !docs/exec-plans/2026-04-26-query-classifier-shadow-phase1.md
 !docs/exec-plans/2026-04-26-query-classifier-rules-phase1_5.md
 !docs/exec-plans/2026-04-26-trading-m4-readiness-audit.md
+!docs/exec-plans/2026-04-26-order-ledger-unknown-operator-surface.md
 !docs/technical-guides/
 !docs/technical-guides/autonomous-investment-platform-interview-guide.md
 !docs/technical-guides/autonomous-investment-platform-interview-guide-print.css
