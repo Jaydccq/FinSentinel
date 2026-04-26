@@ -91,9 +91,15 @@ export class RetrievalPlannerService {
     // filings sections, ISIN/CUSIP, quoted phrases). Rewriting those tokens
     // dilutes precision, so we skip rewrite entirely for that class —
     // regardless of RAG_QUERY_REWRITE_ENABLED.
+    // Phase 1.5 (2026-04-26): `numeric` (EPS / margin / growth-rate
+    // questions) joins exact_lookup in skipping rewrite — the literal metric
+    // tokens are what carry retrieval signal.
     let rewrittenQuery = query;
     const shouldRewrite =
-      this.rewriteEnabled && queryClass !== 'exact_lookup' && query.trim().length > 0;
+      this.rewriteEnabled &&
+      queryClass !== 'exact_lookup' &&
+      queryClass !== 'numeric' &&
+      query.trim().length > 0;
     if (shouldRewrite) {
       const rewrite = await this.queryRewrite.rewrite(query);
       rewrittenQuery = rewrite;
@@ -114,7 +120,9 @@ export class RetrievalPlannerService {
     // already excludes exact_lookup by precedence — but we make the
     // intent explicit here so a future refactor that widens either class
     // gate cannot accidentally re-enable expansion for exact_lookup.
-    if (queryClass === 'exact_lookup') {
+    // Phase 1.5: `numeric` follows the same short-circuit — the literal
+    // metric tokens are what carry retrieval signal, no HyDE / decompose.
+    if (queryClass === 'exact_lookup' || queryClass === 'numeric') {
       return {
         originalQuery: query,
         rewrittenQuery,
@@ -127,8 +135,10 @@ export class RetrievalPlannerService {
       };
     }
 
-    // HyDE variant -- analytical class only, gated by flag
-    if (queryClass === 'analytical' && this.hydeEnabled) {
+    // HyDE variant -- analytical class only, gated by flag.
+    // Phase 1.5: `summary` joins analytical here (overview-style requests
+    // benefit from a hypothetical-passage retrieval signal too).
+    if ((queryClass === 'analytical' || queryClass === 'summary') && this.hydeEnabled) {
       const hydePassage = await this.queryVariant.hyde(query);
       if (hydePassage !== null) {
         variants.push({ kind: 'hyde', query: hydePassage });
@@ -176,7 +186,9 @@ export class RetrievalPlannerService {
     originalQuery: string,
     rewrittenQuery: string,
   ): string {
-    if (queryClass === 'exact_lookup') return originalQuery;
+    // Phase 1.5: `numeric` joins exact_lookup — literal metric tokens
+    // (e.g. "EPS", "operating margin") matter at rerank time.
+    if (queryClass === 'exact_lookup' || queryClass === 'numeric') return originalQuery;
     return rewrittenQuery.length > 0 ? rewrittenQuery : originalQuery;
   }
 
