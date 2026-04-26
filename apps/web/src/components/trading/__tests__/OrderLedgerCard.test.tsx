@@ -1,7 +1,14 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { SWRConfig } from 'swr';
+import type { ReactNode } from 'react';
 import { OrderLedgerCard } from '../OrderLedgerCard';
+import { tradingLedgerApi } from '../../../api/trading';
 import type { OrderLedgerRowResponse } from '@finsentinel/shared';
+
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>{children}</SWRConfig>
+);
 
 const baseRow: OrderLedgerRowResponse = {
   id: 'lg-1',
@@ -17,6 +24,9 @@ const baseRow: OrderLedgerRowResponse = {
   errorReason: null,
   createdAt: '2026-04-25T12:00:00Z',
   updatedAt: '2026-04-25T12:00:05Z',
+  acknowledgedAt: null,
+  acknowledgedBy: null,
+  acknowledgementNote: null,
 };
 
 describe('OrderLedgerCard', () => {
@@ -49,15 +59,67 @@ describe('OrderLedgerCard', () => {
     expect(btn.getAttribute('title')).toMatch(/phase 2/i);
   });
 
-  it('renders a disabled Acknowledge button for UNKNOWN_REQUIRES_OPERATOR_REVIEW', () => {
-    render(<OrderLedgerCard row={{ ...baseRow, status: 'UNKNOWN_REQUIRES_OPERATOR_REVIEW' }} />);
+  it('renders an enabled Acknowledge button for UNKNOWN rows that are not yet ack’d', () => {
+    render(
+      <OrderLedgerCard row={{ ...baseRow, status: 'UNKNOWN_REQUIRES_OPERATOR_REVIEW' }} />,
+      { wrapper },
+    );
     const btn = screen.getByRole('button', { name: /acknowledge/i }) as HTMLButtonElement;
-    expect(btn.disabled).toBe(true);
-    expect(btn.getAttribute('title')).toMatch(/phase 2/i);
+    expect(btn.disabled).toBe(false);
+  });
+
+  it('opens the Acknowledge modal on click and submits the note via tradingLedgerApi.acknowledge', async () => {
+    const ackSpy = vi.spyOn(tradingLedgerApi, 'acknowledge').mockResolvedValueOnce({
+      ...baseRow,
+      id: 'lg-1',
+      status: 'UNKNOWN_REQUIRES_OPERATOR_REVIEW',
+      acknowledgedAt: '2026-04-26T02:00:00Z',
+      acknowledgedBy: 'aabbccdd-1111-2222-3333-444455556666',
+      acknowledgementNote: 'verified',
+    });
+
+    render(
+      <OrderLedgerCard row={{ ...baseRow, status: 'UNKNOWN_REQUIRES_OPERATOR_REVIEW' }} />,
+      { wrapper },
+    );
+    fireEvent.click(screen.getByRole('button', { name: /acknowledge/i }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+
+    const ta = screen.getByLabelText(/Acknowledgement note/i) as HTMLTextAreaElement;
+    fireEvent.change(ta, { target: { value: 'verified' } });
+    fireEvent.click(
+      screen.getAllByRole('button', { name: /acknowledge/i })[1] as HTMLButtonElement,
+    );
+    await waitFor(() => {
+      expect(ackSpy).toHaveBeenCalledWith('lg-1', { note: 'verified' });
+    });
+  });
+
+  it('shows the acknowledged metadata + (ack’d) badge suffix when row is ack’d', () => {
+    render(
+      <OrderLedgerCard
+        row={{
+          ...baseRow,
+          status: 'UNKNOWN_REQUIRES_OPERATOR_REVIEW',
+          acknowledgedAt: '2026-04-26T02:00:00Z',
+          acknowledgedBy: 'aabbccdd-1111-2222-3333-444455556666',
+          acknowledgementNote: 'verified with broker',
+        }}
+      />,
+      { wrapper },
+    );
+    // No active button.
+    expect(screen.queryByRole('button', { name: /acknowledge/i })).toBeNull();
+    // Ack metadata is rendered.
+    expect(screen.getByTestId('ack-meta').textContent).toMatch(/acknowledged/i);
+    expect(screen.getByTestId('ack-meta').textContent).toMatch(/verified with broker/);
+    // Badge suffix.
+    expect(screen.getByRole('status').getAttribute('data-acknowledged')).toBe('true');
+    expect(screen.getByRole('status').textContent).toMatch(/ack'd/);
   });
 
   it('does not render an action button for EXECUTED rows', () => {
-    render(<OrderLedgerCard row={baseRow} />);
+    render(<OrderLedgerCard row={baseRow} />, { wrapper });
     expect(screen.queryByRole('button')).toBeNull();
   });
 });

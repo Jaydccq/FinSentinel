@@ -26,6 +26,9 @@ const baseRow = {
   errorReason: null,
   createdAt: '2026-04-25T12:00:00Z',
   updatedAt: '2026-04-25T12:00:05Z',
+  acknowledgedAt: null,
+  acknowledgedBy: null,
+  acknowledgementNote: null,
 };
 
 describe('RecentOrdersSection', () => {

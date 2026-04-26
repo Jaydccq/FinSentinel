@@ -350,6 +350,24 @@ embed-1b-v2` going forward. V16 rewritten to declare
     Prerequisite 3 (read-path audit) is complete, but the repository has no
     one-week M2/M3 trading staging-soak artifact, and UNKNOWN rows still have
     no enabled operator resolve/acknowledge action outside SQL.
+  - **M4 prereq (2) — CLOSED 2026-04-26** on branch
+    `feat/2026-04-26-ledger-unknown-operator-surface` (plan
+    `docs/exec-plans/2026-04-26-order-ledger-unknown-operator-surface.md`).
+    V25 adds `acknowledged_{at,by}` + `acknowledgement_note` and a partial
+    UNKNOWN-pending index. V26 widens the `agent_events` event-type CHECK
+    with `LEDGER_UNKNOWN_ACKNOWLEDGED`. `OrderLedgerService.acknowledge()`
+    is owner-scoped and atomic via the `acknowledged_at IS NULL` WHERE
+    clause; emits a `TRADE_WALLET` AgentEvent. New endpoints
+    `GET /api/trading/ledger/unknown` and
+    `POST /api/trading/ledger/:id/acknowledge`. Web UI: the previously
+    disabled Acknowledge button on `OrderLedgerCard` opens
+    `AcknowledgeUnknownModal`, which captures a required audit note and
+    awaits the server response (no optimistic UI). On success, both
+    `useOrderLedger` and `useOrderLedgerUnknown` SWR caches revalidate.
+    Ack is metadata-only — the row's status stays
+    `UNKNOWN_REQUIRES_OPERATOR_REVIEW`; `OrderStatusBadge` appends an
+    `(ack'd)` suffix. M4 prereqs (1) staging soak and (3) read-path audit
+    remain OPEN.
   - Plan deviations: status enum names corrected to match the SQL CHECK
     (no `PENDING` / `PARTIALLY_FILLED`); copy module covers all 8 real
     enum values; backend ledger read endpoint added (the plan assumed

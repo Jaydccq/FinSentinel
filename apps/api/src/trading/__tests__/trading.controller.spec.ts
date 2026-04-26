@@ -30,6 +30,8 @@ const mockTradingService = {
 
 const mockOrderLedgerService = {
   findRecentByUser: vi.fn(),
+  findUnknownPending: vi.fn(),
+  acknowledge: vi.fn(),
 };
 
 // ── Fake JwtGuard ─────────────────────────────────────────────────────────
@@ -377,6 +379,135 @@ describe('TradingController', () => {
       mockOrderLedgerService.findRecentByUser.mockResolvedValueOnce([]);
       await request(app.getHttpServer()).get('/api/trading/ledger?limit=999').expect(200);
       expect(mockOrderLedgerService.findRecentByUser).toHaveBeenCalledWith(USER_ID, 50);
+    });
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // M4 prereq (2): operator surface for UNKNOWN ledger rows
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  describe('GET /api/trading/ledger/unknown', () => {
+    it('returns UNKNOWN_REQUIRES_OPERATOR_REVIEW rows pending acknowledgement', async () => {
+      const updatedAt = new Date('2026-04-26T01:00:00Z');
+      mockOrderLedgerService.findUnknownPending.mockResolvedValueOnce([
+        {
+          id: 'lg-unknown-1',
+          userId: USER_ID,
+          commitHash: COMMIT_HASH,
+          idempotencyKey: null,
+          status: 'UNKNOWN_REQUIRES_OPERATOR_REVIEW',
+          symbol: 'AAPL',
+          side: 'buy',
+          qty: '10',
+          amount: null,
+          price: null,
+          broker: 'paper',
+          brokerOrderId: null,
+          brokerRequest: {},
+          brokerResponse: null,
+          errorReason: 'broker timeout',
+          createdAt: updatedAt,
+          updatedAt,
+          acknowledgedAt: null,
+          acknowledgedBy: null,
+          acknowledgementNote: null,
+        },
+      ]);
+
+      const res = await request(app.getHttpServer())
+        .get('/api/trading/ledger/unknown')
+        .expect(200);
+
+      expect(res.body).toHaveLength(1);
+      expect(res.body[0]).toMatchObject({
+        id: 'lg-unknown-1',
+        status: 'UNKNOWN_REQUIRES_OPERATOR_REVIEW',
+        acknowledgedAt: null,
+      });
+      expect(mockOrderLedgerService.findUnknownPending).toHaveBeenCalledWith(USER_ID, 50);
+    });
+  });
+
+  describe('POST /api/trading/ledger/:id/acknowledge', () => {
+    const LEDGER_ID = 'lg-ack-1';
+    const ackedAt = new Date('2026-04-26T02:00:00Z');
+
+    it('returns 200 with the updated row on a valid ack', async () => {
+      mockOrderLedgerService.acknowledge.mockResolvedValueOnce({
+        id: LEDGER_ID,
+        userId: USER_ID,
+        commitHash: COMMIT_HASH,
+        idempotencyKey: null,
+        status: 'UNKNOWN_REQUIRES_OPERATOR_REVIEW',
+        symbol: 'AAPL',
+        side: 'buy',
+        qty: '10',
+        amount: null,
+        price: null,
+        broker: 'paper',
+        brokerOrderId: null,
+        brokerRequest: {},
+        brokerResponse: null,
+        errorReason: 'broker timeout',
+        createdAt: ackedAt,
+        updatedAt: ackedAt,
+        acknowledgedAt: ackedAt,
+        acknowledgedBy: USER_ID,
+        acknowledgementNote: 'verified with broker',
+      });
+
+      const res = await request(app.getHttpServer())
+        .post(`/api/trading/ledger/${LEDGER_ID}/acknowledge`)
+        .send({ note: 'verified with broker' })
+        .expect(200);
+
+      expect(res.body).toMatchObject({
+        id: LEDGER_ID,
+        status: 'UNKNOWN_REQUIRES_OPERATOR_REVIEW',
+        acknowledgedAt: ackedAt.toISOString(),
+        acknowledgedBy: USER_ID,
+        acknowledgementNote: 'verified with broker',
+      });
+      expect(mockOrderLedgerService.acknowledge).toHaveBeenCalledWith(
+        LEDGER_ID,
+        USER_ID,
+        'verified with broker',
+      );
+    });
+
+    it('returns 400 for an empty note (Zod min(1) rejection)', async () => {
+      await request(app.getHttpServer())
+        .post(`/api/trading/ledger/${LEDGER_ID}/acknowledge`)
+        .send({ note: '' })
+        .expect(400);
+      expect(mockOrderLedgerService.acknowledge).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 for missing note body', async () => {
+      await request(app.getHttpServer())
+        .post(`/api/trading/ledger/${LEDGER_ID}/acknowledge`)
+        .send({})
+        .expect(400);
+      expect(mockOrderLedgerService.acknowledge).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 for note longer than 1000 chars', async () => {
+      await request(app.getHttpServer())
+        .post(`/api/trading/ledger/${LEDGER_ID}/acknowledge`)
+        .send({ note: 'a'.repeat(1001) })
+        .expect(400);
+      expect(mockOrderLedgerService.acknowledge).not.toHaveBeenCalled();
+    });
+
+    it('propagates 404 from the service when row is missing / wrong user / already acked', async () => {
+      const { NotFoundException } = await import('@nestjs/common');
+      mockOrderLedgerService.acknowledge.mockRejectedValueOnce(
+        new NotFoundException('not found'),
+      );
+      await request(app.getHttpServer())
+        .post(`/api/trading/ledger/${LEDGER_ID}/acknowledge`)
+        .send({ note: 'note' })
+        .expect(404);
     });
   });
 });

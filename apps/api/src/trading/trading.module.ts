@@ -3,6 +3,7 @@ import { CommonModule } from '../common/common.module';
 import { MarketModule } from '../market/market.module';
 import { AuthModule } from '../auth/auth.module';
 import { OkxModule } from '../okx/okx.module';
+import { EventsModule } from '../events/events.module';
 import { MarketDataService } from '../market/market-data.service';
 import { BrokerRegistry } from './broker-registry.service';
 import { UnifiedTradingService } from './unified-trading.service';
@@ -26,7 +27,7 @@ import { TradingGuardsService } from './guards/trading-guards.service';
  * They are plain classes instantiated by BrokerRegistry at runtime.
  */
 @Module({
-  imports: [CommonModule, MarketModule, AuthModule, OkxModule],
+  imports: [CommonModule, MarketModule, AuthModule, OkxModule, EventsModule],
   controllers: [TradingController],
   providers: [
     BrokerRegistry,

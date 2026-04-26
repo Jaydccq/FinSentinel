@@ -1,12 +1,19 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import { eq, and, desc, lt, inArray } from 'drizzle-orm';
+import { eq, and, desc, lt, inArray, isNull } from 'drizzle-orm';
 import {
   orderLedger,
   type DrizzleDB,
   type OrderLedgerRow,
   type OrderLedgerStatus,
 } from '@finsentinel/db';
+import { AgentEventService } from '../../events/agent-event.service';
 
 /**
  * Operation result as produced by UnifiedTradingService.execute().
@@ -53,7 +60,10 @@ export interface RecordExecutionInput {
 export class OrderLedgerService {
   private readonly logger = new Logger(OrderLedgerService.name);
 
-  constructor(@Inject('DRIZZLE_DB') private readonly db: DrizzleDB) {}
+  constructor(
+    @Inject('DRIZZLE_DB') private readonly db: DrizzleDB,
+    private readonly agentEvents: AgentEventService,
+  ) {}
 
   /**
    * Insert one row per executed operation. Each operation gets the
@@ -345,6 +355,97 @@ export class OrderLedgerService {
         updatedAt: now,
       })
       .where(eq(orderLedger.id, rowId));
+  }
+
+  // ───────────────────────────────────────────────────────────────────────
+  // M4 prereq (2) — operator surface for UNKNOWN_REQUIRES_OPERATOR_REVIEW
+  // ───────────────────────────────────────────────────────────────────────
+  // See docs/exec-plans/2026-04-26-order-ledger-unknown-operator-surface.md.
+  // Ack is metadata-only — the row's status stays
+  // 'UNKNOWN_REQUIRES_OPERATOR_REVIEW'. `acknowledged_at IS NOT NULL` is the
+  // operator-has-reviewed signal.
+
+  /**
+   * Owner-scoped list of UNKNOWN_REQUIRES_OPERATOR_REVIEW rows that have not
+   * yet been acknowledged. Newest-first, capped at 50. Backed by the V25
+   * partial index `order_ledger_unknown_pending_idx`.
+   */
+  async findUnknownPending(userId: string, limit: number): Promise<OrderLedgerRow[]> {
+    const cap = Math.max(1, Math.min(limit, 50));
+    return this.db
+      .select()
+      .from(orderLedger)
+      .where(
+        and(
+          eq(orderLedger.userId, userId),
+          eq(orderLedger.status, 'UNKNOWN_REQUIRES_OPERATOR_REVIEW'),
+          isNull(orderLedger.acknowledgedAt),
+        ),
+      )
+      .orderBy(desc(orderLedger.updatedAt))
+      .limit(cap);
+  }
+
+  /**
+   * Atomic operator acknowledgement of an UNKNOWN row.
+   *
+   * Owner-scoped: only the user who owns the row may ack it. Idempotent at
+   * the SQL level via `acknowledged_at IS NULL` in the WHERE clause — two
+   * concurrent acks on the same row resolve to exactly one success and one
+   * NotFoundException (loser sees the same 404 as a wrong-id / wrong-user
+   * caller, which is fine for v1).
+   *
+   * Emits a TRADE_WALLET / LEDGER_UNKNOWN_ACKNOWLEDGED AgentEvent per
+   * CLAUDE.md "trading operations must emit AgentEvent entries".
+   */
+  async acknowledge(
+    ledgerId: string,
+    userId: string,
+    note: string,
+  ): Promise<OrderLedgerRow> {
+    const trimmed = note.trim();
+    if (trimmed.length === 0) {
+      throw new BadRequestException('Acknowledgement note must not be empty');
+    }
+    if (trimmed.length > 1000) {
+      throw new BadRequestException('Acknowledgement note exceeds 1000 chars');
+    }
+
+    const now = new Date();
+    const [updated] = await this.db
+      .update(orderLedger)
+      .set({
+        acknowledgedAt: now,
+        acknowledgedBy: userId,
+        acknowledgementNote: trimmed,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(orderLedger.id, ledgerId),
+          eq(orderLedger.userId, userId),
+          eq(orderLedger.status, 'UNKNOWN_REQUIRES_OPERATOR_REVIEW'),
+          isNull(orderLedger.acknowledgedAt),
+        ),
+      )
+      .returning();
+
+    if (!updated) {
+      throw new NotFoundException(
+        'Ledger row not found, not owned by this user, not in UNKNOWN state, or already acknowledged',
+      );
+    }
+
+    await this.agentEvents.append(
+      userId,
+      'TRADE_WALLET',
+      ledgerId,
+      'LEDGER_UNKNOWN_ACKNOWLEDGED',
+      { note: trimmed, commitHash: updated.commitHash, symbol: updated.symbol },
+      null,
+    );
+
+    return updated;
   }
 
   private deriveSide(action: unknown): string {

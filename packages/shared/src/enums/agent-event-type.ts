@@ -57,6 +57,8 @@ export const AgentEventType = {
   TOOL_CALLED: 'TOOL_CALLED',
   STAGE_CHECKPOINT_COMMITTED: 'STAGE_CHECKPOINT_COMMITTED',
   CHAT_AUTO_UPGRADED: 'CHAT_AUTO_UPGRADED',
+  // Order ledger operator actions (V26 — M4 prereq (2))
+  LEDGER_UNKNOWN_ACKNOWLEDGED: 'LEDGER_UNKNOWN_ACKNOWLEDGED',
 } as const;
 
 export type AgentEventType = (typeof AgentEventType)[keyof typeof AgentEventType];

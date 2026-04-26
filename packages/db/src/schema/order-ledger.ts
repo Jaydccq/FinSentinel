@@ -51,6 +51,11 @@ export const orderLedger = pgTable(
     errorReason: text('error_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+    // V25: operator-acknowledgement metadata for UNKNOWN_REQUIRES_OPERATOR_REVIEW rows.
+    // Ack is metadata-only — the row's status stays UNKNOWN_REQUIRES_OPERATOR_REVIEW.
+    acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }),
+    acknowledgedBy: uuid('acknowledged_by').references(() => users.id, { onDelete: 'set null' }),
+    acknowledgementNote: text('acknowledgement_note'),
   },
   (table) => [
     index('order_ledger_user_created_idx').on(table.userId, table.createdAt.desc()),
@@ -59,6 +64,12 @@ export const orderLedger = pgTable(
       .on(table.idempotencyKey)
       .where(sql`idempotency_key IS NOT NULL`),
     index('order_ledger_broker_status_idx').on(table.broker, table.status),
+    // V25: partial index for the operator-pending list query.
+    index('order_ledger_unknown_pending_idx')
+      .on(table.userId, table.updatedAt.desc())
+      .where(
+        sql`status = 'UNKNOWN_REQUIRES_OPERATOR_REVIEW' AND acknowledged_at IS NULL`,
+      ),
   ],
 );
 
