@@ -118,12 +118,83 @@ The trace pipeline is now load-bearing for promotion. Real-staging traffic
 mining will work the same way — just point `DATABASE_URL` at the staging DB
 and pick a `--since` window with traffic.
 
+## 2026-04-26 follow-up — review batch from local API-generated traffic
+
+The first attempt to generate a larger batch inherited the wrong embedding
+provider from local environment state. Symptom: 150 API requests returned HTTP
+200 but only 1 of 150 trace rows had non-empty `result_chunk_ids`. Those rows
+were discarded by using a later `--since` window.
+
+Restarted the API with explicit provider/base-url settings:
+
+- `AI_PROVIDER=openrouter`
+- `AI_EMBEDDING_PROVIDER=openrouter`
+- `OPENROUTER_BASE_URL=http://127.0.0.1:18080`
+- `AI_EMBEDDING_MODEL=fake-2048`
+- `EMBEDDING_DIMENSION=2048`
+- `RAG_QUERY_LOG_PII_ENABLED=true`
+- `RAG_QUERY_LOG_SAMPLE_RATE=1.0`
+- `RAG_EVAL_ENDPOINT_ENABLED=true`
+
+Clean window start: `2026-04-26T03:55:40.078Z`.
+
+Generated 165 local API trace rows after the clean window. DB verification:
+
+- total logs: 165
+- rows with `query_preview`: 165
+- rows with non-empty `result_chunk_ids`: 165
+- class balance: analytical=32, exact_lookup=24, factoid=51, multi_part=30,
+  relational=28
+
+Promotion dry-run:
+
+```bash
+DATABASE_URL=postgresql://postgres:123456@localhost:5432/finsentinel \
+  pnpm --filter @finsentinel/api rag:eval:promote -- \
+  --dry-run --per-class 20 --since 2026-04-26T03:55:40.078Z
+```
+
+Result:
+
+- sampled: 100
+- class balance: relational=20, analytical=20, multi_part=20, factoid=20,
+  exact_lookup=20
+- rows without preview: 0
+
+Live review output:
+
+```bash
+DATABASE_URL=postgresql://postgres:123456@localhost:5432/finsentinel \
+  pnpm --filter @finsentinel/api rag:eval:promote -- \
+  --per-class 20 --since 2026-04-26T03:55:40.078Z \
+  --out /tmp/staging-rag-promote.json
+```
+
+Review output:
+
+- `/tmp/staging-rag-promote.json`: 200 entries total, 100 promoted rows
+- `/tmp/staging-rag-promote.meta.json`: `version=2.1+promoted-1`
+- promoted class balance: 20 per class across the 5 current planner classes
+- automated PII regex spot-check: 0 email/API-key/phone hits
+- rows with empty `expected_answer`: 100
+
+Decision: do not copy this output into
+`services/evaluation-runner/datasets/golden.{json,meta.json}` yet. The batch is
+valid as a promotion pipeline proof and review artifact, but it is still
+local/API-generated traffic and its chunk labels are the current system's
+retrieved chunks, not reviewer-confirmed ground truth. Committing it as hard
+labels would bias item 6 / item 9 evaluation toward the current retrieval
+behavior.
+
 ## Final Outcome
 
 Local staging pipeline proof completed end-to-end. Two trace-service array-binding
 bugs were uncovered while validating the operator flow — both fixed
 (`c0f1b94`, `b7d410a`) and verified by replaying the real-API traffic path,
-not just synthetic INSERTs. Canonical golden-set files remain unchanged;
-moving real-API-promoted rows into `services/evaluation-runner/datasets/golden.json`
-is a separate operator review step that requires human PII / chunk-quality /
-query-class judgement.
+not just synthetic INSERTs.
+
+The larger local API-generated review batch also completed: 100 promoted rows
+were written to `/tmp/staging-rag-promote.json` with balanced planner classes and
+no obvious regex-detectable PII. Canonical golden-set files remain unchanged
+because the rows still need reviewer-confirmed ground-truth chunk labels before
+they can unblock item 6 / item 9 quality comparisons.

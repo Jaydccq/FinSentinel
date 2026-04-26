@@ -78,6 +78,15 @@
        promoted rows still require human PII / quality review before
        they can move into the canonical
        `services/evaluation-runner/datasets/golden.json`.
+     - **2026-04-26 review batch:** A clean local API window generated
+       165 trace rows after fixing the embedding-provider environment;
+       all 165 had previews and non-empty chunk ids. Promotion dry-run
+       sampled 100 rows, 20 each for exact_lookup / factoid / relational /
+       analytical / multi_part, and live output was written to
+       `/tmp/staging-rag-promote.json`. Automated PII regex checks passed,
+       but canonical promotion remains blocked because the rows use the
+       current retrieval output as labels rather than reviewer-confirmed
+       ground-truth chunks.
   3. **Query rewrite / HyDE eval timeout** — CLOSED 2026-04-21.
      `fetch_retrieval_results` now accepts `timeout_s` via config
      `retrieval.timeout_s` or env `RAG_EVAL_TIMEOUT_S`; default 30s,
