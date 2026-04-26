@@ -527,30 +527,31 @@ embed-1b-v2` going forward. V16 rewritten to declare
 - **Status:** Open. Coupled to M4 prereq (1) staging soak — they should
   retire together so the soak is the same evidence for both.
 
-### `agent_events` SQL CHECK constraint vs TS `AgentEventType` enum drift
+### `agent_events` SQL CHECK constraint vs TS `AgentEventType` enum drift — RESOLVED 2026-04-26
 
 - **Observed:** 2026-04-26 while writing migration V26 for
   `LEDGER_UNKNOWN_ACKNOWLEDGED`. The latest prior migration that owns
   the `agent_events_event_type_check` constraint (V12) was replicated
   verbatim plus the new value, but the in-memory TS enum
-  `packages/shared/src/enums/agent-event-type.ts` carries four values
-  the SQL CHECK has never had: `ROLE_STARTED`, `ROLE_COMPLETED`,
+  `packages/shared/src/enums/agent-event-type.ts` carried four values
+  the SQL CHECK had never had: `ROLE_STARTED`, `ROLE_COMPLETED`,
   `ROLE_FAILED`, `STAGE_SKIPPED`.
-- **Impact:** If any code path emits one of those four event types, the
-  INSERT will fail at the database layer with a CHECK violation. The
-  enum claims they are valid; reality says they are not.
-- **Likely fix path:**
-  1. Audit emission sites for the four values via
-     `rg -n "ROLE_STARTED|ROLE_COMPLETED|ROLE_FAILED|STAGE_SKIPPED" apps/api/src`.
-  2. If any are emitted: write a migration that widens the CHECK to
-     include them. Re-run `pnpm --filter @finsentinel/api test --run`
-     to ensure the SQL matches the enum.
-  3. If none are emitted (forward-looking enum keys): either delete
-     them from the TS enum until needed, OR add them to the CHECK
-     constraint preemptively to avoid the future surprise.
-- **Status:** Open. Not blocking M4 prereq (2) — V26 preserved the V12
-  IN-list verbatim plus the one new value, deliberately not widening
-  scope.
+- **Audit result (2026-04-26):**
+  - `STAGE_SKIPPED` — actively emitted at
+    `apps/api/src/analysis/analysis-checkpoint.service.ts:270`. The CHECK
+    rejection was a latent production bug that would surface the moment
+    a stage was actually marked SKIPPED.
+  - `ROLE_STARTED / ROLE_COMPLETED / ROLE_FAILED` — declared in the TS
+    enum for Phase 2/3 consumers per `[PHASE1-TD-04]` (2026-04-19), not
+    yet emitted by any code path.
+- **Resolution:** V27 (`packages/db/migrations/V27__agent_event_type_role_and_stage_skipped.sql`)
+  widens the CHECK to include all four values. Local verification:
+  applied cleanly via `pnpm --filter @finsentinel/db db:migrate`; a
+  `BEGIN; INSERT … STAGE_SKIPPED/ROLE_STARTED/ROLE_COMPLETED/ROLE_FAILED;
+  ROLLBACK;` smoke test inserted 4/4 rows successfully. Full api test
+  suite stayed at 1860/1860 PASS (the one failure on full-suite runs is
+  the documented `cli-import-env.spec.ts` flake, unrelated).
+- **Status:** Closed.
 
 ## 2026-04-17 — carried over from v1.1 hardening
 
