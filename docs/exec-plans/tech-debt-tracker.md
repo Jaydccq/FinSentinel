@@ -344,6 +344,12 @@ embed-1b-v2` going forward. V16 rewritten to declare
   - Phase 1 is read-only. Retry / Acknowledge buttons render `disabled`
     with a `title="Coming in phase 2"` tooltip. Wiring is blocked on
     item 3 M4 (operator-action backend).
+  - M4 readiness audit added 2026-04-26:
+    `docs/exec-plans/2026-04-26-trading-m4-readiness-audit.md`.
+    Result: do not start legacy `wallet.commitHistory` removal yet.
+    Prerequisite 3 (read-path audit) is complete, but the repository has no
+    one-week M2/M3 trading staging-soak artifact, and UNKNOWN rows still have
+    no enabled operator resolve/acknowledge action outside SQL.
   - Plan deviations: status enum names corrected to match the SQL CHECK
     (no `PENDING` / `PARTIALLY_FILLED`); copy module covers all 8 real
     enum values; backend ledger read endpoint added (the plan assumed

@@ -251,4 +251,9 @@ Tests: 11 cases for the reconciler covering every resolution branch + a mixed-ba
 - Reading paths (history endpoints, audit trails) audited and migrated to read from `order_ledger` instead of `wallet.commitHistory`.
 - Operator-facing dashboard for stuck-row review (currently no UI for UNKNOWN_REQUIRES_OPERATOR_REVIEW rows).
 
+**2026-04-26 readiness audit:** `docs/exec-plans/2026-04-26-trading-m4-readiness-audit.md`
+confirms M4 is still blocked. The read-path audit prerequisite is now complete,
+but the repository has no one-week trading staging-soak artifact and the only
+UNKNOWN surface is still read-only with disabled Retry / Acknowledge buttons.
+
 **Owner:** TBD when above preconditions clear.
