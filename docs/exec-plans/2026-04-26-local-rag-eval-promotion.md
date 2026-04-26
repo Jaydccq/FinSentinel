@@ -83,16 +83,47 @@ record whether the path can produce reviewable promoted eval rows.
 ## Risks and Blockers
 
 - Real traffic promotion still requires a window where query logging has
-  `RAG_QUERY_LOG_PII_ENABLED=true`.
-- Local API trace insertion currently failed when the search returned no chunks;
-  direct synthetic logs avoid blocking the operator pipeline but do not replace
-  real staging traffic.
-- The promotion CLI printed complete results but did not naturally exit in this
-  local application-context run; the completed process was killed after output.
+  `RAG_QUERY_LOG_PII_ENABLED=true` — addressed in the 2026-04-26 follow-up below.
+- ~~Local API trace insertion currently failed when the search returned no chunks~~
+  — RESOLVED by `c0f1b94` (empty-array literal) and `b7d410a`
+  (non-empty `ARRAY[$1, $2, ...]::<type>[]` constructor); the original
+  `${arr}::uuid[]` template-literal binding produced a SQL row tuple cast which
+  Postgres rejected for both empty and non-empty inputs.
+- The promotion CLI prints complete results but does not naturally exit; the
+  Nest application context keeps the worker pool alive. Operator must `kill`
+  the process after the summary line. Tracked as a follow-up for the CLI.
+
+## 2026-04-26 follow-up — verified against real local-API traffic
+
+Done after the trace-service array-binding fix landed:
+
+1. Started API with the three flags on (`RAG_QUERY_LOG_PII_ENABLED=true`,
+   `RAG_QUERY_LOG_SAMPLE_RATE=1.0`, `RAG_EVAL_ENDPOINT_ENABLED=true`).
+2. Issued 10 `POST /api/rag/search` queries spanning factoid / analytical /
+   relational shapes, including one nonsense-text query to exercise the
+   zero-/low-result path that was originally failing.
+3. `rag_query_logs` row count went 100 → 110. Every new row carries
+   `query_class`, `query_preview`, `result_chunk_ids[5]`, `lanes[2]`, and
+   `total_ms` — wire shape matches what `rag:eval:promote` consumes.
+4. Re-ran `rag:eval:promote --dry-run --per-class 5 --since
+   2026-04-25T00:00:00Z`: sampled 30 rows across 6 classes (5 each) with
+   `Rows without preview : 0`.
+5. Live promotion to `/tmp/local-rag-promote-golden-v2.json` produced 130
+   total entries (100 original + 30 promoted). Inspected the first promoted
+   rows: real query texts ("Apple supply chain risks", "supply chain
+   disruption China") with real chunk UUIDs and `provenance_label =
+   real_user_promoted`.
+
+The trace pipeline is now load-bearing for promotion. Real-staging traffic
+mining will work the same way — just point `DATABASE_URL` at the staging DB
+and pick a `--since` window with traffic.
 
 ## Final Outcome
 
-Local staging pipeline proof completed. The corpus is seeded, 100 synthetic
-promotion-source logs exist in local Postgres, dry-run sampled 58 valid rows, and
-live promotion produced review output under `/tmp`. Canonical golden-set files
-were not changed.
+Local staging pipeline proof completed end-to-end. Two trace-service array-binding
+bugs were uncovered while validating the operator flow — both fixed
+(`c0f1b94`, `b7d410a`) and verified by replaying the real-API traffic path,
+not just synthetic INSERTs. Canonical golden-set files remain unchanged;
+moving real-API-promoted rows into `services/evaluation-runner/datasets/golden.json`
+is a separate operator review step that requires human PII / chunk-quality /
+query-class judgement.

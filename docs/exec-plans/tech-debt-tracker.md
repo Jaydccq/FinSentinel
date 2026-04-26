@@ -63,8 +63,21 @@
        local Postgres and inserted 100 synthetic query-log rows derived from
        the current golden queries. `rag:eval:promote --dry-run` sampled 58
        rows with `without_preview=0`, and a live run to `/tmp` produced 58
-       review rows. This proves the local operator pipeline but does not
-       unblock true labelled eval data; real traffic rows are still required.
+       review rows.
+     - **2026-04-26 real-API trace path verified:** Two
+       `RagTraceService` array-binding bugs were exposed while running the
+       local API with `RAG_QUERY_LOG_PII_ENABLED=true` and fixed:
+       (a) empty arrays → `c0f1b94`, (b) non-empty arrays were emitting a
+       SQL row tuple instead of `ARRAY[...]::<type>[]` → `b7d410a`. After
+       the fix, 10 real-API search queries produced 10 well-formed
+       `rag_query_logs` rows; `rag:eval:promote` then sampled 30 of them
+       across 6 classes into `/tmp/local-rag-promote-golden-v2.json` with
+       real chunk UUIDs and `provenance_label = real_user_promoted`. The
+       trace pipeline is now load-bearing for promotion — staging will
+       use the same path with a different `DATABASE_URL`. Real-traffic-
+       promoted rows still require human PII / quality review before
+       they can move into the canonical
+       `services/evaluation-runner/datasets/golden.json`.
   3. **Query rewrite / HyDE eval timeout** — CLOSED 2026-04-21.
      `fetch_retrieval_results` now accepts `timeout_s` via config
      `retrieval.timeout_s` or env `RAG_EVAL_TIMEOUT_S`; default 30s,
