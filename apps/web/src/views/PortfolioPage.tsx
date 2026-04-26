@@ -17,6 +17,7 @@ import { PortfolioListSkeleton } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import TickerSearchInput from '../components/TickerSearchInput';
 import Sparkline from '../components/Sparkline';
+import { FreshnessBadge } from '../components/freshness/FreshnessBadge';
 
 const SECTOR_COLORS: Record<string, string> = {
   Technology: 'bg-blue-500/15 text-blue-100 border-blue-300/30',
@@ -540,6 +541,17 @@ export default function PortfolioPage() {
                     )}
                   </div>
 
+                  <div className="px-4 py-2 flex items-center gap-2 border-b border-[color:var(--border-subtle)] bg-slate-900/20">
+                    <span className="text-xs uppercase tracking-[0.11em] text-[var(--text-muted)] font-semibold">
+                      Holdings
+                    </span>
+                    <FreshnessBadge
+                      surface="holdings"
+                      sourceTimestampMs={
+                        portfolio.valuedAt != null ? Date.parse(portfolio.valuedAt) : null
+                      }
+                    />
+                  </div>
                   <table className="table-terminal w-full min-w-[960px]">
                     <thead>
                       <tr className="bg-slate-900/35 text-[var(--text-muted)] text-xs border-b border-[color:var(--border-subtle)]">
