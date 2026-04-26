@@ -683,7 +683,30 @@ git push -u origin feat/2026-04-26-order-ledger-unknown-operator-surface
   Acknowledge button location all confirmed. Note column choice
   (additive metadata, not a state change) anchored in the
   no-state-machine-fragmentation argument.
+- 2026-04-26: All seven tasks executed on branch
+  `feat/2026-04-26-ledger-unknown-operator-surface`. V25 + V26
+  migrations applied locally and verified
+  (`order_ledger.acknowledged_*` columns and partial index present;
+  `agent_events_event_type_check` accepts `LEDGER_UNKNOWN_ACKNOWLEDGED`).
+  Service, controller, web typed routes, SWR hook, modal, and card
+  wiring all shipped. AgentEventService class + `append()` method used
+  with positional signature
+  `(userId, aggregateType, aggregateId, eventType, payload, idempotencyKey)`.
+  Verification: `pnpm --filter @finsentinel/shared build` PASS,
+  `pnpm --filter @finsentinel/db build` PASS,
+  `pnpm --filter @finsentinel/api typecheck` PASS,
+  `pnpm --filter @finsentinel/api test` 1860 passed (1 pre-existing flake
+  in `src/rag/__tests__/cli-import-env.spec.ts` — passes when run in
+  isolation; unrelated to this work),
+  `pnpm --filter @finsentinel/web typecheck` PASS,
+  `pnpm --filter @finsentinel/web test` 187/187 PASS,
+  `pnpm --filter @finsentinel/web lint -- src/components/trading src/hooks/api` PASS.
+  Manual smoke verified end-to-end via SQL: synthetic UNKNOWN row →
+  atomic UPDATE WHERE acknowledged_at IS NULL succeeds → AgentEvent
+  insert with `event_type='LEDGER_UNKNOWN_ACKNOWLEDGED'` accepted by
+  the V26 CHECK constraint.
 
 ## Final outcome
 
-(Filled after merge.)
+CLOSED. Operator can now inspect and acknowledge UNKNOWN ledger rows
+from the Trading page. Unblocks the staging soak (M4 prereq (1)).
