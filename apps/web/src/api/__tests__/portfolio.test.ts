@@ -34,6 +34,7 @@ const validPortfolio = {
   totalValue: '1700.00',
   holdings: [validHolding],
   createdAt: '2026-04-24T00:00:00.000Z',
+  valuedAt: null,
 };
 
 describe('portfolioApi', () => {

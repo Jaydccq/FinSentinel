@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PortfolioService } from '../portfolio.service';
+import { MarketDataService } from '../../market/market-data.service';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const USER_ID = '11111111-1111-1111-1111-111111111111';
@@ -92,9 +93,23 @@ function createMockDb() {
 describe('PortfolioService', () => {
   let service: PortfolioService;
   let mockDb: ReturnType<typeof createMockDb>;
+  let mockMarketData: { getQuote: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     mockDb = createMockDb();
+    // Default: every quote fetch resolves with a stable timestamp. Individual
+    // tests override per-call behaviour via mockResolvedValueOnce / mockRejectedValueOnce.
+    mockMarketData = {
+      getQuote: vi.fn().mockResolvedValue({
+        ticker: 'STUB',
+        open: '0',
+        high: '0',
+        low: '0',
+        close: '0',
+        volume: 0,
+        timestamp: 1714000000000,
+      }),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -102,6 +117,10 @@ describe('PortfolioService', () => {
         {
           provide: 'DRIZZLE_DB',
           useValue: mockDb,
+        },
+        {
+          provide: MarketDataService,
+          useValue: mockMarketData,
         },
       ],
     }).compile();
@@ -398,7 +417,7 @@ describe('PortfolioService', () => {
       expect(Object.prototype.hasOwnProperty.call(result, 'valuedAt')).toBe(true);
     });
 
-    it('includes valuedAt: null on getPortfolio response when no quotes are plumbed', async () => {
+    it('includes valuedAt: null on getPortfolio response when there are no holdings', async () => {
       mockDb.enqueueSelect([
         {
           id: PORTFOLIO_ID,
@@ -415,6 +434,203 @@ describe('PortfolioService', () => {
       const result = await service.getPortfolio(USER_ID, PORTFOLIO_ID);
 
       expect(result.valuedAt).toBeNull();
+      // No holdings → no quote fetches.
+      expect(mockMarketData.getQuote).not.toHaveBeenCalled();
+    });
+
+    it('populates valuedAt from a single fulfilled quote fetch', async () => {
+      mockDb.enqueueSelect([
+        {
+          id: PORTFOLIO_ID,
+          name: 'Tech Growth',
+          description: null,
+          userId: USER_ID,
+          totalValue: '0',
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+      ]);
+      mockDb.enqueueSelect([
+        {
+          id: HOLDING_ID,
+          portfolioId: PORTFOLIO_ID,
+          symbol: 'AAPL',
+          companyName: 'Apple Inc.',
+          quantity: '100',
+          averageCost: '150.00',
+          currentPrice: '175.00',
+          sector: 'Technology',
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+      ]);
+      mockMarketData.getQuote.mockResolvedValueOnce({
+        ticker: 'AAPL',
+        open: '170',
+        high: '180',
+        low: '169',
+        close: '175',
+        volume: 1000,
+        timestamp: 1714000000000,
+      });
+
+      const result = await service.getPortfolio(USER_ID, PORTFOLIO_ID);
+
+      expect(result.valuedAt).toBe('2024-04-24T23:06:40.000Z');
+      expect(mockMarketData.getQuote).toHaveBeenCalledWith('AAPL');
+    });
+
+    it('takes the freshest-of (min) timestamp across two fulfilled quotes', async () => {
+      mockDb.enqueueSelect([
+        {
+          id: PORTFOLIO_ID,
+          name: 'Tech Growth',
+          description: null,
+          userId: USER_ID,
+          totalValue: '0',
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+      ]);
+      mockDb.enqueueSelect([
+        {
+          id: 'h1',
+          portfolioId: PORTFOLIO_ID,
+          symbol: 'AAPL',
+          companyName: 'Apple Inc.',
+          quantity: '100',
+          averageCost: '150.00',
+          currentPrice: '175.00',
+          sector: 'Technology',
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+        {
+          id: 'h2',
+          portfolioId: PORTFOLIO_ID,
+          symbol: 'MSFT',
+          companyName: 'Microsoft',
+          quantity: '50',
+          averageCost: '300.00',
+          currentPrice: '320.00',
+          sector: 'Technology',
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+      ]);
+      mockMarketData.getQuote
+        .mockResolvedValueOnce({
+          ticker: 'AAPL',
+          open: '0',
+          high: '0',
+          low: '0',
+          close: '0',
+          volume: 0,
+          timestamp: 1714000000000,
+        })
+        .mockResolvedValueOnce({
+          ticker: 'MSFT',
+          open: '0',
+          high: '0',
+          low: '0',
+          close: '0',
+          volume: 0,
+          timestamp: 1714000060000,
+        });
+
+      const result = await service.getPortfolio(USER_ID, PORTFOLIO_ID);
+
+      // freshest-of = min = 1714000000000
+      expect(result.valuedAt).toBe('2024-04-24T23:06:40.000Z');
+    });
+
+    it('returns valuedAt: null when the only quote fetch rejects', async () => {
+      mockDb.enqueueSelect([
+        {
+          id: PORTFOLIO_ID,
+          name: 'Tech Growth',
+          description: null,
+          userId: USER_ID,
+          totalValue: '0',
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+      ]);
+      mockDb.enqueueSelect([
+        {
+          id: HOLDING_ID,
+          portfolioId: PORTFOLIO_ID,
+          symbol: 'AAPL',
+          companyName: 'Apple Inc.',
+          quantity: '100',
+          averageCost: '150.00',
+          currentPrice: '175.00',
+          sector: 'Technology',
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+      ]);
+      mockMarketData.getQuote.mockRejectedValueOnce(new Error('upstream 500'));
+
+      const result = await service.getPortfolio(USER_ID, PORTFOLIO_ID);
+
+      expect(result.valuedAt).toBeNull();
+    });
+
+    it('falls back to the fulfilled timestamp when one of two quotes rejects', async () => {
+      mockDb.enqueueSelect([
+        {
+          id: PORTFOLIO_ID,
+          name: 'Tech Growth',
+          description: null,
+          userId: USER_ID,
+          totalValue: '0',
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+      ]);
+      mockDb.enqueueSelect([
+        {
+          id: 'h1',
+          portfolioId: PORTFOLIO_ID,
+          symbol: 'AAPL',
+          companyName: 'Apple Inc.',
+          quantity: '100',
+          averageCost: '150.00',
+          currentPrice: '175.00',
+          sector: 'Technology',
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+        {
+          id: 'h2',
+          portfolioId: PORTFOLIO_ID,
+          symbol: 'MSFT',
+          companyName: 'Microsoft',
+          quantity: '50',
+          averageCost: '300.00',
+          currentPrice: '320.00',
+          sector: 'Technology',
+          createdAt: NOW,
+          updatedAt: NOW,
+        },
+      ]);
+      mockMarketData.getQuote
+        .mockRejectedValueOnce(new Error('upstream 500'))
+        .mockResolvedValueOnce({
+          ticker: 'MSFT',
+          open: '0',
+          high: '0',
+          low: '0',
+          close: '0',
+          volume: 0,
+          timestamp: 1714000060000,
+        });
+
+      const result = await service.getPortfolio(USER_ID, PORTFOLIO_ID);
+
+      // 1714000060000 → 2024-04-24T23:07:40.000Z
+      expect(result.valuedAt).toBe('2024-04-24T23:07:40.000Z');
     });
   });
 

@@ -272,7 +272,36 @@ git commit -m "docs(tech-debt): close PL-7 Holdings sub-gap; queue Citation rend
 
 - 2026-04-25: Plan drafted post-audit. Citation deferred — no UI surface
   exists. Holdings full-stack wiring is the only deliverable.
+- 2026-04-25: Tasks 1, 2, and 4 landed on
+  `feat/2026-04-25-pl7-phase2-frontend`. Task 3 (DashboardPage) was a
+  no-op as predicted: the dashboard renders aggregate per-portfolio
+  data (totalValue, holdings count) but no holdings rows, so the spec
+  target ("holdings summary header") does not exist there. Skipped per
+  plan instructions and documented in the tech-debt tracker.
+  - Task 1 commit: `e78de9f` — backend plumbing.
+  - Task 2 commit: `c4b2b66` — PortfolioPage badge + drive-by fixture
+    fix in `apps/web/src/api/__tests__/portfolio.test.ts` (the
+    pre-existing test fixture was missing the now-required `valuedAt`
+    field, which was failing the wire-shape validation).
+  - Task 4 commit: this commit — tech-debt tracker close-out.
+  - `MarketDataService` exposes only `getQuote(ticker)`; no batch
+    method. Used `Promise.allSettled` per the plan, capped at 50
+    holdings.
+  - No circular-import surprises. `MarketModule` does not depend on
+    `PortfolioModule` directly or transitively, so `forwardRef` was
+    not needed.
 
 ## Final outcome
 
-(Filled after merge.)
+Holdings freshness badge ships end-to-end. Real `valuedAt` ISO
+timestamps flow from `MarketDataService.getQuote` through
+`PortfolioService.toPortfolioResponse` to the wire, and the
+`PortfolioPage` holdings table header renders the badge with state
+derived from those timestamps. Mutation paths intentionally keep
+`valuedAt: null` (the response reflects the new holdings row, not a
+refreshed market state); the badge briefly shows "Unknown" after
+mutations and refreshes on the next SWR revalidation.
+
+DashboardPage was a no-op (no holdings render surface). Citation badge
+remains deferred and is tracked under "PL-7 Citation badge — blocked on
+web rendering surface" in `tech-debt-tracker.md`.

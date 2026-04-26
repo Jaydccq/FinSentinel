@@ -4,8 +4,8 @@
  * with one entry. We mock the API surface and the recharts module
  * (it pulls in jsdom-incompatible measurement code).
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { SWRConfig } from 'swr';
 import type { ReactNode } from 'react';
 
@@ -94,6 +94,55 @@ describe('PortfolioPage', () => {
     render(<PortfolioPage />, { wrapper });
     await waitFor(() => {
       expect(screen.getByText('No portfolios yet.')).toBeDefined();
+    });
+  });
+
+  describe('Holdings freshness badge', () => {
+    let dateNowSpy: ReturnType<typeof vi.spyOn> | null = null;
+
+    afterEach(() => {
+      dateNowSpy?.mockRestore();
+      dateNowSpy = null;
+    });
+
+    it('renders a fresh-state Holdings badge when valuedAt is recent', async () => {
+      // Pin Date.now() 1 second after the holdings snapshot. Holdings
+      // freshWindowMs is 5 minutes, so 1s is comfortably inside the fresh
+      // window. Stub Date.now directly rather than using fake timers, which
+      // would block testing-library's findBy* polling.
+      const valuedAtMs = Date.UTC(2026, 3, 25, 12, 0, 0);
+      dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(valuedAtMs + 1_000);
+
+      vi.spyOn(portfolioApi, 'list').mockResolvedValueOnce([
+        {
+          id: 'p1',
+          name: 'Growth Fund',
+          description: 'long term',
+          totalValue: '1000.00',
+          holdings: [
+            {
+              id: 'h1',
+              symbol: 'AAPL',
+              companyName: 'Apple Inc.',
+              quantity: '10',
+              averageCost: '100',
+              currentPrice: '150',
+              sector: 'Technology',
+            },
+          ],
+          createdAt: '2026-04-25T00:00:00.000Z',
+          valuedAt: new Date(valuedAtMs).toISOString(),
+        } as never,
+      ]);
+
+      render(<PortfolioPage />, { wrapper });
+      // Expand the portfolio so the holdings table + badge mount.
+      const expandBtn = await screen.findByLabelText('Expand holdings');
+      fireEvent.click(expandBtn);
+
+      const badge = await screen.findByRole('status');
+      expect(badge.getAttribute('data-freshness-state')).toBe('fresh');
+      expect(badge.getAttribute('data-freshness-surface')).toBe('holdings');
     });
   });
 });
