@@ -282,8 +282,12 @@ describe('RetrievalPlannerService', () => {
   });
 
   it('analytical (not multi_part) happy path: original + rewrite + hyde', async () => {
+    // Phase 1.5: `relational` is checked BEFORE analytical_keyword, so we
+    // avoid relation-cue words like "supply chain" or "partner" in the
+    // analytical fixture — `outlook` (analytical_keyword) carries the
+    // intent without colliding with the relational regex.
     const analyticalQuery =
-      'Analyze the long-term competitive outlook for NVIDIA versus AMD in the AI accelerator market given supply chain constraints.';
+      'Analyze the long-term outlook for NVIDIA versus AMD in the AI accelerator market across product roadmaps.';
     const hydePassage = 'NVIDIA and AMD both face...';
     const variant = makeVariant({ hyde: vi.fn().mockResolvedValue(hydePassage) });
     const rewrite = makeRewrite((_q) => Promise.resolve('rewritten analytical query'));
@@ -433,8 +437,10 @@ describe('RetrievalPlannerService', () => {
   });
 
   it('R3.3: analytical plan.rerankQuery === rewrittenQuery when rewrite ran', async () => {
+    // Phase 1.5: avoid `supply chain` / `partner` — those are relational
+    // cues that fire before analytical_keyword in the new precedence.
     const longQuery =
-      'Analyze the long-term competitive outlook for NVIDIA versus AMD in the AI accelerator market given supply chain constraints.';
+      'Analyze the long-term outlook for NVIDIA versus AMD in the AI accelerator market across product roadmaps.';
     const rewrite = makeRewrite((_q) => Promise.resolve('rewritten analytical query'));
     const plan = await makeService({ rewriteEnabled: true }, rewrite).plan(longQuery);
     expect(plan.queryClass).toBe('analytical');

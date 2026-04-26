@@ -390,7 +390,36 @@ git commit -m "docs(tech-debt): record item-9 phase 1.5 verdict and item-9 closu
 - 2026-04-26: Phase-1 result reviewed. Vocabulary gap dominates ceiling;
   triple-gate exact_lookup over-fires on factoid+ticker+year. Plan
   scoped to those two surgical changes plus relational reorder.
+- 2026-04-26: Implemented on
+  `feat/2026-04-26-query-classifier-phase1_5`.
+  - Vocabulary closed: `numeric`, `summary` added to QueryClass and
+    emission paths; planner routes numeric like exact_lookup, summary
+    like analytical.
+  - exact_lookup triple-gate tightened: doc-type keyword alone no
+    longer upgrades a non-whitelisted ticker candidate. Section /
+    quoted-phrase / numeric-id / whitelisted-ticker paths still fire.
+  - Relational reordered ahead of length-based analytical fallback;
+    one pre-existing planner test fixture (analytical-happy-path) had
+    `supply chain` baked in and was swapped to a non-relational
+    fixture (`outlook` only).
+  - LLM prompt + offline runner synced to the new vocabulary; report
+    schema bumped to `v2`.
+  - Verification: `pnpm --filter @finsentinel/api typecheck` PASS.
+    `pnpm --filter @finsentinel/api test --run` PASS (1847 / 1848,
+    1 unrelated skip).
+  - Eval: rules-only accuracy 0.385 -> 0.415 (still below 0.55 target).
+    LLM accuracy 0.405 (loses overall but wins precision on
+    factoid/relational/summary buckets). Phase 2 runtime shadow path
+    is NOT unblocked — see tracker item 9 for the verdict and the
+    new action item to expand the golden set + train a lightweight
+    classifier before revisiting phase 2.
 
 ## Final outcome
 
-(Filled after merge.)
+Phase 1.5 landed: vocabulary closed, exact_lookup tightened, relational
+reorder shipped. Rules-only accuracy improved 3 pp but stayed below
+the 0.55 target. Item 9 remains OPEN; the bottleneck is now
+relational/summary recall, which a regex layer cannot meaningfully
+improve without overfitting to the golden set. Next step is dataset
+expansion + a lightweight learned classifier — tracked in the updated
+tech-debt-tracker entry.

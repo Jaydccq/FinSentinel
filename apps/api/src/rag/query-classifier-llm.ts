@@ -14,8 +14,10 @@ export const QUERY_CLASSIFIER_SYSTEM_PROMPT = `Classify each financial-research 
 - exact_lookup: literal section / ticker+time / quoted phrase / numeric id (ISIN, CUSIP, EPS, P/E)
 - factoid: short factual question with a single answer
 - relational: about relationships between companies / entities (competitors, suppliers, partners, board members, CEO of)
-- analytical: requires analysis, compare, explain, summarize, impact, risk, driver, outlook
+- analytical: requires analysis, compare, explain, impact, risk, driver, outlook
 - multi_part: contains multiple distinct sub-questions joined with "and" / "?"
+- numeric: question about a specific numeric metric (EPS, P/E, operating margin, gross margin, growth rate, price target, market cap)
+- summary: request for a company / topic overview without deep analysis (summary of, tldr, tell me about, give me a rundown)
 - colloquial: chitchat / non-research (hi, thanks, bye, ok, etc.)
 
 Respond with ONLY a single-line JSON object: {"class":"<class>","confidence":<0..1>,"reasoning":"<one short sentence>"}`;
@@ -33,6 +35,8 @@ export const QUERY_CLASSIFIER_FEW_SHOT: ReadonlyArray<{ q: string; class: QueryC
   { q: 'who are competitors of Tesla?', class: 'relational' },
   { q: 'compare Apple and Microsoft margin trends', class: 'analytical' },
   { q: 'What is Tesla revenue and what is the operating margin?', class: 'multi_part' },
+  { q: 'What is AAPL diluted EPS in FY2024?', class: 'numeric' },
+  { q: 'Tell me about Tesla', class: 'summary' },
   { q: 'hi can you help me out?', class: 'colloquial' },
 ];
 
@@ -50,6 +54,8 @@ const VALID_CLASSES: ReadonlyArray<QueryClass> = [
   'relational',
   'analytical',
   'multi_part',
+  'numeric',
+  'summary',
   'colloquial',
 ];
 

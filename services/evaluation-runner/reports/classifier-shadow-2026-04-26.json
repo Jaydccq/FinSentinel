@@ -1,0 +1,109 @@
+{
+  "schema": "classifier-shadow-v1",
+  "dataset": "services/evaluation-runner/datasets/golden.json",
+  "dataset_version": "2.2",
+  "n_total": 200,
+  "n_evaluated": 200,
+  "classes_emitted_by_rules": [
+    "exact_lookup",
+    "factoid",
+    "relational",
+    "analytical",
+    "multi_part",
+    "colloquial"
+  ],
+  "classes_in_golden": [
+    "analytical",
+    "exact_lookup",
+    "factoid",
+    "multi_part",
+    "numeric",
+    "relational",
+    "summary"
+  ],
+  "rules": {
+    "accuracy_overall": 0.385,
+    "correct": 77,
+    "n": 200,
+    "per_class_precision": {
+      "exact_lookup": 0.3947,
+      "factoid": 0.3636,
+      "relational": 0.7273,
+      "analytical": 0.125,
+      "multi_part": 0.5,
+      "colloquial": null,
+      "summary": null,
+      "numeric": null
+    },
+    "per_class_recall": {
+      "exact_lookup": 0.7895,
+      "factoid": 0.6154,
+      "relational": 0.254,
+      "analytical": 0.2174,
+      "multi_part": 0.6071,
+      "colloquial": null,
+      "summary": 0,
+      "numeric": 0
+    },
+    "confusion": {
+      "factoid__to__exact_lookup": 14,
+      "factoid__to__analytical": 1,
+      "relational__to__analytical": 17,
+      "relational__to__multi_part": 8,
+      "relational__to__factoid": 21,
+      "exact_lookup__to__factoid": 1,
+      "analytical__to__multi_part": 5,
+      "multi_part__to__factoid": 1,
+      "analytical__to__factoid": 8,
+      "multi_part__to__exact_lookup": 7,
+      "summary__to__analytical": 13,
+      "summary__to__exact_lookup": 1,
+      "summary__to__multi_part": 2,
+      "summary__to__factoid": 5,
+      "numeric__to__factoid": 6,
+      "analytical__to__relational": 5,
+      "relational__to__exact_lookup": 1,
+      "numeric__to__analytical": 1,
+      "exact_lookup__to__relational": 1,
+      "multi_part__to__analytical": 3,
+      "exact_lookup__to__multi_part": 2
+    },
+    "vocabulary_gap": {
+      "missing_in_rules": [
+        "summary",
+        "numeric"
+      ],
+      "blast_radius_n": 28
+    },
+    "top_confusion_pairs": [
+      {
+        "pair": "relational__to__factoid",
+        "count": 21
+      },
+      {
+        "pair": "relational__to__analytical",
+        "count": 17
+      },
+      {
+        "pair": "factoid__to__exact_lookup",
+        "count": 14
+      },
+      {
+        "pair": "summary__to__analytical",
+        "count": 13
+      },
+      {
+        "pair": "relational__to__multi_part",
+        "count": 8
+      }
+    ]
+  },
+  "llm": null,
+  "wall_clock_ms": 4,
+  "ran_at": "2026-04-26T05:41:18.475Z",
+  "notes": [
+    "Phase 1 offline shadow eval — rule logic is duplicated inline in this script.",
+    "See apps/api/src/rag/__tests__/query-classifier-rules.spec.ts for the canonical behavioural test.",
+    "Vocabulary gap is reported, not patched — see plan key decision #4."
+  ]
+}

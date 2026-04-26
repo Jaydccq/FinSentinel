@@ -207,33 +207,71 @@ embed-1b-v2` going forward. V16 rewritten to declare
   4. Promote only if the labelled set shows a bucket-level win with no overall
      regression.
 - **Status:** Phase 1 (offline shadow eval) closed 2026-04-26.
-  - Plan: `docs/exec-plans/2026-04-26-query-classifier-shadow-phase1.md`.
+  Phase 1.5 (vocabulary expansion + exact_lookup tightening + relational
+  reorder) closed 2026-04-26 on
+  `feat/2026-04-26-query-classifier-phase1_5`.
+  - Plan: `docs/exec-plans/2026-04-26-query-classifier-shadow-phase1.md`,
+    `docs/exec-plans/2026-04-26-query-classifier-rules-phase1_5.md`.
   - Shipped: pure rule classifier extracted to
     `apps/api/src/rag/query-classifier-rules.ts`; sibling
     `LlmQueryClassifierService` in
     `apps/api/src/rag/query-classifier-llm.ts`; offline runner
-    `services/evaluation-runner/run_classifier_shadow.mjs` against golden v2.2.
-  - First shadow numbers (rules-only, 200 entries):
+    `services/evaluation-runner/run_classifier_shadow.mjs` against
+    golden v2.2; reports committed at
+    `services/evaluation-runner/reports/classifier-shadow-2026-04-26.json`
+    (phase 1) and `…-v2.json` (phase 1.5).
+  - Phase 1 numbers (rules-only, 200 entries):
     accuracy_overall=0.385; vocabulary_gap blast radius 28
     (`summary`, `numeric` not emitted by rules); top confusion
     `relational→factoid` (21), `relational→analytical` (17),
-    `factoid→exact_lookup` (14). Report path
-    `services/evaluation-runner/reports/classifier-shadow-<ISO>.json`
-    (gitignored — regenerate locally).
-  - First LLM numbers (`openai/gpt-4o-mini`, 200 entries, single full run):
-    accuracy_overall=0.385 (TIE with rules); LLM gains precision on
-    `factoid` (0.86 vs 0.36) and `relational` (0.87 vs 0.73), but loses
-    recall on `relational` and trades into `analytical` heavily.
-    Total tokens 79,885; ~$0.02 at gpt-4o-mini list.
-  - Phase 2 still OPEN: runtime shadow path under
-    `RAG_QUERY_CLASSIFIER_SHADOW_ENABLED`. Promotion gates (locked in
-    here so the next attempt is mechanical):
-    - ≥ 5 pp absolute precision improvement on at least one bucket, OR
-    - ≥ 2 pp overall accuracy with no per-bucket regression > 1 pp.
-    The current single LLM run does NOT meet either gate; either tune the
-    prompt / model OR extend rule vocabulary to include `numeric` /
-    `summary` (a deliberate planner-policy decision, not a Phase 2
-    shortcut) before re-running shadow.
+    `factoid→exact_lookup` (14).
+  - Phase 1.5 numbers (rules-only, 200 entries):
+    accuracy_overall=0.415 (+3.0 pp vs phase 1); vocabulary_gap closed
+    (blast radius 0). Per-class precision:
+    `exact_lookup` 0.45 (+6 pp), `factoid` 0.38 (+2 pp),
+    `relational` 0.69 (−4 pp), `analytical` 0.11 (−2 pp),
+    `multi_part` 0.53 (+3 pp), `numeric` 0.67 (new), `summary` null
+    (no rule predictions land on summary because few golden summary
+    entries match `tell me about` / `tldr` shapes — the regex is
+    narrower than the dataset's surface forms). Top confusion:
+    `relational→factoid` (21, unchanged), `relational→analytical`
+    (15, −2), `summary→analytical` (13), `factoid→exact_lookup`
+    (12, −2 — tightening helped but is not dominant), `relational→
+    multi_part` (8).
+  - Phase 1.5 LLM numbers (`openai/gpt-4o-mini`, 200 entries):
+    accuracy_overall=0.405 (loses to rules by 1 pp). Per-class
+    precision: `factoid` 0.78, `relational` 0.89, `summary` 0.83,
+    `exact_lookup` 0.37, `analytical` 0.23, `multi_part` 0.50,
+    `numeric` 0.18. LLM trades precision for heavy
+    `relational→analytical` regression (41 cases). Total tokens
+    102,600; ~$0.02 at gpt-4o-mini list.
+  - **Verdict (phase 1.5):** rules-only is **below the 0.55 target**;
+    the residual errors are dominated by relational/summary recall
+    where rules cannot match the dataset's surface forms (most golden
+    `relational` entries lack the regex cue words). LLM gains on three
+    bucket precisions (`factoid` +40 pp, `relational` +20 pp, `summary`
+    +83 pp) but **loses overall accuracy by 1 pp** and adds a new
+    `relational→analytical` failure mode (41 cases). The phase-2
+    promotion gate (≥ 5 pp bucket precision OR ≥ 2 pp overall, no
+    bucket regression > 1 pp) is **NOT MET overall** — the bucket-
+    precision win comes paired with a > 1 pp regression on
+    `analytical` and `multi_part` recall.
+  - **Action:** Item 9 stays OPEN at phase 1.5. Phase 2 runtime shadow
+    path is **NOT unblocked**. The rule architecture has hit a
+    practical ceiling: any further gain on `relational` recall needs
+    a different signal source (embedding similarity to anchor queries,
+    or a cheap learned classifier trained on the golden set). The
+    label-set is the right size for a tiny model now (200 entries
+    spread across 7 classes). New action item:
+    1. Expand the golden set to ~500 entries with stratified
+       per-class minimums (≥ 50 per class) so the residual variance
+       is meaningful.
+    2. Train a lightweight classifier (sentence-transformer +
+       logistic regression, or k-NN on embedding space) and re-run
+       the shadow eval against rules.
+    3. Only then revisit phase 2 runtime shadow.
+    Until then, do NOT promote phase 2 on the strength of LLM
+    bucket-precision wins alone — the recall trade is real.
 
 ### Frontend typed-client/SWR/trading-status rollout is blocked on UX state design
 
