@@ -59,6 +59,12 @@
        `docs/runbooks/2026-04-25-rag-eval-promotion-runbook.md`.
        Phase 1 ships tooling only — reviewer-driven promotion of
        actual rows is a separate operational PR.
+     - **2026-04-26 local staging proof:** Seeded the fixture corpus into
+       local Postgres and inserted 100 synthetic query-log rows derived from
+       the current golden queries. `rag:eval:promote --dry-run` sampled 58
+       rows with `without_preview=0`, and a live run to `/tmp` produced 58
+       review rows. This proves the local operator pipeline but does not
+       unblock true labelled eval data; real traffic rows are still required.
   3. **Query rewrite / HyDE eval timeout** — CLOSED 2026-04-21.
      `fetch_retrieval_results` now accepts `timeout_s` via config
      `retrieval.timeout_s` or env `RAG_EVAL_TIMEOUT_S`; default 30s,
