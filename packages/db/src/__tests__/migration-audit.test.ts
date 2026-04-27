@@ -146,7 +146,11 @@ describe('migration-audit (static)', () => {
 
     it('migrations with DROP TABLE / DROP COLUMN / RENAME include a ROLLBACK or no-rollback note', () => {
       for (const m of migrations) {
-        const hits = irreversibles.filter((r) => r.test(m.sql));
+        const sqlNoComments = m.sql
+          .split('\n')
+          .filter((line) => !line.trimStart().startsWith('--'))
+          .join('\n');
+        const hits = irreversibles.filter((r) => r.test(sqlNoComments));
         if (hits.length === 0) continue;
         // Comments mentioning rollback or "no rollback" satisfy this.
         const sqlLower = m.sql.toLowerCase();

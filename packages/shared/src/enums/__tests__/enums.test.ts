@@ -103,8 +103,8 @@ describe('StorageTier', () => {
 });
 
 describe('AgentEventType', () => {
-  it('has exactly 52 values', () => {
-    expect(Object.values(AgentEventType)).toHaveLength(52);
+  it('has exactly 53 values', () => {
+    expect(Object.values(AgentEventType)).toHaveLength(53);
   });
   it('contains chat event types', () => {
     expect(AgentEventType.CHAT_SESSION_STARTED).toBe('CHAT_SESSION_STARTED');
@@ -138,6 +138,9 @@ describe('AgentEventType', () => {
     expect(AgentEventType.OKX_POSITION_CLOSED).toBe('OKX_POSITION_CLOSED');
     expect(AgentEventType.OKX_RISK_ALERT).toBe('OKX_RISK_ALERT');
     expect(AgentEventType.OKX_HEALTH_CHECK_RUN).toBe('OKX_HEALTH_CHECK_RUN');
+  });
+  it('contains order ledger operator event types', () => {
+    expect(AgentEventType.LEDGER_UNKNOWN_ACKNOWLEDGED).toBe('LEDGER_UNKNOWN_ACKNOWLEDGED');
   });
 });
 
