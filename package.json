@@ -8,7 +8,8 @@
   "scripts": {
     "build": "turbo run build --filter=!@finsentinel/desktop",
     "build:all": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --filter=!@finsentinel/desktop",
+    "dev:all": "turbo run dev",
     "test": "turbo run test --filter=!@finsentinel/desktop",
     "test:all": "turbo run test",
     "lint": "turbo run lint",
